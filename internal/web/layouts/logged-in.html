@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black text-white">
+  <head>
+    <title>{{ .title }} - LDAP Manager</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="darkreader-lock" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="manifest" href="/static/site.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/static/safari-pinned-tab.svg" color="#000000" />
+    <meta name="theme-color" content="#b8e9f4" />
+    <meta name="msapplication-TileColor" content="#b8e9f4" />
+
+    <link rel="preload" href="/static/styles.css" as="style" />
+
+    {{ .headscripts }}
+
+
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+
+  <body class="flex h-full flex-col">
+    <nav class="flex h-12 min-h-[3rem] w-full border-b border-b-gray-600">
+      <div class="m-auto flex w-full max-w-4xl items-center gap-4 px-4 py-1">
+        <div class="flex flex-1 justify-start gap-4 text-gray-500">
+          <a href="/" class="{{ navbarActive .activePage "/" }} transition-colors hocus:text-white"> LDAP Manager </a>
+          <a class="{{ navbarActive .activePage "/users" }} transition-colors hocus:text-white" href="/users">Users</a>
+          <a class="{{ navbarActive .activePage "/groups" }} transition-colors hocus:text-white" href="/groups">
+            Groups
+          </a>
+        </div>
+
+        <a href="/logout" class="rounded-md p-1 outline-none transition-colors hocus:bg-white hocus:text-black">
+          <!-- material-symbols:logout -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M5 21q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h7v2H5v14h7v2H5Zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5l-5 5Z"
+            />
+          </svg>
+        </a>
+      </div>
+    </nav>
+
+    <div class="mx-auto w-full max-w-4xl flex-1 overflow-y-visible p-4">
+      {{ embed }}
+    </div>
+  </body>
+</html>
