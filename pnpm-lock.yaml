@@ -27,8 +27,8 @@ devDependencies:
     specifier: ^3.0.0
     version: 3.0.3
   prettier-plugin-go-template:
-    specifier: ^0.0.13
-    version: 0.0.13(prettier@3.0.3)
+    specifier: ^0.0.15
+    version: 0.0.15(prettier@3.0.3)
   prettier-plugin-tailwindcss:
     specifier: ^0.5.0
     version: 0.5.0(prettier@3.0.3)
@@ -1237,11 +1237,11 @@ packages:
       source-map-js: 1.0.2
     dev: true
 
-  /prettier-plugin-go-template@0.0.13(prettier@3.0.3):
-    resolution: {integrity: sha512-gG/xT5kd+kCzoMaTchXvdfBdsunyRCV6G8cgdPGPd2V5JGGKXUG7SjzBKU7jaGh2RTeblcAdBb/E+S/duOAMsA==}
+  /prettier-plugin-go-template@0.0.15(prettier@3.0.3):
+    resolution: {integrity: sha512-WqU92E1NokWYNZ9mLE6ijoRg6LtIGdLMePt2C7UBDjXeDH9okcRI3zRqtnWR4s5AloiqyvZ66jNBAa9tmRY5EQ==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      prettier: ^2.0.0
+      prettier: ^3.0.0
     dependencies:
       prettier: 3.0.3
       ulid: 2.3.0
