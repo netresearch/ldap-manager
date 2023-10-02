@@ -3,7 +3,7 @@ module github.com/netresearch/ldap-manager
 go 1.21
 
 require (
-	github.com/gofiber/fiber/v2 v2.48.0
+	github.com/gofiber/fiber/v2 v2.49.2
 	github.com/gofiber/storage/bbolt v1.3.5
 	github.com/gofiber/template/html/v2 v2.0.5
 	github.com/joho/godotenv v1.5.1
