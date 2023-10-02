@@ -1,0 +1,19 @@
+<h1 class="mb-4 text-3xl">All groups</h1>
+
+<div class="flex flex-col justify-between divide-y divide-gray-600">
+  {{ range .groups }}
+    <a href="/groups/{{ .DN }}" class="block py-2 [&>svg]:text-gray-500 [&>svg]:hover:text-white">
+      <span title="{{ .DN }}">{{ .CN }}</span>
+
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        class="inline-block transition-colors"
+      >
+        <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
+      </svg>
+    </a>
+  {{ end }}
+</div>

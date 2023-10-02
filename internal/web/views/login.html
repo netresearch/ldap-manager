@@ -1,0 +1,36 @@
+<form class="space-y-4 rounded-md border border-gray-500 p-8" action="/login" method="get">
+  <div>
+    <input
+      type="text"
+      name="username"
+      placeholder="Username"
+      class="w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none placeholder:select-none focus:border-white"
+    />
+  </div>
+
+  <div>
+    <input
+      type="password"
+      name="password"
+      placeholder="Password"
+      class="w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none placeholder:select-none focus:border-white"
+    />
+  </div>
+
+  <button
+    type="submit"
+    class="w-full rounded-md border border-white bg-white px-3 py-1 font-bold text-black outline-none hover:bg-transparent hover:text-white hocus:bg-opacity-0 hocus:text-white disabled:hocus:bg-opacity-10"
+  >
+    Login
+  </button>
+
+  <p class="text-center text-xs text-gray-500">
+    Powered by
+    <a
+      href="https://github.com/netresearch/ldap-manager"
+      class="break-keep outline-none hocus:text-white hocus:underline hocus:decoration-white"
+    >
+      netresearch/ldap-manager
+    </a>
+  </p>
+</form>
