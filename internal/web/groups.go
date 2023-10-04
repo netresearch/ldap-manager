@@ -51,7 +51,7 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 
 	return c.Render("views/group", fiber.Map{
 		"session":     sess,
-		"title":       "All groups",
+		"title":       group.CN(),
 		"activePage":  "/groups",
 		"headscripts": "",
 		"group":       group,

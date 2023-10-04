@@ -51,7 +51,7 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 
 	return c.Render("views/user", fiber.Map{
 		"session":     sess,
-		"title":       "All users",
+		"title":       user.CN(),
 		"activePage":  "/users",
 		"headscripts": "",
 		"user":        user,
