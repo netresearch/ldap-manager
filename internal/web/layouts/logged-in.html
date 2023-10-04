@@ -107,6 +107,14 @@
     </nav>
 
     <div class="mx-auto w-full max-w-4xl flex-1 p-4">
+      {{ if len .flashes }}
+        <div class="mb-4">
+          {{ range .flashes }}
+            <div class="{{ .BorderColor }} rounded-md border p-4 py-3">{{ .Message }}</div>
+          {{ end }}
+        </div>
+      {{ end }}
+
       {{ embed }}
     </div>
   </body>

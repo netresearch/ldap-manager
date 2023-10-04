@@ -92,6 +92,7 @@ func handle500(c *fiber.Ctx, err error) error {
 	return c.Render("views/500", fiber.Map{
 		"title":       "error",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"error":       err.Error(),
 	}, "layouts/base")
 }
@@ -117,6 +118,7 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		"title":       "List",
 		"activePage":  "/",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"user":        user,
 	}, "layouts/logged-in")
 }
@@ -125,5 +127,6 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	return c.Render("views/404", fiber.Map{
 		"title":       "404",
 		"headscripts": "",
+		"flashes":     []Flash{},
 	}, "layouts/base")
 }

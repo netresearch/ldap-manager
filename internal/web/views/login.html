@@ -1,4 +1,13 @@
 <form class="space-y-4 rounded-md border border-gray-500 p-8" action="/login" method="get">
+  {{ if len .flashes }}
+    <div class="mb-4">
+      {{ range .flashes }}
+        <div class="{{ .BorderColor }} rounded-md border p-4 py-3">{{ .Message }}</div>
+      {{ end }}
+    </div>
+  {{ end }}
+
+
   <div>
     <input
       type="text"

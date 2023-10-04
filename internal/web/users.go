@@ -23,6 +23,7 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 		"title":       "All users",
 		"activePage":  "/users",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"users":       users,
 	}, "layouts/logged-in")
 }
@@ -54,6 +55,7 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 		"title":       user.CN(),
 		"activePage":  "/users",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"user":        user,
 	}, "layouts/logged-in")
 }

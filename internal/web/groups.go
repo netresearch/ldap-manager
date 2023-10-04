@@ -23,6 +23,7 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 		"title":       "All groups",
 		"activePage":  "/groups",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"groups":      groups,
 	}, "layouts/logged-in")
 }
@@ -54,6 +55,7 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		"title":       group.CN(),
 		"activePage":  "/groups",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"group":       group,
 	}, "layouts/logged-in")
 }

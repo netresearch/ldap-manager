@@ -23,6 +23,7 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 		"title":       "All computers",
 		"activePage":  "/computers",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"computers":   computers,
 	}, "layouts/logged-in")
 }
@@ -54,6 +55,7 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 		"title":       computer.CN(),
 		"activePage":  "/computers",
 		"headscripts": "",
+		"flashes":     []Flash{},
 		"computer":    computer,
 	}, "layouts/logged-in")
 }

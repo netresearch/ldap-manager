@@ -42,3 +42,52 @@ func tplNavbarActive(activeTab, tab string) string {
 
 	return navbarActiveClasses
 }
+
+type FlashType string
+
+const (
+	FlashTypeSuccess FlashType = "success"
+	FlashTypeError   FlashType = "error"
+	FlashTypeInfo    FlashType = "info"
+)
+
+type Flash struct {
+	Message string
+	Type    FlashType
+}
+
+func NewFlash(type_ FlashType, message string) Flash {
+	return Flash{
+		Message: message,
+		Type:    type_,
+	}
+}
+
+func (f Flash) IsSuccess() bool {
+	return f.Type == FlashTypeSuccess
+}
+
+func (f Flash) IsError() bool {
+	return f.Type == FlashTypeError
+}
+
+func (f Flash) IsInfo() bool {
+	return f.Type == FlashTypeInfo
+}
+
+const flashSuccessClasses = "border-green-500"
+const flashErrorClasses = "border-red-500"
+const flashInfoClasses = "border-blue-500"
+
+func (f Flash) BorderColor() string {
+	switch f.Type {
+	case FlashTypeSuccess:
+		return flashSuccessClasses
+	case FlashTypeError:
+		return flashErrorClasses
+	case FlashTypeInfo:
+		return flashInfoClasses
+	default:
+		panic("unknown flash type")
+	}
+}

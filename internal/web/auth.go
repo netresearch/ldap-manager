@@ -36,7 +36,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 				"session":     sess,
 				"title":       "Login",
 				"headscripts": "",
-				"flashes":     []string{"Invalid username or password"},
+				"flashes":     []Flash{NewFlash(FlashTypeError, "Invalid username or password")},
 			}, "layouts/base")
 		}
 
@@ -53,5 +53,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		"session":     sess,
 		"title":       "Login",
 		"headscripts": "",
+		"flashes":     []Flash{},
 	}, "layouts/base")
 }
