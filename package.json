@@ -19,6 +19,7 @@
     "go:dev": "nodemon --signal SIGTERM -e go,html,css,js -w \"./**\" -x pnpm go:start"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.6",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.1",
     "cssnano": "^6.0.1",

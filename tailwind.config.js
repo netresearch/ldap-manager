@@ -1,3 +1,4 @@
+import forms from "@tailwindcss/forms";
 import plugin from "tailwindcss/plugin";
 
 const goExtractor = (postfix = "Classes") => {
@@ -24,6 +25,7 @@ const config = {
     }
   },
   plugins: [
+    forms({ strategy: "class" }),
     plugin(({ addVariant }) => {
       addVariant("hocus", ["&:hover", "&:focus"]);
     })
