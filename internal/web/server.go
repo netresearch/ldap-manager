@@ -18,13 +18,14 @@ import (
 
 type App struct {
 	ldap         *ldap.LDAP
+	ldapConfig   ldap.Config
 	ldapCache    *ldap_cache.Manager
 	sessionStore *session.Store
 	fiber        *fiber.App
 }
 
 func NewApp(opts *options.Opts) (*App, error) {
-	ldap, err := ldap.New(opts.LdapServer, opts.BaseDN, opts.ReadonlyUser, opts.ReadonlyPassword, opts.IsActiveDirectory)
+	ldap, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +59,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	a := &App{
 		ldap:         ldap,
+		ldapConfig:   opts.LDAP,
 		ldapCache:    ldap_cache.New(ldap),
 		sessionStore: sessionStore,
 		fiber:        f,
@@ -105,7 +107,7 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		return c.Redirect("/login")
 	}
 
-	user, err := a.ldapCache.FindUserBySAMAccountName(sess.Get("username").(string))
+	user, err := a.ldapCache.FindUserByDN(sess.Get("dn").(string))
 	if err != nil {
 		return handle500(c, err)
 	}

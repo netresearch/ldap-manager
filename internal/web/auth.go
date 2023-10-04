@@ -40,7 +40,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			}, "layouts/base")
 		}
 
-		sess.Set("username", user.SAMAccountName)
+		sess.Set("dn", user.DN())
 		sess.Set("password", password)
 		if err := sess.Save(); err != nil {
 			return handle500(c, err)

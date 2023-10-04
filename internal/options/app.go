@@ -7,15 +7,14 @@ import (
 	"strconv"
 
 	"github.com/joho/godotenv"
+	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 )
 
 type Opts struct {
-	LdapServer        string
-	IsActiveDirectory bool
-	BaseDN            string
-	ReadonlyUser      string
-	ReadonlyPassword  string
+	LDAP             ldap.Config
+	ReadonlyUser     string
+	ReadonlyPassword string
 
 	DBPath string
 }
@@ -81,12 +80,16 @@ func Parse() *Opts {
 	panicWhenEmpty("readonly-password", fReadonlyPassword)
 	panicWhenEmpty("db-path", fDBPath)
 
-	return &Opts{
-		LdapServer:        *fLdapServer,
-		IsActiveDirectory: *fIsActiveDirectory,
+	ldapConfig := ldap.Config{
+		Server:            *fLdapServer,
 		BaseDN:            *fBaseDN,
-		ReadonlyUser:      *fReadonlyUser,
-		ReadonlyPassword:  *fReadonlyPassword,
+		IsActiveDirectory: *fIsActiveDirectory,
+	}
+
+	return &Opts{
+		LDAP:             ldapConfig,
+		ReadonlyUser:     *fReadonlyUser,
+		ReadonlyPassword: *fReadonlyPassword,
 
 		DBPath: *fDBPath,
 	}
