@@ -1,3 +1,17 @@
+{{ define "plus-icon" }}
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="inline-block h-4 w-4">
+    <path
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1.5"
+      d="M12 4.5v15m7.5-7.5h-15"
+    />
+  </svg>
+{{ end }}
+
+
 <h1 class="text-3xl">{{ .user.CN }} ({{ .user.SAMAccountName }})</h1>
 <p class="text-sm text-gray-500">{{ .user.DN }}</p>
 
@@ -21,6 +35,28 @@
           <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
         </svg>
       </a>
+
+      <form action="/users/{{ $.user.DN }}" method="POST" class="flex-end pr-3">
+        <input type="hidden" name="removegroup" value="{{ .DN }}" />
+
+        <button
+          class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+          type="submit"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 20 20"
+            class="inline-block h-4 w-4 transition-colors"
+          >
+            <path
+              fill="currentColor"
+              d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94L6.28 5.22Z"
+            />
+          </svg>
+        </button>
+      </form>
     </div>
   {{ end }}
 </div>
@@ -28,3 +64,25 @@
 {{ if not .user.Groups }}
   <p class="text-gray-500">No groups</p>
 {{ end }}
+
+
+<h2 class="mt-4 text-xl">Add to group</h2>
+<form action="/users/{{ .user.DN }}" method="POST">
+  <div class="flex items-center gap-2">
+    <select
+      class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
+      name="addgroup"
+    >
+      {{ range .unassignedGroups }}
+        <option value="{{ .DN }}">{{ .CN }}</option>
+      {{ end }}
+    </select>
+
+    <button
+      type="submit"
+      class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
+    >
+      {{ template "plus-icon" }}
+    </button>
+  </div>
+</form>

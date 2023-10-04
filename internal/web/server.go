@@ -68,8 +68,10 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f.Get("/", a.indexHandler)
 	f.Get("/users", a.usersHandler)
 	f.Get("/users/:userDN", a.userHandler)
+	f.Post("/users/:userDN", a.userModifyHandler)
 	f.Get("/groups", a.groupsHandler)
 	f.Get("/groups/:groupDN", a.groupHandler)
+	f.Post("/groups/:groupDN", a.groupModifyHandler)
 	f.Get("/computers", a.computersHandler)
 	f.Get("/computers/:computerDN", a.computerHandler)
 	f.Get("/login", a.loginHandler)
@@ -129,4 +131,13 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 		"headscripts": "",
 		"flashes":     []Flash{},
 	}, "layouts/base")
+}
+
+func (a *App) sessionToLDAPClient(sess *session.Session) (*ldap.LDAP, error) {
+	executor, err := a.ldapCache.FindUserByDN(sess.Get("dn").(string))
+	if err != nil {
+		return nil, err
+	}
+
+	return a.ldap.WithCredentials(executor.DN(), sess.Get("password").(string))
 }

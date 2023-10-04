@@ -45,7 +45,7 @@ func New(client *ldap.LDAP) *Manager {
 func (m *Manager) Run() {
 	t := time.NewTicker(30 * time.Second)
 
-	m.refresh()
+	m.Refresh()
 
 	for {
 		select {
@@ -55,7 +55,7 @@ func (m *Manager) Run() {
 
 			return
 		case <-t.C:
-			m.refresh()
+			m.Refresh()
 		}
 	}
 }
@@ -64,49 +64,49 @@ func (m *Manager) Stop() {
 	m.stop <- struct{}{}
 }
 
-func (m *Manager) refreshUsers() error {
+func (m *Manager) RefreshUsers() error {
 	users, err := m.client.FindUsers()
 	if err != nil {
 		return err
 	}
 
-	m.Users.set(users)
+	m.Users.setAll(users)
 
 	return nil
 }
 
-func (m *Manager) refreshGroups() error {
+func (m *Manager) RefreshGroups() error {
 	groups, err := m.client.FindGroups()
 	if err != nil {
 		return err
 	}
 
-	m.Groups.set(groups)
+	m.Groups.setAll(groups)
 
 	return nil
 }
 
-func (m *Manager) refreshComputers() error {
+func (m *Manager) RefreshComputers() error {
 	computers, err := m.client.FindComputers()
 	if err != nil {
 		return err
 	}
 
-	m.Computers.set(computers)
+	m.Computers.setAll(computers)
 
 	return nil
 }
 
-func (m *Manager) refresh() {
-	if err := m.refreshUsers(); err != nil {
+func (m *Manager) Refresh() {
+	if err := m.RefreshUsers(); err != nil {
 		log.Error().Err(err).Send()
 	}
 
-	if err := m.refreshGroups(); err != nil {
+	if err := m.RefreshGroups(); err != nil {
 		log.Error().Err(err).Send()
 	}
 
-	if err := m.refreshComputers(); err != nil {
+	if err := m.RefreshComputers(); err != nil {
 		log.Error().Err(err).Send()
 	}
 
@@ -210,4 +210,48 @@ func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPCo
 	}
 
 	return full
+}
+
+func (m *Manager) OnAddUserToGroup(userDN string, groupDN string) {
+	m.Users.update(func(user *ldap.User) {
+		if user.DN() != userDN {
+			return
+		}
+
+		user.Groups = append(user.Groups, groupDN)
+	})
+
+	m.Groups.update(func(group *ldap.Group) {
+		if group.DN() != groupDN {
+			return
+		}
+
+		group.Members = append(group.Members, userDN)
+	})
+}
+
+func (m *Manager) OnRemoveUserFromGroup(userDN string, groupDN string) {
+	m.Users.update(func(user *ldap.User) {
+		if user.DN() != userDN {
+			return
+		}
+
+		for idx, group := range user.Groups {
+			if group == groupDN {
+				user.Groups = append(user.Groups[:idx], user.Groups[idx+1:]...)
+			}
+		}
+	})
+
+	m.Groups.update(func(group *ldap.Group) {
+		if group.DN() != groupDN {
+			return
+		}
+
+		for idx, member := range group.Members {
+			if member == userDN {
+				group.Members = append(group.Members[:idx], group.Members[idx+1:]...)
+			}
+		}
+	})
 }
