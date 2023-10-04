@@ -47,7 +47,7 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	group := a.ldapCache.PopulateUsersForGroup(&thinGroup)
+	group := a.ldapCache.PopulateUsersForGroup(thinGroup)
 
 	return c.Render("views/group", fiber.Map{
 		"session":     sess,

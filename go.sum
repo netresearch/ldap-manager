@@ -44,6 +44,12 @@ github.com/mattn/go-runewidth v0.0.15 h1:UNAjwbU9l54TA3KzvqLGxwWjHmMgBUVhBiTjelZ
 github.com/mattn/go-runewidth v0.0.15/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/netresearch/simple-ldap-go v0.0.0-20231002103847-cb56d7d4e6c7 h1:hN2eW111sh8hpPT4GwIXafbSqHtJfAnLGc+hZAQehnk=
 github.com/netresearch/simple-ldap-go v0.0.0-20231002103847-cb56d7d4e6c7/go.mod h1:v00qbwupQnx2Mk3oJoJylMWD54yJk6vHsbFj5RIOK5o=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004122900-4330878fc9a4 h1:fDYgY1a8l+yg1hZiwbJDxWN71RmXvmMtLaQ5GUTinq4=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004122900-4330878fc9a4/go.mod h1:v00qbwupQnx2Mk3oJoJylMWD54yJk6vHsbFj5RIOK5o=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004142232-afbc4b64610b h1:38oxXelhqR5+XcQFTtd9/b4VNhbtQTGaieZZXENNhFM=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004142232-afbc4b64610b/go.mod h1:v00qbwupQnx2Mk3oJoJylMWD54yJk6vHsbFj5RIOK5o=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004145604-d3bf3da83062 h1:bYowV53cj9nxfZgApTFqDAgYjNhnoZcbdc8RHEdx/ZI=
+github.com/netresearch/simple-ldap-go v0.0.0-20231004145604-d3bf3da83062/go.mod h1:v00qbwupQnx2Mk3oJoJylMWD54yJk6vHsbFj5RIOK5o=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

@@ -18,7 +18,7 @@ import (
 
 type App struct {
 	ldap         *ldap.LDAP
-	ldapCache    *ldap_cache.Cache
+	ldapCache    *ldap_cache.Manager
 	sessionStore *session.Store
 	fiber        *fiber.App
 }
