@@ -1,0 +1,31 @@
+<h1 class="text-3xl">{{ .computer.CN }} ({{ .computer.SAMAccountName }})</h1>
+<p class="mb-4 text-sm text-gray-500">{{ .computer.DN }}</p>
+
+<p>Operating system: {{ .computer.OS }}</p>
+<p class="mb-4">Operating system version: {{ .computer.OSVersion }}</p>
+
+<h2 class="text-xl">Groups:</h2>
+<div class="flex flex-col justify-between divide-y divide-gray-600">
+  {{ range .computer.Groups }}
+    <a
+      href="/groups/{{ .DN }}"
+      class="block py-2 [&:hover>svg]:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hover:text-white"
+    >
+      <span title="{{ .DN }}">{{ .CN }}</span>
+
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        class="inline-block transition-[color_transform]"
+      >
+        <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
+      </svg>
+    </a>
+  {{ end }}
+</div>
+
+{{ if not .computer.Groups }}
+  <p class="text-gray-500">No groups</p>
+{{ end }}

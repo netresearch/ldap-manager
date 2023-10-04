@@ -68,6 +68,8 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f.Get("/users/:userDN", a.userHandler)
 	f.Get("/groups", a.groupsHandler)
 	f.Get("/groups/:groupDN", a.groupHandler)
+	f.Get("/computers", a.computersHandler)
+	f.Get("/computers/:computerDN", a.computerHandler)
 	f.Get("/login", a.loginHandler)
 	f.Get("/logout", a.logoutHandler)
 

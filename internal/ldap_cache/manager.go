@@ -14,6 +14,7 @@ type Manager struct {
 
 	Users     Cache[ldap.User]
 	Groups    Cache[ldap.Group]
+	Computers Cache[ldap.Computer]
 }
 
 type FullLDAPUser struct {
@@ -26,12 +27,18 @@ type FullLDAPGroup struct {
 	Members []ldap.User
 }
 
+type FullLDAPComputer struct {
+	ldap.Computer
+	Groups []ldap.Group
+}
+
 func New(client *ldap.LDAP) *Manager {
 	return &Manager{
 		stop:      make(chan struct{}),
 		client:    client,
 		Users:     NewCached[ldap.User](),
 		Groups:    NewCached[ldap.Group](),
+		Computers: NewCached[ldap.Computer](),
 	}
 }
 
@@ -79,6 +86,17 @@ func (m *Manager) refreshGroups() error {
 	return nil
 }
 
+func (m *Manager) refreshComputers() error {
+	computers, err := m.client.FindComputers()
+	if err != nil {
+		return err
+	}
+
+	m.Computers.set(computers)
+
+	return nil
+}
+
 func (m *Manager) refresh() {
 	if err := m.refreshUsers(); err != nil {
 		log.Error().Err(err).Send()
@@ -88,7 +106,11 @@ func (m *Manager) refresh() {
 		log.Error().Err(err).Send()
 	}
 
-	log.Debug().Msgf("Refreshed LDAP cache with %d users and %d groups", m.Users.Count(), m.Groups.Count())
+	if err := m.refreshComputers(); err != nil {
+		log.Error().Err(err).Send()
+	}
+
+	log.Debug().Msgf("Refreshed LDAP cache with %d users, %d groups and %d computers", m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 }
 
 func (m *Manager) FindUsers() []ldap.User {
@@ -129,6 +151,19 @@ func (m *Manager) FindGroupByDN(dn string) (*ldap.Group, error) {
 	return group, nil
 }
 
+func (m *Manager) FindComputers() []ldap.Computer {
+	return m.Computers.Get()
+}
+
+func (m *Manager) FindComputerByDN(dn string) (*ldap.Computer, error) {
+	computer, found := m.Computers.FindByDN(dn)
+	if !found {
+		return nil, ldap.ErrComputerNotFound
+	}
+
+	return computer, nil
+}
+
 func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 	full := &FullLDAPUser{
 		User:   *user,
@@ -155,6 +190,22 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group) *FullLDAPGroup {
 		user, err := m.FindUserByDN(userDN)
 		if err == nil {
 			full.Members = append(full.Members, *user)
+		}
+	}
+
+	return full
+}
+
+func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPComputer {
+	full := &FullLDAPComputer{
+		Computer: *computer,
+		Groups:   make([]ldap.Group, 0),
+	}
+
+	for _, groupDN := range computer.Groups {
+		group, err := m.FindGroupByDN(groupDN)
+		if err == nil {
+			full.Groups = append(full.Groups, *group)
 		}
 	}
 
