@@ -1,3 +1,33 @@
+{{ define "home-icon" }}
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+    <path
+      fill="currentColor"
+      fill-rule="evenodd"
+      d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z"
+      clip-rule="evenodd"
+    />
+  </svg>
+{{ end }}
+
+{{ define "users-icon" }}
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+    <path
+      fill="currentColor"
+      d="M10 9a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0Zm-4.51 7.326a.78.78 0 0 1-.358-.442a3 3 0 0 1 4.308-3.516a6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655Zm14.95.654a4.97 4.97 0 0 0 2.07-.654a.78.78 0 0 0 .357-.442a3 3 0 0 0-4.308-3.517a6.484 6.484 0 0 1 1.907 3.96a2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71a5 5 0 0 1 9.947 0a.843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z"
+    />
+  </svg>
+{{ end }}
+
+{{ define "group-icon" }}
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+    <path
+      fill="currentColor"
+      d="M10 9a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0Zm-4.51 7.326a.78.78 0 0 1-.358-.442a3 3 0 0 1 4.308-3.516a6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655Zm14.95.654a4.97 4.97 0 0 0 2.07-.654a.78.78 0 0 0 .357-.442a3 3 0 0 0-4.308-3.517a6.484 6.484 0 0 1 1.907 3.96a2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71a5 5 0 0 1 9.947 0a.843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z"
+    />
+  </svg>
+{{ end }}
+
+
 <!doctype html>
 <html lang="en" class="h-full bg-black text-white">
   <head>
@@ -23,14 +53,27 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
 
-  <body class="flex h-full flex-col">
+  <body class="flex h-full flex-col overflow-y-scroll">
     <nav class="flex h-12 min-h-[3rem] w-full border-b border-b-gray-600">
       <div class="m-auto flex w-full max-w-4xl items-center gap-4 px-4 py-1">
-        <div class="flex flex-1 justify-start gap-4 text-gray-500">
-          <a href="/" class="{{ navbarActive .activePage "/" }} transition-colors hocus:text-white"> LDAP Manager </a>
-          <a class="{{ navbarActive .activePage "/users" }} transition-colors hocus:text-white" href="/users">Users</a>
-          <a class="{{ navbarActive .activePage "/groups" }} transition-colors hocus:text-white" href="/groups">
-            Groups
+        <div class="flex flex-1 justify-start gap-2 text-gray-500">
+          <a class="{{ navbar }} {{ navbarActive .activePage "/" }}" href="/">
+            {{ template "home-icon" }}
+
+
+            <span class="max-sm:hidden">LDAP Manager</span>
+          </a>
+          <a class="{{ navbar }} {{ navbarActive .activePage "/users" }}" href="/users">
+            {{ template "users-icon" }}
+
+
+            <span class="max-sm:hidden">Users</span>
+          </a>
+          <a class="{{ navbar }} {{ navbarActive .activePage "/groups" }}" href="/groups">
+            {{ template "group-icon" }}
+
+
+            <span class="max-sm:hidden">Groups</span>
           </a>
         </div>
 
@@ -46,7 +89,7 @@
       </div>
     </nav>
 
-    <div class="mx-auto w-full max-w-4xl flex-1 overflow-y-visible p-4">
+    <div class="mx-auto w-full max-w-4xl flex-1 p-4">
       {{ embed }}
     </div>
   </body>

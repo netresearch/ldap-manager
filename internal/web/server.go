@@ -31,6 +31,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	views := html.NewFileSystem(http.FS(templates), ".html")
 	views.AddFunc("inputOpts", tplInputOpts)
+	views.AddFunc("navbar", tplNavbar)
 	views.AddFunc("navbarActive", tplNavbarActive)
 
 	sessionStorage := bbolt.New(bbolt.Config{

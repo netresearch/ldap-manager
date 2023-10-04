@@ -27,12 +27,18 @@ func tplInputOpts(name, placeholder, type_, autocomplete string) InputOpts {
 	}
 }
 
-const NavbarItemBaseClass = "px-2 py-1 "
+const navbarClasses = "px-3 max-sm:py-2 py-1 rounded-md flex items-center gap-2 transition-colors hocus:text-white"
+const navbarInactiveClasses = "hocus:bg-gray-800"
+const navbarActiveClasses = "text-white bg-gray-700"
+
+func tplNavbar() string {
+	return navbarClasses
+}
 
 func tplNavbarActive(activeTab, tab string) string {
-	if activeTab == tab {
-		return NavbarItemBaseClass + "text-white font-bold bg-gray-700 rounded-md"
+	if activeTab != tab {
+		return navbarInactiveClasses
 	}
 
-	return NavbarItemBaseClass
+	return navbarActiveClasses
 }
