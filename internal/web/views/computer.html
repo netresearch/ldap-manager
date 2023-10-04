@@ -1,10 +1,10 @@
 <h1 class="text-3xl">{{ .computer.CN }} ({{ .computer.SAMAccountName }})</h1>
-<p class="mb-4 text-sm text-gray-500">{{ .computer.DN }}</p>
+<p class="text-sm text-gray-500">{{ .computer.DN }}</p>
 
-<p>Operating system: {{ .computer.OS }}</p>
-<p class="mb-4">Operating system version: {{ .computer.OSVersion }}</p>
+<p class="mt-4">Operating system: {{ .computer.OS }}</p>
+<p>Operating system version: {{ .computer.OSVersion }}</p>
 
-<h2 class="text-xl">Groups:</h2>
+<h2 class="mt-4 text-xl">Groups:</h2>
 <div class="flex flex-col justify-between divide-y divide-gray-600">
   {{ range .computer.Groups }}
     <a

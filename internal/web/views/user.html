@@ -1,7 +1,7 @@
 <h1 class="text-3xl">{{ .user.CN }} ({{ .user.SAMAccountName }})</h1>
-<p class="mb-4 text-sm text-gray-500">{{ .user.DN }}</p>
+<p class="text-sm text-gray-500">{{ .user.DN }}</p>
 
-<h2 class="text-xl">Groups:</h2>
+<h2 class="mt-4 text-xl">Groups:</h2>
 <div class="flex flex-col justify-between divide-y divide-gray-600">
   {{ range .user.Groups }}
     <a

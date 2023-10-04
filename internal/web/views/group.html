@@ -1,7 +1,7 @@
 <h1 class="text-3xl">{{ .group.CN }}</h1>
-<p class="mb-4 text-sm text-gray-500">{{ .group.DN }}</p>
+<p class="text-sm text-gray-500">{{ .group.DN }}</p>
 
-<h2 class="text-xl">Members:</h2>
+<h2 class="mt-4 text-xl">Members:</h2>
 <div class="flex flex-col justify-between divide-y divide-gray-600">
   {{ range .group.Members }}
     <a
