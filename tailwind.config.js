@@ -28,6 +28,7 @@ const config = {
     forms({ strategy: "class" }),
     plugin(({ addVariant }) => {
       addVariant("hocus", ["&:hover", "&:focus"]);
+      addVariant("list-outer-hocus", ["&:has(a:focus)", "&:has(a:hover)"]);
     })
   ],
   theme: {

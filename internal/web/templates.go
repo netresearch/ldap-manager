@@ -27,9 +27,9 @@ func tplInputOpts(name, placeholder, type_, autocomplete string) InputOpts {
 	}
 }
 
-const navbarClasses = "px-3 py-1 rounded-md flex items-center gap-2 transition-colors hocus:text-white max-sm:px-2 max-sm:py-2 "
-const navbarInactiveClasses = "hocus:bg-gray-800"
-const navbarActiveClasses = "text-white bg-gray-700"
+const navbarClasses = "px-3 py-1 rounded-md flex items-center gap-2 transition-colors focus:outline-none hocus:text-white max-sm:px-2 max-sm:py-2 "
+const navbarInactiveClasses = "hocus:bg-gray-700/50"
+const navbarActiveClasses = "text-white bg-gray-700/80"
 
 func tplNavbar() string {
 	return navbarClasses

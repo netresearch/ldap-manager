@@ -4,22 +4,25 @@
 <h2 class="mt-4 text-xl">Members:</h2>
 <div class="flex flex-col justify-between divide-y divide-gray-600">
   {{ range .group.Members }}
-    <a
-      href="/users/{{ .DN }}"
-      class="block py-2 [&:hover>svg]:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hover:text-white"
-    >
-      <span title="{{ .DN }}">{{ .CN }} ({{ .SAMAccountName }})</span>
-
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        class="inline-block transition-[color_transform]"
+    <div class="list-outer-hocus:bg-gray-700/50 flex items-center transition-colors">
+      <a
+        href="/users/{{ .DN }}"
+        class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+        title="{{ .DN }}"
       >
-        <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
-      </svg>
-    </a>
+        <span>{{ .CN }} ({{ .SAMAccountName }})</span>
+
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          class="inline-block transition-colors"
+        >
+          <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
+        </svg>
+      </a>
+    </div>
   {{ end }}
 </div>
 
