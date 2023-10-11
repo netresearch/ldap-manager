@@ -91,3 +91,31 @@ func (f Flash) BorderColor() string {
 		panic("unknown flash type")
 	}
 }
+
+func tplDisabledUsersHref(showDisabled bool) string {
+	if showDisabled {
+		return "/users?show-disabled=0"
+	}
+
+	return "/users?show-disabled=1"
+}
+
+func tplDisabledUsersTooltip(showDisabled bool) string {
+	if showDisabled {
+		return "Hide disabled users"
+	}
+
+	return "Show disabled users"
+}
+
+const disabledUsersBaseClasses = "flex items-center rounded-md border px-2 py-2 transition-colors"
+const disabledUsersEnabledClasses = "border-white text-black bg-white hocus:bg-black hocus:text-white hocus:border-gray-600"
+const disabledUsersDisabledClasses = "border-gray-600 hocus:bg-white hocus:text-black hocus:border-white"
+
+func tplDisabledUsersClass(showDisabled bool) string {
+	if showDisabled {
+		return disabledUsersBaseClasses + " " + disabledUsersEnabledClasses
+	}
+
+	return disabledUsersBaseClasses + " " + disabledUsersDisabledClasses
+}

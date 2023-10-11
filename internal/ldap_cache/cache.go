@@ -62,7 +62,7 @@ func (i *Cache[T]) FindByDN(dn string) (v *T, found bool) {
 	})
 }
 
-func (i *Cache[T]) FindAll(fn func(T) bool) (v []T) {
+func (i *Cache[T]) Filter(fn func(T) bool) (v []T) {
 	i.m.RLock()
 	defer i.m.RUnlock()
 

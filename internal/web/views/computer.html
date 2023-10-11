@@ -1,5 +1,20 @@
+{{ define "lock-icon" }}
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+    <path
+      fill="currentColor"
+      fill-rule="evenodd"
+      d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+      clip-rule="evenodd"
+    />
+  </svg>
+{{ end }}
+
+
 <h1 class="text-3xl">{{ .computer.CN }} ({{ .computer.SAMAccountName }})</h1>
-<p class="text-sm text-gray-500">{{ .computer.DN }}</p>
+<p class="text-sm text-gray-500">
+  {{ .computer.DN }}
+  {{ if not .computer.Enabled }}{{ template "lock-icon" }}{{ end }}
+</p>
 
 <p class="mt-4">Operating system: {{ .computer.OS }}</p>
 <p>Operating system version: {{ .computer.OSVersion }}</p>

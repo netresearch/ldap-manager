@@ -34,6 +34,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 	views.AddFunc("inputOpts", tplInputOpts)
 	views.AddFunc("navbar", tplNavbar)
 	views.AddFunc("navbarActive", tplNavbarActive)
+	views.AddFunc("disabledUsersHref", tplDisabledUsersHref)
+	views.AddFunc("disabledUsersTooltip", tplDisabledUsersTooltip)
+	views.AddFunc("disabledUsersClass", tplDisabledUsersClass)
 
 	sessionStorage := bbolt.New(bbolt.Config{
 		Database: opts.DBPath,

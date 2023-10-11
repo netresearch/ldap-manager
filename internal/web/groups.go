@@ -50,7 +50,8 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	group := a.ldapCache.PopulateUsersForGroup(thinGroup)
+	showDisabledUsers := c.Query("show-disabled", "0") == "1"
+	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
 	unassignedUsers := a.findUnassignedUsers(group)
 
 	return c.Render("views/group", fiber.Map{
@@ -103,7 +104,8 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	group := a.ldapCache.PopulateUsersForGroup(thinGroup)
+	showDisabledUsers := c.Query("show-disabled", "0") == "1"
+	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
 	unassignedUsers := a.findUnassignedUsers(group)
 
 	if form.AddUser != nil {
@@ -142,7 +144,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	group = a.ldapCache.PopulateUsersForGroup(thinGroup)
+	group = a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
 	unassignedUsers = a.findUnassignedUsers(group)
 
 	return c.Render("views/group", fiber.Map{
@@ -157,7 +159,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 }
 
 func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {
-	return a.ldapCache.Users.FindAll(func(u ldap.User) bool {
+	return a.ldapCache.Users.Filter(func(u ldap.User) bool {
 		for _, g := range u.Groups {
 			if g == group.DN() {
 				return false

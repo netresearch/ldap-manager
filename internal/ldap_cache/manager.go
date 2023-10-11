@@ -113,7 +113,13 @@ func (m *Manager) Refresh() {
 	log.Debug().Msgf("Refreshed LDAP cache with %d users, %d groups and %d computers", m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 }
 
-func (m *Manager) FindUsers() []ldap.User {
+func (m *Manager) FindUsers(showDisabled bool) []ldap.User {
+	if !showDisabled {
+		return m.Users.Filter(func(t ldap.User) bool {
+			return t.Enabled
+		})
+	}
+
 	return m.Users.Get()
 }
 
@@ -151,7 +157,13 @@ func (m *Manager) FindGroupByDN(dn string) (*ldap.Group, error) {
 	return group, nil
 }
 
-func (m *Manager) FindComputers() []ldap.Computer {
+func (m *Manager) FindComputers(showDisabled bool) []ldap.Computer {
+	if !showDisabled {
+		return m.Computers.Filter(func(t ldap.Computer) bool {
+			return t.Enabled
+		})
+	}
+
 	return m.Computers.Get()
 }
 
@@ -180,7 +192,7 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 	return full
 }
 
-func (m *Manager) PopulateUsersForGroup(group *ldap.Group) *FullLDAPGroup {
+func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *FullLDAPGroup {
 	full := &FullLDAPGroup{
 		Group:   *group,
 		Members: make([]ldap.User, 0),
@@ -189,6 +201,10 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group) *FullLDAPGroup {
 	for _, userDN := range group.Members {
 		user, err := m.FindUserByDN(userDN)
 		if err == nil {
+			if showDisabled && !user.Enabled {
+				continue
+			}
+
 			full.Members = append(full.Members, *user)
 		}
 	}

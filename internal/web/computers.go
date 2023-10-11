@@ -16,7 +16,8 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 		return c.Redirect("/login")
 	}
 
-	computers := a.ldapCache.FindComputers()
+	showDisabled := c.Query("show-disabled", "0") == "1"
+	computers := a.ldapCache.FindComputers(showDisabled)
 
 	return c.Render("views/computers", fiber.Map{
 		"session":     sess,

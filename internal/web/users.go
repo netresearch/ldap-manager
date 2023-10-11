@@ -18,15 +18,17 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 		return c.Redirect("/login")
 	}
 
-	users := a.ldapCache.FindUsers()
+	showDisabled := c.Query("show-disabled", "0") == "1"
+	users := a.ldapCache.FindUsers(showDisabled)
 
 	return c.Render("views/users", fiber.Map{
-		"session":     sess,
-		"title":       "All users",
-		"activePage":  "/users",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"users":       users,
+		"session":      sess,
+		"title":        "All users",
+		"activePage":   "/users",
+		"headscripts":  "",
+		"flashes":      []Flash{},
+		"users":        users,
+		"showDisabled": showDisabled,
 	}, "layouts/logged-in")
 }
 
@@ -163,7 +165,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 }
 
 func (a *App) findUnassignedGroups(user *ldap_cache.FullLDAPUser) []ldap.Group {
-	return a.ldapCache.Groups.FindAll(func(g ldap.Group) bool {
+	return a.ldapCache.Groups.Filter(func(g ldap.Group) bool {
 		for _, ug := range user.Groups {
 			if ug.DN() == g.DN() {
 				return false

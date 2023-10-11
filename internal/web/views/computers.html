@@ -1,3 +1,21 @@
+{{ define "lock-icon" }}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="32"
+    height="32"
+    viewBox="0 0 20 20"
+    class="{{ . }} inline-block h-4 w-4"
+  >
+    <path
+      fill="currentColor"
+      fill-rule="evenodd"
+      d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+      clip-rule="evenodd"
+    />
+  </svg>
+{{ end }}
+
+
 <h1 class="mb-4 text-3xl">All computers</h1>
 
 <div class="flex flex-col justify-between divide-y divide-gray-600">
@@ -5,17 +23,20 @@
     <div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
       <a
         href="/computers/{{ .DN }}"
-        class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+        class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>.goto]:text-gray-500 [&>.goto]:hocus:text-white"
         title="{{ .DN }}"
       >
         <span>{{ .CN }}</span>
+
+        {{ if not .Enabled }}{{ template "lock-icon" "text-gray-500" }}{{ end }}
+
 
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
           height="16"
           viewBox="0 0 24 24"
-          class="inline-block transition-colors"
+          class="goto inline-block transition-colors"
         >
           <path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z" />
         </svg>
