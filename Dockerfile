@@ -24,6 +24,8 @@ RUN CGO_ENABLED=0 go build -o /build/ldap-passwd
 
 FROM alpine:3 AS runner
 
+EXPOSE 3000
+
 COPY --from=backend-builder /build/ldap-passwd /usr/local/bin/ldap-passwd
 
 ENTRYPOINT [ "/usr/local/bin/ldap-passwd" ]
