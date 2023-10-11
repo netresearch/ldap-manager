@@ -7,7 +7,7 @@
         href="/users/{{ .DN }}"
         class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
       >
-        <span title="{{ .DN }}">{{ .CN }}</span>
+        <span title="{{ .DN }}">{{ .CN }} ({{ .SAMAccountName }})</span>
 
         <svg
           xmlns="http://www.w3.org/2000/svg"
