@@ -20,7 +20,6 @@ RUN go mod download
 
 COPY . .
 COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
-COPY --from=frontend-builder /build/internal/web/static/js/*.js /build/internal/web/static/js
 RUN CGO_ENABLED=0 go build -o /build/ldap-passwd
 
 FROM alpine:3 AS runner
