@@ -2,7 +2,7 @@
 
 <div class="flex flex-col justify-between divide-y divide-gray-600">
   {{ range .computers }}
-    <div class="list-outer-hocus:bg-gray-700/50 flex items-center transition-colors">
+    <div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
       <a
         href="/computers/{{ .DN }}"
         class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
