@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/url"
+	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
@@ -19,6 +20,9 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 	}
 
 	groups := a.ldapCache.FindGroups()
+	sort.SliceStable(groups, func(i, j int) bool {
+		return groups[i].CN() < groups[j].CN()
+	})
 
 	return c.Render("views/groups", fiber.Map{
 		"session":     sess,
@@ -52,7 +56,13 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 
 	showDisabledUsers := c.Query("show-disabled", "0") == "1"
 	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
+	sort.SliceStable(group.Members, func(i, j int) bool {
+		return group.Members[i].CN() < group.Members[j].CN()
+	})
 	unassignedUsers := a.findUnassignedUsers(group)
+	sort.SliceStable(unassignedUsers, func(i, j int) bool {
+		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
+	})
 
 	return c.Render("views/group", fiber.Map{
 		"session":         sess,
@@ -106,7 +116,13 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 	showDisabledUsers := c.Query("show-disabled", "0") == "1"
 	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
+	sort.SliceStable(group.Members, func(i, j int) bool {
+		return group.Members[i].CN() < group.Members[j].CN()
+	})
 	unassignedUsers := a.findUnassignedUsers(group)
+	sort.SliceStable(unassignedUsers, func(i, j int) bool {
+		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
+	})
 
 	if form.AddUser != nil {
 		if err := l.AddUserToGroup(*form.AddUser, thinGroup.DN()); err != nil {
@@ -145,7 +161,13 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	}
 
 	group = a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
+	sort.SliceStable(group.Members, func(i, j int) bool {
+		return group.Members[i].CN() < group.Members[j].CN()
+	})
 	unassignedUsers = a.findUnassignedUsers(group)
+	sort.SliceStable(unassignedUsers, func(i, j int) bool {
+		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
+	})
 
 	return c.Render("views/group", fiber.Map{
 		"session":         sess,

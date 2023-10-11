@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/url"
+	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
@@ -20,6 +21,9 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 
 	showDisabled := c.Query("show-disabled", "0") == "1"
 	users := a.ldapCache.FindUsers(showDisabled)
+	sort.SliceStable(users, func(i, j int) bool {
+		return users[i].CN() < users[j].CN()
+	})
 
 	return c.Render("views/users", fiber.Map{
 		"session":      sess,
@@ -53,8 +57,13 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 	}
 
 	user := a.ldapCache.PopulateGroupsForUser(thinUser)
-
+	sort.SliceStable(user.Groups, func(i, j int) bool {
+		return user.Groups[i].CN() < user.Groups[j].CN()
+	})
 	unassignedGroups := a.findUnassignedGroups(user)
+	sort.SliceStable(unassignedGroups, func(i, j int) bool {
+		return unassignedGroups[i].CN() < unassignedGroups[j].CN()
+	})
 
 	return c.Render("views/user", fiber.Map{
 		"session":          sess,
@@ -112,7 +121,13 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	user := a.ldapCache.PopulateGroupsForUser(thinUser)
+	sort.SliceStable(user.Groups, func(i, j int) bool {
+		return user.Groups[i].CN() < user.Groups[j].CN()
+	})
 	unassignedGroups := a.findUnassignedGroups(user)
+	sort.SliceStable(unassignedGroups, func(i, j int) bool {
+		return unassignedGroups[i].CN() < unassignedGroups[j].CN()
+	})
 
 	if form.AddGroup != nil {
 		if err := l.AddUserToGroup(userDN, *form.AddGroup); err != nil {
@@ -151,7 +166,13 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	user = a.ldapCache.PopulateGroupsForUser(thinUser)
+	sort.SliceStable(user.Groups, func(i, j int) bool {
+		return user.Groups[i].CN() < user.Groups[j].CN()
+	})
 	unassignedGroups = a.findUnassignedGroups(user)
+	sort.SliceStable(unassignedGroups, func(i, j int) bool {
+		return unassignedGroups[i].CN() < unassignedGroups[j].CN()
+	})
 
 	return c.Render("views/user", fiber.Map{
 		"session":          sess,

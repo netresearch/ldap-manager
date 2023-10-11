@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/url"
+	"sort"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,6 +19,9 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 
 	showDisabled := c.Query("show-disabled", "0") == "1"
 	computers := a.ldapCache.FindComputers(showDisabled)
+	sort.SliceStable(computers, func(i, j int) bool {
+		return computers[i].CN() < computers[j].CN()
+	})
 
 	return c.Render("views/computers", fiber.Map{
 		"session":     sess,
@@ -50,6 +54,9 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 	}
 
 	computer := a.ldapCache.PopulateGroupsForComputer(thinComputer)
+	sort.SliceStable(computer.Groups, func(i, j int) bool {
+		return computer.Groups[i].CN() < computer.Groups[j].CN()
+	})
 
 	return c.Render("views/computer", fiber.Map{
 		"session":     sess,
