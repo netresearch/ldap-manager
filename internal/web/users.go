@@ -110,7 +110,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	l, err := a.ldap.WithCredentials(executor.DN(), sess.Get("password").(string))
+	l, err := a.ldapClient.WithCredentials(executor.DN(), sess.Get("password").(string))
 	if err != nil {
 		return handle500(c, err)
 	}

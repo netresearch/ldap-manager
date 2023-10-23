@@ -17,15 +17,14 @@ import (
 )
 
 type App struct {
-	ldap         *ldap.LDAP
-	ldapConfig   ldap.Config
+	ldapClient   *ldap.LDAP
 	ldapCache    *ldap_cache.Manager
 	sessionStore *session.Store
 	fiber        *fiber.App
 }
 
 func NewApp(opts *options.Opts) (*App, error) {
-	ldap, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
+	ldapClient, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +60,8 @@ func NewApp(opts *options.Opts) (*App, error) {
 	}))
 
 	a := &App{
-		ldap:         ldap,
-		ldapConfig:   opts.LDAP,
-		ldapCache:    ldap_cache.New(ldap),
+		ldapClient:   ldapClient,
+		ldapCache:    ldap_cache.New(ldapClient),
 		sessionStore: sessionStore,
 		fiber:        f,
 	}
@@ -142,5 +140,5 @@ func (a *App) sessionToLDAPClient(sess *session.Session) (*ldap.LDAP, error) {
 		return nil, err
 	}
 
-	return a.ldap.WithCredentials(executor.DN(), sess.Get("password").(string))
+	return a.ldapClient.WithCredentials(executor.DN(), sess.Get("password").(string))
 }

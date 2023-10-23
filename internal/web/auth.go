@@ -28,7 +28,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 	password := c.Query("password")
 
 	if username != "" && password != "" {
-		user, err := a.ldap.CheckPasswordForSAMAccountName(username, password)
+		user, err := a.ldapClient.CheckPasswordForSAMAccountName(username, password)
 		if err != nil {
 			log.Error().Err(err).Msg("could not check password")
 
