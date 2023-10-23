@@ -9,10 +9,13 @@ import (
 
 	"github.com/joho/godotenv"
 	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 type Opts struct {
+	LogLevel zerolog.Level
+
 	LDAP             ldap.Config
 	ReadonlyUser     string
 	ReadonlyPassword string
@@ -47,6 +50,16 @@ func envDurationOrDefault(name string, d time.Duration) time.Duration {
 	return v
 }
 
+func envLogLevelOrDefault(name string, d zerolog.Level) string {
+	raw := envStringOrDefault(name, d.String())
+
+	if _, err := zerolog.ParseLevel(raw); err != nil {
+		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as log level: %v", name, raw, err)
+	}
+
+	return raw
+}
+
 func envBoolOrDefault(name string, d bool) bool {
 	raw := envStringOrDefault(name, fmt.Sprintf("%v", d))
 
@@ -64,6 +77,8 @@ func Parse() *Opts {
 	}
 
 	var (
+		fLogLevel = flag.String("log-level", envLogLevelOrDefault("LOG_LEVEL", zerolog.InfoLevel), "Log level. Valid values are: trace, debug, info, warn, error, fatal, panic.")
+
 		fLdapServer        = flag.String("ldap-server", envStringOrDefault("LDAP_SERVER", ""), "LDAP server URI, has to begin with `ldap://` or `ldaps://`. If this is an ActiveDirectory server, this *has* to be `ldaps://`.")
 		fIsActiveDirectory = flag.Bool("active-directory", envBoolOrDefault("LDAP_IS_AD", false), "Mark the LDAP server as ActiveDirectory.")
 		fBaseDN            = flag.String("base-dn", envStringOrDefault("LDAP_BASE_DN", ""), "Base DN of your LDAP directory.")
@@ -77,6 +92,11 @@ func Parse() *Opts {
 
 	if !flag.Parsed() {
 		flag.Parse()
+	}
+
+	logLevel, err := zerolog.ParseLevel(*fLogLevel)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not parse log level")
 	}
 
 	panicWhenEmpty("ldap-server", fLdapServer)
@@ -95,6 +115,8 @@ func Parse() *Opts {
 	}
 
 	return &Opts{
+		LogLevel: logLevel,
+
 		LDAP:             ldapConfig,
 		ReadonlyUser:     *fReadonlyUser,
 		ReadonlyPassword: *fReadonlyPassword,

@@ -13,6 +13,7 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	opts := options.Parse()
+	log.Logger = log.Logger.Level(opts.LogLevel)
 
 	app, err := web.NewApp(opts)
 	if err != nil {
