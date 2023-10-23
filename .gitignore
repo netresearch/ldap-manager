@@ -3,3 +3,5 @@ internal/web/static/styles.css
 .env.local
 *.bbolt
 renovate.json
+/.pnpm-store
+ldap-manager
