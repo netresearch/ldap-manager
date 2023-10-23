@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/bbolt"
+	"github.com/gofiber/storage/memory"
 	"github.com/gofiber/template/html/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
@@ -21,6 +22,18 @@ type App struct {
 	ldapCache    *ldap_cache.Manager
 	sessionStore *session.Store
 	fiber        *fiber.App
+}
+
+func getSessionStorage(opts *options.Opts) fiber.Storage {
+	if opts.PersistSessions {
+		return bbolt.New(bbolt.Config{
+			Database: opts.SessionPath,
+			Bucket:   "sessions",
+			Reset:    false,
+		})
+	}
+
+	return memory.New()
 }
 
 func NewApp(opts *options.Opts) (*App, error) {
@@ -37,13 +50,11 @@ func NewApp(opts *options.Opts) (*App, error) {
 	views.AddFunc("disabledUsersTooltip", tplDisabledUsersTooltip)
 	views.AddFunc("disabledUsersClass", tplDisabledUsersClass)
 
-	sessionStorage := bbolt.New(bbolt.Config{
-		Database: opts.DBPath,
-		Bucket:   "sessions",
-		Reset:    false,
-	})
 	sessionStore := session.New(session.Config{
-		Storage: sessionStorage,
+		Storage:        getSessionStorage(opts),
+		Expiration:     opts.SessionDuration,
+		CookieHTTPOnly: true,
+		CookieSameSite: "Strict",
 	})
 
 	f := fiber.New(fiber.Config{

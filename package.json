@@ -13,7 +13,7 @@
     "css:dev": "pnpm css:build -w --verbose",
     "go:start": "go run .",
     "go:build": "go build",
-    "go:dev": "nodemon --signal SIGTERM -e go,html,css -w \"./**\" -x pnpm go:start"
+    "go:dev": "nodemon --signal SIGTERM -e go,html,css -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.6",

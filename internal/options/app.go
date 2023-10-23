@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -16,7 +17,9 @@ type Opts struct {
 	ReadonlyUser     string
 	ReadonlyPassword string
 
-	DBPath string
+	PersistSessions bool
+	SessionPath     string
+	SessionDuration time.Duration
 }
 
 func panicWhenEmpty(name string, value *string) {
@@ -33,15 +36,15 @@ func envStringOrDefault(name, d string) string {
 	return d
 }
 
-func envIntOrDefault(name string, d uint64) uint {
+func envDurationOrDefault(name string, d time.Duration) time.Duration {
 	raw := envStringOrDefault(name, fmt.Sprintf("%v", d))
 
-	v, err := strconv.ParseUint(raw, 10, 8)
+	v, err := time.ParseDuration(raw)
 	if err != nil {
-		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as uint: %v", name, raw, err)
+		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as duration: %v", name, raw, err)
 	}
 
-	return uint(v)
+	return v
 }
 
 func envBoolOrDefault(name string, d bool) bool {
@@ -67,7 +70,9 @@ func Parse() *Opts {
 		fReadonlyUser      = flag.String("readonly-user", envStringOrDefault("LDAP_READONLY_USER", ""), "User that can read all users in your LDAP directory.")
 		fReadonlyPassword  = flag.String("readonly-password", envStringOrDefault("LDAP_READONLY_PASSWORD", ""), "Password for the readonly user.")
 
-		fDBPath = flag.String("db-path", envStringOrDefault("DB_PATH", "db.bbolt"), "Path to the SQLite database file.")
+		fPersistSessions = flag.Bool("persist-sessions", envBoolOrDefault("PERSIST_SESSIONS", false), "Whether or not to persist sessions into a Bolt database. Useful for development.")
+		fSessionPath     = flag.String("session-path", envStringOrDefault("SESSION_PATH", "db.bbolt"), "Path to the session database file. (Only required when --persist-sessions is set)")
+		fSessionDuration = flag.Duration("session-duration", envDurationOrDefault("SESSION_DURATION", 30*time.Minute), "Duration of the session. (Only required when --persist-sessions is set)")
 	)
 
 	if !flag.Parsed() {
@@ -78,7 +83,10 @@ func Parse() *Opts {
 	panicWhenEmpty("base-dn", fBaseDN)
 	panicWhenEmpty("readonly-user", fReadonlyUser)
 	panicWhenEmpty("readonly-password", fReadonlyPassword)
-	panicWhenEmpty("db-path", fDBPath)
+
+	if *fPersistSessions {
+		panicWhenEmpty("session-path", fSessionPath)
+	}
 
 	ldapConfig := ldap.Config{
 		Server:            *fLdapServer,
@@ -91,6 +99,8 @@ func Parse() *Opts {
 		ReadonlyUser:     *fReadonlyUser,
 		ReadonlyPassword: *fReadonlyPassword,
 
-		DBPath: *fDBPath,
+		PersistSessions: *fPersistSessions,
+		SessionPath:     *fSessionPath,
+		SessionDuration: *fSessionDuration,
 	}
 }
