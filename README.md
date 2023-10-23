@@ -1,7 +1,9 @@
 <div align=center>
   <h1>LDAP Manager</h1>
 
-<span>LDAP Manager is a web frontend and JSON RPC API that allows your users to administrate the their users they are already allowed to in your LDAP or ActiveDirectory server.</span>
+  <img src="./internal/web/static/logo.webp" height="256">
+
+<span>LDAP Manager is a web frontend that allows your users to administrate the their users.</span>
 
 </div>
 

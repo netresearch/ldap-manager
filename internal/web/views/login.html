@@ -1,4 +1,6 @@
-<form class="space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="get">
+<form class="w-fit space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="get">
+  <img src="/static/logo.webp" class="w-full max-w-[256px]" />
+
   {{ if len .flashes }}
     <div class="mb-4">
       {{ range .flashes }}
