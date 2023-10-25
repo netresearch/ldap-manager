@@ -91,6 +91,10 @@ pnpm start
 pnpm dev
 ```
 
+## TODO
+
+- [ ] Search for users and groups
+
 ## License
 
 LDAP Manager is licensed under the MIT license, for more information please refer to the [included LICENSE file](LICENSE).
