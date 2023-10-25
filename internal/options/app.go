@@ -27,7 +27,7 @@ type Opts struct {
 
 func panicWhenEmpty(name string, value *string) {
 	if *value == "" {
-		log.Fatal().Msgf("err: The option --%s is required", name)
+		log.Fatal().Msgf("the option --%s is required", name)
 	}
 }
 
@@ -44,7 +44,7 @@ func envDurationOrDefault(name string, d time.Duration) time.Duration {
 
 	v, err := time.ParseDuration(raw)
 	if err != nil {
-		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as duration: %v", name, raw, err)
+		log.Fatal().Msgf("could not parse environment variable \"%s\" (containing \"%s\") as duration: %v", name, raw, err)
 	}
 
 	return v
@@ -54,7 +54,7 @@ func envLogLevelOrDefault(name string, d zerolog.Level) string {
 	raw := envStringOrDefault(name, d.String())
 
 	if _, err := zerolog.ParseLevel(raw); err != nil {
-		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as log level: %v", name, raw, err)
+		log.Fatal().Msgf("could not parse environment variable \"%s\" (containing \"%s\") as log level: %v", name, raw, err)
 	}
 
 	return raw
@@ -65,7 +65,7 @@ func envBoolOrDefault(name string, d bool) bool {
 
 	v2, err := strconv.ParseBool(raw)
 	if err != nil {
-		log.Fatal().Msgf("err: could not parse environment variable \"%s\" (containing \"%s\") as bool: %v", name, raw, err)
+		log.Fatal().Msgf("could not parse environment variable \"%s\" (containing \"%s\") as bool: %v", name, raw, err)
 	}
 
 	return v2
