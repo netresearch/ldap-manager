@@ -19,35 +19,35 @@ func NewCached[T cacheable]() Cache[T] {
 	}
 }
 
-func (i *Cache[T]) setAll(v []T) {
-	i.m.Lock()
-	defer i.m.Unlock()
+func (c *Cache[T]) setAll(v []T) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
-	i.items = v
+	c.items = v
 }
 
-func (i *Cache[T]) update(fn func(*T)) {
-	i.m.Lock()
-	defer i.m.Unlock()
+func (c *Cache[T]) update(fn func(*T)) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
-	for idx, item := range i.items {
+	for idx, item := range c.items {
 		fn(&item)
-		i.items[idx] = item
+		c.items[idx] = item
 	}
 }
 
-func (i *Cache[T]) Get() []T {
-	i.m.RLock()
-	defer i.m.RUnlock()
+func (c *Cache[T]) Get() []T {
+	c.m.RLock()
+	defer c.m.RUnlock()
 
-	return i.items
+	return c.items
 }
 
-func (i *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
-	i.m.RLock()
-	defer i.m.RUnlock()
+func (c *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
+	c.m.RLock()
+	defer c.m.RUnlock()
 
-	for _, item := range i.items {
+	for _, item := range c.items {
 		if fn(item) {
 			return &item, true
 		}
@@ -56,17 +56,17 @@ func (i *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
 	return nil, false
 }
 
-func (i *Cache[T]) FindByDN(dn string) (v *T, found bool) {
-	return i.Find(func(v T) bool {
+func (c *Cache[T]) FindByDN(dn string) (v *T, found bool) {
+	return c.Find(func(v T) bool {
 		return v.DN() == dn
 	})
 }
 
-func (i *Cache[T]) Filter(fn func(T) bool) (v []T) {
-	i.m.RLock()
-	defer i.m.RUnlock()
+func (c *Cache[T]) Filter(fn func(T) bool) (v []T) {
+	c.m.RLock()
+	defer c.m.RUnlock()
 
-	for _, item := range i.items {
+	for _, item := range c.items {
 		if fn(item) {
 			v = append(v, item)
 		}
@@ -75,9 +75,9 @@ func (i *Cache[T]) Filter(fn func(T) bool) (v []T) {
 	return v
 }
 
-func (i *Cache[T]) Count() int {
-	i.m.RLock()
-	defer i.m.RUnlock()
+func (c *Cache[T]) Count() int {
+	c.m.RLock()
+	defer c.m.RUnlock()
 
-	return len(i.items)
+	return len(c.items)
 }
