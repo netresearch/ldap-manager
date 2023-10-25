@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/netresearch/ldap-manager/internal"
 	"github.com/rs/zerolog/log"
 )
 
@@ -54,5 +55,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		"title":       "Login",
 		"headscripts": "",
 		"flashes":     []Flash{},
+		"version":     internal.FormatVersion(),
 	}, "layouts/base")
 }

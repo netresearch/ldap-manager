@@ -35,13 +35,18 @@
     Login
   </button>
 
-  <p class="text-center text-xs text-gray-500">
-    Powered by
-    <a
-      href="https://github.com/netresearch/ldap-manager"
-      class="break-keep outline-none transition-colors hocus:text-white hocus:underline hocus:decoration-white"
-    >
-      netresearch/ldap-manager
-    </a>
-  </p>
+  <div class="text-center text-xs text-gray-500">
+    <p>
+      Powered by
+
+      <a
+        href="https://github.com/netresearch/ldap-manager"
+        class="break-keep outline-none transition-colors hocus:text-white hocus:underline hocus:decoration-white"
+      >
+        netresearch/ldap-manager
+      </a>
+    </p>
+
+    <p>{{ .version }}</p>
+  </div>
 </form>

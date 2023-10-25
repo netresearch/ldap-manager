@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/netresearch/ldap-manager/internal"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web"
 	"github.com/rs/zerolog"
@@ -11,6 +12,8 @@ import (
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	log.Info().Msgf("LDAP Manager %s starting...", internal.FormatVersion())
 
 	opts := options.Parse()
 	log.Logger = log.Logger.Level(opts.LogLevel)
