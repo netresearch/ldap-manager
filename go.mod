@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/gofiber/fiber/v2 v2.52.0
 	github.com/gofiber/storage/bbolt v1.3.5
-	github.com/gofiber/storage/memory v1.3.4
+	github.com/gofiber/storage/memory/v2 v2.0.0
 	github.com/gofiber/template/html/v2 v2.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v0.0.0-20240110152232-3ae82b3f6d08
