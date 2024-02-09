@@ -9,7 +9,7 @@ require (
 	github.com/gofiber/template/html/v2 v2.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v0.0.0-20240110152232-3ae82b3f6d08
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 )
 
 require (
