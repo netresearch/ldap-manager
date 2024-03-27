@@ -23,6 +23,8 @@ github.com/gofiber/fiber/v2 v2.52.2 h1:b0rYH6b06Df+4NyrbdptQL8ifuxw/Tf2DgfkZkDax
 github.com/gofiber/fiber/v2 v2.52.2/go.mod h1:KEOE+cXMhXG0zHc9d8+E38hoX+ZN7bhOtgeF2oT6jrQ=
 github.com/gofiber/fiber/v2 v2.52.3 h1:bgAZwPv0aHIfRwIUdkWhg6U8D3MEYnoJjT+HfW/dDTo=
 github.com/gofiber/fiber/v2 v2.52.3/go.mod h1:KEOE+cXMhXG0zHc9d8+E38hoX+ZN7bhOtgeF2oT6jrQ=
+github.com/gofiber/fiber/v2 v2.52.4 h1:P+T+4iK7VaqUsq2PALYEfBBo6bJZ4q3FP8cZ84EggTM=
+github.com/gofiber/fiber/v2 v2.52.4/go.mod h1:KEOE+cXMhXG0zHc9d8+E38hoX+ZN7bhOtgeF2oT6jrQ=
 github.com/gofiber/storage/bbolt v1.3.5 h1:9ZDMTbeah5tfj3eX+hFu3F1AHiBO117ce3Gel7tkxlk=
 github.com/gofiber/storage/bbolt v1.3.5/go.mod h1:GibrOAQTFOzzzWWVCgq+V+gS8dUbaPeAMGI4FNZ32sI=
 github.com/gofiber/storage/memory/v2 v2.0.0 h1:4Xn+Dx8mvwc+1gRgw9l1GY2qgXQOfUYV0xefDD3tBLs=
