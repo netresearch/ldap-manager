@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/gofiber/storage/bbolt"
+	"github.com/gofiber/storage/bbolt/v3"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/template/html/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
