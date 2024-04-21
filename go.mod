@@ -3,8 +3,10 @@ module github.com/netresearch/ldap-manager
 go 1.21
 
 require (
+	github.com/a-h/templ v0.2.663
 	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/gofiber/storage/bbolt v1.3.5
+	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/gofiber/template/html/v2 v2.1.1
 	github.com/joho/godotenv v1.5.1
@@ -14,12 +16,12 @@ require (
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
-	github.com/a-h/templ v0.2.663 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.8 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
+	github.com/gofiber/utils/v2 v2.0.0-beta.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -29,7 +31,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	go.etcd.io/bbolt v1.3.7 // indirect
+	go.etcd.io/bbolt v1.3.9 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
