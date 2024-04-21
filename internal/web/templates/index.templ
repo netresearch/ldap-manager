@@ -1,0 +1,27 @@
+package templates
+
+import "github.com/netresearch/simple-ldap-go"
+
+templ Index(user *ldap.User) {
+	@loggedIn("/", "Home", []Flash{}) {
+		<h1 class="mb-4 text-3xl">Hi { user.CN() }!</h1>
+		<h2 class="mb-2 text-xl">Your user information</h2>
+		<div class="rounded-md border border-gray-600 px-4 py-3">
+			<p>
+				<span>CN: </span> @Code(user.CN())
+			</p>
+			<p>
+				<span>DN: </span> @Code(user.DN())
+			</p>
+			<p>
+				<span>sAMAccountName: </span> @Code(user.SAMAccountName)
+			</p>
+		</div>
+	}
+}
+
+templ Code(content string) {
+	<span class="overflow-hidden overflow-ellipsis whitespace-break-spaces break-words rounded-md bg-gray-900 px-1 py-[2px] font-mono">
+		{ content }
+	</span>
+}

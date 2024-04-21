@@ -1,0 +1,130 @@
+package templates
+
+templ homeIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+		<path
+			fill="currentColor"
+			fill-rule="evenodd"
+			d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z"
+			clip-rule="evenodd"
+		></path>
+	</svg>
+}
+
+templ usersIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+		<path
+			fill="currentColor"
+			d="M10 8a3 3 0 1 0 0-6a3 3 0 0 0 0 6Zm-6.535 6.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1c.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z"
+		></path>
+	</svg>
+}
+
+templ groupIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+		<path
+			fill="currentColor"
+			d="M10 9a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0Zm-4.51 7.326a.78.78 0 0 1-.358-.442a3 3 0 0 1 4.308-3.516a6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655Zm14.95.654a4.97 4.97 0 0 0 2.07-.654a.78.78 0 0 0 .357-.442a3 3 0 0 0-4.308-3.517a6.484 6.484 0 0 1 1.907 3.96a2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0a2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71a5 5 0 0 1 9.947 0a.843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z"
+		></path>
+	</svg>
+}
+
+templ laptopIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 20 20" class="inline-block h-4 w-4">
+		<path
+			fill="currentColor"
+			fill-rule="evenodd"
+			d="M2 4.25A2.25 2.25 0 0 1 4.25 2h11.5A2.25 2.25 0 0 1 18 4.25v8.5A2.25 2.25 0 0 1 15.75 15h-3.105a3.501 3.501 0 0 0 1.1 1.677A.75.75 0 0 1 13.26 18H6.74a.75.75 0 0 1-.484-1.323A3.501 3.501 0 0 0 7.355 15H4.25A2.25 2.25 0 0 1 2 12.75v-8.5Zm1.5 0a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75H4.25a.75.75 0 0 1-.75-.75v-7.5Z"
+			clip-rule="evenodd"
+		></path>
+	</svg>
+}
+
+templ logoutIcon() {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		class="inline-block h-4 w-4"
+	>
+		<path
+			fill="currentColor"
+			d="M5 21q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h7v2H5v14h7v2H5Zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5l-5 5Z"
+		></path>
+	</svg>
+}
+
+templ lockIcon(class ...string) {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="32"
+		height="32"
+		viewBox="0 0 20 20"
+		class={ "inline-block h-4 w-4", class }
+	>
+		<path
+			fill="currentColor"
+			fill-rule="evenodd"
+			d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+			clip-rule="evenodd"
+		></path>
+	</svg>
+}
+
+templ lockOpenIcon(class ...string) {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="32"
+		height="32"
+		viewBox="0 0 20 20"
+		class={ "inline-block h-4 w-4", class }
+	>
+		<path
+			fill="currentColor"
+			fill-rule="evenodd"
+			d="M14.5 1A4.5 4.5 0 0 0 10 5.5V9H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1.5V5.5a3 3 0 1 1 6 0v2.75a.75.75 0 0 0 1.5 0V5.5A4.5 4.5 0 0 0 14.5 1Z"
+			clip-rule="evenodd"
+		></path>
+	</svg>
+}
+
+templ plusIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" class="inline-block h-4 w-4">
+		<path
+			fill="none"
+			stroke="currentColor"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			stroke-width="1.5"
+			d="M12 4.5v15m7.5-7.5h-15"
+		></path>
+	</svg>
+}
+
+templ rightArrowIcon() {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		class="inline-block transition-colors"
+	>
+		<path fill="currentColor" d="m14 18l-1.4-1.45L16.15 13H4v-2h12.15L12.6 7.45L14 6l6 6l-6 6Z"></path>
+	</svg>
+}
+
+templ xIcon() {
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="32"
+		height="32"
+		viewBox="0 0 20 20"
+		class="inline-block h-4 w-4 transition-colors"
+	>
+		<path
+			fill="currentColor"
+			d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94L6.28 5.22Z"
+		></path>
+	</svg>
+}

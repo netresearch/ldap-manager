@@ -1,0 +1,50 @@
+package templates
+
+templ Login(flashes []Flash, version string) {
+	@base("Login") {
+		<form class="w-fit m-auto space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="get">
+			<img src="/static/logo.webp" class="w-full max-w-[256px]"/>
+			if len(flashes) > 0 {
+				<div class="mb-4">
+					for _, flash := range flashes {
+						<div class="{ flash.BorderColor } rounded-md border p-4 py-3">{ flash.Message }</div>
+					}
+				</div>
+			}
+			<div>
+				<input
+					type="text"
+					name="username"
+					placeholder="Username"
+					class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0"
+				/>
+			</div>
+			<div>
+				<input
+					type="password"
+					name="password"
+					placeholder="Password"
+					class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0"
+				/>
+			</div>
+			<button
+				type="submit"
+				class="w-full rounded-md border border-white bg-white px-3 py-1 font-bold text-black outline-none transition-colors hocus:bg-opacity-0 hocus:text-white disabled:hocus:bg-opacity-10"
+			>
+				Login
+			</button>
+			<div class="text-center text-xs text-gray-500">
+				<p>
+					Powered by
+					<a
+						href="https://github.com/netresearch/ldap-manager"
+						class="break-keep outline-none transition-colors hocus:text-white hocus:underline hocus:decoration-white"
+					>
+						netresearch/ldap-manager
+					</a>
+				</p>
+				<p>{ version }</p>
+			</div>
+		</form>
+	}
+}

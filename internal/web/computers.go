@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 func (a *App) computersHandler(c *fiber.Ctx) error {
@@ -23,14 +24,8 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 		return computers[i].CN() < computers[j].CN()
 	})
 
-	return c.Render("views/computers", fiber.Map{
-		"session":     sess,
-		"title":       "All computers",
-		"activePage":  "/computers",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"computers":   computers,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Computers(computers).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) computerHandler(c *fiber.Ctx) error {
@@ -58,12 +53,6 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 		return computer.Groups[i].CN() < computer.Groups[j].CN()
 	})
 
-	return c.Render("views/computer", fiber.Map{
-		"session":     sess,
-		"title":       computer.CN(),
-		"activePage":  "/computers",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"computer":    computer,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Computer(computer).Render(c.UserContext(), c.Response().BodyWriter())
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 	ldap "github.com/netresearch/simple-ldap-go"
 )
 
@@ -24,14 +25,8 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 		return groups[i].CN() < groups[j].CN()
 	})
 
-	return c.Render("views/groups", fiber.Map{
-		"session":     sess,
-		"title":       "All groups",
-		"activePage":  "/groups",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"groups":      groups,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Groups(groups).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) groupHandler(c *fiber.Ctx) error {
@@ -64,15 +59,8 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
 	})
 
-	return c.Render("views/group", fiber.Map{
-		"session":         sess,
-		"title":           group.CN(),
-		"activePage":      "/groups",
-		"headscripts":     "",
-		"flashes":         []Flash{},
-		"group":           group,
-		"unassignedUsers": unassignedUsers,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Group(group, unassignedUsers, templates.Flashes()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 type groupModifyForm struct {
@@ -126,30 +114,23 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 	if form.AddUser != nil {
 		if err := l.AddUserToGroup(*form.AddUser, thinGroup.DN()); err != nil {
-			return c.Render("views/group", fiber.Map{
-				"session":     sess,
-				"title":       group.CN(),
-				"activePage":  "/groups",
-				"headscripts": "",
-				// TODO: properly translate error
-				"flashes":         []Flash{NewFlash(FlashTypeError, "Failed to modify: "+err.Error())},
-				"group":           group,
-				"unassignedUsers": unassignedUsers,
-			}, "layouts/logged-in")
+			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+			return templates.Group(
+				group, unassignedUsers, templates.Flashes(
+					templates.ErrorFlash("Failed to modify: "+err.Error()),
+				),
+			).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
 		a.ldapCache.OnAddUserToGroup(*form.AddUser, thinGroup.DN())
 	} else if form.RemoveUser != nil {
 		if err := l.RemoveUserFromGroup(*form.RemoveUser, thinGroup.DN()); err != nil {
-			return c.Render("views/group", fiber.Map{
-				"session":         sess,
-				"title":           group.CN(),
-				"activePage":      "/groups",
-				"headscripts":     "",
-				"flashes":         []Flash{NewFlash(FlashTypeError, "Failed to modify: "+err.Error())},
-				"group":           group,
-				"unassignedUsers": unassignedUsers,
-			}, "layouts/logged-in")
+			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+			return templates.Group(
+				group, unassignedUsers, templates.Flashes(
+					templates.ErrorFlash("Failed to modify: "+err.Error()),
+				),
+			).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
 		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, thinGroup.DN())
@@ -169,15 +150,10 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
 	})
 
-	return c.Render("views/group", fiber.Map{
-		"session":         sess,
-		"title":           group.CN(),
-		"activePage":      "/groups",
-		"headscripts":     "",
-		"flashes":         []Flash{NewFlash(FlashTypeSuccess, "Successfully modified group")},
-		"group":           group,
-		"unassignedUsers": unassignedUsers,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Group(
+		group, unassignedUsers, templates.Flashes(templates.SuccessFlash("Successfully modified group")),
+	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {

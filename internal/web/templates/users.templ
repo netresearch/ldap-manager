@@ -1,0 +1,154 @@
+package templates
+
+import "github.com/netresearch/simple-ldap-go"
+import "github.com/netresearch/ldap-manager/internal/ldap_cache"
+import "fmt"
+
+type user struct {
+	ldap.User
+}
+
+func (c user) ID() string {
+	return c.DN()
+}
+func (c user) Name() string {
+	return c.CN()
+}
+func (c user) URL() templ.SafeURL {
+	return userUrl(c.User)
+}
+func (c user) Enabled() bool {
+	return c.User.Enabled
+}
+
+func specializeUsers(users []ldap.User) []Displayer {
+	return mapSlice(users, func(c ldap.User) Displayer {
+		return user{c}
+	})
+}
+
+templ User(user *ldap_cache.FullLDAPUser, unassignedGroups []ldap.Group, flashes []Flash) {
+	@loggedIn(string(userUrl(user.User)), user.CN(), flashes) {
+		<h1 class="text-3xl">{ user.CN() } ({ user.SAMAccountName })</h1>
+		<p class="text-sm text-gray-500">
+			{ user.DN() }
+			if !user.Enabled {
+				@lockIcon()
+			}
+		</p>
+		<h2 class="mt-4 text-xl">Groups:</h2>
+		<div class="flex flex-col justify-between divide-y divide-gray-600">
+			for _, group := range user.Groups {
+				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+					<a
+						href={ groupUrl(group) }
+						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+					>
+						<span title={ group.DN() }>{ group.CN() }</span>
+						@rightArrowIcon()
+					</a>
+					<form action={ userUrl(user.User) } method="POST" class="flex-end pr-3">
+						<input type="hidden" name="removegroup" value={ group.DN() }/>
+						<button
+							class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+							type="submit"
+						>
+							@xIcon()
+						</button>
+					</form>
+				</div>
+			}
+		</div>
+		if len(user.Groups) == 0 {
+			<p class="text-gray-500">No groups</p>
+		}
+		<h2 class="mt-4 text-xl">Add to group</h2>
+		<form action={ userUrl(user.User) } method="POST">
+			<div class="flex items-center gap-2">
+				<select
+					class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
+					name="addgroup"
+				>
+					for _, group := range unassignedGroups {
+						<option value={ group.DN() }>{ group.CN() }</option>
+					}
+				</select>
+				<button
+					type="submit"
+					class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
+				>
+					@plusIcon()
+				</button>
+			</div>
+		</form>
+	}
+}
+
+templ Users(users []ldap.User, showDisabled bool, flashes []Flash) {
+	@loggedIn(fmt.Sprintf("/users"), "Users", flashes) {
+		<div class="flex justify-between gap-2">
+			<h1 class="mb-4 text-3xl">All users</h1>
+			<div>
+				<a
+					href={ disabledUsersHref(showDisabled) }
+					class={ disabledUsersClass(showDisabled) }
+					title={ disabledUsersTooltip(showDisabled) }
+				>
+					if showDisabled {
+						@lockOpenIcon()
+					} else {
+						@lockIcon()
+					}
+				</a>
+			</div>
+		</div>
+		<div class="flex flex-col justify-between divide-y divide-gray-600">
+			for _, user := range users {
+				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+					<a
+						href={ userUrl(user) }
+						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>.goto]:text-gray-500 [&>.goto]:hocus:text-white"
+					>
+						<span title={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</span>
+						if !user.Enabled {
+							@lockIcon("text-gray-500")
+						}
+						@rightArrowIcon()
+					</a>
+				</div>
+			}
+		</div>
+	}
+}
+
+func userUrl(user ldap.User) templ.SafeURL {
+	return templ.SafeURL("/users/" + user.DN())
+}
+
+func disabledUsersHref(showDisabled bool) templ.SafeURL {
+	if showDisabled {
+		return "/users?show-disabled=0"
+	}
+
+	return "/users?show-disabled=1"
+}
+
+func disabledUsersTooltip(showDisabled bool) string {
+	if showDisabled {
+		return "Hide disabled users"
+	}
+
+	return "Show disabled users"
+}
+
+const disabledUsersBaseClasses = "flex items-center rounded-md border px-2 py-2 transition-colors"
+const disabledUsersEnabledClasses = "border-white text-black bg-white hocus:bg-black hocus:text-white hocus:border-gray-600"
+const disabledUsersDisabledClasses = "border-gray-600 hocus:bg-white hocus:text-black hocus:border-white"
+
+func disabledUsersClass(showDisabled bool) string {
+	if showDisabled {
+		return disabledUsersBaseClasses + " " + disabledUsersEnabledClasses
+	}
+
+	return disabledUsersBaseClasses + " " + disabledUsersDisabledClasses
+}

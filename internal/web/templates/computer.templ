@@ -1,0 +1,58 @@
+package templates
+
+import "github.com/netresearch/ldap-manager/internal/ldap_cache"
+import "github.com/netresearch/simple-ldap-go"
+
+type computer struct {
+	ldap.Computer
+}
+
+func (c computer) ID() string {
+	return c.DN()
+}
+func (c computer) Name() string {
+	return c.CN()
+}
+func (c computer) URL() templ.SafeURL {
+	return computerUrl(c.Computer)
+}
+func (c computer) Enabled() bool {
+	return c.Computer.Enabled
+}
+
+func specializeComputers(computers []ldap.Computer) []Displayer {
+	return mapSlice(computers, func(c ldap.Computer) Displayer {
+		return computer{c}
+	})
+}
+
+templ Computer(computer *ldap_cache.FullLDAPComputer) {
+	@loggedIn(string(computerUrl(computer.Computer)), computer.CN(), []Flash{}) {
+		<h1 class="text-3xl">{ computer.CN() } ({ computer.SAMAccountName })</h1>
+		<p class="text-sm text-gray-500">
+			{ computer.DN() }
+			if !computer.Enabled {
+				@lockIcon()
+			}
+		</p>
+		<h2 class="mt-4 text-xl">Details:</h2>
+		<p>Operating system: { computer.OS }</p>
+		<p>Operating system version: { computer.OSVersion }</p>
+		<h2 class="mt-4 text-xl">Groups:</h2>
+		@list(specializeGroups(computer.Groups))
+		if len(computer.Groups) == 0 {
+			<p class="text-gray-500">No groups</p>
+		}
+	}
+}
+
+templ Computers(computers []ldap.Computer) {
+	@loggedIn("/computers", "All Computers", []Flash{}) {
+		<h1 class="mb-4 text-3xl">All computers</h1>
+		@list(specializeComputers(computers))
+	}
+}
+
+func computerUrl(computer ldap.Computer) templ.SafeURL {
+	return templ.SafeURL("/computers/" + computer.DN())
+}

@@ -19,7 +19,7 @@ const goExtractor = (postfix = "Classes") => {
 /** @type {import('tailwindcss').Config} */
 const config = {
   content: {
-    files: ["internal/web/layouts/*.html", "internal/web/views/*.html", "internal/web/templates.go"],
+    files: ["internal/web/templates/*.templ"],
     extract: {
       go: goExtractor("Classes")
     }

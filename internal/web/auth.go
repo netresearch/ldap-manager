@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/netresearch/ldap-manager/internal"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 	"github.com/rs/zerolog/log"
 )
 
@@ -33,12 +34,8 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		if err != nil {
 			log.Error().Err(err).Msg("could not check password")
 
-			return c.Render("views/login", fiber.Map{
-				"session":     sess,
-				"title":       "Login",
-				"headscripts": "",
-				"flashes":     []Flash{NewFlash(FlashTypeError, "Invalid username or password")},
-			}, "layouts/base")
+			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+			return templates.Login(templates.Flashes(templates.ErrorFlash("Invalid username or password")), "").Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
 		sess.Set("dn", user.DN())
@@ -50,11 +47,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		return c.Redirect("/")
 	}
 
-	return c.Render("views/login", fiber.Map{
-		"session":     sess,
-		"title":       "Login",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"version":     internal.FormatVersion(),
-	}, "layouts/base")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Login(templates.Flashes(), internal.FormatVersion()).Render(c.UserContext(), c.Response().BodyWriter())
 }

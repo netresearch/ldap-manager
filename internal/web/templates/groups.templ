@@ -1,0 +1,104 @@
+package templates
+
+import "github.com/netresearch/ldap-manager/internal/ldap_cache"
+import "github.com/netresearch/simple-ldap-go"
+
+type group struct {
+	ldap.Group
+}
+
+func (g group) ID() string {
+	return g.DN()
+}
+func (g group) Name() string {
+	return g.CN()
+}
+func (g group) URL() templ.SafeURL {
+	return groupUrl(g.Group)
+}
+func (g group) Enabled() bool {
+	return true
+}
+
+func specializeGroups(groups []ldap.Group) []Displayer {
+	return mapSlice(groups, func(c ldap.Group) Displayer {
+		return group{c}
+	})
+}
+
+templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashes []Flash) {
+	@loggedIn(string(groupUrl(group.Group)), group.CN(), flashes) {
+		<h1 class="text-3xl">{ group.CN() }</h1>
+		<p class="text-sm text-gray-500">{ group.DN() }</p>
+		<h2 class="mt-4 text-xl">Members:</h2>
+		<div class="flex flex-col justify-between divide-y divide-gray-600">
+			for _, user := range group.Members {
+				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+					<a
+						href={ userUrl(user) }
+						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+						title={ user.DN() }
+					>
+						<span>{ user.CN() } ({ user.SAMAccountName })</span>
+						@rightArrowIcon()
+					</a>
+					<form action={ groupUrl(group.Group) } method="POST" class="flex-end pr-3">
+						<input type="hidden" name="removeuser" value={ user.DN() }/>
+						<button
+							class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+							type="submit"
+						>
+							@xIcon()
+						</button>
+					</form>
+				</div>
+			}
+		</div>
+		if len(group.Members) ==0 {
+			<p class="text-gray-500">No members</p>
+		}
+		<h2 class="mt-4 text-xl">Add user</h2>
+		<form action={ groupUrl(group.Group) } method="POST">
+			<div class="flex items-center gap-2">
+				<select
+					class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
+					name="adduser"
+				>
+					for _, user := range unassignedUsers {
+						<option value={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</option>
+					}
+				</select>
+				<button
+					type="submit"
+					class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
+				>
+					@plusIcon()
+				</button>
+			</div>
+		</form>
+	}
+}
+
+templ Groups(groups []ldap.Group) {
+	@loggedIn("/groups", "Groups", []Flash{}) {
+		<h1 class="mb-4 text-3xl">All groups</h1>
+		<div class="flex flex-col justify-between divide-y divide-gray-600">
+			for _, group := range groups {
+				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+					<a
+						href={ groupUrl(group) }
+						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+						title={ group.DN() }
+					>
+						<span>{ group.CN() }</span>
+						@rightArrowIcon()
+					</a>
+				</div>
+			}
+		</div>
+	}
+}
+
+func groupUrl(group ldap.Group) templ.SafeURL {
+	return templ.SafeURL("/groups/" + group.DN())
+}

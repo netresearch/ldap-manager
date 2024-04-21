@@ -9,10 +9,10 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/bbolt"
 	"github.com/gofiber/storage/memory/v2"
-	"github.com/gofiber/template/html/v2"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web/static"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 )
@@ -42,14 +42,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 		return nil, err
 	}
 
-	views := html.NewFileSystem(http.FS(templates), ".html")
-	views.AddFunc("inputOpts", tplInputOpts)
-	views.AddFunc("navbar", tplNavbar)
-	views.AddFunc("navbarActive", tplNavbarActive)
-	views.AddFunc("disabledUsersHref", tplDisabledUsersHref)
-	views.AddFunc("disabledUsersTooltip", tplDisabledUsersTooltip)
-	views.AddFunc("disabledUsersClass", tplDisabledUsersClass)
-
 	sessionStore := session.New(session.Config{
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
@@ -58,9 +50,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 	})
 
 	f := fiber.New(fiber.Config{
-		AppName:   "netresearch/ldap-manager",
-		BodyLimit: 4 * 1024,
-		Views:     views,
+		AppName:      "netresearch/ldap-manager",
+		BodyLimit:    4 * 1024,
+		ErrorHandler: handle500,
 	})
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
@@ -101,14 +93,10 @@ func (a *App) Listen(addr string) error {
 }
 
 func handle500(c *fiber.Ctx, err error) error {
-	log.Error().Err(err).Msg("could not get session")
+	log.Error().Err(err).Send()
 
-	return c.Render("views/500", fiber.Map{
-		"title":       "error",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"error":       err.Error(),
-	}, "layouts/base")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) indexHandler(c *fiber.Ctx) error {
@@ -127,22 +115,13 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	return c.Render("views/index", fiber.Map{
-		"session":     sess,
-		"title":       "List",
-		"activePage":  "/",
-		"headscripts": "",
-		"flashes":     []Flash{},
-		"user":        user,
-	}, "layouts/logged-in")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.Index(user).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
-	return c.Render("views/404", fiber.Map{
-		"title":       "404",
-		"headscripts": "",
-		"flashes":     []Flash{},
-	}, "layouts/base")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) sessionToLDAPClient(sess *session.Session) (*ldap.LDAP, error) {

@@ -1,0 +1,22 @@
+{
+  "editor.formatOnSave": true,
+  "[templ]": {
+    "editor.defaultFormatter": "a-h.templ"
+  },
+  "tailwindCSS.includeLanguages": {
+    "templ": "html"
+  },
+  "emmet.includeLanguages": {
+    "templ": "html"
+  },
+  "files.readonlyInclude": {
+    "internal/web/templates/*_templ.go": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "go.mod": "go.sum",
+    "*.templ": "$(capture)_templ.go",
+    "package.json": "pnpm-lock.yaml, postcss.config.js, tailwind.config.js, .prettierrc.json"
+  }
+}
