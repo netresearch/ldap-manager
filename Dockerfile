@@ -7,12 +7,13 @@ COPY pnpm-lock.yaml .
 RUN pnpm i
 
 COPY . .
-
-RUN pnpm build:assets
+RUN pnpm css:build
 
 FROM golang:1.22-alpine AS backend-builder
 WORKDIR /build
 RUN apk add git
+
+RUN go install github.com/a-h/templ/cmd/templ@latest
 
 COPY ./go.mod .
 COPY ./go.sum .
@@ -21,6 +22,7 @@ RUN go mod download
 COPY . .
 
 COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
+RUN templ generate
 RUN \
   PACKAGE="github.com/netresearch/ldap-manager/internal" && \
   VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')" && \

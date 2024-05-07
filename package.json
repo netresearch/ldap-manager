@@ -6,14 +6,16 @@
   "packageManager": "pnpm@9.1.0",
   "scripts": {
     "start": "pnpm build:assets && pnpm go:start",
-    "dev": "pnpm build:assets && concurrently -n css,go \"pnpm css:dev\" \"pnpm go:dev\"",
+    "dev": "pnpm build:assets && concurrently -n css,templ,go \"pnpm css:dev\" \"pnpm templ:dev\" \"pnpm go:dev\"",
     "build": "pnpm build:assets && pnpm go:build",
-    "build:assets": "concurrently -n css \"pnpm css:build\"",
+    "build:assets": "concurrently -n css,templ \"pnpm css:build\" \"pnpm templ:build\"",
     "css:build": "postcss ./internal/web/tailwind.css -o ./internal/web/static/styles.css",
     "css:dev": "pnpm css:build -w --verbose",
+    "templ:build": "templ generate",
+    "templ:dev": "nodemon --signal SIGTERM -e templ -w \"./**\" -x pnpm templ:build",
     "go:start": "go run .",
     "go:build": "go build",
-    "go:dev": "nodemon --signal SIGTERM -e go,html,css -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
+    "go:dev": "nodemon --signal SIGTERM -e go,css -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.6",
