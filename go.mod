@@ -8,7 +8,7 @@ require (
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1
-	github.com/netresearch/simple-ldap-go v0.0.0-20240418092713-873b8e797ae3
+	github.com/netresearch/simple-ldap-go v0.0.0-20240523195632-4a351a86357f
 	github.com/rs/zerolog v1.32.0
 )
 
@@ -30,5 +30,5 @@ require (
 	go.etcd.io/bbolt v1.3.9 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 )
