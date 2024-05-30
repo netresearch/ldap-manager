@@ -9,7 +9,7 @@ require (
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v0.0.0-20240523195632-4a351a86357f
-	github.com/rs/zerolog v1.32.0
+	github.com/rs/zerolog v1.33.0
 )
 
 require (
