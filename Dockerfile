@@ -13,11 +13,10 @@ FROM golang:1.22-alpine AS backend-builder
 WORKDIR /build
 RUN apk add git
 
-RUN go install github.com/a-h/templ/cmd/templ@latest
-
 COPY ./go.mod .
 COPY ./go.sum .
 RUN go mod download
+RUN go install github.com/a-h/templ/cmd/templ@latest
 
 COPY . .
 
