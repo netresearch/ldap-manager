@@ -31,13 +31,13 @@ importers:
         version: 11.0.0(jiti@1.21.0)(postcss@8.4.38)
       prettier:
         specifier: ^3.0.3
-        version: 3.2.5
+        version: 3.3.2
       prettier-plugin-go-template:
         specifier: ^0.0.15
-        version: 0.0.15(prettier@3.2.5)
+        version: 0.0.15(prettier@3.3.2)
       prettier-plugin-tailwindcss:
         specifier: ^0.6.0
-        version: 0.6.0(prettier@3.2.5)
+        version: 0.6.0(prettier@3.3.2)
       tailwindcss:
         specifier: ^3.3.4
         version: 3.4.3
@@ -848,8 +848,8 @@ packages:
       prettier-plugin-svelte:
         optional: true
 
-  prettier@3.2.5:
-    resolution: {integrity: sha512-3/GWa9aOC0YeD7LUfvOG2NiDyhOWRvt1k+rcKhOuYnMY24iiCphgneUfJDyFXd6rZCAnuLBv6UeAULtrhT/F4A==}
+  prettier@3.3.2:
+    resolution: {integrity: sha512-rAVeHYMcv8ATV5d508CFdn+8/pHPpXeIid1DdrPwXnaAdH7cqjVbpJaT5eq4yRAFU/lsbwYwSF/n5iNrdJHPQA==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -1789,16 +1789,16 @@ snapshots:
       picocolors: 1.0.0
       source-map-js: 1.2.0
 
-  prettier-plugin-go-template@0.0.15(prettier@3.2.5):
+  prettier-plugin-go-template@0.0.15(prettier@3.3.2):
     dependencies:
-      prettier: 3.2.5
+      prettier: 3.3.2
       ulid: 2.3.0
 
-  prettier-plugin-tailwindcss@0.6.0(prettier@3.2.5):
+  prettier-plugin-tailwindcss@0.6.0(prettier@3.3.2):
     dependencies:
-      prettier: 3.2.5
+      prettier: 3.3.2
 
-  prettier@3.2.5: {}
+  prettier@3.3.2: {}
 
   pretty-hrtime@1.0.3: {}
 
