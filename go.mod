@@ -3,8 +3,7 @@ module github.com/netresearch/ldap-manager
 go 1.21
 
 require (
-	github.com/a-h/templ v0.2.731
-	github.com/gofiber/fiber/v2 v2.52.4
+	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1
@@ -28,7 +27,8 @@ require (
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.etcd.io/bbolt v1.3.9 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 )
