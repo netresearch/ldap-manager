@@ -59,6 +59,11 @@ docker run \
   -readonly-password readonly -readonly-user readonly \
   -base-dn DC=example,DC=com
 ```
+## Screenshot
+
+<img src="./docs/ldap_manager_form.png" height="256" align="left">
+<img src="./docs/ldap_manager_form_errors.png" height="256" align="left">
+<br clear="all"/>
 
 ## Developing
 
