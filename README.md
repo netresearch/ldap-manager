@@ -63,7 +63,7 @@ docker run \
 
 <img src="./docs/ldap_manager_form.png" height="256" align="left">
 <img src="./docs/ldap_manager_form_errors.png" height="256" align="left">
-<br clear="all"/>
+<br clear="all">
 
 ## Developing
 
