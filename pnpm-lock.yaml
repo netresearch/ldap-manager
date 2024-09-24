@@ -37,7 +37,7 @@ importers:
         version: 0.0.15(prettier@3.3.3)
       prettier-plugin-tailwindcss:
         specifier: ^0.6.0
-        version: 0.6.6(prettier@3.3.3)
+        version: 0.6.7(prettier@3.3.3)
       tailwindcss:
         specifier: ^3.3.4
         version: 3.4.10
@@ -788,8 +788,8 @@ packages:
     peerDependencies:
       prettier: ^3.0.0
 
-  prettier-plugin-tailwindcss@0.6.6:
-    resolution: {integrity: sha512-OPva5S7WAsPLEsOuOWXATi13QrCKACCiIonFgIR6V4lYv4QLp++UXVhZSzRbZxXGimkQtQT86CC6fQqTOybGng==}
+  prettier-plugin-tailwindcss@0.6.7:
+    resolution: {integrity: sha512-Gr9C8SURB46Fm9MQcb9gFxNfMiPgmhvq8St4We8I55r0GroqAptCgjzaKAastoDpjsdHkl6dxjcPMZCa4WCTLw==}
     engines: {node: '>=14.21.3'}
     peerDependencies:
       '@ianvs/prettier-plugin-sort-imports': '*'
@@ -1774,7 +1774,7 @@ snapshots:
       prettier: 3.3.3
       ulid: 2.3.0
 
-  prettier-plugin-tailwindcss@0.6.6(prettier@3.3.3):
+  prettier-plugin-tailwindcss@0.6.7(prettier@3.3.3):
     dependencies:
       prettier: 3.3.3
 
