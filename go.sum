@@ -72,6 +72,8 @@ github.com/netresearch/simple-ldap-go v0.0.0-20240909071234-15999f11c886 h1:ka4R
 github.com/netresearch/simple-ldap-go v0.0.0-20240909071234-15999f11c886/go.mod h1:4vf/Dkx/QiR1FBhDtfyRLeX2y1jT+lvXxzTQ5dbV6JA=
 github.com/netresearch/simple-ldap-go v0.0.0-20241008135401-8c3de1cffe74 h1:4WIHYG9NSFuGHpQPUihlZPd2j8MRTDH8zucKd6EmaDw=
 github.com/netresearch/simple-ldap-go v0.0.0-20241008135401-8c3de1cffe74/go.mod h1:93NyrqB3JYg33yGQTUPah+/lTbwDK/GYtw5s+bcqKu0=
+github.com/netresearch/simple-ldap-go v1.0.0 h1:wPVQuIhEC0ZF6UkTTRQ0rIKvcsz5T7VDBAc2rnh2iXg=
+github.com/netresearch/simple-ldap-go v1.0.0/go.mod h1:93NyrqB3JYg33yGQTUPah+/lTbwDK/GYtw5s+bcqKu0=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
