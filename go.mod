@@ -8,7 +8,7 @@ require (
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1
-	github.com/netresearch/simple-ldap-go v0.0.0-20241008135401-8c3de1cffe74
+	github.com/netresearch/simple-ldap-go v1.0.0
 	github.com/rs/zerolog v1.33.0
 )
 
