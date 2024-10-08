@@ -1,7 +1,8 @@
-<div align=center>
-  <h1>LDAP Manager</h1>
+# LDAP Manager
 
-  <img src="./internal/web/static/logo.webp" height="256">
+<div align=center>
+
+  <img src="./internal/web/static/logo.webp" height="256" alt="">
 
 <span>LDAP Manager is a web frontend that allows your users to administrate the their users.</span>
 
@@ -59,10 +60,11 @@ docker run \
   -readonly-password readonly -readonly-user readonly \
   -base-dn DC=example,DC=com
 ```
+
 ## Screenshot
 
-<img src="./docs/ldap_manager_form.png" height="256" align="left">
-<img src="./docs/ldap_manager_form_errors.png" height="256" align="left">
+<img src="./docs/ldap_manager_form.png" height="256" align="left" alt="">
+<img src="./docs/ldap_manager_form_errors.png" height="256" align="left" alt="">
 <br clear="all">
 
 ## Developing
