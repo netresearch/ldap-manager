@@ -3,7 +3,7 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "nodeGypDependencies": true,
-      "version": "lts",
+      "version": "24",
       "nvmVersion": "latest"
     }
   },
