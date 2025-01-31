@@ -16,9 +16,10 @@ If you want to run this service without a Docker container, you have to build it
 
 Prerequisites:
 
-- Go 1.21+
+- Go 1.23+
 - Node.js v16+
 - Corepack (`npm i -g corepack`)
+- templ (`go install github.com/a-h/templ/cmd/templ@latest`)
 
 You can configure this via a `.env.local` file or via command options (for more information you can run `./ldap-manager --help`).
 
@@ -71,9 +72,10 @@ docker run \
 
 Prerequisites:
 
-- Go 1.21+
+- Go 1.23+
 - Node.js v16+
 - Corepack (`npm i -g corepack`)
+- templ (`go install github.com/a-h/templ/cmd/templ@latest`)
 
 ```bash
 corepack enable
