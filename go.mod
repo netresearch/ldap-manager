@@ -11,7 +11,7 @@ require (
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v1.0.2
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 )
 
 require (
