@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/a-h/templ v0.3.833
-	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/gofiber/storage/bbolt/v2 v2.0.0
 	github.com/gofiber/storage/memory/v2 v2.0.1
 	github.com/joho/godotenv v1.5.1

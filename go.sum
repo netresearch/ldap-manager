@@ -19,6 +19,8 @@ github.com/go-ldap/ldap/v3 v3.4.10/go.mod h1:JXh4Uxgi40P6E9rdsYqpUtbW46D9UTjJ9QS
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/gofiber/fiber/v2 v2.52.6 h1:Rfp+ILPiYSvvVuIPvxrBns+HJp8qGLDnLJawAu27XVI=
 github.com/gofiber/fiber/v2 v2.52.6/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAreiI1oqg8nDw=
+github.com/gofiber/fiber/v2 v2.52.8 h1:xl4jJQ0BV5EJTA2aWiKw/VddRpHrKeZLF0QPUxqn0x4=
+github.com/gofiber/fiber/v2 v2.52.8/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAreiI1oqg8nDw=
 github.com/gofiber/storage/bbolt/v2 v2.0.0 h1:+HpRZ2y9vN4xrrPc1SReUQar8SiFBFMfhBb227TNGGs=
 github.com/gofiber/storage/bbolt/v2 v2.0.0/go.mod h1:ONOESc1Cq8eKTqF4Pc7XLFtxete9r3EU0vvXoO+7Rmo=
 github.com/gofiber/storage/memory/v2 v2.0.1 h1:tAETnom9uvEB9B3I2LkgewiuqYDAH0ItrIsmT8MUEwk=
