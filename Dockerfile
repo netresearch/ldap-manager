@@ -1,4 +1,4 @@
-FROM --platform=amd64 node:22 AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:22 AS frontend-builder
 WORKDIR /build
 RUN npm i -g pnpm
 
@@ -9,14 +9,14 @@ RUN pnpm i
 COPY . .
 RUN pnpm css:build
 
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:1.24.3-alpine AS backend-builder
 WORKDIR /build
 RUN apk add git
 
 COPY ./go.mod .
 COPY ./go.sum .
 RUN go mod download
-RUN go install github.com/a-h/templ/cmd/templ@latest
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.865
 
 COPY . .
 
