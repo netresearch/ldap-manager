@@ -9,7 +9,7 @@ RUN pnpm i
 COPY . .
 RUN pnpm css:build
 
-FROM golang:1.24.3-alpine AS backend-builder
+FROM golang:1.24.4-alpine AS backend-builder
 WORKDIR /build
 RUN apk add git
 
