@@ -24,6 +24,8 @@ github.com/gofiber/storage/bbolt/v2 v2.0.0 h1:+HpRZ2y9vN4xrrPc1SReUQar8SiFBFMfhB
 github.com/gofiber/storage/bbolt/v2 v2.0.0/go.mod h1:ONOESc1Cq8eKTqF4Pc7XLFtxete9r3EU0vvXoO+7Rmo=
 github.com/gofiber/storage/memory/v2 v2.0.1 h1:tAETnom9uvEB9B3I2LkgewiuqYDAH0ItrIsmT8MUEwk=
 github.com/gofiber/storage/memory/v2 v2.0.1/go.mod h1:RRo3RfX6nTD/UhERyE/u5LcSfqtMo9dA4ltmieSe+QM=
+github.com/gofiber/storage/memory/v2 v2.1.0 h1:vg02c9n114665UNF4ijzehbIAv56mGF4tvIdF38nor8=
+github.com/gofiber/storage/memory/v2 v2.1.0/go.mod h1:S3+xrcTF2KPFSwYHYtw1DiYgwNBVS8akBpu0/6heuzw=
 github.com/gofiber/utils/v2 v2.0.0-beta.8 h1:ZifwbHZqZO3YJsx1ZhDsWnPjaQ7C0YD20LHt+DQeXOU=
 github.com/gofiber/utils/v2 v2.0.0-beta.8/go.mod h1:1lCBo9vEF4RFEtTgWntipnaScJZQiM8rrsYycLZ4n9c=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
