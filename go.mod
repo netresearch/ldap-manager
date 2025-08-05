@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.5
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.8
+	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/gofiber/storage/bbolt/v2 v2.1.0
 	github.com/gofiber/storage/memory/v2 v2.1.0
 	github.com/joho/godotenv v1.5.1
