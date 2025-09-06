@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: "1.25.1"
           cache: true
@@ -38,7 +38,7 @@ jobs:
         run: npm install -g pnpm
 
       - name: Set up Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@39370e3970e7d5808f5f3d4b65a4b6ae8a8ee9f9 # v4.1.0
         with:
           node-version: "22"
           cache: "pnpm"
@@ -110,7 +110,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: "1.25.1"
           cache: true
@@ -119,7 +119,7 @@ jobs:
         run: npm install -g pnpm
 
       - name: Set up Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@39370e3970e7d5808f5f3d4b65a4b6ae8a8ee9f9 # v4.1.0
         with:
           node-version: "22"
           cache: "pnpm"
@@ -184,7 +184,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: "1.25.1"
           cache: true
@@ -195,7 +195,7 @@ jobs:
           run_install: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@39370e3970e7d5808f5f3d4b65a4b6ae8a8ee9f9 # v4.1.0
         with:
           node-version: "22"
           cache: "pnpm"
@@ -293,7 +293,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: "1.25.1"
 
@@ -315,7 +315,7 @@ jobs:
         run: npm install -g pnpm
 
       - name: Set up Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@39370e3970e7d5808f5f3d4b65a4b6ae8a8ee9f9 # v4.1.0
         with:
           node-version: "22"
 
