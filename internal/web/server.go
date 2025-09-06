@@ -69,17 +69,21 @@ func NewApp(opts *options.Opts) (*App, error) {
 		fiber:        f,
 	}
 
-	f.Get("/", a.indexHandler)
-	f.Get("/users", a.usersHandler)
-	f.Get("/users/:userDN", a.userHandler)
-	f.Post("/users/:userDN", a.userModifyHandler)
-	f.Get("/groups", a.groupsHandler)
-	f.Get("/groups/:groupDN", a.groupHandler)
-	f.Post("/groups/:groupDN", a.groupModifyHandler)
-	f.Get("/computers", a.computersHandler)
-	f.Get("/computers/:computerDN", a.computerHandler)
+	// Public routes (no authentication required)
 	f.All("/login", a.loginHandler)
-	f.Get("/logout", a.logoutHandler)
+
+	// Protected routes (require authentication)
+	protected := f.Group("/", a.RequireAuth())
+	protected.Get("/", a.indexHandler)
+	protected.Get("/users", a.usersHandler)
+	protected.Get("/users/:userDN", a.userHandler)
+	protected.Post("/users/:userDN", a.userModifyHandler)
+	protected.Get("/groups", a.groupsHandler)
+	protected.Get("/groups/:groupDN", a.groupHandler)
+	protected.Post("/groups/:groupDN", a.groupModifyHandler)
+	protected.Get("/computers", a.computersHandler)
+	protected.Get("/computers/:computerDN", a.computerHandler)
+	protected.Get("/logout", a.logoutHandler)
 
 	f.Use(a.fourOhFourHandler)
 
@@ -100,17 +104,13 @@ func handle500(c *fiber.Ctx, err error) error {
 }
 
 func (a *App) indexHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
+	// Get authenticated user DN from middleware context
+	userDN, err := RequireUserDN(c)
 	if err != nil {
-		return handle500(c, err)
+		return err
 	}
 
-	// TODO: put this into a middleware
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
-	user, err := a.ldapCache.FindUserByDN(sess.Get("dn").(string))
+	user, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return handle500(c, err)
 	}
