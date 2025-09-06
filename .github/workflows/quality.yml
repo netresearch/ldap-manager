@@ -54,11 +54,11 @@ jobs:
       - name: Build assets
         run: pnpm build:assets
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: latest
-          args: --config=.golangci.yml --timeout=5m
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run golangci-lint
+        run: golangci-lint run --config=.golangci.yml --timeout=5m
 
       - name: Run staticcheck
         uses: dominikh/staticcheck-action@v1.3.0
