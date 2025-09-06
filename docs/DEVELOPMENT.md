@@ -1,8 +1,19 @@
 # LDAP Manager Development Guide
 
-## Overview
+Comprehensive developer tooling and quality assurance guide for the LDAP Manager project.
 
-LDAP Manager uses a modern Go web stack with type-safe HTML templates, TailwindCSS for styling, and concurrent development workflows. This guide covers the development environment, architecture patterns, and contribution guidelines.
+## Quick Start
+
+```bash
+# Initial setup
+make setup              # Install all dependencies and tools
+make setup-hooks        # Install pre-commit hooks
+
+# Development workflow
+make dev               # Start development server
+make check            # Run all quality checks
+make build            # Build the application
+```
 
 ## Technology Stack
 
@@ -52,8 +63,8 @@ templ --version
 git clone <repository-url>
 cd ldap-manager
 
-# Install Node.js dependencies
-pnpm install
+# Install all dependencies and tools
+make setup
 
 # Create development configuration
 cp .env.example .env.local
@@ -79,11 +90,73 @@ SESSION_PATH=dev-session.bbolt
 SESSION_DURATION=2h
 ```
 
+## Available Make Targets
+
+The `Makefile` provides comprehensive development automation:
+
+### Setup & Dependencies
+
+- `make setup` - Install Go deps, Node deps, and development tools
+- `make setup-go` - Install Go dependencies only
+- `make setup-node` - Install Node.js dependencies only
+- `make setup-tools` - Install Go development tools
+- `make setup-hooks` - Install pre-commit hooks
+
+### Building
+
+- `make build` - Build application binary with assets
+- `make build-assets` - Build CSS and template assets only
+- `make build-release` - Build optimized multi-platform binaries
+- `make docker` - Build Docker image
+
+### Testing & Quality
+
+- `make test` - Run comprehensive test suite with coverage
+- `make test-quick` - Run tests without coverage
+- `make test-short` - Run tests without race detection
+- `make benchmark` - Run performance benchmarks
+- `make lint` - Run all linting and static analysis
+- `make check` - Run lint + test (quality gate)
+
+### Development
+
+- `make dev` - Start development server with hot reload
+- `make fix` - Auto-fix code formatting
+- `make clean` - Remove build artifacts and caches
+- `make serve` - Start built application
+
+### Utilities
+
+- `make help` - Show all available targets
+- `make info` - Display build information
+- `make deps` - Update all dependencies
+
 ## Development Workflow
 
-### Available Commands
+### Daily Development
 
-The project uses PNPM scripts for development workflow:
+1. **Start Development Server**:
+   ```bash
+   make dev
+   ```
+   This starts concurrent processes:
+   - Go server with live reload (Air)
+   - CSS compilation with TailwindCSS watch mode
+   - Template compilation with templ watch mode
+
+2. **Run Quality Checks**:
+   ```bash
+   make check  # Run all linting and tests
+   ```
+
+3. **Fix Formatting Issues**:
+   ```bash
+   make fix    # Auto-fix Go formatting and imports
+   ```
+
+### Alternative Commands
+
+You can also use PNPM commands directly:
 
 ```bash
 # Development mode with hot reload
@@ -92,475 +165,238 @@ pnpm dev
 # Production build
 pnpm build
 
-# Start production build
-pnpm start
-
 # Individual asset builds
 pnpm css:build    # Build TailwindCSS
 pnpm css:dev      # Watch CSS changes
-pnpm templ:build  # Generate Go template files
+pnpm templ:build  # Build templates
 pnpm templ:dev    # Watch template changes
 ```
 
-### Hot Reload Development
+## Code Quality Tools
 
-The `pnpm dev` command starts three concurrent processes:
+### Go Linting (golangci-lint)
 
-1. **CSS Watcher**: Rebuilds TailwindCSS on style changes
-2. **Template Watcher**: Regenerates Go templates on .templ changes
-3. **Go Server**: Restarts application on Go code changes
+Comprehensive linting with 30+ enabled linters:
 
 ```bash
-pnpm dev
-# Output shows three concurrent processes:
-# [css] Rebuilding CSS...
-# [templ] Generating templates...
-# [go] Starting Go server...
+# Run linting
+make lint-go
+
+# Individual linter categories
+golangci-lint run --config .golangci.yml
 ```
 
-### File Watching Behavior
+**Key linters enabled:**
 
-- **CSS Changes**: `internal/web/tailwind.css` → Auto-rebuild styles
-- **Template Changes**: `**/*.templ` → Regenerate Go template files
-- **Go Changes**: `**/*.go` → Restart application server
-- **Static Assets**: Manual refresh required
+- **Error handling**: errcheck, wrapcheck
+- **Code quality**: gosimple, ineffassign, unused
+- **Security**: gosec (via CI)
+- **Performance**: prealloc, maligned
+- **Style**: goimports, gofumpt, whitespace
 
-## Project Architecture
+### Static Analysis Tools
 
-### Directory Structure
-
-```
-ldap-manager/
-├── main.go                     # Application entry point
-├── internal/
-│   ├── build.go               # Build information
-│   ├── options/
-│   │   └── app.go            # CLI/ENV configuration parsing
-│   ├── ldap_cache/           # LDAP data caching layer
-│   │   ├── manager.go        # Cache management and refresh
-│   │   └── cache.go          # Generic concurrent-safe cache
-│   └── web/                  # Web application layer
-│       ├── server.go         # Fiber app setup and routing
-│       ├── auth.go           # Authentication handlers
-│       ├── users.go          # User management handlers
-│       ├── groups.go         # Group management handlers
-│       ├── computers.go      # Computer management handlers
-│       ├── templates/        # templ template files
-│       │   ├── base.templ    # Base HTML layout
-│       │   ├── flash.go      # Flash message system
-│       │   ├── *.templ       # Page-specific templates
-│       │   └── *_templ.go    # Generated Go template code
-│       └── static/           # Static assets and embedded files
-├── docs/                     # Documentation
-├── package.json             # PNPM configuration
-├── tailwind.config.js       # TailwindCSS configuration
-├── postcss.config.mjs       # PostCSS processing
-└── Dockerfile              # Container build configuration
-```
-
-### Architecture Layers
-
-#### 1. Main Application (`main.go`)
-
-- Application entry point with logging setup
-- Configuration parsing and validation
-- Web server initialization and startup
-
-#### 2. Configuration Layer (`internal/options/`)
-
-- CLI flag and environment variable parsing
-- Configuration validation and defaults
-- Support for `.env` file loading with godotenv
-
-#### 3. LDAP Caching Layer (`internal/ldap_cache/`)
-
-- **Manager**: Coordinates cache refresh and LDAP operations
-- **Cache**: Generic thread-safe storage for LDAP entities
-- **Background Refresh**: Automatic 30-second cache updates
-- **Relationship Population**: Builds full objects with dependencies
-
-#### 4. Web Layer (`internal/web/`)
-
-- **Server**: Fiber application setup with middleware
-- **Handlers**: HTTP request processing for each resource type
-- **Templates**: Type-safe HTML generation with templ
-- **Session Management**: Authentication and session handling
-
-### Template System (templ)
-
-#### Template Architecture
-
-LDAP Manager uses [templ](https://templ.guide/) for type-safe HTML templates:
-
-```go
-// templates/base.templ - Base layout
-templ base(title string) {
-    <!DOCTYPE html>
-    <html>
-        <head><title>{title} - LDAP Manager</title></head>
-        <body>{children...}</body>
-    </html>
-}
-
-// templates/users.templ - User listing
-templ Users(users []ldap.User) {
-    @base("Users") {
-        <div class="container">
-            for _, user := range users {
-                <div class="user-card">{user.Name}</div>
-            }
-        </div>
-    }
-}
-```
-
-#### Template Generation
-
-Templates are compiled to Go code during build:
+Multiple static analysis tools for comprehensive code review:
 
 ```bash
-# Generate Go template files
-templ generate
+# Security scanning
+make lint-security      # govulncheck for vulnerabilities
 
-# Files created:
-# templates/base_templ.go
-# templates/users_templ.go
-# (etc...)
+# Code complexity
+make lint-complexity    # gocyclo for cyclomatic complexity
+
+# Formatting checks
+make lint-format       # gofumpt + goimports validation
 ```
 
-#### Template Best Practices
+### Pre-commit Hooks
 
-- **Type Safety**: Use strongly-typed parameters for all templates
-- **Composition**: Build complex pages with component templates
-- **CSS Classes**: Use TailwindCSS utility classes for styling
-- **Flash Messages**: Use the flash system for user feedback
-- **Conditional Rendering**: Leverage Go's template conditionals
-
-### Flash Message System
-
-The application includes a type-safe flash message system:
-
-```go
-// Flash message types
-type FlashType string
-const (
-    FlashTypeSuccess FlashType = "success"
-    FlashTypeError   FlashType = "error"
-    FlashTypeInfo    FlashType = "info"
-)
-
-// Usage in handlers
-flashes := templates.Flashes(
-    templates.SuccessFlash("User updated successfully"),
-    templates.ErrorFlash("Invalid password format"),
-)
-```
-
-### Styling System (TailwindCSS)
-
-#### CSS Architecture
-
-- **Base Styles**: `internal/web/tailwind.css` - TailwindCSS directives
-- **Generated CSS**: `internal/web/static/styles.css` - Compiled output
-- **Dark Theme**: Default dark theme with customizable colors
-- **Responsive**: Mobile-first responsive design patterns
-
-#### TailwindCSS Configuration
-
-```javascript
-// tailwind.config.js
-module.exports = {
-  content: ["./internal/**/*.{templ,go}"],
-  theme: {
-    extend: {
-      colors: {
-        // Custom color palette
-      }
-    }
-  },
-  plugins: [require("@tailwindcss/forms")]
-};
-```
-
-#### CSS Development Workflow
+Automatic quality checks before commits:
 
 ```bash
-# Watch for changes during development
-pnpm css:dev
+# Install hooks
+make setup-hooks
 
-# Manual build for production
-pnpm css:build
-
-# Output: internal/web/static/styles.css
+# Manual hook execution
+pre-commit run --all-files
 ```
 
-## Development Patterns
-
-### Handler Pattern
-
-All web handlers follow a consistent pattern:
-
-```go
-func (a *App) userHandler(c *fiber.Ctx) error {
-    // 1. Session validation
-    sess, err := a.sessionStore.Get(c)
-    if err != nil {
-        return handle500(c, err)
-    }
-
-    // 2. Authentication check
-    if sess.Fresh() {
-        return c.Redirect("/login")
-    }
-
-    // 3. Data retrieval
-    userDN := c.Params("userDN")
-    user, err := a.ldapCache.FindUserByDN(userDN)
-    if err != nil {
-        return handle500(c, err)
-    }
-
-    // 4. Template rendering
-    c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-    return templates.User(user).Render(c.UserContext(), c.Response().BodyWriter())
-}
-```
-
-### LDAP Cache Pattern
-
-The caching layer provides consistent data access:
-
-```go
-// Cache initialization
-manager := ldap_cache.New(ldapClient)
-go manager.Run() // Start background refresh
-
-// Data access
-users := manager.FindUsers(showDisabled)
-user, err := manager.FindUserByDN(userDN)
-fullUser := manager.PopulateGroupsForUser(user)
-
-// Cache maintenance (automatic)
-// - Refreshes every 30 seconds
-// - Thread-safe concurrent access
-// - Relationship population on demand
-```
-
-### Error Handling Pattern
-
-Consistent error handling across the application:
-
-```go
-// Global error handler
-func handle500(c *fiber.Ctx, err error) error {
-    log.Error().Err(err).Send()
-    c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-    return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
-}
-
-// Usage in handlers
-if err != nil {
-    return handle500(c, err)
-}
-```
+**Enabled hooks:**
+- Go formatting (gofumpt)
+- Import organization (goimports)
+- Markdown linting (markdownlint)
+- Secret detection (detect-secrets)
+- YAML validation
 
 ## Testing Strategy
 
-### Unit Testing
+### Test Coverage Requirements
+
+- **Minimum Coverage**: 80% (enforced by CI)
+- **Coverage Reporting**: HTML reports in `coverage-reports/`
+- **Benchmark Testing**: Performance regression detection
+
+### Running Tests
 
 ```bash
-# Run Go tests
-go test ./...
+# Comprehensive test suite with coverage
+make test
 
-# Run tests with coverage
-go test -cover ./...
+# Quick tests without coverage
+make test-quick
 
-# Run specific package tests
-go test ./internal/ldap_cache/
+# Race condition detection
+make test-short
+
+# Performance benchmarks
+make benchmark
 ```
 
-### Integration Testing
+### Test Organization
 
-- Test LDAP connectivity with development directory
-- Validate session management with different storage backends
-- Verify template rendering with sample data
+Tests are organized by package with clear naming conventions:
 
-### Manual Testing Checklist
+- `*_test.go` - Standard unit tests
+- `*_integration_test.go` - Integration tests
+- `benchmark_*_test.go` - Performance benchmarks
 
-- [ ] Login/logout functionality
-- [ ] User listing and detail views
-- [ ] Group management operations
-- [ ] Computer object access
-- [ ] Session persistence across restarts
-- [ ] Error handling and flash messages
-- [ ] Responsive design on mobile
+## Build System
 
-## Code Quality Standards
+### Asset Processing
 
-### Go Code Standards
+The build system handles multiple asset types:
 
-- Follow standard Go formatting with `gofmt`
-- Use meaningful variable and function names
-- Add package-level documentation for public APIs
-- Implement proper error handling with context
-- Use structured logging with zerolog
+1. **CSS Processing**:
+   - TailwindCSS compilation
+   - PostCSS processing with autoprefixer
+   - Production optimization with cssnano
 
-### Template Standards
+2. **Template Processing**:
+   - templ compilation to Go files
+   - Type-safe HTML generation
+   - Development watch mode
 
-- Use semantic HTML5 elements
-- Apply TailwindCSS utility classes consistently
-- Implement proper accessibility attributes
-- Handle empty states and error conditions
-- Use templ's type safety features
+3. **Go Compilation**:
+   - Cross-platform binary generation
+   - Build info injection (version, commit, timestamp)
+   - Optimized release builds
 
-### CSS Standards
-
-- Use TailwindCSS utilities over custom CSS
-- Follow mobile-first responsive patterns
-- Maintain consistent spacing and typography
-- Use semantic color names in theme configuration
-
-### Commit Standards
-
-The project uses [Conventional Commits](https://www.conventionalcommits.org/):
+### Docker Support
 
 ```bash
-# Feature additions
-feat: add user search functionality
-feat(auth): implement session timeout warnings
+# Build Docker image
+make docker
 
-# Bug fixes
-fix: resolve LDAP connection timeout issues
-fix(ui): correct mobile navigation layout
+# Run locally
+make docker-run
 
-# Documentation
-docs: update API documentation
-docs(config): add environment variable examples
-
-# Refactoring
-refactor: simplify cache refresh logic
-refactor(templates): extract common components
-
-# Maintenance
-chore: update dependencies
-chore(ci): improve build performance
+# Production deployment
+docker-compose up -d
 ```
 
-## Build and Deployment
+## Architecture Patterns
 
-### Local Build
+### Project Structure
 
-```bash
-# Full production build
-pnpm build
+```
+internal/
+├── web/           # HTTP handlers and middleware
+├── ldap_cache/    # LDAP connection and caching
+├── options/       # Configuration management
+└── build.go       # Build information
 
-# Creates:
-# - internal/web/static/styles.css (compiled CSS)
-# - internal/web/templates/*_templ.go (generated templates)
-# - ldap-manager (Go binary)
+docs/              # Project documentation
+scripts/           # Development and CI scripts
 ```
 
-### Docker Build
+### Code Organization
 
-```bash
-# Build container image
-docker build -t ldap-manager .
-
-# Multi-stage build process:
-# 1. Node.js stage: Install dependencies and build assets
-# 2. Go stage: Build application binary
-# 3. Runtime stage: Minimal Alpine-based final image
-```
-
-### Production Deployment
-
-- Use environment variables for configuration
-- Enable HTTPS with reverse proxy (nginx, Traefik)
-- Configure session persistence for high availability
-- Monitor LDAP connection health
-- Set appropriate log levels for performance
+- **Separation of Concerns**: Clear boundaries between web, LDAP, and configuration layers
+- **Dependency Injection**: Configurable components for testing
+- **Error Handling**: Consistent error wrapping and logging
+- **Concurrent Safety**: Proper synchronization for shared resources
 
 ## Contributing Guidelines
 
-### Development Process
+### Code Standards
 
-1. **Fork** the repository and create a feature branch
-2. **Setup** development environment with required tools
-3. **Implement** changes following code quality standards
-4. **Test** functionality with manual and automated tests
-5. **Document** changes in relevant documentation files
-6. **Commit** using conventional commit format
-7. **Submit** pull request with clear description
+1. **Go Code Style**:
+   - Follow effective Go patterns
+   - Use gofumpt for formatting
+   - Organize imports with goimports
+   - Write descriptive function and variable names
 
-### Pull Request Requirements
+2. **Commit Messages**:
+   - Use conventional commits format
+   - Include scope and type (feat, fix, docs, etc.)
+   - Write clear, concise descriptions
 
-- [ ] Code follows project formatting standards
-- [ ] Templates compile without errors (`templ generate`)
-- [ ] CSS builds successfully (`pnpm css:build`)
-- [ ] Go code compiles and tests pass (`go test ./...`)
-- [ ] Documentation updated for user-facing changes
-- [ ] Commit messages follow conventional format
+3. **Pull Request Process**:
+   - Create feature branches from main
+   - Pass all quality checks (make check)
+   - Include tests for new functionality
+   - Update documentation as needed
 
-### Code Review Process
+### Development Tools
 
-- Maintainers review for code quality and security
-- Template safety and accessibility considerations
-- Performance impact on LDAP operations
-- Backward compatibility with existing configurations
+All required tools are automatically installed via:
+
+```bash
+make setup-tools
+```
+
+This installs:
+- golangci-lint (comprehensive linting)
+- staticcheck (static analysis)
+- govulncheck (security scanning)
+- gocyclo (complexity analysis)
+- goimports (import formatting)
+- gofumpt (code formatting)
+- templ (template compilation)
 
 ## Troubleshooting
 
-### Common Development Issues
+### Common Issues
 
-**Template Compilation Errors**
+1. **templ command not found**:
+   ```bash
+   go install github.com/a-h/templ/cmd/templ@latest
+   ```
 
-```bash
-# Ensure templ is installed and in PATH
-templ version
+2. **PNPM not available**:
+   ```bash
+   npm install -g corepack
+   corepack enable
+   ```
 
-# Regenerate all templates
-templ generate
+3. **Permission issues with pre-commit**:
+   ```bash
+   pip install --user pre-commit
+   make setup-hooks
+   ```
 
-# Check for syntax errors in .templ files
-templ fmt --verify internal/web/templates/
-```
+4. **Coverage below threshold**:
+   - Add tests for uncovered code paths
+   - Check coverage report: `coverage-reports/coverage.html`
 
-**CSS Build Failures**
+### Performance Monitoring
 
-```bash
-# Check TailwindCSS configuration
-pnpm css:build --verbose
-
-# Verify PostCSS configuration
-cat postcss.config.mjs
-
-# Clear CSS cache
-rm internal/web/static/styles.css
-pnpm css:build
-```
-
-**Hot Reload Not Working**
+Monitor application performance during development:
 
 ```bash
-# Restart development server
-pnpm dev
+# Run benchmarks
+make benchmark
 
-# Check file watchers
-# On Linux: may need to increase inotify limits
-echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
+# Check for race conditions
+go test -race ./...
+
+# Profile CPU usage
+go test -cpuprofile=cpu.prof -bench=.
+
+# Profile memory usage
+go test -memprofile=mem.prof -bench=.
 ```
 
-**LDAP Connection Issues**
-
-- Verify `.env.local` configuration matches your LDAP server
-- Test LDAP connectivity with command-line tools
-- Check firewall rules for LDAP ports (389/636)
-- Enable debug logging: `LOG_LEVEL=debug`
-
-For additional help, check the project issues or create a new issue with:
-
-- Go and Node.js versions (`go version`, `node --version`)
-- Operating system details
-- Complete error messages and stack traces
-- Steps to reproduce the issue
+For detailed configuration options, see [CONFIGURATION.md](CONFIGURATION.md).
+For API documentation, see [API.md](API.md).
+For architecture details, see [architecture.md](architecture.md).
