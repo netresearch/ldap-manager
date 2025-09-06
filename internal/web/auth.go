@@ -5,7 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 
-	"github.com/netresearch/ldap-manager/internal"
+	"github.com/netresearch/ldap-manager/internal/version"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
@@ -53,6 +53,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.Login(templates.Flashes(), internal.FormatVersion()).Render(
+	return templates.Login(templates.Flashes(), version.FormatVersion()).Render(
 		c.UserContext(), c.Response().BodyWriter())
 }

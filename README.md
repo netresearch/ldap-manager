@@ -64,45 +64,53 @@ docker run \
 
 ## Screenshot
 
-<img src="./docs/ldap_manager_form.png" height="256" align="left" alt="">
-<img src="./docs/ldap_manager_form_errors.png" height="256" align="left" alt="">
+<img src="./docs/assets/ldap_manager_form.png" height="256" align="left" alt="">
+<img src="./docs/assets/ldap_manager_form_errors.png" height="256" align="left" alt="">
 <br clear="all">
 
-## Developing
+## Documentation
 
-Prerequisites:
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
-- Go 1.23+
-- Node.js v16+
-- Corepack (`npm i -g corepack`)
-- templ (`go install github.com/a-h/templ/cmd/templ@latest`)
+### For Users
+- **[Installation Guide](docs/user-guide/installation.md)** - Setup and deployment instructions
+- **[Configuration Reference](docs/user-guide/configuration.md)** - Complete configuration options
+- **[API Documentation](docs/user-guide/api.md)** - REST API endpoints and usage
+
+### For Developers
+- **[Development Setup](docs/development/setup.md)** - Local development environment
+- **[Contributing Guidelines](docs/development/contributing.md)** - Code standards and workflow
+- **[Architecture Overview](docs/development/architecture.md)** - System design and patterns
+
+### For Operations
+- **[Deployment Guide](docs/operations/deployment.md)** - Production deployment strategies
+- **[Monitoring & Troubleshooting](docs/operations/monitoring.md)** - Operational procedures
+
+## Quick Start
+
+### For Users
 
 ```bash
-corepack enable
-
-# Install dependencies
-pnpm i
-
-touch .env.local
-# Edit the `.env.local` to include the arguments, you want to give to the application.
-# Required are:
-# - LDAP_SERVER
-# - LDAP_BASE_DN
-# - LDAP_READONLY_USER
-# - LDAP_READONLY_PASSWORD
-
-# Running normally
-pnpm start
-
-# Running in dev mode
-#   This will restart the application every time, you make
-#   a change.
-pnpm dev
+# Docker deployment (recommended)
+docker run -d --name ldap-manager \
+  -e LDAP_SERVER=ldaps://dc1.example.com:636 \
+  -e LDAP_BASE_DN="DC=example,DC=com" \
+  -e LDAP_READONLY_USER=readonly \
+  -e LDAP_READONLY_PASSWORD=password \
+  -e LDAP_IS_AD=true \
+  -p 3000:3000 \
+  ghcr.io/netresearch/ldap-manager
 ```
 
-## TODO
+### For Developers
 
-- [ ] Search for users and groups
+```bash
+# Setup development environment
+make setup
+make dev
+
+# See full development guide: docs/development/setup.md
+```
 
 ## License
 

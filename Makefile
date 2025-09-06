@@ -5,7 +5,7 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-PACKAGE := github.com/netresearch/ldap-manager/internal
+PACKAGE := github.com/netresearch/ldap-manager/internal/version
 
 # Go build settings  
 GO_VERSION := $(shell go version | awk '{print $$3}')
@@ -87,7 +87,7 @@ setup-hooks:
 build: build-assets
 	@echo "$(BLUE)Building application...$(RESET)"
 	@mkdir -p bin
-	@CGO_ENABLED=0 go build $(BUILDFLAGS) -o bin/ldap-manager .
+	@CGO_ENABLED=0 go build $(BUILDFLAGS) -o bin/ldap-manager ./cmd/ldap-manager
 	@echo "$(GREEN)✓ Build complete: bin/ldap-manager$(RESET)"
 
 ## Build Assets: Build CSS and template assets
@@ -99,9 +99,9 @@ build-assets:
 build-release: build-assets
 	@echo "$(BLUE)Building release binary...$(RESET)"
 	@mkdir -p bin
-	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-linux-amd64 .
-	@CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-darwin-amd64 .
-	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-windows-amd64.exe .
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-linux-amd64 ./cmd/ldap-manager
+	@CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-darwin-amd64 ./cmd/ldap-manager
+	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-windows-amd64.exe ./cmd/ldap-manager
 	@echo "$(GREEN)✓ Release binaries built$(RESET)"
 
 ## Test: Run comprehensive test suite with coverage
