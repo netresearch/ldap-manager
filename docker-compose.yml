@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # OpenLDAP server for local development and testing
@@ -38,7 +38,7 @@ services:
     networks:
       - ldap-network
     restart: unless-stopped
-    
+
   # phpLDAPadmin for LDAP management (optional)
   phpldapadmin:
     image: osixia/phpldapadmin:latest
@@ -72,15 +72,15 @@ services:
       LDAP_BIND_DN: "cn=admin,dc=netresearch,dc=local"
       LDAP_BIND_PASSWORD: "admin"
       LDAP_USE_TLS: "false"
-      
+
       # Session settings (BBolt-based as per requirement)
       SESSION_PATH: "/data/session.bbolt"
       SESSION_SECRET: "dev-secret-change-in-production"
-      
+
       # Application settings
       LOG_LEVEL: "debug"
       PORT: "3000"
-      
+
       # Development settings
       ENVIRONMENT: "development"
     volumes:

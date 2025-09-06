@@ -9,7 +9,7 @@ Comprehensive developer tooling and quality assurance guide for the LDAP Manager
 make setup              # Install all dependencies and tools
 make setup-hooks        # Install pre-commit hooks
 
-# Development workflow  
+# Development workflow
 make dev               # Start development server
 make check            # Run all quality checks
 make build            # Build the application
@@ -20,19 +20,22 @@ make build            # Build the application
 The `Makefile` provides comprehensive development automation:
 
 ### Setup & Dependencies
+
 - `make setup` - Install Go deps, Node deps, and development tools
 - `make setup-go` - Install Go dependencies only
-- `make setup-node` - Install Node.js dependencies only  
+- `make setup-node` - Install Node.js dependencies only
 - `make setup-tools` - Install Go development tools
 - `make setup-hooks` - Install pre-commit hooks
 
 ### Building
+
 - `make build` - Build application binary with assets
 - `make build-assets` - Build CSS and template assets only
 - `make build-release` - Build optimized multi-platform binaries
 - `make docker` - Build Docker image
 
 ### Testing & Quality
+
 - `make test` - Run comprehensive test suite with coverage
 - `make test-quick` - Run tests without coverage
 - `make test-short` - Run tests without race detection
@@ -41,12 +44,14 @@ The `Makefile` provides comprehensive development automation:
 - `make check` - Run lint + test (quality gate)
 
 ### Development
+
 - `make dev` - Start development server with hot reload
 - `make fix` - Auto-fix code formatting
 - `make clean` - Remove build artifacts and caches
 - `make serve` - Start built application
 
 ### Utilities
+
 - `make help` - Show all available targets
 - `make info` - Display build information
 - `make deps` - Update all dependencies
@@ -66,6 +71,7 @@ golangci-lint run --config .golangci.yml
 ```
 
 **Key linters enabled:**
+
 - **Error handling**: errcheck, wrapcheck
 - **Code quality**: gosimple, ineffassign, unused
 - **Security**: gosec (via CI)
@@ -81,7 +87,7 @@ Multiple static analysis tools for comprehensive code review:
 make lint-security      # govulncheck for vulnerabilities
 
 # Code complexity
-make lint-complexity    # gocyclo for cyclomatic complexity  
+make lint-complexity    # gocyclo for cyclomatic complexity
 
 # Formatting checks
 make lint-format       # gofumpt + goimports validation
@@ -100,6 +106,7 @@ pre-commit run --all-files
 ```
 
 **Hook categories:**
+
 - Go formatting and imports
 - Security scanning with detect-secrets
 - Markdown linting
@@ -122,12 +129,13 @@ direnv allow
 
 # Environment automatically loads with:
 export CGO_ENABLED=0
-export GOOS=linux  
+export GOOS=linux
 export GOARCH=amd64
 export PROJECT_ROOT="$(pwd)"
 ```
 
 **Benefits:**
+
 - Consistent build environment
 - Automatic tool verification
 - Development shortcuts display
@@ -141,7 +149,7 @@ Comprehensive testing with multiple execution modes:
 # Full test suite with coverage
 make test                    # Runs scripts/test.sh
 
-# Quick testing modes  
+# Quick testing modes
 make test-quick             # No coverage reporting
 make test-short             # No race detection
 
@@ -150,11 +158,13 @@ make benchmark              # Benchmark tests with memory profiling
 ```
 
 **Coverage thresholds** (`.testcoverage.yml`):
+
 - Total coverage: 80%
-- File coverage: 70%  
+- File coverage: 70%
 - Package coverage: 75%
 
 **Test outputs:**
+
 - `coverage.out` - Coverage data
 - `coverage.html` - HTML coverage report
 - `benchmark-results.txt` - Performance benchmarks
@@ -164,13 +174,15 @@ make benchmark              # Benchmark tests with memory profiling
 ### GitHub Actions Workflows
 
 **Quality Assurance** (`.github/workflows/quality.yml`):
+
 - **Linting**: golangci-lint, staticcheck, gosec with SARIF output
 - **Testing**: Full test suite with OpenLDAP integration tests
-- **Building**: Multi-platform binary verification  
+- **Building**: Multi-platform binary verification
 - **Security**: Vulnerability scanning and Docker security
 - **Dependencies**: Go and Node.js dependency auditing
 
 **Docker Pipeline** (`.github/workflows/docker.yml`):
+
 - Multi-architecture builds (amd64, arm64, arm/v7)
 - Container Registry (GHCR) publishing
 - Trivy security scanning
@@ -183,10 +195,10 @@ The pipeline enforces quality standards:
 ```yaml
 # Critical checks (must pass)
 - Linting and static analysis
-- Test suite execution  
+- Test suite execution
 - Security vulnerability scans
 
-# Warning checks (logged but don't fail)  
+# Warning checks (logged but don't fail)
 - Docker security recommendations
 - Dependency audit findings
 ```
@@ -213,7 +225,7 @@ Regular security scanning:
 # Go module vulnerabilities
 govulncheck ./...
 
-# Node.js dependencies  
+# Node.js dependencies
 pnpm audit --audit-level moderate
 
 # Docker image security (CI only)
@@ -250,7 +262,7 @@ make build-release
 
 # Build flags used:
 -ldflags="-s -w"        # Strip debug info
--trimpath              # Remove build paths  
+-trimpath              # Remove build paths
 CGO_ENABLED=0          # Static linking
 ```
 
@@ -259,6 +271,7 @@ CGO_ENABLED=0          # Static linking
 ### Common Issues
 
 **golangci-lint failures:**
+
 ```bash
 # Update to latest version
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
@@ -268,6 +281,7 @@ golangci-lint cache clean
 ```
 
 **Pre-commit hook failures:**
+
 ```bash
 # Update hooks
 pre-commit autoupdate
@@ -277,6 +291,7 @@ git commit --no-verify
 ```
 
 **Docker build issues:**
+
 ```bash
 # Check Docker is running
 docker info
@@ -356,6 +371,7 @@ docker-compose logs -f
 ```
 
 This will start:
+
 - **OpenLDAP server** on port 389 (LDAP) and 636 (LDAPS)
 - **phpLDAPadmin** on port 8080 for LDAP management
 - **LDAP Manager** on port 3000
@@ -363,6 +379,7 @@ This will start:
 ## Services Overview
 
 ### OpenLDAP Server
+
 - **URL**: `ldap://localhost:389`
 - **Base DN**: `dc=netresearch,dc=local`
 - **Admin DN**: `cn=admin,dc=netresearch,dc=local`
@@ -370,10 +387,11 @@ This will start:
 - **Web Management**: http://localhost:8080 (phpLDAPadmin)
 
 ### LDAP Manager Application
+
 - **URL**: http://localhost:3000
 - **Session Storage**: BBolt database (`/data/session.bbolt`)
 - **Log Level**: Debug (for development)
-- **Health Endpoints**: 
+- **Health Endpoints**:
   - `/health` - Comprehensive cache metrics and health status
   - `/health/ready` - Readiness check with cache warming status
   - `/health/live` - Simple liveness check
@@ -434,6 +452,7 @@ pnpm dev
 ```
 
 This runs:
+
 - CSS watcher (rebuilds on Tailwind changes)
 - Template watcher (regenerates on .templ changes)
 - Go application with restart on changes
@@ -476,18 +495,18 @@ EOF
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LDAP_HOST` | `localhost` | LDAP server hostname |
-| `LDAP_PORT` | `389` | LDAP server port |
-| `LDAP_BASE_DN` | `dc=netresearch,dc=local` | LDAP base DN |
-| `LDAP_BIND_DN` | `cn=admin,dc=netresearch,dc=local` | LDAP bind DN |
-| `LDAP_BIND_PASSWORD` | `admin` | LDAP bind password |
-| `LDAP_USE_TLS` | `false` | Enable TLS/SSL |
-| `SESSION_PATH` | `./session.bbolt` | BBolt session database path |
-| `SESSION_SECRET` | `dev-secret` | Session encryption secret |
-| `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
-| `PORT` | `3000` | Application port |
+| Variable             | Default                            | Description                          |
+| -------------------- | ---------------------------------- | ------------------------------------ |
+| `LDAP_HOST`          | `localhost`                        | LDAP server hostname                 |
+| `LDAP_PORT`          | `389`                              | LDAP server port                     |
+| `LDAP_BASE_DN`       | `dc=netresearch,dc=local`          | LDAP base DN                         |
+| `LDAP_BIND_DN`       | `cn=admin,dc=netresearch,dc=local` | LDAP bind DN                         |
+| `LDAP_BIND_PASSWORD` | `admin`                            | LDAP bind password                   |
+| `LDAP_USE_TLS`       | `false`                            | Enable TLS/SSL                       |
+| `SESSION_PATH`       | `./session.bbolt`                  | BBolt session database path          |
+| `SESSION_SECRET`     | `dev-secret`                       | Session encryption secret            |
+| `LOG_LEVEL`          | `info`                             | Log level (debug, info, warn, error) |
+| `PORT`               | `3000`                             | Application port                     |
 
 ## Troubleshooting
 

@@ -75,7 +75,7 @@ linters-settings:
     excludes:
       - G107 # URL provided to HTTP request as taint input - acceptable for health checks
 
-  # Code simplification  
+  # Code simplification
   gocritic:
     enabled-tags:
       - diagnostic
@@ -98,63 +98,63 @@ linters-settings:
 linters:
   enable:
     # Enabled by default
-    - errcheck      # Check error handling
-    - gosimple      # Simplify code
-    - govet         # Go vet
-    - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Staticcheck analysis
-    - unused        # Find unused code
+    - errcheck # Check error handling
+    - gosimple # Simplify code
+    - govet # Go vet
+    - ineffassign # Detect ineffectual assignments
+    - staticcheck # Staticcheck analysis
+    - unused # Find unused code
 
     # Additional quality checks
-    - asciicheck    # Check for non-ASCII identifiers
-    - bodyclose     # Check HTTP response body closes
-    - cyclop        # Check cyclomatic complexity
-    - dupl          # Check code duplication
-    - errname       # Check error naming conventions
-    - errorlint     # Find error handling issues
-    - exhaustive    # Check switch statements
-    - copyloopvar   # Check loop variable copies (replaces exportloopref)
-    - funlen        # Check function length
+    - asciicheck # Check for non-ASCII identifiers
+    - bodyclose # Check HTTP response body closes
+    - cyclop # Check cyclomatic complexity
+    - dupl # Check code duplication
+    - errname # Check error naming conventions
+    - errorlint # Find error handling issues
+    - exhaustive # Check switch statements
+    - copyloopvar # Check loop variable copies (replaces exportloopref)
+    - funlen # Check function length
     - gochecknoinits # Check for init functions
-    - gocognit      # Check cognitive complexity
-    - goconst       # Find repeated strings that could be constants
-    - gocritic      # Comprehensive Go source code linter
-    - gofmt         # Check formatting
-    - goimports     # Check imports
-# Commented out - duplicated in disable section
+    - gocognit # Check cognitive complexity
+    - goconst # Find repeated strings that could be constants
+    - gocritic # Comprehensive Go source code linter
+    - gofmt # Check formatting
+    - goimports # Check imports
+    # Commented out - duplicated in disable section
     # - gomnd         # Check magic numbers
-    - gosec         # Security analysis
-    - lll           # Check line length
-    - makezero      # Find slice declarations with non-zero initial length
-    - misspell      # Find misspelled words
-    - nakedret      # Find naked returns
-    - nilerr        # Find incorrect nil error returns
-    - nlreturn      # Check newlines before returns
-    - noctx         # Find HTTP requests without context
-    - prealloc      # Find slice declarations that could be preallocated
-    - predeclared   # Find code that shadows predeclared identifiers
-    - revive        # Fast configurable linter
-    - rowserrcheck  # Check SQL rows.Err
+    - gosec # Security analysis
+    - lll # Check line length
+    - makezero # Find slice declarations with non-zero initial length
+    - misspell # Find misspelled words
+    - nakedret # Find naked returns
+    - nilerr # Find incorrect nil error returns
+    - nlreturn # Check newlines before returns
+    - noctx # Find HTTP requests without context
+    - prealloc # Find slice declarations that could be preallocated
+    - predeclared # Find code that shadows predeclared identifiers
+    - revive # Fast configurable linter
+    - rowserrcheck # Check SQL rows.Err
     - sqlclosecheck # Check SQL Close calls
-    - tparallel     # Detect inappropriate usage of t.Parallel
-    - unconvert     # Remove unnecessary type conversions
-    - unparam       # Find unused function parameters
-    - wastedassign  # Find wasted assignments
-    - whitespace    # Check whitespace issues
+    - tparallel # Detect inappropriate usage of t.Parallel
+    - unconvert # Remove unnecessary type conversions
+    - unparam # Find unused function parameters
+    - wastedassign # Find wasted assignments
+    - whitespace # Check whitespace issues
 
   disable:
     # Disabled linters (can be enabled as needed)
     - gochecknoglobals # Allow some globals for configuration
-    - godot           # Don't enforce comments ending with period
-    - godox           # Allow TODO/FIXME comments
-    - err113          # Don't enforce wrapped errors everywhere (renamed from goerr113)
-    - goheader        # No header requirements
-    - wrapcheck       # Don't require all errors to be wrapped
+    - godot # Don't enforce comments ending with period
+    - godox # Allow TODO/FIXME comments
+    - err113 # Don't enforce wrapped errors everywhere (renamed from goerr113)
+    - goheader # No header requirements
+    - wrapcheck # Don't require all errors to be wrapped
 
 issues:
   exclude-use-default: false
   exclude-files:
-    - ".*_templ.go$"  # Skip generated templ files
+    - ".*_templ.go$" # Skip generated templ files
   exclude-dirs:
     - bin
     - node_modules
@@ -166,17 +166,17 @@ issues:
         - gocognit
         - gosec
         - cyclop
-        
+
     # Disable for generated files
     - path: ".*_templ\\.go"
       linters:
         - all
-      
+
     # Allow long lines in generated code
     - source: "^//go:generate"
       linters:
         - lll
-        
+
     # Ignore complexity in main.go (entry point)
     - path: main\.go
       linters:

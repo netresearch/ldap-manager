@@ -10,20 +10,20 @@ repos:
       - id: go-fmt-goimports
         name: Format Go code with goimports
         files: \.go$
-      
-      # Go module maintenance  
+
+      # Go module maintenance
       - id: go-mod-tidy
         name: Tidy Go modules
-        
+
       # Go building to catch compilation errors
       - id: go-build-mod
         name: Build Go modules
-        
+
       # Go testing
       - id: go-test-mod
         name: Run Go tests
         args: [-short, -race]
-        
+
       # Go linting with golangci-lint
       - id: golangci-lint-mod
         name: Run golangci-lint
@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: detect-secrets
         name: Detect secrets
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
         exclude: (package-lock\.json|pnpm-lock\.yaml|go\.sum)$
 
   # General file checks
@@ -44,28 +44,28 @@ repos:
     hooks:
       # Prevent committing large files
       - id: check-added-large-files
-        args: ['--maxkb=1024']
-        
+        args: ["--maxkb=1024"]
+
       # Check for merge conflict markers
       - id: check-merge-conflict
-        
+
       # Check JSON syntax
       - id: check-json
-        
-      # Check YAML syntax  
+
+      # Check YAML syntax
       - id: check-yaml
-        args: ['--multi', '--allow-multiple-documents']
-        
+        args: ["--multi", "--allow-multiple-documents"]
+
       # Check TOML syntax
       - id: check-toml
-        
+
       # Check for private keys
       - id: detect-private-key
-        
+
       # Ensure files end with newline
       - id: end-of-file-fixer
         exclude: \.min\.(js|css)$
-        
+
       # Remove trailing whitespace
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
@@ -93,7 +93,7 @@ repos:
     hooks:
       - id: markdownlint
         name: Lint Markdown files
-        args: ['--fix']
+        args: ["--fix"]
         exclude: node_modules/
 
   # Frontend code formatting (if applicable)
@@ -109,11 +109,11 @@ repos:
 ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit hooks
-    
+
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
   skip: []
   submodules: false

@@ -1,11 +1,13 @@
 # LDAP Manager Development Guide
 
 ## Overview
+
 LDAP Manager uses a modern Go web stack with type-safe HTML templates, TailwindCSS for styling, and concurrent development workflows. This guide covers the development environment, architecture patterns, and contribution guidelines.
 
 ## Technology Stack
 
 ### Core Technologies
+
 - **Backend**: Go 1.23+ with Fiber v2 web framework
 - **Templates**: templ - Type-safe Go HTML templates
 - **Styling**: TailwindCSS v4 with PostCSS processing
@@ -14,6 +16,7 @@ LDAP Manager uses a modern Go web stack with type-safe HTML templates, TailwindC
 - **Logging**: Zerolog structured logging
 
 ### Development Tools
+
 - **Package Management**: PNPM with workspace configuration
 - **Build System**: Concurrent asset processing with nodemon
 - **Hot Reload**: Automatic rebuilds for Go, CSS, and templates
@@ -23,6 +26,7 @@ LDAP Manager uses a modern Go web stack with type-safe HTML templates, TailwindC
 ## Development Environment Setup
 
 ### Prerequisites
+
 Install the required development tools:
 
 ```bash
@@ -42,6 +46,7 @@ templ --version
 ```
 
 ### Project Initialization
+
 ```bash
 # Clone and setup dependencies
 git clone <repository-url>
@@ -56,6 +61,7 @@ cp .env.example .env.local
 ```
 
 ### Development Configuration
+
 Create `.env.local` with your development LDAP settings:
 
 ```bash
@@ -76,6 +82,7 @@ SESSION_DURATION=2h
 ## Development Workflow
 
 ### Available Commands
+
 The project uses PNPM scripts for development workflow:
 
 ```bash
@@ -96,10 +103,11 @@ pnpm templ:dev    # Watch template changes
 ```
 
 ### Hot Reload Development
+
 The `pnpm dev` command starts three concurrent processes:
 
 1. **CSS Watcher**: Rebuilds TailwindCSS on style changes
-2. **Template Watcher**: Regenerates Go templates on .templ changes  
+2. **Template Watcher**: Regenerates Go templates on .templ changes
 3. **Go Server**: Restarts application on Go code changes
 
 ```bash
@@ -111,6 +119,7 @@ pnpm dev
 ```
 
 ### File Watching Behavior
+
 - **CSS Changes**: `internal/web/tailwind.css` → Auto-rebuild styles
 - **Template Changes**: `**/*.templ` → Regenerate Go template files
 - **Go Changes**: `**/*.go` → Restart application server
@@ -119,6 +128,7 @@ pnpm dev
 ## Project Architecture
 
 ### Directory Structure
+
 ```
 ldap-manager/
 ├── main.go                     # Application entry point
@@ -151,22 +161,26 @@ ldap-manager/
 ### Architecture Layers
 
 #### 1. Main Application (`main.go`)
+
 - Application entry point with logging setup
 - Configuration parsing and validation
 - Web server initialization and startup
 
 #### 2. Configuration Layer (`internal/options/`)
+
 - CLI flag and environment variable parsing
 - Configuration validation and defaults
 - Support for `.env` file loading with godotenv
 
 #### 3. LDAP Caching Layer (`internal/ldap_cache/`)
+
 - **Manager**: Coordinates cache refresh and LDAP operations
 - **Cache**: Generic thread-safe storage for LDAP entities
 - **Background Refresh**: Automatic 30-second cache updates
 - **Relationship Population**: Builds full objects with dependencies
 
 #### 4. Web Layer (`internal/web/`)
+
 - **Server**: Fiber application setup with middleware
 - **Handlers**: HTTP request processing for each resource type
 - **Templates**: Type-safe HTML generation with templ
@@ -175,6 +189,7 @@ ldap-manager/
 ### Template System (templ)
 
 #### Template Architecture
+
 LDAP Manager uses [templ](https://templ.guide/) for type-safe HTML templates:
 
 ```go
@@ -200,6 +215,7 @@ templ Users(users []ldap.User) {
 ```
 
 #### Template Generation
+
 Templates are compiled to Go code during build:
 
 ```bash
@@ -213,13 +229,15 @@ templ generate
 ```
 
 #### Template Best Practices
+
 - **Type Safety**: Use strongly-typed parameters for all templates
-- **Composition**: Build complex pages with component templates  
+- **Composition**: Build complex pages with component templates
 - **CSS Classes**: Use TailwindCSS utility classes for styling
 - **Flash Messages**: Use the flash system for user feedback
 - **Conditional Rendering**: Leverage Go's template conditionals
 
 ### Flash Message System
+
 The application includes a type-safe flash message system:
 
 ```go
@@ -227,7 +245,7 @@ The application includes a type-safe flash message system:
 type FlashType string
 const (
     FlashTypeSuccess FlashType = "success"
-    FlashTypeError   FlashType = "error" 
+    FlashTypeError   FlashType = "error"
     FlashTypeInfo    FlashType = "info"
 )
 
@@ -241,12 +259,14 @@ flashes := templates.Flashes(
 ### Styling System (TailwindCSS)
 
 #### CSS Architecture
+
 - **Base Styles**: `internal/web/tailwind.css` - TailwindCSS directives
 - **Generated CSS**: `internal/web/static/styles.css` - Compiled output
 - **Dark Theme**: Default dark theme with customizable colors
 - **Responsive**: Mobile-first responsive design patterns
 
 #### TailwindCSS Configuration
+
 ```javascript
 // tailwind.config.js
 module.exports = {
@@ -258,13 +278,12 @@ module.exports = {
       }
     }
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-  ]
-}
+  plugins: [require("@tailwindcss/forms")]
+};
 ```
 
 #### CSS Development Workflow
+
 ```bash
 # Watch for changes during development
 pnpm css:dev
@@ -278,6 +297,7 @@ pnpm css:build
 ## Development Patterns
 
 ### Handler Pattern
+
 All web handlers follow a consistent pattern:
 
 ```go
@@ -287,19 +307,19 @@ func (a *App) userHandler(c *fiber.Ctx) error {
     if err != nil {
         return handle500(c, err)
     }
-    
+
     // 2. Authentication check
     if sess.Fresh() {
         return c.Redirect("/login")
     }
-    
+
     // 3. Data retrieval
     userDN := c.Params("userDN")
     user, err := a.ldapCache.FindUserByDN(userDN)
     if err != nil {
         return handle500(c, err)
     }
-    
+
     // 4. Template rendering
     c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
     return templates.User(user).Render(c.UserContext(), c.Response().BodyWriter())
@@ -307,6 +327,7 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 ```
 
 ### LDAP Cache Pattern
+
 The caching layer provides consistent data access:
 
 ```go
@@ -326,6 +347,7 @@ fullUser := manager.PopulateGroupsForUser(user)
 ```
 
 ### Error Handling Pattern
+
 Consistent error handling across the application:
 
 ```go
@@ -345,6 +367,7 @@ if err != nil {
 ## Testing Strategy
 
 ### Unit Testing
+
 ```bash
 # Run Go tests
 go test ./...
@@ -357,11 +380,13 @@ go test ./internal/ldap_cache/
 ```
 
 ### Integration Testing
+
 - Test LDAP connectivity with development directory
 - Validate session management with different storage backends
 - Verify template rendering with sample data
 
 ### Manual Testing Checklist
+
 - [ ] Login/logout functionality
 - [ ] User listing and detail views
 - [ ] Group management operations
@@ -373,6 +398,7 @@ go test ./internal/ldap_cache/
 ## Code Quality Standards
 
 ### Go Code Standards
+
 - Follow standard Go formatting with `gofmt`
 - Use meaningful variable and function names
 - Add package-level documentation for public APIs
@@ -380,19 +406,22 @@ go test ./internal/ldap_cache/
 - Use structured logging with zerolog
 
 ### Template Standards
+
 - Use semantic HTML5 elements
 - Apply TailwindCSS utility classes consistently
 - Implement proper accessibility attributes
 - Handle empty states and error conditions
 - Use templ's type safety features
 
-### CSS Standards  
+### CSS Standards
+
 - Use TailwindCSS utilities over custom CSS
 - Follow mobile-first responsive patterns
 - Maintain consistent spacing and typography
 - Use semantic color names in theme configuration
 
 ### Commit Standards
+
 The project uses [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```bash
@@ -400,7 +429,7 @@ The project uses [Conventional Commits](https://www.conventionalcommits.org/):
 feat: add user search functionality
 feat(auth): implement session timeout warnings
 
-# Bug fixes  
+# Bug fixes
 fix: resolve LDAP connection timeout issues
 fix(ui): correct mobile navigation layout
 
@@ -420,6 +449,7 @@ chore(ci): improve build performance
 ## Build and Deployment
 
 ### Local Build
+
 ```bash
 # Full production build
 pnpm build
@@ -431,17 +461,19 @@ pnpm build
 ```
 
 ### Docker Build
+
 ```bash
 # Build container image
 docker build -t ldap-manager .
 
 # Multi-stage build process:
 # 1. Node.js stage: Install dependencies and build assets
-# 2. Go stage: Build application binary  
+# 2. Go stage: Build application binary
 # 3. Runtime stage: Minimal Alpine-based final image
 ```
 
 ### Production Deployment
+
 - Use environment variables for configuration
 - Enable HTTPS with reverse proxy (nginx, Traefik)
 - Configure session persistence for high availability
@@ -451,6 +483,7 @@ docker build -t ldap-manager .
 ## Contributing Guidelines
 
 ### Development Process
+
 1. **Fork** the repository and create a feature branch
 2. **Setup** development environment with required tools
 3. **Implement** changes following code quality standards
@@ -460,6 +493,7 @@ docker build -t ldap-manager .
 7. **Submit** pull request with clear description
 
 ### Pull Request Requirements
+
 - [ ] Code follows project formatting standards
 - [ ] Templates compile without errors (`templ generate`)
 - [ ] CSS builds successfully (`pnpm css:build`)
@@ -468,6 +502,7 @@ docker build -t ldap-manager .
 - [ ] Commit messages follow conventional format
 
 ### Code Review Process
+
 - Maintainers review for code quality and security
 - Template safety and accessibility considerations
 - Performance impact on LDAP operations
@@ -478,6 +513,7 @@ docker build -t ldap-manager .
 ### Common Development Issues
 
 **Template Compilation Errors**
+
 ```bash
 # Ensure templ is installed and in PATH
 templ version
@@ -490,6 +526,7 @@ templ fmt --verify internal/web/templates/
 ```
 
 **CSS Build Failures**
+
 ```bash
 # Check TailwindCSS configuration
 pnpm css:build --verbose
@@ -503,6 +540,7 @@ pnpm css:build
 ```
 
 **Hot Reload Not Working**
+
 ```bash
 # Restart development server
 pnpm dev
@@ -514,12 +552,14 @@ sudo sysctl -p
 ```
 
 **LDAP Connection Issues**
+
 - Verify `.env.local` configuration matches your LDAP server
 - Test LDAP connectivity with command-line tools
 - Check firewall rules for LDAP ports (389/636)
 - Enable debug logging: `LOG_LEVEL=debug`
 
 For additional help, check the project issues or create a new issue with:
+
 - Go and Node.js versions (`go version`, `node --version`)
 - Operating system details
 - Complete error messages and stack traces
