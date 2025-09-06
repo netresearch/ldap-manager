@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # OpenLDAP server for local development and testing
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: ldap-server
+    hostname: ldap-server
+    ports:
+      - "389:389"
+      - "636:636"
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Netresearch"
+      LDAP_DOMAIN: "netresearch.local"
+      LDAP_BASE_DN: "dc=netresearch,dc=local"
+      LDAP_ADMIN_PASSWORD: "admin"
+      LDAP_CONFIG_PASSWORD: "config"
+      LDAP_READONLY_USER: "false"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_CRT_FILENAME: "ldap.crt"
+      LDAP_TLS_KEY_FILENAME: "ldap.key"
+      LDAP_TLS_DH_PARAM_FILENAME: "dhparam.pem"
+      LDAP_TLS_CA_CRT_FILENAME: "ca.crt"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_CIPHER_SUITE: "SECURE256:-VERS-SSL3.0"
+      LDAP_TLS_PROTOCOL_MIN: "3.1"
+      LDAP_TLS_VERIFY_CLIENT: "demand"
+      LDAP_REPLICATION: "false"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+      LDAP_SSL_HELPER_PREFIX: "ldap"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    
+  # phpLDAPadmin for LDAP management (optional)
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: phpldapadmin
+    hostname: phpldapadmin
+    ports:
+      - "8080:80"
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "ldap-server"
+      PHPLDAPADMIN_HTTPS: "false"
+    depends_on:
+      - openldap
+    networks:
+      - ldap-network
+    restart: unless-stopped
+
+  # LDAP Manager application
+  ldap-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ldap-manager
+    hostname: ldap-manager
+    ports:
+      - "3000:3000"
+    environment:
+      # LDAP connection settings
+      LDAP_HOST: "ldap-server"
+      LDAP_PORT: "389"
+      LDAP_BASE_DN: "dc=netresearch,dc=local"
+      LDAP_BIND_DN: "cn=admin,dc=netresearch,dc=local"
+      LDAP_BIND_PASSWORD: "admin"
+      LDAP_USE_TLS: "false"
+      
+      # Session settings (BBolt-based as per requirement)
+      SESSION_PATH: "/data/session.bbolt"
+      SESSION_SECRET: "dev-secret-change-in-production"
+      
+      # Application settings
+      LOG_LEVEL: "debug"
+      PORT: "3000"
+      
+      # Development settings
+      ENVIRONMENT: "development"
+    volumes:
+      # Persistent storage for BBolt session database
+      - ldap_sessions:/data
+    depends_on:
+      - openldap
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/ldap-passwd", "--health-check"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  # Persistent volumes for data storage
+  ldap_data:
+    driver: local
+  ldap_config:
+    driver: local
+  ldap_sessions:
+    driver: local
+
+networks:
+  # Dedicated network for LDAP services
+  ldap-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
