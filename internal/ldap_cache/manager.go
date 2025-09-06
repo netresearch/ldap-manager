@@ -22,14 +22,16 @@ type LDAPClient interface {
 // Manager coordinates LDAP data caching with automatic background refresh.
 // It maintains separate caches for users, groups, and computers, refreshing every 30 seconds.
 // All operations are concurrent-safe and provide immediate access to cached data.
+// Includes comprehensive metrics tracking for performance monitoring and observability.
 type Manager struct {
 	stop chan struct{} // Channel for graceful shutdown signaling
 
-	client LDAPClient // LDAP client for directory operations
+	client  LDAPClient // LDAP client for directory operations
+	metrics *Metrics   // Performance metrics and health monitoring
 
-	Users     Cache[ldap.User]     // Cached user entries
-	Groups    Cache[ldap.Group]    // Cached group entries
-	Computers Cache[ldap.Computer] // Cached computer entries
+	Users     Cache[ldap.User]     // Cached user entries with metrics
+	Groups    Cache[ldap.Group]    // Cached group entries with metrics
+	Computers Cache[ldap.Computer] // Cached computer entries with metrics
 }
 
 // FullLDAPUser represents a user with populated group memberships.
@@ -55,14 +57,18 @@ type FullLDAPComputer struct {
 
 // New creates a new LDAP cache manager with the provided LDAP client.
 // The manager is initialized with empty caches for users, groups, and computers.
+// Includes comprehensive metrics tracking for performance monitoring.
 // Call Run() to start the background refresh goroutine.
 func New(client LDAPClient) *Manager {
+	metrics := NewMetrics()
+	
 	return &Manager{
 		stop:      make(chan struct{}),
 		client:    client,
-		Users:     NewCached[ldap.User](),
-		Groups:    NewCached[ldap.Group](),
-		Computers: NewCached[ldap.Computer](),
+		metrics:   metrics,
+		Users:     NewCachedWithMetrics[ldap.User](metrics),
+		Groups:    NewCachedWithMetrics[ldap.Group](metrics),
+		Computers: NewCachedWithMetrics[ldap.Computer](metrics),
 	}
 }
 
@@ -132,17 +138,33 @@ func (m *Manager) RefreshComputers() error {
 // Refresh updates all caches (users, groups, computers) from LDAP.
 // Individual failures are logged as errors but don't stop other cache updates.
 // This method is called automatically by the background refresh loop.
+// Records comprehensive metrics for monitoring and observability.
 func (m *Manager) Refresh() {
+	startTime := m.metrics.RecordRefreshStart()
+	hasErrors := false
+	
 	if err := m.RefreshUsers(); err != nil {
 		log.Error().Err(err).Msg("Failed to refresh users cache")
+		m.metrics.RecordRefreshError()
+		hasErrors = true
 	}
 
 	if err := m.RefreshGroups(); err != nil {
 		log.Error().Err(err).Msg("Failed to refresh groups cache")
+		m.metrics.RecordRefreshError()
+		hasErrors = true
 	}
 
 	if err := m.RefreshComputers(); err != nil {
 		log.Error().Err(err).Msg("Failed to refresh computers cache")
+		m.metrics.RecordRefreshError()
+		hasErrors = true
+	}
+
+	// Record successful completion metrics
+	if !hasErrors {
+		m.metrics.RecordRefreshComplete(startTime, 
+			m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 	}
 
 	log.Debug().Msgf("Refreshed LDAP cache with %d users, %d groups and %d computers", 
@@ -306,4 +328,22 @@ func (m *Manager) OnRemoveUserFromGroup(userDN string, groupDN string) {
 			}
 		}
 	})
+}
+
+// GetMetrics returns the current cache metrics for monitoring and observability.
+// Provides comprehensive statistics about cache performance, health, and operations.
+func (m *Manager) GetMetrics() *Metrics {
+	return m.metrics
+}
+
+// GetHealthCheck returns a summary of cache health and performance metrics.
+// Useful for health check endpoints and monitoring dashboards.
+func (m *Manager) GetHealthCheck() SummaryStats {
+	return m.metrics.GetSummaryStats()
+}
+
+// IsHealthy returns true if the cache system is operating normally.
+// Checks for recent successful refreshes and low error rates.
+func (m *Manager) IsHealthy() bool {
+	return m.metrics.GetHealthStatus() == HealthHealthy
 }

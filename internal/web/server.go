@@ -71,6 +71,11 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	// Public routes (no authentication required)
 	f.All("/login", a.loginHandler)
+	
+	// Health check endpoints (no authentication required)
+	f.Get("/health", a.healthHandler)
+	f.Get("/health/ready", a.readinessHandler)
+	f.Get("/health/live", a.livenessHandler)
 
 	// Protected routes (require authentication)
 	protected := f.Group("/", a.RequireAuth())
