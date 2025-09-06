@@ -16,7 +16,7 @@ RUN apk add git
 COPY ./go.mod .
 COPY ./go.sum .
 RUN go mod download
-RUN go install github.com/a-h/templ/cmd/templ@v0.3.865
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.943
 
 COPY . .
 
@@ -29,10 +29,26 @@ RUN \
   BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S') && \
   CGO_ENABLED=0 go build -o /build/ldap-passwd -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'"
 
-FROM alpine:3 AS runner
+FROM gcr.io/distroless/static-debian12:nonroot AS runner
+
+# Security and metadata labels
+LABEL org.opencontainers.image.title="LDAP Manager"
+LABEL org.opencontainers.image.description="Web-based LDAP user and group management tool"
+LABEL org.opencontainers.image.vendor="Netresearch"
+LABEL org.opencontainers.image.source="https://github.com/netresearch/ldap-manager"
+LABEL org.opencontainers.image.licenses="MIT"
 
 EXPOSE 3000
 
-COPY --from=backend-builder /build/ldap-passwd /usr/local/bin/ldap-passwd
+# Use COPY with --chown for nonroot user (safer than root)
+COPY --from=backend-builder --chown=nonroot:nonroot /build/ldap-passwd /ldap-passwd
 
-ENTRYPOINT [ "/usr/local/bin/ldap-passwd" ]
+# Set user to nonroot for security
+USER nonroot:nonroot
+
+# Health check to ensure the application is running
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/ldap-passwd", "--health-check"] || exit 1
+
+# Use vector form for ENTRYPOINT as recommended by distroless docs
+ENTRYPOINT ["/ldap-passwd"]
