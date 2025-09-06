@@ -10,6 +10,10 @@ COPY . .
 RUN pnpm css:build
 
 FROM golang:1.25.1-alpine AS backend-builder
+
+# Set shell with pipefail for safe pipe operations in Alpine
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 WORKDIR /build
 RUN apk add --no-cache git=2.49.1-r0
 
@@ -22,9 +26,6 @@ COPY . .
 
 COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
 RUN templ generate
-
-# Set shell with pipefail for safe pipe operations
-SHELL ["/bin/sh", "-eo", "pipefail", "-c"]
 
 RUN \
   PACKAGE="github.com/netresearch/ldap-manager/internal" && \
