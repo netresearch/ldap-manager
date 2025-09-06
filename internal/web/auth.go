@@ -26,8 +26,8 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	username := c.Query("username")
-	password := c.Query("password")
+	username := c.FormValue("username")
+	password := c.FormValue("password")
 
 	if username != "" && password != "" {
 		user, err := a.ldapClient.CheckPasswordForSAMAccountName(username, password)
@@ -39,7 +39,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		}
 
 		sess.Set("dn", user.DN())
-		sess.Set("password", password)
 		if err := sess.Save(); err != nil {
 			return handle500(c, err)
 		}

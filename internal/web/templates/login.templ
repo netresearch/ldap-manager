@@ -2,7 +2,7 @@ package templates
 
 templ Login(flashes []Flash, version string) {
 	@base("Login") {
-		<form class="w-fit m-auto space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="get">
+		<form class="w-fit m-auto space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="post">
 			<img src="/static/logo.webp" class="w-full max-w-[256px]"/>
 			if len(flashes) > 0 {
 				<div class="mb-4">

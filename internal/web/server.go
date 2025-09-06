@@ -78,7 +78,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f.Post("/groups/:groupDN", a.groupModifyHandler)
 	f.Get("/computers", a.computersHandler)
 	f.Get("/computers/:computerDN", a.computerHandler)
-	f.Get("/login", a.loginHandler)
+	f.All("/login", a.loginHandler)
 	f.Get("/logout", a.logoutHandler)
 
 	f.Use(a.fourOhFourHandler)
@@ -124,11 +124,11 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-func (a *App) sessionToLDAPClient(sess *session.Session) (*ldap.LDAP, error) {
-	executor, err := a.ldapCache.FindUserByDN(sess.Get("dn").(string))
+func (a *App) authenticateLDAPClient(userDN, password string) (*ldap.LDAP, error) {
+	executor, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.ldapClient.WithCredentials(executor.DN(), sess.Get("password").(string))
+	return a.ldapClient.WithCredentials(executor.DN(), password)
 }
