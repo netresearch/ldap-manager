@@ -11,15 +11,7 @@ import (
 )
 
 func (a *App) usersHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
+	// Authentication handled by middleware, no need to check session
 	showDisabled := c.Query("show-disabled", "0") == "1"
 	users := a.ldapCache.FindUsers(showDisabled)
 	sort.SliceStable(users, func(i, j int) bool {
@@ -31,15 +23,7 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 }
 
 func (a *App) userHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
+	// Authentication handled by middleware, no need to check session
 	userDN, err := url.PathUnescape(c.Params("userDN"))
 	if err != nil {
 		return handle500(c, err)
@@ -70,15 +54,7 @@ type userModifyForm struct {
 }
 
 func (a *App) userModifyHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
+	// Authentication handled by middleware, no need to check session
 	userDN, err := url.PathUnescape(c.Params("userDN"))
 	if err != nil {
 		return handle500(c, err)
@@ -96,29 +72,28 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	// Require password confirmation for sensitive operations
 	if form.PasswordConfirm == "" {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		user, err := a.ldapCache.FindUserByDN(userDN)
+		thinUser, err := a.ldapCache.FindUserByDN(userDN)
 		if err != nil {
 			return handle500(c, err)
 		}
-		unassignedGroups, err := a.ldapCache.FindUnassignedGroupsForUser(*user)
-		if err != nil {
-			return handle500(c, err)
-		}
+		user := a.ldapCache.PopulateGroupsForUser(thinUser)
+		unassignedGroups := a.findUnassignedGroups(user)
 		return templates.User(user, unassignedGroups, templates.Flashes(templates.ErrorFlash("Password confirmation required for modifications"))).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
-	executorDN := sess.Get("dn").(string)
+	executorDN, err := RequireUserDN(c)
+	if err != nil {
+		return err
+	}
 	l, err := a.authenticateLDAPClient(executorDN, form.PasswordConfirm)
 	if err != nil {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		targetUser, err := a.ldapCache.FindUserByDN(userDN)
+		thinTargetUser, err := a.ldapCache.FindUserByDN(userDN)
 		if err != nil {
 			return handle500(c, err)
 		}
-		unassignedGroups, err := a.ldapCache.FindUnassignedGroupsForUser(*targetUser)
-		if err != nil {
-			return handle500(c, err)
-		}
+		targetUser := a.ldapCache.PopulateGroupsForUser(thinTargetUser)
+		unassignedGroups := a.findUnassignedGroups(targetUser)
 		return templates.User(targetUser, unassignedGroups, templates.Flashes(templates.ErrorFlash("Invalid password"))).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
