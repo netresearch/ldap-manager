@@ -73,16 +73,19 @@ docker run \
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
 ### For Users
+
 - **[Installation Guide](docs/user-guide/installation.md)** - Setup and deployment instructions
 - **[Configuration Reference](docs/user-guide/configuration.md)** - Complete configuration options
 - **[API Documentation](docs/user-guide/api.md)** - REST API endpoints and usage
 
 ### For Developers
+
 - **[Development Setup](docs/development/setup.md)** - Local development environment
 - **[Contributing Guidelines](docs/development/contributing.md)** - Code standards and workflow
 - **[Architecture Overview](docs/development/architecture.md)** - System design and patterns
 
 ### For Operations
+
 - **[Deployment Guide](docs/operations/deployment.md)** - Production deployment strategies
 - **[Monitoring & Troubleshooting](docs/operations/monitoring.md)** - Operational procedures
 

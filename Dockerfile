@@ -9,6 +9,47 @@ RUN pnpm i
 COPY . .
 RUN pnpm css:build
 
+# Development stage with all tools for linting, testing, and development
+FROM golang:1.25.1-alpine AS dev
+
+# Set shell with pipefail for safe pipe operations in Alpine
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+WORKDIR /app
+
+# Install system dependencies for development
+RUN apk add --no-cache \
+    git \
+    make \
+    curl
+
+# Install Node.js and PNPM for frontend development
+RUN apk add --no-cache nodejs npm && \
+    npm i -g pnpm
+
+# Install Go development tools
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.943 && \
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install golang.org/x/tools/cmd/goimports@latest && \
+    go install mvdan.cc/gofumpt@latest
+
+# Copy dependency files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Generate templates and build CSS
+RUN pnpm css:build && templ generate
+
+# Set default command for development
+CMD ["sh"]
+
+# Production builder stage
 FROM golang:1.25.1-alpine AS backend-builder
 
 # Set shell with pipefail for safe pipe operations in Alpine

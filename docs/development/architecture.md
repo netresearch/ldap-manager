@@ -41,6 +41,7 @@ LDAP Manager follows a layered architecture pattern with clear separation of con
 #### Web Layer (`internal/web/`)
 
 **Responsibilities:**
+
 - HTTP request routing and handling
 - Session-based authentication
 - HTML template rendering
@@ -48,13 +49,15 @@ LDAP Manager follows a layered architecture pattern with clear separation of con
 - Request validation and response formatting
 
 **Key Files:**
+
 - `handlers.go` - Core HTTP handlers
 - `users.go` - User management endpoints
-- `groups.go` - Group management endpoints  
+- `groups.go` - Group management endpoints
 - `computers.go` - Computer account endpoints
 - `middleware.go` - Authentication and logging middleware
 
 **Architecture Pattern:**
+
 ```go
 type Handler struct {
     cache       *ldap_cache.Manager
@@ -69,13 +72,13 @@ func (h *Handler) HandleUserList(c *fiber.Ctx) error {
     if session == nil {
         return c.Redirect("/login")
     }
-    
+
     // 2. Retrieve data through cache layer
     users, err := h.cache.GetUsers()
     if err != nil {
         return h.renderError(c, err)
     }
-    
+
     // 3. Render template with data
     return c.Render("users/list", fiber.Map{
         "users": users,
@@ -87,18 +90,21 @@ func (h *Handler) HandleUserList(c *fiber.Ctx) error {
 #### LDAP Cache Layer (`internal/ldap_cache/`)
 
 **Responsibilities:**
+
 - LDAP connection management and pooling
 - Directory data caching with automatic refresh
 - Query optimization and result transformation
 - Error handling and retry logic
 
 **Key Components:**
+
 - `Manager` - Main cache coordination
 - `Client` - LDAP connection wrapper
 - `Cache` - In-memory data storage with TTL
 - `Filters` - Data filtering and search functionality
 
 **Caching Strategy:**
+
 ```go
 type Manager struct {
     cache       *Cache
@@ -125,12 +131,14 @@ func (m *Manager) startRefreshLoop() {
 #### Configuration Management (`internal/options/`)
 
 **Responsibilities:**
+
 - Environment variable and CLI flag parsing
 - Configuration validation and defaults
 - Secure credential handling
 - Runtime configuration access
 
 **Configuration Sources (by priority):**
+
 1. Command-line flags (highest)
 2. Environment variables
 3. `.env.local` file
@@ -160,19 +168,19 @@ sequenceDiagram
     participant W as Web Layer
     participant S as Session Store
     participant L as LDAP Server
-    
+
     U->>W: GET /protected-endpoint
     W->>S: Check session cookie
     S-->>W: No valid session
     W->>U: Redirect to /login
-    
+
     U->>W: POST /login (credentials)
     W->>L: Authenticate user
     L-->>W: Authentication success
     W->>S: Create session
     S-->>W: Session ID
     W->>U: Set session cookie, redirect
-    
+
     U->>W: GET /protected-endpoint
     W->>S: Validate session
     S-->>W: Valid session + user context
@@ -188,10 +196,10 @@ sequenceDiagram
     participant M as Memory Cache
     participant L as LDAP Client
     participant D as LDAP Directory
-    
+
     W->>C: GetUsers()
     C->>M: Check cache
-    
+
     alt Cache Hit
         M-->>C: Return cached data
         C-->>W: Users list
@@ -203,7 +211,7 @@ sequenceDiagram
         C->>M: Store in cache
         C-->>W: Users list
     end
-    
+
     Note over C: Background refresh every 30s
     C->>L: Refresh query
     L->>D: Updated search
@@ -217,12 +225,14 @@ sequenceDiagram
 ### Authentication & Session Management
 
 **Session Security:**
+
 - HTTP-only cookies (XSS protection)
 - SameSite=Strict (CSRF protection)
 - Configurable expiration (default 30 minutes)
 - Secure storage options (Memory or encrypted BBolt)
 
 **LDAP Security:**
+
 - User-context operations (no privilege escalation)
 - Connection pooling with credential isolation
 - Support for LDAPS (required for Active Directory)
@@ -249,6 +259,7 @@ func (m *Manager) GetClientForUser(userDN, password string) *ldap.Client {
 ### Input Validation & Sanitization
 
 **Form Input Validation:**
+
 ```go
 func validateUserInput(form map[string]string) error {
     for field, value := range form {
@@ -256,7 +267,7 @@ func validateUserInput(form map[string]string) error {
         if containsLDAPMeta(value) {
             return fmt.Errorf("invalid characters in %s", field)
         }
-        
+
         // Validate field-specific formats
         if field == "mail" && !isValidEmail(value) {
             return fmt.Errorf("invalid email format")
@@ -267,6 +278,7 @@ func validateUserInput(form map[string]string) error {
 ```
 
 **LDAP Query Protection:**
+
 ```go
 func escapeLDAPFilter(input string) string {
     // Escape LDAP special characters
@@ -286,12 +298,14 @@ func escapeLDAPFilter(input string) string {
 ### Caching Strategy
 
 **Multi-Level Caching:**
+
 1. **Application Cache**: In-memory with 30-second TTL
 2. **Connection Pool**: Reuse LDAP connections
 3. **Template Cache**: Compiled templates cached in memory
 4. **Static Assets**: Browser caching with max-age headers
 
 **Cache Invalidation:**
+
 ```go
 type Cache struct {
     users     []User
@@ -308,7 +322,7 @@ func (c *Cache) IsExpired() bool {
 func (c *Cache) Refresh(newData CacheData) {
     c.mu.Lock()
     defer c.mu.Unlock()
-    
+
     c.users = newData.Users
     c.groups = newData.Groups
     c.computers = newData.Computers
@@ -319,6 +333,7 @@ func (c *Cache) Refresh(newData CacheData) {
 ### Connection Management
 
 **LDAP Connection Pooling:**
+
 ```go
 type ConnectionPool struct {
     connections chan *ldap.Conn
@@ -340,17 +355,18 @@ func (p *ConnectionPool) Get() (*ldap.Conn, error) {
 ```
 
 **Resource Management:**
+
 ```go
 // Automatic cleanup with context cancellation
 func (m *Manager) processWithTimeout(fn func() error) error {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
-    
+
     done := make(chan error, 1)
     go func() {
         done <- fn()
     }()
-    
+
     select {
     case err := <-done:
         return err
@@ -365,6 +381,7 @@ func (m *Manager) processWithTimeout(fn func() error) error {
 ### Thread Safety
 
 **Cache Concurrent Access:**
+
 ```go
 type SafeCache struct {
     data map[string]interface{}
@@ -386,13 +403,14 @@ func (c *SafeCache) Set(key string, value interface{}) {
 ```
 
 **Background Processing:**
+
 ```go
 // Goroutine-safe cache refresh
 func (m *Manager) startBackgroundRefresh() {
     go func() {
         ticker := time.NewTicker(30 * time.Second)
         defer ticker.Stop()
-        
+
         for {
             select {
             case <-ticker.C:
@@ -412,46 +430,44 @@ func (m *Manager) startBackgroundRefresh() {
 ### Type-Safe Templates (templ)
 
 **Template Component System:**
+
 ```html
 <!-- Base layout -->
 templ Layout(title string, content templ.Component) {
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <title>{ title } - LDAP Manager</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body class="bg-gray-100">
-    <nav class="bg-blue-600 text-white p-4">
-        <!-- Navigation content -->
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="bg-gray-100">
+    <nav class="bg-blue-600 p-4 text-white">
+      <!-- Navigation content -->
     </nav>
-    
-    <main class="container mx-auto p-6">
-        @content
-    </main>
-</body>
+
+    <main class="container mx-auto p-6">@content</main>
+  </body>
 </html>
 }
 
 <!-- User list component -->
 templ UserList(users []User) {
-    <div class="grid gap-4">
-        for _, user := range users {
-            <div class="bg-white p-4 rounded shadow">
-                <h3>{ user.DisplayName }</h3>
-                <p>{ user.Email }</p>
-            </div>
-        }
-    </div>
+<div class="grid gap-4">
+  for _, user := range users {
+  <div class="rounded bg-white p-4 shadow">
+    <h3>{ user.DisplayName }</h3>
+    <p>{ user.Email }</p>
+  </div>
+  }
+</div>
 }
 
 <!-- Composed page -->
-templ UsersPage(users []User) {
-    @Layout("Users", UserList(users))
-}
+templ UsersPage(users []User) { @Layout("Users", UserList(users)) }
 ```
 
 **Template Safety Features:**
+
 - Compile-time type checking
 - Automatic HTML escaping
 - XSS protection
@@ -462,6 +478,7 @@ templ UsersPage(users []User) {
 ### Asset Pipeline
 
 **Multi-Stage Build Process:**
+
 ```makefile
 # Stage 1: Frontend assets
 css-build:
@@ -481,19 +498,20 @@ docker-build:
 
 **Development vs Production:**
 
-| Aspect | Development | Production |
-|--------|-------------|------------|
-| CSS | Unminified, source maps | Minified, purged |
-| Templates | Hot reload | Pre-compiled |
-| Go binary | Debug symbols | Optimized, stripped |
-| Logging | Debug level | Info/warn level |
-| Assets | Live compilation | Embedded in binary |
+| Aspect    | Development             | Production          |
+| --------- | ----------------------- | ------------------- |
+| CSS       | Unminified, source maps | Minified, purged    |
+| Templates | Hot reload              | Pre-compiled        |
+| Go binary | Debug symbols           | Optimized, stripped |
+| Logging   | Debug level             | Info/warn level     |
+| Assets    | Live compilation        | Embedded in binary  |
 
 ## Error Handling Architecture
 
 ### Error Types & Handling
 
 **Structured Error Types:**
+
 ```go
 type LDAPError struct {
     Operation string
@@ -517,6 +535,7 @@ func (e *ValidationError) Error() string {
 ```
 
 **Error Recovery Patterns:**
+
 ```go
 func (h *Handler) HandleWithRecovery(c *fiber.Ctx) error {
     defer func() {
@@ -525,13 +544,13 @@ func (h *Handler) HandleWithRecovery(c *fiber.Ctx) error {
                 Interface("panic", r).
                 Str("path", c.Path()).
                 Msg("handler panic recovered")
-            
+
             c.Status(500).Render("error", fiber.Map{
                 "error": "Internal server error",
             })
         }
     }()
-    
+
     return h.actualHandler(c)
 }
 ```
@@ -541,6 +560,7 @@ func (h *Handler) HandleWithRecovery(c *fiber.Ctx) error {
 ### Logging Architecture
 
 **Structured Logging with Zerolog:**
+
 ```go
 type LogContext struct {
     RequestID string
@@ -554,7 +574,7 @@ func (h *Handler) logRequest(ctx LogContext, err error) {
     if err != nil {
         event = h.logger.Error().Err(err)
     }
-    
+
     event.
         Str("request_id", ctx.RequestID).
         Str("user_dn", ctx.UserDN).
@@ -565,18 +585,19 @@ func (h *Handler) logRequest(ctx LogContext, err error) {
 ```
 
 **Performance Metrics:**
+
 ```go
 func (m *Manager) trackOperation(name string, fn func() error) error {
     start := time.Now()
     err := fn()
     duration := time.Since(start)
-    
+
     m.logger.Debug().
         Str("operation", name).
         Dur("duration", duration).
         Bool("success", err == nil).
         Msg("operation completed")
-    
+
     return err
 }
 ```
@@ -586,6 +607,7 @@ func (m *Manager) trackOperation(name string, fn func() error) error {
 ### Container Strategy
 
 **Multi-Stage Dockerfile:**
+
 ```dockerfile
 # Build stage
 FROM golang:1.23-alpine AS builder
@@ -593,7 +615,7 @@ WORKDIR /build
 COPY . .
 RUN make build-release
 
-# Runtime stage  
+# Runtime stage
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
@@ -603,6 +625,7 @@ CMD ["./ldap-manager"]
 ```
 
 **Configuration Management:**
+
 - Environment variables for runtime config
 - Volume mounts for persistent session data
 - ConfigMaps/Secrets for Kubernetes deployments
@@ -610,11 +633,13 @@ CMD ["./ldap-manager"]
 ### Scalability Considerations
 
 **Horizontal Scaling:**
+
 - Stateless application design
 - External session storage (BBolt database)
 - Load balancer session affinity (if using memory sessions)
 
 **Vertical Scaling:**
+
 - Configurable connection pool sizes
 - Memory cache size optimization
 - Resource limits and requests

@@ -53,11 +53,12 @@ services:
       - ldap-network
     restart: unless-stopped
 
-  # LDAP Manager application
+  # LDAP Manager application (production build)
   ldap-manager:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     container_name: ldap-manager
     hostname: ldap-manager
     ports:
@@ -95,6 +96,91 @@ services:
       timeout: 3s
       start_period: 5s
       retries: 3
+    profiles:
+      - prod
+
+  # LDAP Manager development container
+  ldap-manager-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: ldap-manager-dev
+    hostname: ldap-manager-dev
+    ports:
+      - "3000:3000"
+    environment:
+      # LDAP connection settings
+      LDAP_HOST: "ldap-server"
+      LDAP_PORT: "389"
+      LDAP_BASE_DN: "dc=netresearch,dc=local"
+      LDAP_BIND_DN: "cn=admin,dc=netresearch,dc=local"
+      LDAP_BIND_PASSWORD: "admin"
+      LDAP_USE_TLS: "false"
+
+      # Session settings (BBolt-based as per requirement)
+      SESSION_PATH: "/data/session.bbolt"
+      SESSION_SECRET: "dev-secret-change-in-production"
+
+      # Application settings
+      LOG_LEVEL: "debug"
+      PORT: "3000"
+
+      # Development settings
+      ENVIRONMENT: "development"
+    volumes:
+      # Mount source code for live development
+      - .:/app
+      - /app/node_modules
+      # Persistent storage for BBolt session database
+      - ldap_sessions:/data
+      # Cache Go modules and build cache
+      - go_modules:/go/pkg/mod
+      - go_cache:/root/.cache/go-build
+    depends_on:
+      - openldap
+    networks:
+      - ldap-network
+    working_dir: /app
+    command: ["sh", "-c", "go run ./cmd/ldap-manager"]
+    profiles:
+      - dev
+
+  # Test runner container
+  ldap-manager-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: ldap-manager-test
+    hostname: ldap-manager-test
+    environment:
+      # LDAP connection settings for testing
+      LDAP_HOST: "ldap-server"
+      LDAP_PORT: "389"
+      LDAP_BASE_DN: "dc=netresearch,dc=local"
+      LDAP_BIND_DN: "cn=admin,dc=netresearch,dc=local"
+      LDAP_BIND_PASSWORD: "admin"
+      LDAP_USE_TLS: "false"
+
+      # Test environment settings
+      ENVIRONMENT: "test"
+      LOG_LEVEL: "warn"
+    volumes:
+      # Mount source code for testing
+      - .:/app
+      - /app/node_modules
+      # Cache Go modules and build cache
+      - go_modules:/go/pkg/mod
+      - go_cache:/root/.cache/go-build
+    depends_on:
+      - openldap
+    networks:
+      - ldap-network
+    working_dir: /app
+    command: ["sh", "-c", "make check"]
+    profiles:
+      - test
 
 volumes:
   # Persistent volumes for data storage
@@ -104,6 +190,11 @@ volumes:
     driver: local
   ldap_sessions:
     driver: local
+  # Development volumes for caching
+  go_modules:
+    driver: local
+  go_cache:
+    driver: local
 
 networks:
   # Dedicated network for LDAP services
@@ -112,4 +203,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.25.0.0/16

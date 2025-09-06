@@ -58,33 +58,33 @@ services:
     image: ghcr.io/netresearch/ldap-manager:latest
     container_name: ldap-manager
     restart: unless-stopped
-    
+
     environment:
       LDAP_SERVER: ldaps://dc1.company.com:636
       LDAP_BASE_DN: DC=company,DC=com
       LDAP_READONLY_USER: svc_ldap_readonly@company.com
-      LDAP_READONLY_PASSWORD: ${LDAP_PASSWORD}  # From environment
+      LDAP_READONLY_PASSWORD: ${LDAP_PASSWORD} # From environment
       LDAP_IS_AD: "true"
       LOG_LEVEL: warn
       PERSIST_SESSIONS: "true"
       SESSION_PATH: /data/sessions.bbolt
       SESSION_DURATION: 30m
-    
+
     ports:
-      - "127.0.0.1:3000:3000"  # Bind to localhost only
-    
+      - "127.0.0.1:3000:3000" # Bind to localhost only
+
     volumes:
       - ./data:/data:rw
       - /etc/ssl/certs:/etc/ssl/certs:ro
       - ./logs:/app/logs:rw
-    
+
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     # Security constraints
     read_only: true
     tmpfs:
@@ -94,7 +94,7 @@ services:
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
-    user: "1000:1000"  # Run as non-root user
+    user: "1000:1000" # Run as non-root user
 
   # Optional: Reverse proxy with SSL termination
   nginx:
@@ -112,6 +112,7 @@ services:
 ```
 
 **Start deployment:**
+
 ```bash
 # Set password via environment
 export LDAP_PASSWORD="your_secure_password"
@@ -131,6 +132,7 @@ For container orchestration environments.
 #### Kubernetes Manifests
 
 **Namespace and ConfigMap:**
+
 ```yaml
 # namespace.yaml
 apiVersion: v1
@@ -158,6 +160,7 @@ data:
 ```
 
 **Secret for Credentials:**
+
 ```yaml
 # secret.yaml
 apiVersion: v1
@@ -167,11 +170,12 @@ metadata:
   namespace: ldap-manager
 type: Opaque
 data:
-  LDAP_READONLY_USER: c3ZjX2xkYXBfcmVhZG9ubHlAY29tcGFueS5jb20=  # base64 encoded
-  LDAP_READONLY_PASSWORD: eW91cl9zZWN1cmVfcGFzc3dvcmQ=  # base64 encoded
+  LDAP_READONLY_USER: c3ZjX2xkYXBfcmVhZG9ubHlAY29tcGFueS5jb20= # base64 encoded
+  LDAP_READONLY_PASSWORD: eW91cl9zZWN1cmVfcGFzc3dvcmQ= # base64 encoded
 ```
 
 **Deployment:**
+
 ```yaml
 # deployment.yaml
 apiVersion: apps/v1
@@ -192,71 +196,72 @@ spec:
         app: ldap-manager
     spec:
       containers:
-      - name: ldap-manager
-        image: ghcr.io/netresearch/ldap-manager:latest
-        imagePullPolicy: Always
-        
-        ports:
-        - containerPort: 3000
-          name: http
-        
-        envFrom:
-        - configMapRef:
-            name: ldap-manager-config
-        - secretRef:
-            name: ldap-manager-secrets
-        
-        volumeMounts:
-        - name: session-storage
-          mountPath: /data
-        - name: ca-certs
-          mountPath: /etc/ssl/certs
-          readOnly: true
-        
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1000
-          capabilities:
-            drop:
-            - ALL
-      
+        - name: ldap-manager
+          image: ghcr.io/netresearch/ldap-manager:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000
+              name: http
+
+          envFrom:
+            - configMapRef:
+                name: ldap-manager-config
+            - secretRef:
+                name: ldap-manager-secrets
+
+          volumeMounts:
+            - name: session-storage
+              mountPath: /data
+            - name: ca-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
       volumes:
-      - name: session-storage
-        persistentVolumeClaim:
-          claimName: ldap-manager-sessions
-      - name: ca-certs
-        configMap:
-          name: ca-certificates  # Your CA certificates ConfigMap
-      
+        - name: session-storage
+          persistentVolumeClaim:
+            claimName: ldap-manager-sessions
+        - name: ca-certs
+          configMap:
+            name: ca-certificates # Your CA certificates ConfigMap
+
       securityContext:
         fsGroup: 1000
 ```
 
 **Service and Ingress:**
+
 ```yaml
 # service.yaml
 apiVersion: v1
@@ -268,9 +273,9 @@ spec:
   selector:
     app: ldap-manager
   ports:
-  - port: 80
-    targetPort: 3000
-    protocol: TCP
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
   type: ClusterIP
 
 ---
@@ -286,23 +291,24 @@ metadata:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   tls:
-  - hosts:
-    - ldap.company.com
-    secretName: ldap-manager-tls
+    - hosts:
+        - ldap.company.com
+      secretName: ldap-manager-tls
   rules:
-  - host: ldap.company.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ldap-manager-service
-            port:
-              number: 80
+    - host: ldap.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ldap-manager-service
+                port:
+                  number: 80
 ```
 
 **Persistent Volume:**
+
 ```yaml
 # pvc.yaml
 apiVersion: v1
@@ -316,10 +322,11 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: ssd  # Use appropriate storage class
+  storageClassName: ssd # Use appropriate storage class
 ```
 
 **Deploy to Kubernetes:**
+
 ```bash
 # Apply manifests
 kubectl apply -f namespace.yaml
@@ -448,46 +455,46 @@ server {
 server {
     listen 443 ssl http2;
     server_name ldap.company.com;
-    
+
     # SSL configuration
     ssl_certificate /etc/ssl/certs/ldap.company.com.crt;
     ssl_certificate_key /etc/ssl/private/ldap.company.com.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
-    
+
     # Security headers
     add_header Strict-Transport-Security "max-age=63072000" always;
     add_header X-Frame-Options DENY;
     add_header X-Content-Type-Options nosniff;
     add_header Referrer-Policy "strict-origin-when-cross-origin";
-    
+
     # Logging
     access_log /var/log/nginx/ldap-manager_access.log;
     error_log /var/log/nginx/ldap-manager_error.log;
-    
+
     location / {
         proxy_pass http://ldap_manager;
         proxy_http_version 1.1;
-        
+
         # Headers
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Connection "";
-        
+
         # Timeouts
         proxy_connect_timeout 30s;
         proxy_send_timeout 30s;
         proxy_read_timeout 30s;
-        
+
         # Buffering
         proxy_buffering on;
         proxy_buffer_size 4k;
         proxy_buffers 8 4k;
     }
-    
+
     # Static assets with long caching
     location /static/ {
         proxy_pass http://ldap_manager;
@@ -509,32 +516,32 @@ server {
 
 <VirtualHost *:443>
     ServerName ldap.company.com
-    
+
     # SSL configuration
     SSLEngine on
     SSLCertificateFile /etc/ssl/certs/ldap.company.com.crt
     SSLCertificateKeyFile /etc/ssl/private/ldap.company.com.key
     SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
-    
+
     # Security headers
     Header always set Strict-Transport-Security "max-age=63072000"
     Header always set X-Frame-Options DENY
     Header always set X-Content-Type-Options nosniff
-    
+
     # Proxy configuration
     ProxyPreserveHost On
     ProxyRequests Off
-    
+
     ProxyPass / http://127.0.0.1:3000/
     ProxyPassReverse / http://127.0.0.1:3000/
-    
+
     # Static asset caching
     <LocationMatch "/static/">
         ExpiresActive On
         ExpiresDefault "access plus 1 day"
         Header append Cache-Control "public, immutable"
     </LocationMatch>
-    
+
     # Logging
     CustomLog /var/log/apache2/ldap-manager_access.log combined
     ErrorLog /var/log/apache2/ldap-manager_error.log
@@ -545,7 +552,7 @@ server {
 
 ```yaml
 # traefik/compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   ldap-manager:
@@ -560,7 +567,7 @@ services:
       - "traefik.http.routers.ldap-manager.tls=true"
       - "traefik.http.routers.ldap-manager.tls.certresolver=letsencrypt"
       - "traefik.http.services.ldap-manager.loadbalancer.server.port=3000"
-      
+
       # Security headers
       - "traefik.http.middlewares.ldap-security.headers.stsSeconds=63072000"
       - "traefik.http.middlewares.ldap-security.headers.frameDeny=true"
@@ -580,7 +587,7 @@ For high availability, deploy multiple instances behind a load balancer:
 
 ```yaml
 # compose-ha.yml
-version: '3.8'
+version: "3.8"
 
 services:
   ldap-manager-1:
@@ -597,12 +604,12 @@ services:
       - sessions:/data
     networks:
       - ldap-net
-    
+
   ldap-manager-2:
     image: ghcr.io/netresearch/ldap-manager:latest
     environment: *ldap-env
     volumes:
-      - sessions:/data  # Shared session storage
+      - sessions:/data # Shared session storage
     networks:
       - ldap-net
 
@@ -629,6 +636,7 @@ networks:
 ```
 
 **Nginx Load Balancer Config:**
+
 ```nginx
 # nginx-lb.conf
 upstream ldap_cluster {
@@ -639,12 +647,12 @@ upstream ldap_cluster {
 
 server {
     listen 443 ssl http2;
-    
+
     location / {
         proxy_pass http://ldap_cluster;
         # Sticky sessions for memory-based sessions
         ip_hash;  # Remove if using persistent sessions
-        
+
         # Health checks
         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
     }
@@ -711,6 +719,7 @@ ufw --force enable
 ### SSL/TLS Configuration
 
 **Generate Strong SSL Configuration:**
+
 ```bash
 # Generate strong DH parameters
 openssl dhparam -out /etc/ssl/dhparam.pem 4096
@@ -753,6 +762,7 @@ fi
 ### Log Management
 
 **Centralized Logging with Docker:**
+
 ```yaml
 services:
   ldap-manager:
@@ -766,6 +776,7 @@ services:
 ```
 
 **Logrotate Configuration:**
+
 ```bash
 # /etc/logrotate.d/ldap-manager
 /var/log/ldap-manager/*.log {
@@ -782,12 +793,13 @@ services:
 ### Metrics Collection
 
 **Prometheus Metrics (requires custom implementation):**
+
 ```yaml
 # prometheus.yml
 scrape_configs:
-  - job_name: 'ldap-manager'
+  - job_name: "ldap-manager"
     static_configs:
-      - targets: ['ldap.company.com:9090']  # Metrics endpoint
+      - targets: ["ldap.company.com:9090"] # Metrics endpoint
     scrape_interval: 30s
     metrics_path: /metrics
 ```
@@ -826,6 +838,7 @@ tar -czf "/backup/ldap-manager-config-$(date +%Y%m%d).tar.gz" \
 ### Common Deployment Issues
 
 **Container Won't Start:**
+
 ```bash
 # Check logs
 docker logs ldap-manager
@@ -838,6 +851,7 @@ docker logs ldap-manager
 ```
 
 **LDAP Connection Issues:**
+
 ```bash
 # Test LDAP connectivity from container
 docker exec ldap-manager sh -c "echo | openssl s_client -connect dc1.company.com:636"
@@ -848,6 +862,7 @@ docker exec ldap-manager ldapsearch -H ldaps://dc1.company.com:636 \
 ```
 
 **Performance Issues:**
+
 ```bash
 # Check resource usage
 docker stats ldap-manager
@@ -861,6 +876,7 @@ docker logs ldap-manager 2>&1 | grep -E "(slow|timeout|error)"
 ### Disaster Recovery
 
 **Complete System Recovery:**
+
 1. Restore configuration from backup
 2. Restore session database
 3. Recreate containers/services
@@ -868,6 +884,7 @@ docker logs ldap-manager 2>&1 | grep -E "(slow|timeout|error)"
 5. Test authentication flow
 
 **Rollback Procedure:**
+
 ```bash
 # Docker rollback
 docker compose down

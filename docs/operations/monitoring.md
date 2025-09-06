@@ -19,6 +19,7 @@ LDAP Manager provides multiple monitoring points for ensuring healthy operations
 LDAP Manager responds to HTTP requests on its main endpoints, making it suitable for load balancer health checks.
 
 **Basic Health Check:**
+
 ```bash
 # Simple availability check
 curl -f http://localhost:3000/
@@ -31,6 +32,7 @@ curl -f http://localhost:3000/
 ```
 
 **Comprehensive Health Check Script:**
+
 ```bash
 #!/bin/bash
 # health-check.sh
@@ -44,11 +46,11 @@ check_health() {
     while [ $attempt -le $RETRIES ]; do
         response=$(curl -s -o /dev/null -w "%{http_code}:%{time_total}" \
                    --max-time $TIMEOUT "$LDAP_MANAGER_URL" 2>/dev/null)
-        
+
         if [ $? -eq 0 ]; then
             status_code=$(echo $response | cut -d: -f1)
             response_time=$(echo $response | cut -d: -f2)
-            
+
             if [[ "$status_code" =~ ^(200|302)$ ]]; then
                 echo "OK - LDAP Manager healthy (HTTP $status_code, ${response_time}s)"
                 return 0
@@ -58,11 +60,11 @@ check_health() {
         else
             echo "CRITICAL - Connection failed (attempt $attempt/$RETRIES)"
         fi
-        
+
         attempt=$((attempt + 1))
         sleep 2
     done
-    
+
     echo "CRITICAL - LDAP Manager health check failed after $RETRIES attempts"
     return 2
 }
@@ -73,12 +75,14 @@ check_health
 ### Docker Health Checks
 
 **Dockerfile Health Check:**
+
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 ```
 
 **Docker Compose Health Check:**
+
 ```yaml
 services:
   ldap-manager:
@@ -103,26 +107,26 @@ spec:
   template:
     spec:
       containers:
-      - name: ldap-manager
-        image: ghcr.io/netresearch/ldap-manager:latest
-        
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
-        
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 2
+        - name: ldap-manager
+          image: ghcr.io/netresearch/ldap-manager:latest
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 2
 ```
 
 ## Log Monitoring
@@ -132,6 +136,7 @@ spec:
 LDAP Manager uses structured logging with configurable levels:
 
 **Log Levels:**
+
 - `trace`: Extremely detailed debugging (development only)
 - `debug`: Detailed operational information
 - `info`: General operational events
@@ -140,6 +145,7 @@ LDAP Manager uses structured logging with configurable levels:
 - `fatal`: Fatal errors causing shutdown
 
 **Log Format Example:**
+
 ```json
 {
   "level": "info",
@@ -156,6 +162,7 @@ LDAP Manager uses structured logging with configurable levels:
 **Key Log Patterns to Monitor:**
 
 **Authentication Events:**
+
 ```bash
 # Successful authentications
 grep '"level":"info"' /var/log/ldap-manager.log | grep "authentication successful"
@@ -168,6 +175,7 @@ grep '"level":"info"' /var/log/ldap-manager.log | grep "session expired"
 ```
 
 **LDAP Operations:**
+
 ```bash
 # LDAP connection issues
 grep '"level":"error"' /var/log/ldap-manager.log | grep "ldap"
@@ -180,6 +188,7 @@ grep '"duration":[0-9]\{4,\}' /var/log/ldap-manager.log
 ```
 
 **Application Errors:**
+
 ```bash
 # Critical errors
 grep '"level":"error"' /var/log/ldap-manager.log
@@ -194,6 +203,7 @@ grep "panic" /var/log/ldap-manager.log
 ### Centralized Logging
 
 **Docker Logging Driver:**
+
 ```yaml
 services:
   ldap-manager:
@@ -207,6 +217,7 @@ services:
 ```
 
 **Logrotate Configuration:**
+
 ```bash
 # /etc/logrotate.d/ldap-manager
 /var/log/ldap-manager/*.log {
@@ -224,6 +235,7 @@ services:
 ```
 
 **ELK Stack Integration:**
+
 ```bash
 # Filebeat configuration for LDAP Manager
 # filebeat.yml
@@ -248,6 +260,7 @@ output.elasticsearch:
 ### Application Metrics
 
 **Response Time Monitoring:**
+
 ```bash
 #!/bin/bash
 # response-time-check.sh
@@ -268,6 +281,7 @@ fi
 ```
 
 **LDAP Cache Performance:**
+
 ```bash
 # Monitor cache hit rates in debug logs
 tail -f /var/log/ldap-manager.log | grep -E "(cache hit|cache miss)" | \
@@ -279,6 +293,7 @@ done
 ### Resource Monitoring
 
 **System Resource Usage:**
+
 ```bash
 #!/bin/bash
 # resource-check.sh
@@ -302,6 +317,7 @@ echo "Network Connections: $conn_count"
 ```
 
 **Docker Resource Monitoring:**
+
 ```bash
 # Container resource usage
 docker stats ldap-manager --no-stream --format \
@@ -314,6 +330,7 @@ docker exec ldap-manager ps aux
 ### Database Monitoring
 
 **BBolt Session Storage:**
+
 ```bash
 #!/bin/bash
 # session-db-check.sh
@@ -323,11 +340,11 @@ SESSION_DB="/opt/ldap-manager/sessions.bbolt"
 if [ -f "$SESSION_DB" ]; then
     size=$(du -h "$SESSION_DB" | cut -f1)
     echo "Session database size: $size"
-    
+
     # Check file permissions
     permissions=$(ls -la "$SESSION_DB" | awk '{print $1,$3,$4}')
     echo "Permissions: $permissions"
-    
+
     # Check last modification time
     mtime=$(stat -c %y "$SESSION_DB")
     echo "Last modified: $mtime"
@@ -362,20 +379,22 @@ define service {
 ### Prometheus Monitoring
 
 **Prometheus Configuration:**
+
 ```yaml
 # prometheus.yml
 global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'ldap-manager'
+  - job_name: "ldap-manager"
     static_configs:
-      - targets: ['ldap.company.com:3000']
-    metrics_path: /metrics  # If custom metrics endpoint implemented
+      - targets: ["ldap.company.com:3000"]
+    metrics_path: /metrics # If custom metrics endpoint implemented
     scrape_interval: 30s
 ```
 
 **Custom Metrics Collection Script:**
+
 ```bash
 #!/bin/bash
 # metrics-collector.sh
@@ -405,7 +424,7 @@ ldap_manager_response_time_seconds $RESPONSE_TIME
 # TYPE ldap_manager_cpu_percent gauge
 ldap_manager_cpu_percent $CPU_PERCENT
 
-# HELP ldap_manager_memory_percent Memory usage percentage  
+# HELP ldap_manager_memory_percent Memory usage percentage
 # TYPE ldap_manager_memory_percent gauge
 ldap_manager_memory_percent $MEM_PERCENT
 EOF
@@ -414,37 +433,38 @@ EOF
 ### Alert Rules
 
 **Example Alert Conditions:**
+
 ```yaml
 # alertmanager.yml
 groups:
-- name: ldap-manager
-  rules:
-  - alert: LDAPManagerDown
-    expr: up{job="ldap-manager"} == 0
-    for: 2m
-    labels:
-      severity: critical
-    annotations:
-      summary: "LDAP Manager is down"
-      description: "LDAP Manager has been down for more than 2 minutes."
+  - name: ldap-manager
+    rules:
+      - alert: LDAPManagerDown
+        expr: up{job="ldap-manager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LDAP Manager is down"
+          description: "LDAP Manager has been down for more than 2 minutes."
 
-  - alert: LDAPManagerHighResponseTime
-    expr: ldap_manager_response_time_seconds > 5
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "LDAP Manager response time is high"
-      description: "Response time is {{ $value }}s for 5 minutes."
+      - alert: LDAPManagerHighResponseTime
+        expr: ldap_manager_response_time_seconds > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LDAP Manager response time is high"
+          description: "Response time is {{ $value }}s for 5 minutes."
 
-  - alert: LDAPManagerHighMemoryUsage
-    expr: ldap_manager_memory_percent > 80
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "LDAP Manager memory usage is high"
-      description: "Memory usage is {{ $value }}% for 5 minutes."
+      - alert: LDAPManagerHighMemoryUsage
+        expr: ldap_manager_memory_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LDAP Manager memory usage is high"
+          description: "Memory usage is {{ $value }}% for 5 minutes."
 ```
 
 ## Troubleshooting Guide
@@ -454,11 +474,13 @@ groups:
 #### Application Won't Start
 
 **Symptoms:**
+
 - Container exits immediately
 - Process crashes on startup
 - No response on port 3000
 
 **Diagnostic Steps:**
+
 ```bash
 # Check application logs
 docker logs ldap-manager --tail 50
@@ -472,13 +494,16 @@ docker exec ldap-manager telnet dc1.company.com 636
 ```
 
 **Common Causes:**
+
 1. **Missing required environment variables**
+
    ```bash
    # Solution: Verify all required variables are set
    echo $LDAP_SERVER $LDAP_BASE_DN $LDAP_READONLY_USER
    ```
 
 2. **LDAP server unreachable**
+
    ```bash
    # Solution: Test network connectivity
    ping dc1.company.com
@@ -496,11 +521,13 @@ docker exec ldap-manager telnet dc1.company.com 636
 #### Authentication Failures
 
 **Symptoms:**
+
 - Users cannot log in with correct credentials
 - "Invalid credentials" error messages
 - Authentication timeouts
 
 **Diagnostic Commands:**
+
 ```bash
 # Check LDAP connectivity
 ldapsearch -H $LDAP_SERVER -D $LDAP_READONLY_USER -w $LDAP_READONLY_PASSWORD \
@@ -512,13 +539,16 @@ ldapsearch -H $LDAP_SERVER -D "CN=testuser,OU=Users,DC=company,DC=com" \
 ```
 
 **Common Solutions:**
+
 1. **Base DN scope too narrow**
+
    ```bash
    # Expand Base DN to cover user locations
    LDAP_BASE_DN=DC=company,DC=com  # Instead of OU=Users,DC=company,DC=com
    ```
 
 2. **Active Directory format issues**
+
    ```bash
    # Use UPN format for AD
    username: user@company.com  # Instead of CN=user,OU=Users,DC=company,DC=com
@@ -534,11 +564,13 @@ ldapsearch -H $LDAP_SERVER -D "CN=testuser,OU=Users,DC=company,DC=com" \
 #### Performance Issues
 
 **Symptoms:**
+
 - Slow page loads
 - High CPU/memory usage
 - LDAP query timeouts
 
 **Performance Analysis:**
+
 ```bash
 # Enable debug logging
 LOG_LEVEL=debug docker restart ldap-manager
@@ -552,6 +584,7 @@ time ldapsearch -H $LDAP_SERVER -b $LDAP_BASE_DN "(objectClass=user)" dn | wc -l
 ```
 
 **Optimization Steps:**
+
 1. **Increase cache refresh interval** (requires code modification)
 2. **Use LDAP replica** for read operations
 3. **Optimize LDAP queries** with proper indexing
@@ -560,11 +593,13 @@ time ldapsearch -H $LDAP_SERVER -b $LDAP_BASE_DN "(objectClass=user)" dn | wc -l
 #### Session Issues
 
 **Symptoms:**
+
 - Users logged out unexpectedly
 - "Session expired" errors
 - Cannot maintain login state
 
 **Session Diagnostics:**
+
 ```bash
 # Check session storage
 ls -la /opt/ldap-manager/sessions.bbolt
@@ -578,12 +613,15 @@ echo $SESSION_DURATION $PERSIST_SESSIONS $SESSION_PATH
 ```
 
 **Solutions:**
+
 1. **Extend session duration**
+
    ```bash
    SESSION_DURATION=2h  # Increase from default 30m
    ```
 
 2. **Enable persistent sessions**
+
    ```bash
    PERSIST_SESSIONS=true
    SESSION_PATH=/data/sessions.bbolt
@@ -598,6 +636,7 @@ echo $SESSION_DURATION $PERSIST_SESSIONS $SESSION_PATH
 ### Debug Mode Operation
 
 **Enable Comprehensive Debugging:**
+
 ```bash
 # Environment variables for debug mode
 export LOG_LEVEL=debug
@@ -611,6 +650,7 @@ docker run -e LOG_LEVEL=debug ldap-manager:latest
 ```
 
 **Debug Log Analysis:**
+
 ```bash
 # LDAP operation timing
 grep '"message":"ldap"' /var/log/ldap-manager.log | jq '.duration'
@@ -628,6 +668,7 @@ grep '"method":"' /var/log/ldap-manager.log | jq '{method, path, duration, statu
 ### Network Diagnostics
 
 **Connection Testing:**
+
 ```bash
 # Test LDAP connectivity
 nc -zv dc1.company.com 636
@@ -644,6 +685,7 @@ traceroute dc1.company.com
 ```
 
 **Firewall Diagnostics:**
+
 ```bash
 # Check listening ports
 ss -tlnp | grep 3000
@@ -659,6 +701,7 @@ sealert -a /var/log/audit/audit.log
 ### Emergency Procedures
 
 **Service Recovery:**
+
 ```bash
 # Restart service
 systemctl restart ldap-manager
@@ -672,6 +715,7 @@ docker ps ldap-manager
 ```
 
 **Rollback Procedure:**
+
 ```bash
 # Stop current version
 systemctl stop ldap-manager
@@ -684,6 +728,7 @@ systemctl start ldap-manager
 ```
 
 **Data Recovery:**
+
 ```bash
 # Restore session database
 cp /backup/sessions-20240901.bbolt /opt/ldap-manager/sessions.bbolt

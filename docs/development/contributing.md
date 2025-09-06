@@ -45,6 +45,7 @@ make fix
 #### Naming Conventions
 
 **Functions and Methods:**
+
 ```go
 // Good: Clear, descriptive names
 func AuthenticateUser(username, password string) (*User, error)
@@ -56,6 +57,7 @@ func LoadMembers(dn string) ([]User, error)
 ```
 
 **Variables:**
+
 ```go
 // Good: Clear context
 userDN := "CN=John Doe,OU=Users,DC=example,DC=com"
@@ -71,6 +73,7 @@ c := cache.GetClient()  // Use ldapClient
 ```
 
 **Constants:**
+
 ```go
 // Good: Descriptive constants
 const (
@@ -83,6 +86,7 @@ const (
 #### Error Handling
 
 **Wrap Errors with Context:**
+
 ```go
 // Good: Contextual error wrapping
 func loadUser(dn string) (*User, error) {
@@ -104,6 +108,7 @@ func loadUser(dn string) (*User, error) {
 ```
 
 **Handle Errors at Appropriate Level:**
+
 ```go
 // Good: Handle errors where you can take action
 func (h *Handler) HandleUserUpdate(c *fiber.Ctx) error {
@@ -126,18 +131,18 @@ func authenticateUser(username, password string) (*User, error) {
     if username == "" || password == "" {
         return nil, errors.New("username and password required")
     }
-    
+
     conn, err := ldap.Dial("tcp", ldapServer)
     if err != nil {
         return nil, fmt.Errorf("failed to connect to LDAP: %w", err)
     }
     defer conn.Close()
-    
+
     err = conn.Bind(username, password)
     if err != nil {
         return nil, fmt.Errorf("authentication failed: %w", err)
     }
-    
+
     return loadUserDetails(conn, username)
 }
 
@@ -168,9 +173,9 @@ templ UserForm(user *User) {
                 required
             />
         </div>
-        
-        <button 
-            type="submit" 
+
+        <button
+            type="submit"
             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
         >
             Update User
@@ -184,20 +189,20 @@ templ UserForm(user *User) {
 ```css
 /* Good: Consistent, utility-first approach */
 .form-group {
-    @apply space-y-2;
+  @apply space-y-2;
 }
 
 .btn-primary {
-    @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors;
+  @apply rounded bg-blue-500 px-4 py-2 font-bold text-white transition-colors hover:bg-blue-700;
 }
 
 /* Component-specific styles when needed */
 .user-card {
-    @apply bg-white shadow-md rounded-lg p-6;
+  @apply rounded-lg bg-white p-6 shadow-md;
 }
 
 .user-card:hover {
-    @apply shadow-lg transform scale-105 transition-all duration-200;
+  @apply scale-105 transform shadow-lg transition-all duration-200;
 }
 ```
 
@@ -228,7 +233,7 @@ func TestAuthenticateUser(t *testing.T) {
         {"empty password", "testuser", "", true},
         {"invalid credentials", "testuser", "wrongpass", true},
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             _, err := authenticateUser(tt.username, tt.password)
@@ -249,18 +254,18 @@ func TestUserModificationFlow(t *testing.T) {
     // Setup test LDAP server
     testServer := setupTestLDAP(t)
     defer testServer.Close()
-    
+
     // Create test app
     app := setupTestApp(t, testServer.URL)
-    
+
     // Test the complete flow
     req := httptest.NewRequest("POST", "/users/"+testUserDN, strings.NewReader("givenName=UpdatedName"))
     req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-    
+
     resp, err := app.Test(req)
     require.NoError(t, err)
     assert.Equal(t, 200, resp.StatusCode)
-    
+
     // Verify changes persisted
     updatedUser := getTestUser(t, testServer)
     assert.Equal(t, "UpdatedName", updatedUser.GivenName)
@@ -274,7 +279,7 @@ Test performance characteristics:
 ```go
 func BenchmarkUserSearch(b *testing.B) {
     cache := setupTestCache(b)
-    
+
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         _, err := cache.SearchUsers("testuser")
@@ -286,7 +291,7 @@ func BenchmarkUserSearch(b *testing.B) {
 
 func BenchmarkConcurrentAccess(b *testing.B) {
     cache := setupTestCache(b)
-    
+
     b.RunParallel(func(pb *testing.PB) {
         for pb.Next() {
             _, err := cache.GetUsers()
@@ -301,6 +306,7 @@ func BenchmarkConcurrentAccess(b *testing.B) {
 ### Testing Best Practices
 
 **Use Table Tests:**
+
 ```go
 func TestValidateInput(t *testing.T) {
     tests := []struct {
@@ -312,7 +318,7 @@ func TestValidateInput(t *testing.T) {
         {"invalid email", "not-an-email", false},
         {"empty input", "", false},
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             // Test implementation
@@ -322,6 +328,7 @@ func TestValidateInput(t *testing.T) {
 ```
 
 **Use testify for Assertions:**
+
 ```go
 import (
     "github.com/stretchr/testify/assert"
@@ -337,6 +344,7 @@ func TestUserCreation(t *testing.T) {
 ```
 
 **Mock External Dependencies:**
+
 ```go
 type mockLDAPClient struct {
     users map[string]*User
@@ -405,6 +413,7 @@ Closes #123
 ### Before Creating PR
 
 1. **Ensure Quality**:
+
    ```bash
    make check  # Run all linting and tests
    ```
@@ -416,11 +425,13 @@ Closes #123
 ### PR Title and Description
 
 **Title Format**: Same as commit messages
+
 ```
 feat(auth): add two-factor authentication support
 ```
 
 **Description Template**:
+
 ```markdown
 ## Summary
 
@@ -479,6 +490,7 @@ Clear description of the bug.
 
 **To Reproduce**
 Steps to reproduce:
+
 1. Go to '...'
 2. Click on '...'
 3. See error
@@ -487,12 +499,14 @@ Steps to reproduce:
 What should have happened.
 
 **Environment**
+
 - OS: [e.g., Ubuntu 20.04]
 - Go Version: [e.g., 1.23.1]
 - LDAP Manager Version: [e.g., v1.0.0]
 - LDAP Server: [e.g., Active Directory 2019]
 
 **Additional Context**
+
 - Configuration details (sanitized)
 - Log output
 - Screenshots (if applicable)
@@ -514,6 +528,7 @@ Detailed description of how the feature should work.
 Other approaches considered.
 
 **Additional Context**
+
 - Mockups or diagrams
 - Similar features in other tools
 - Impact on existing functionality
@@ -544,6 +559,7 @@ Other approaches considered.
 #### As a Reviewer
 
 **Focus Areas:**
+
 - Code correctness and logic
 - Test coverage and quality
 - Performance implications
@@ -551,6 +567,7 @@ Other approaches considered.
 - Documentation completeness
 
 **Review Checklist:**
+
 - [ ] Code follows project style guidelines
 - [ ] Tests cover new functionality
 - [ ] No obvious security vulnerabilities
@@ -558,22 +575,28 @@ Other approaches considered.
 - [ ] Breaking changes are documented
 
 **Providing Feedback:**
-```markdown
+
+````markdown
 # Good feedback
-Consider using a more descriptive variable name here. 
+
+Consider using a more descriptive variable name here.
 `userDN` would be clearer than `dn` in this context.
 
 # Actionable suggestion
+
 ```go
 // Instead of:
 dn := getUserDN()
 
-// Consider:  
+// Consider:
 userDN := getUserDN()
 ```
+````
 
 # Positive reinforcement
+
 Nice use of the builder pattern here! This makes the code much more readable.
+
 ```
 
 #### As a Contributor
@@ -637,3 +660,4 @@ We value all contributions to LDAP Manager:
 - **Documentation**: Recognized for improving project accessibility
 
 Thank you for contributing to LDAP Manager! 🎉
+```
