@@ -1,5 +1,5 @@
-// Package internal provides build-time information and version management.
-package internal
+// Package version provides build-time information and version management.
+package version
 
 import "fmt"
 

@@ -28,11 +28,11 @@ COPY --from=frontend-builder /build/internal/web/static/styles.css /build/intern
 RUN templ generate
 
 RUN \
-  PACKAGE="github.com/netresearch/ldap-manager/internal" && \
+  PACKAGE="github.com/netresearch/ldap-manager/internal/version" && \
   VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null | sed 's/^.//')" && \
   COMMIT_HASH="$(git rev-parse --short HEAD)" && \
   BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S') && \
-  CGO_ENABLED=0 go build -o /build/ldap-passwd -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'"
+  CGO_ENABLED=0 go build -o /build/ldap-passwd -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'" ./cmd/ldap-manager
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runner
 
