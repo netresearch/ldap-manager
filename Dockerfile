@@ -11,17 +11,18 @@ RUN pnpm css:build
 
 FROM golang:1.25.1-alpine AS backend-builder
 WORKDIR /build
-RUN apk add git
+RUN apk add --no-cache git=2.49.1-r0
 
 COPY ./go.mod .
 COPY ./go.sum .
-RUN go mod download
-RUN go install github.com/a-h/templ/cmd/templ@v0.3.943
+RUN go mod download && \
+  go install github.com/a-h/templ/cmd/templ@v0.3.943
 
 COPY . .
 
 COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
 RUN templ generate
+SHELL ["/bin/sh", "-eo", "pipefail", "-c"]
 RUN \
   PACKAGE="github.com/netresearch/ldap-manager/internal" && \
   VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')" && \
