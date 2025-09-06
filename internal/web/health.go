@@ -27,18 +27,36 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 
 // readinessHandler provides a simple readiness check.
 // Returns 200 OK if the cache system is operational and ready to serve requests.
+// Includes cache warming status to indicate if initial population is complete.
 func (a *App) readinessHandler(c *fiber.Ctx) error {
-	if a.ldapCache.IsHealthy() {
+	isHealthy := a.ldapCache.IsHealthy()
+	isWarmedUp := a.ldapCache.IsWarmedUp()
+	
+	if isHealthy && isWarmedUp {
 		return c.JSON(fiber.Map{
-			"status": "ready",
-			"cache": "healthy",
+			"status":    "ready",
+			"cache":     "healthy",
+			"warmed_up": true,
 		})
 	}
 	
 	c.Status(fiber.StatusServiceUnavailable)
+	status := "not ready"
+	reason := ""
+	
+	if !isHealthy && !isWarmedUp {
+		reason = "cache unhealthy and not warmed up"
+	} else if !isHealthy {
+		reason = "cache degraded or unhealthy"
+	} else if !isWarmedUp {
+		reason = "cache warming in progress"
+		status = "warming up"
+	}
+	
 	return c.JSON(fiber.Map{
-		"status": "not ready",
-		"cache": "degraded or unhealthy",
+		"status":    status,
+		"cache":     reason,
+		"warmed_up": isWarmedUp,
 	})
 }
 
