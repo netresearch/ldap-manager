@@ -13,9 +13,11 @@ type cacheable interface {
 
 // Cache provides thread-safe storage for LDAP entities with concurrent read/write access.
 // It uses RWMutex to allow multiple concurrent readers while ensuring exclusive write access.
+// Includes optional metrics tracking for performance monitoring.
 type Cache[T cacheable] struct {
-	m     sync.RWMutex // Reader-writer mutex for concurrent access
-	items []T          // Slice storing all cached items
+	m       sync.RWMutex // Reader-writer mutex for concurrent access
+	items   []T          // Slice storing all cached items
+	metrics *Metrics     // Optional metrics collector for performance tracking
 }
 
 // NewCached creates a new empty cache for the specified LDAP entity type.
@@ -23,6 +25,15 @@ type Cache[T cacheable] struct {
 func NewCached[T cacheable]() Cache[T] {
 	return Cache[T]{
 		items: make([]T, 0),
+	}
+}
+
+// NewCachedWithMetrics creates a new empty cache with metrics tracking enabled.
+// Provides performance monitoring for cache hit rates and operation counts.
+func NewCachedWithMetrics[T cacheable](metrics *Metrics) Cache[T] {
+	return Cache[T]{
+		items:   make([]T, 0),
+		metrics: metrics,
 	}
 }
 
@@ -60,16 +71,23 @@ func (c *Cache[T]) Get() []T {
 // Find searches the cache for the first item matching the provided predicate.
 // Returns a pointer to the matching item and true if found, nil and false otherwise.
 // The search is performed under a read lock for thread safety.
+// Records cache hit/miss metrics if metrics tracking is enabled.
 func (c *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
 	for _, item := range c.items {
 		if fn(item) {
+			if c.metrics != nil {
+				c.metrics.RecordCacheHit()
+			}
 			return &item, true
 		}
 	}
 
+	if c.metrics != nil {
+		c.metrics.RecordCacheMiss()
+	}
 	return nil, false
 }
 
