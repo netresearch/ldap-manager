@@ -22,10 +22,13 @@ COPY . .
 
 COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
 RUN templ generate
+
+# Set shell with pipefail for safe pipe operations
 SHELL ["/bin/sh", "-eo", "pipefail", "-c"]
+
 RUN \
   PACKAGE="github.com/netresearch/ldap-manager/internal" && \
-  VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//')" && \
+  VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null | sed 's/^.//')" && \
   COMMIT_HASH="$(git rev-parse --short HEAD)" && \
   BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S') && \
   CGO_ENABLED=0 go build -o /build/ldap-passwd -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'"
