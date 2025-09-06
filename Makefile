@@ -23,6 +23,12 @@ YELLOW := \033[0;33m
 BLUE := \033[0;34m
 RESET := \033[0m
 
+# Coverage settings
+COVERAGE_THRESHOLD := 80
+COVERAGE_DIR := coverage-reports
+COVERAGE_FILE := coverage.out
+HTML_COVERAGE_FILE := $(COVERAGE_DIR)/coverage.html
+
 .PHONY: help setup build test lint clean dev docker
 
 # Default target
@@ -80,6 +86,7 @@ setup-hooks:
 ## Build: Build the application binary
 build: build-assets
 	@echo "$(BLUE)Building application...$(RESET)"
+	@mkdir -p bin
 	@CGO_ENABLED=0 go build $(BUILDFLAGS) -o bin/ldap-manager .
 	@echo "$(GREEN)✓ Build complete: bin/ldap-manager$(RESET)"
 
@@ -91,6 +98,7 @@ build-assets:
 ## Build Release: Build optimized release binary
 build-release: build-assets
 	@echo "$(BLUE)Building release binary...$(RESET)"
+	@mkdir -p bin
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-linux-amd64 .
 	@CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-darwin-amd64 .
 	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-windows-amd64.exe .
@@ -99,7 +107,30 @@ build-release: build-assets
 ## Test: Run comprehensive test suite with coverage
 test:
 	@echo "$(BLUE)Running comprehensive test suite...$(RESET)"
-	@./scripts/test.sh
+	@mkdir -p $(COVERAGE_DIR)
+	@if go test -v -race -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...; then \
+		echo "$(GREEN)✅ All tests passed$(RESET)"; \
+	else \
+		echo "$(RED)❌ Some tests failed$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -f $(COVERAGE_FILE) ]; then \
+		go tool cover -html=$(COVERAGE_FILE) -o $(HTML_COVERAGE_FILE); \
+		echo "$(GREEN)✅ HTML coverage report generated: $(HTML_COVERAGE_FILE)$(RESET)"; \
+		COVERAGE=$$(go tool cover -func=$(COVERAGE_FILE) | grep "^total:" | awk '{print $$3}' | sed 's/%//'); \
+		echo "Coverage Summary:" > $(COVERAGE_DIR)/summary.txt; \
+		echo "Total Coverage: $${COVERAGE}%" >> $(COVERAGE_DIR)/summary.txt; \
+		echo "Threshold: $(COVERAGE_THRESHOLD)%" >> $(COVERAGE_DIR)/summary.txt; \
+		echo "$(BLUE)ℹ️ Coverage: $${COVERAGE}%$(RESET)"; \
+		if [ "$${COVERAGE%.*}" -ge "$(COVERAGE_THRESHOLD)" ]; then \
+			echo "$(GREEN)✅ Coverage threshold met ($${COVERAGE}% >= $(COVERAGE_THRESHOLD)%)$(RESET)"; \
+		else \
+			echo "$(YELLOW)⚠️ Coverage below threshold ($${COVERAGE}% < $(COVERAGE_THRESHOLD)%)$(RESET)"; \
+		fi; \
+	else \
+		echo "$(RED)❌ Coverage file not found$(RESET)"; \
+		exit 1; \
+	fi
 
 ## Test Quick: Run tests without coverage reporting
 test-quick:
@@ -111,10 +142,22 @@ test-short:
 	@echo "$(BLUE)Running short tests...$(RESET)"
 	@go test -short ./...
 
+## Test Race: Run race detection tests
+test-race:
+	@echo "$(BLUE)Running race detection tests...$(RESET)"
+	@if go test -race -short ./...; then \
+		echo "$(GREEN)✅ No race conditions detected$(RESET)"; \
+	else \
+		echo "$(RED)❌ Race conditions detected$(RESET)"; \
+		exit 1; \
+	fi
+
 ## Benchmark: Run performance benchmarks
 benchmark:
 	@echo "$(BLUE)Running benchmarks...$(RESET)"
-	@go test -bench=. -benchmem ./...
+	@mkdir -p $(COVERAGE_DIR)
+	@go test -bench=. -benchmem -run=^$ ./... > $(COVERAGE_DIR)/benchmarks.txt
+	@echo "$(GREEN)✅ Benchmarks completed$(RESET)"
 
 ## Lint: Run all linting and static analysis
 lint: lint-go lint-security lint-format lint-complexity
@@ -168,7 +211,8 @@ docker-run: docker
 clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(RESET)"
 	@rm -rf bin/
-	@rm -f coverage.out coverage.html
+	@rm -f coverage.out ldap-manager
+	@rm -rf $(COVERAGE_DIR)
 	@rm -rf node_modules/.cache
 	@go clean -cache -testcache -modcache
 	@echo "$(GREEN)✓ Clean complete$(RESET)"
