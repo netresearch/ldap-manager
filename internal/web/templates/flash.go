@@ -65,9 +65,11 @@ func (f Flash) IsInfo() bool {
 	return f.Type == FlashTypeInfo
 }
 
-const flashSuccessClasses = "border-green-500"
-const flashErrorClasses = "border-red-500"
-const flashInfoClasses = "border-blue-500"
+const (
+	flashSuccessClasses = "border-green-500"
+	flashErrorClasses   = "border-red-500"
+	flashInfoClasses    = "border-blue-500"
+)
 
 // BorderColor returns the appropriate CSS border class for the flash message type.
 func (f Flash) BorderColor() string {
