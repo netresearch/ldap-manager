@@ -1,130 +1,74 @@
-# CI/CD Pipeline Failure Analysis
+# CI/CD Failure Analysis & Resolution Plan
 
-**Investigation Date**: 2025-09-06  
-**Pull Request**: #245 - feat: comprehensive code quality improvements and development infrastructure  
-**Branch**: maintenance/general-code-improvements
+## Current Status Summary
 
-## Summary of Failures
+Based on the GitHub Actions logs analysis, here are the specific issues causing CI failures:
 
-**CRITICAL ISSUES (Build Blockers)**:
+## 🔴 Critical Issues Identified
 
-1. Actions version incompatibility (`actions/cache@v5` not found)
-2. Missing GitHub action repositories (gosec, nancy)
-3. Missing pnpm executable in GitHub Actions runners
-4. Dockerfile syntax error (line 51)
-5. Missing trivy-results.sarif file
+### 1. **Formatting Issue** (Check workflow)
 
-**SECONDARY ISSUES (Quality Gates)**:
+- **Error**: `claudedocs/ci-resolution-final-report.md` has formatting issues
+- **Root Cause**: Prettier check failing on markdown file
+- **Impact**: Blocks Check workflow
+- **Priority**: HIGH
 
-- Formatting check failures (due to missing pnpm)
-- Build verification failures (due to missing pnpm)
-- Dependency analysis failures (due to missing actions)
+### 2. **Missing templ CLI** (All workflows)
 
-## Detailed Root Cause Analysis
+- **Error**: `sh: 1: templ: not found` in all build asset steps
+- **Root Cause**: `templ` CLI not installed in CI environment, unlike local environment
+- **Impact**: Blocks ALL workflows that need asset building
+- **Priority**: CRITICAL
 
-### 1. Actions Version Compatibility Issues
+### 3. **Template Generation Failures** (All workflows)
 
-**Error**: `Unable to resolve action 'actions/cache@v5', unable to find version 'v5'`
+- **Error**: Multiple `undefined: templates.Login`, `templates.Users`, etc.
+- **Root Cause**: Template files not generated due to missing `templ` CLI
+- **Impact**: Go compilation fails, vulnerability scanning fails
+- **Priority**: CRITICAL
 
-**Root Cause**: The workflow is referencing `actions/cache@v5` which doesn't exist yet. The latest version is `v4`.
+### 4. **Missing SARIF Files** (Quality workflow)
 
-**Affected Files**:
+- **Error**: `gosec-results.sarif` and `trivy-results.sarif` not found
+- **Root Cause**: Previous steps failed, so security scan files weren't generated
+- **Impact**: Security scanning incomplete
+- **Priority**: MEDIUM (will resolve after fixing build issues)
 
-- `.github/workflows/docker.yml:47`
+### 5. **Go Version Mismatch** (Potential)
 
-**Evidence**:
+- **Local**: Using Go 1.25 (from check workflow)
+- **Quality**: Using Go 1.25.1
+- **Impact**: Potential inconsistency
+- **Priority**: LOW
 
-```yaml
-- name: Cache docker layers
-  uses: actions/cache@v5 # ← This version doesn't exist
-```
+## 🎯 Resolution Strategy
 
-### 2. Missing GitHub Action Repositories
+### Phase 1: Fix Critical Build Dependencies
 
-**Error**: `Unable to resolve action securecodewarrior/github-action-gosec, repository not found`
+1. **Install templ CLI in all workflows**
+2. **Fix formatting issues**
+3. **Ensure consistent Go versions**
 
-**Root Cause**: The `securecodewarrior/github-action-gosec` repository appears to be missing or moved. Similarly for `sonatypecommunity/nancy-github-action`.
+### Phase 2: Validate Template Generation
 
-**Affected Files**:
+1. **Verify template files are generated**
+2. **Check Go build succeeds**
+3. **Validate all undefined template references resolved**
 
-- `.github/workflows/quality.yml:66` (gosec)
-- `.github/workflows/quality.yml:287` (nancy)
+### Phase 3: Security & Quality Checks
 
-### 3. Missing PNPM Executable
+1. **Verify SARIF files are generated**
+2. **Check security scanning completes**
+3. **Validate Docker builds**
 
-**Error**: `Unable to locate executable file: pnpm`
+### Phase 4: Docker & Dependencies
 
-**Root Cause**: The workflows are trying to cache pnpm and use it, but pnpm is not installed before attempting to use it with caching.
+1. **Fix Docker build context issues**
+2. **Resolve dependency scanning**
 
-**Affected Workflows**:
+## 🔧 Specific Fixes Required
 
-- Build Verification jobs (all platforms)
-- Testing & Coverage job
-- Check formatting job
-
-**Evidence**: The workflows use `cache: 'pnpm'` in setup-node but pnpm isn't installed first.
-
-### 4. Dockerfile Syntax Error
-
-**Error**: `unexpected '|'expecting '\\', a new line followed by the next instruction`
-
-**Root Cause**: Hadolint detected a syntax error in the Dockerfile at line 51. The HEALTHCHECK command syntax is incorrect.
-
-**Location**: Dockerfile line 50-51
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD ["/ldap-passwd", "--health-check"] || exit 1
-```
-
-The `|| exit 1` syntax is not compatible with the array form of CMD.
-
-### 5. Missing Trivy Results File
-
-**Error**: `Path does not exist: trivy-results.sarif`
-
-**Root Cause**: The trivy scan step creates `trivy-results.sarif` but it's not being generated properly in the docker-quality job because the Docker build likely fails first.
-
-## Impact Assessment
-
-**Build Pipeline**: BLOCKED - Cannot build Docker images or verify builds
-**Security Scans**: BLOCKED - Cannot run vulnerability scans  
-**Code Quality**: BLOCKED - Cannot run linting and static analysis
-**Test Coverage**: BLOCKED - Cannot run tests and generate coverage
-**Deployment**: BLOCKED - Quality gate prevents any merges
-
-## Resolution Priority
-
-1. **CRITICAL** (Fix immediately): Action version compatibility
-2. **CRITICAL** (Fix immediately): Missing action repositories
-3. **CRITICAL** (Fix immediately): PNPM installation issues
-4. **HIGH** (Fix soon): Dockerfile syntax
-5. **MEDIUM** (Fix after critical): Missing SARIF files
-
-## Dependencies Between Issues
-
-```mermaid
-graph TD
-    A[Action Version Issues] --> B[Build Process]
-    C[Missing Actions] --> D[Security Scans]
-    E[PNPM Issues] --> F[Asset Building]
-    G[Dockerfile Issues] --> H[Docker Quality]
-    F --> B
-    H --> I[Quality Gate]
-    B --> I
-    D --> I
-```
-
-**Resolution Order**:
-
-1. Fix action versions and missing repositories (enables basic workflow execution)
-2. Fix PNPM installation (enables asset building and formatting)
-3. Fix Dockerfile syntax (enables Docker quality checks)
-4. Verify all workflows pass end-to-end
-
-## Prevention Strategies
-
-1. **Dependency Pinning**: Pin all action versions to specific releases
-2. **Alternative Actions**: Use maintained alternatives for deprecated actions
-3. **Workflow Testing**: Test workflow changes in feature branches
-4. **Local Validation**: Run hadolint and other tools locally before CI
+1. **Add templ CLI installation to all workflows**
+2. **Fix markdown formatting**
+3. **Standardize Go version across workflows**
+4. **Ensure proper error handling for security scans**
