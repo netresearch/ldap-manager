@@ -64,8 +64,9 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 }
 
 type groupModifyForm struct {
-	AddUser    *string `form:"adduser"`
-	RemoveUser *string `form:"removeuser"`
+	AddUser         *string `form:"adduser"`
+	RemoveUser      *string `form:"removeuser"`
+	PasswordConfirm string  `form:"password_confirm"`
 }
 
 func (a *App) groupModifyHandler(c *fiber.Ctx) error {
@@ -92,9 +93,33 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return c.Redirect("/groups/" + groupDN)
 	}
 
-	l, err := a.sessionToLDAPClient(sess)
+	// Require password confirmation for sensitive operations
+	if form.PasswordConfirm == "" {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+		group, err := a.ldapCache.FindGroupByDN(groupDN)
+		if err != nil {
+			return handle500(c, err)
+		}
+		unassignedUsers, err := a.ldapCache.FindUnassignedUsersForGroup(*group)
+		if err != nil {
+			return handle500(c, err)
+		}
+		return templates.Group(group, unassignedUsers, templates.Flashes(templates.ErrorFlash("Password confirmation required for modifications"))).Render(c.UserContext(), c.Response().BodyWriter())
+	}
+
+	executorDN := sess.Get("dn").(string)
+	l, err := a.authenticateLDAPClient(executorDN, form.PasswordConfirm)
 	if err != nil {
-		return handle500(c, err)
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+		group, err := a.ldapCache.FindGroupByDN(groupDN)
+		if err != nil {
+			return handle500(c, err)
+		}
+		unassignedUsers, err := a.ldapCache.FindUnassignedUsersForGroup(*group)
+		if err != nil {
+			return handle500(c, err)
+		}
+		return templates.Group(group, unassignedUsers, templates.Flashes(templates.ErrorFlash("Invalid password"))).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
