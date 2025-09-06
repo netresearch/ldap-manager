@@ -23,6 +23,7 @@ After examining the failed GitHub Actions logs, I identified the following criti
 **Solution**: Added `go install github.com/a-h/templ/cmd/templ@latest` to all jobs requiring asset building
 
 **Files Modified**:
+
 - `.github/workflows/quality.yml` - Added to `lint`, `test`, `build`, and `dependency-check` jobs
 - `.github/workflows/check.yml` - Already had it, but verified consistency
 
@@ -43,6 +44,7 @@ After examining the failed GitHub Actions logs, I identified the following criti
 **Solution**: Applied `pnpm prettier --write` to all affected files
 
 **Files Fixed**:
+
 - `claudedocs/ci-resolution-final-report.md`
 - `.github/workflows/check.yml`
 - `.github/workflows/quality.yml`
@@ -55,6 +57,7 @@ After examining the failed GitHub Actions logs, I identified the following criti
 **Solution**: Standardized all workflows to use Go 1.25.1
 
 **Files Updated**:
+
 - `.github/workflows/check.yml` - Updated from 1.25 to 1.25.1
 - `.github/workflows/quality.yml` - Already using 1.25.1
 
@@ -89,6 +92,7 @@ After examining the failed GitHub Actions logs, I identified the following criti
 ### Quality Assurance Workflow (`quality.yml`)
 
 **Jobs Modified**:
+
 - `lint`: Added templ CLI installation
 - `test`: Added templ CLI installation
 - `build`: Added templ CLI installation
@@ -97,6 +101,7 @@ After examining the failed GitHub Actions logs, I identified the following criti
 ### Check Workflow (`check.yml`)
 
 **Jobs Modified**:
+
 - `go-test`: Updated Go version to 1.25.1 (already had templ CLI)
 - `formatting`: No changes needed (doesn't require Go/templates)
 
