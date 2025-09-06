@@ -8,7 +8,7 @@ import (
 // Returns cache metrics, system health status, and operational statistics.
 func (a *App) healthHandler(c *fiber.Ctx) error {
 	healthStats := a.ldapCache.GetHealthCheck()
-	
+
 	var statusCode int
 	switch healthStats.HealthStatus {
 	case "healthy":
@@ -20,8 +20,9 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 	default:
 		statusCode = fiber.StatusInternalServerError
 	}
-	
+
 	c.Status(statusCode)
+
 	return c.JSON(healthStats)
 }
 
@@ -31,7 +32,7 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 func (a *App) readinessHandler(c *fiber.Ctx) error {
 	isHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
-	
+
 	if isHealthy && isWarmedUp {
 		return c.JSON(fiber.Map{
 			"status":    "ready",
@@ -39,20 +40,21 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 			"warmed_up": true,
 		})
 	}
-	
+
 	c.Status(fiber.StatusServiceUnavailable)
 	status := "not ready"
 	reason := ""
-	
-	if !isHealthy && !isWarmedUp {
+
+	switch {
+	case !isHealthy && !isWarmedUp:
 		reason = "cache unhealthy and not warmed up"
-	} else if !isHealthy {
+	case !isHealthy:
 		reason = "cache degraded or unhealthy"
-	} else if !isWarmedUp {
+	case !isWarmedUp:
 		reason = "cache warming in progress"
 		status = "warming up"
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"status":    status,
 		"cache":     reason,

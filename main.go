@@ -1,13 +1,16 @@
+// Package main provides the entry point for the LDAP Manager web application.
+// It initializes logging, parses configuration options, and starts the web server.
 package main
 
 import (
 	"os"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/netresearch/ldap-manager/internal"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 func main() {

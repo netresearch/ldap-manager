@@ -12,12 +12,14 @@ func (a *App) RequireAuth() fiber.Handler {
 		sess, err := a.sessionStore.Get(c)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to get session in auth middleware")
+
 			return c.Redirect("/login")
 		}
 
 		// Check if session is fresh (no authenticated user)
 		if sess.Fresh() {
 			log.Debug().Str("path", c.Path()).Msg("unauthenticated access attempt, redirecting to login")
+
 			return c.Redirect("/login")
 		}
 
@@ -25,12 +27,13 @@ func (a *App) RequireAuth() fiber.Handler {
 		userDN, ok := sess.Get("dn").(string)
 		if !ok || userDN == "" {
 			log.Warn().Msg("session exists but no user DN found, redirecting to login")
+
 			return c.Redirect("/login")
 		}
 
 		// Store user DN in context for handlers to use
 		c.Locals("userDN", userDN)
-		
+
 		log.Debug().
 			Str("userDN", userDN).
 			Str("path", c.Path()).
@@ -75,6 +78,7 @@ func GetUserDN(c *fiber.Ctx) string {
 	if userDN, ok := c.Locals("userDN").(string); ok {
 		return userDN
 	}
+
 	return ""
 }
 
@@ -84,7 +88,9 @@ func RequireUserDN(c *fiber.Ctx) (string, error) {
 	userDN := GetUserDN(c)
 	if userDN == "" {
 		log.Error().Str("path", c.Path()).Msg("RequireUserDN called but no user DN in context")
+
 		return "", fiber.NewError(fiber.StatusUnauthorized, "Authentication required")
 	}
+
 	return userDN, nil
 }

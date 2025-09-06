@@ -1,0 +1,119 @@
+# Pre-commit hooks for LDAP Manager
+# Ensures code quality and consistency before commits
+
+repos:
+  # Go-specific hooks
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      # Go formatting
+      - id: go-fmt-goimports
+        name: Format Go code with goimports
+        files: \.go$
+      
+      # Go module maintenance  
+      - id: go-mod-tidy
+        name: Tidy Go modules
+        
+      # Go building to catch compilation errors
+      - id: go-build-mod
+        name: Build Go modules
+        
+      # Go testing
+      - id: go-test-mod
+        name: Run Go tests
+        args: [-short, -race]
+        
+      # Go linting with golangci-lint
+      - id: golangci-lint-mod
+        name: Run golangci-lint
+        args: [--config=.golangci.yml]
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: (package-lock\.json|pnpm-lock\.yaml|go\.sum)$
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent committing large files
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+        
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+        
+      # Check JSON syntax
+      - id: check-json
+        
+      # Check YAML syntax  
+      - id: check-yaml
+        args: ['--multi', '--allow-multiple-documents']
+        
+      # Check TOML syntax
+      - id: check-toml
+        
+      # Check for private keys
+      - id: detect-private-key
+        
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: \.min\.(js|css)$
+        
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: \.min\.(js|css)$
+
+  # Docker linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfile
+        files: Dockerfile.*
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        name: Check shell scripts
+        files: \.(sh|bash)$
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        name: Lint Markdown files
+        args: ['--fix']
+        exclude: node_modules/
+
+  # Frontend code formatting (if applicable)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+      - id: prettier
+        name: Format frontend code
+        files: \.(js|ts|css|scss|json|yaml|yml|md)$
+        exclude: (pnpm-lock\.yaml|package-lock\.json|\.min\.(js|css)|.*_templ\.go)$
+
+# Global configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+    
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

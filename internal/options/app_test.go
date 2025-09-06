@@ -14,6 +14,7 @@ func setEnvVar(t *testing.T, key, value string) func() {
 	if err := os.Setenv(key, value); err != nil {
 		t.Fatalf("Failed to set environment variable: %v", err)
 	}
+
 	return func() {
 		if err := os.Unsetenv(key); err != nil {
 			t.Logf("Failed to unset environment variable: %v", err)

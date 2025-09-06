@@ -1,3 +1,5 @@
+// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+// nolint:revive
 package ldap_cache
 
 import (
@@ -21,7 +23,6 @@ func assertItemsLength(t *testing.T, items []mockCacheable, expected int) {
 		t.Errorf("Expected %d items, got %d", expected, len(items))
 	}
 }
-
 
 // mockCacheable is a test implementation of the cacheable interface
 type mockCacheable struct {
@@ -245,7 +246,7 @@ func TestCacheFilter(t *testing.T) {
 	})
 
 	t.Run("filter all items", func(t *testing.T) {
-		all := cache.Filter(func(m mockCacheable) bool {
+		all := cache.Filter(func(_ mockCacheable) bool {
 			return true
 		})
 
@@ -287,7 +288,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 	// Test concurrent reads
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go func() {
+		go func(_ int) {
 			defer wg.Done()
 
 			// Concurrent Get operations
@@ -300,19 +301,19 @@ func TestCacheConcurrentAccess(t *testing.T) {
 			_, _ = cache.FindByDN("cn=user1,dc=example,dc=com")
 
 			// Concurrent Filter operations
-			cache.Filter(func(m mockCacheable) bool {
-				return m.data == "user1"
+			cache.Filter(func(_ mockCacheable) bool {
+				return false // Just test concurrent access
 			})
 
 			// Concurrent Count operations
 			cache.Count()
-		}()
+		}(i)
 	}
 
 	// Test concurrent writes
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
-		go func(iteration int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			newItems := []mockCacheable{
@@ -326,7 +327,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 	// Test concurrent updates
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
-		go func(iteration int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			cache.update(func(item *mockCacheable) {
