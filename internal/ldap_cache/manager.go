@@ -20,14 +20,17 @@ type LDAPClient interface {
 }
 
 // Manager coordinates LDAP data caching with automatic background refresh.
-// It maintains separate caches for users, groups, and computers, refreshing every 30 seconds.
+// It maintains separate caches for users, groups, and computers with configurable refresh intervals.
 // All operations are concurrent-safe and provide immediate access to cached data.
 // Includes comprehensive metrics tracking for performance monitoring and observability.
+// Supports cache warming for faster startup and configurable refresh strategies.
 type Manager struct {
 	stop chan struct{} // Channel for graceful shutdown signaling
 
-	client  LDAPClient // LDAP client for directory operations
-	metrics *Metrics   // Performance metrics and health monitoring
+	client         LDAPClient    // LDAP client for directory operations
+	metrics        *Metrics      // Performance metrics and health monitoring
+	refreshInterval time.Duration // Configurable refresh interval (default 30s)
+	warmupComplete  bool          // Tracks if initial cache warming is complete
 
 	Users     Cache[ldap.User]     // Cached user entries with metrics
 	Groups    Cache[ldap.Group]    // Cached group entries with metrics
@@ -57,34 +60,49 @@ type FullLDAPComputer struct {
 
 // New creates a new LDAP cache manager with the provided LDAP client.
 // The manager is initialized with empty caches for users, groups, and computers.
+// Uses default 30-second refresh interval. Call NewWithConfig() for custom settings.
 // Includes comprehensive metrics tracking for performance monitoring.
 // Call Run() to start the background refresh goroutine.
 func New(client LDAPClient) *Manager {
+	return NewWithConfig(client, 30*time.Second)
+}
+
+// NewWithConfig creates a new LDAP cache manager with configurable refresh interval.
+// The manager is initialized with empty caches and custom refresh timing.
+// Includes comprehensive metrics tracking for performance monitoring.
+// Call Run() to start the background refresh goroutine.
+func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 	metrics := NewMetrics()
 	
 	return &Manager{
-		stop:      make(chan struct{}),
-		client:    client,
-		metrics:   metrics,
-		Users:     NewCachedWithMetrics[ldap.User](metrics),
-		Groups:    NewCachedWithMetrics[ldap.Group](metrics),
-		Computers: NewCachedWithMetrics[ldap.Computer](metrics),
+		stop:            make(chan struct{}),
+		client:          client,
+		metrics:         metrics,
+		refreshInterval: refreshInterval,
+		warmupComplete:  false,
+		Users:           NewCachedWithMetrics[ldap.User](metrics),
+		Groups:          NewCachedWithMetrics[ldap.Group](metrics),
+		Computers:       NewCachedWithMetrics[ldap.Computer](metrics),
 	}
 }
 
 // Run starts the background cache refresh loop.
-// It performs an initial cache refresh, then continues refreshing every 30 seconds.
+// It performs initial cache warming, then continues refreshing at the configured interval.
 // This method blocks until Stop() is called. Should be run in a separate goroutine.
 func (m *Manager) Run() {
-	t := time.NewTicker(30 * time.Second)
+	// Use configurable refresh interval
+	t := time.NewTicker(m.refreshInterval)
+	defer t.Stop()
 
-	// Perform initial cache population
-	m.Refresh()
+	// Perform initial cache warming with logging
+	log.Info().Msg("Starting LDAP cache warming...")
+	m.WarmupCache()
+	
+	log.Info().Dur("interval", m.refreshInterval).Msg("LDAP cache warmed up, starting refresh loop")
 
 	for {
 		select {
 		case <-m.stop:
-			t.Stop()
 			log.Info().Msg("LDAP cache stopped")
 			return
 		case <-t.C:
@@ -97,6 +115,87 @@ func (m *Manager) Run() {
 // It sends a signal to the Run() method to terminate the refresh cycle.
 func (m *Manager) Stop() {
 	m.stop <- struct{}{}
+}
+
+// WarmupCache performs initial cache population with enhanced logging and error handling.
+// This ensures the cache is fully populated before serving requests.
+// Sets warmupComplete flag to indicate readiness for normal operations.
+func (m *Manager) WarmupCache() {
+	log.Info().Msg("Starting cache warmup process...")
+	startTime := time.Now()
+	
+	// Parallel cache warming for faster startup
+	type warmupResult struct {
+		name  string
+		count int
+		err   error
+	}
+	
+	results := make(chan warmupResult, 3)
+	
+	// Warm up users cache
+	go func() {
+		if err := m.RefreshUsers(); err != nil {
+			results <- warmupResult{"users", 0, err}
+		} else {
+			results <- warmupResult{"users", m.Users.Count(), nil}
+		}
+	}()
+	
+	// Warm up groups cache
+	go func() {
+		if err := m.RefreshGroups(); err != nil {
+			results <- warmupResult{"groups", 0, err}
+		} else {
+			results <- warmupResult{"groups", m.Groups.Count(), nil}
+		}
+	}()
+	
+	// Warm up computers cache
+	go func() {
+		if err := m.RefreshComputers(); err != nil {
+			results <- warmupResult{"computers", 0, err}
+		} else {
+			results <- warmupResult{"computers", m.Computers.Count(), nil}
+		}
+	}()
+	
+	// Collect results
+	totalEntities := 0
+	hasErrors := false
+	for i := 0; i < 3; i++ {
+		result := <-results
+		if result.err != nil {
+			log.Error().Err(result.err).Str("cache", result.name).Msg("Failed to warm up cache")
+			m.metrics.RecordRefreshError()
+			hasErrors = true
+		} else {
+			log.Debug().Str("cache", result.name).Int("count", result.count).Msg("Cache warmed up successfully")
+			totalEntities += result.count
+		}
+	}
+	
+	duration := time.Since(startTime)
+	
+	if !hasErrors {
+		m.warmupComplete = true
+		m.metrics.RecordRefreshComplete(startTime, m.Users.Count(), m.Groups.Count(), m.Computers.Count())
+		log.Info().
+			Int("total_entities", totalEntities).
+			Dur("duration", duration).
+			Msg("Cache warmup completed successfully")
+	} else {
+		log.Warn().
+			Int("total_entities", totalEntities).
+			Dur("duration", duration).
+			Msg("Cache warmup completed with errors")
+	}
+}
+
+// IsWarmedUp returns true if the initial cache warming process has completed successfully.
+// Used to determine if the cache is ready to serve requests optimally.
+func (m *Manager) IsWarmedUp() bool {
+	return m.warmupComplete
 }
 
 // RefreshUsers fetches all users from LDAP and updates the user cache.

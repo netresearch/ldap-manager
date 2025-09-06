@@ -43,6 +43,10 @@ This will start:
 - **URL**: http://localhost:3000
 - **Session Storage**: BBolt database (`/data/session.bbolt`)
 - **Log Level**: Debug (for development)
+- **Health Endpoints**: 
+  - `/health` - Comprehensive cache metrics and health status
+  - `/health/ready` - Readiness check with cache warming status
+  - `/health/live` - Simple liveness check
 
 ## Local Development
 
