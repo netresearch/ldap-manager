@@ -1,7 +1,18 @@
+# Dependencies
 node_modules
-internal/web/static/styles.css
-.env.local
-*.bbolt
-renovate.json
 /.pnpm-store
-ldap-manager
+
+# Build artifacts  
+bin/
+coverage.out
+coverage-reports/
+*.bbolt
+
+# Generated files
+internal/web/static/styles.css
+
+# Environment files
+.env.local
+
+# Renovate config (managed by CI)
+renovate.json

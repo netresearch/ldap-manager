@@ -5,19 +5,12 @@ import (
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 func (a *App) computersHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
+	// Authentication handled by middleware, no need to check session
 	showDisabled := c.Query("show-disabled", "0") == "1"
 	computers := a.ldapCache.FindComputers(showDisabled)
 	sort.SliceStable(computers, func(i, j int) bool {
@@ -25,19 +18,12 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Computers(computers).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) computerHandler(c *fiber.Ctx) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	if sess.Fresh() {
-		return c.Redirect("/login")
-	}
-
+	// Authentication handled by middleware, no need to check session
 	computerDN, err := url.PathUnescape(c.Params("computerDN"))
 	if err != nil {
 		return handle500(c, err)
@@ -54,5 +40,6 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Computer(computer).Render(c.UserContext(), c.Response().BodyWriter())
 }

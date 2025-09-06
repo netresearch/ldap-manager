@@ -1,10 +1,12 @@
+// Package web provides HTTP handlers and middleware for the LDAP Manager web application.
 package web
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog/log"
+
 	"github.com/netresearch/ldap-manager/internal"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
-	"github.com/rs/zerolog/log"
 )
 
 func (a *App) logoutHandler(c *fiber.Ctx) error {
@@ -26,8 +28,8 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	username := c.Query("username")
-	password := c.Query("password")
+	username := c.FormValue("username")
+	password := c.FormValue("password")
 
 	if username != "" && password != "" {
 		user, err := a.ldapClient.CheckPasswordForSAMAccountName(username, password)
@@ -35,11 +37,13 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			log.Error().Err(err).Msg("could not check password")
 
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-			return templates.Login(templates.Flashes(templates.ErrorFlash("Invalid username or password")), "").Render(c.UserContext(), c.Response().BodyWriter())
+
+			return templates.Login(
+				templates.Flashes(templates.ErrorFlash("Invalid username or password")), "",
+			).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
 		sess.Set("dn", user.DN())
-		sess.Set("password", password)
 		if err := sess.Save(); err != nil {
 			return handle500(c, err)
 		}
@@ -48,5 +52,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return templates.Login(templates.Flashes(), internal.FormatVersion()).Render(c.UserContext(), c.Response().BodyWriter())
+
+	return templates.Login(templates.Flashes(), internal.FormatVersion()).Render(
+		c.UserContext(), c.Response().BodyWriter())
 }
