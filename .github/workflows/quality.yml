@@ -43,6 +43,9 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Install templ CLI
+        run: go install github.com/a-h/templ/cmd/templ@latest
+
       - name: Install dependencies
         run: |
           go mod download
@@ -119,6 +122,9 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Install templ CLI
+        run: go install github.com/a-h/templ/cmd/templ@latest
+
       - name: Install dependencies
         run: |
           go mod download
@@ -191,6 +197,9 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
+
+      - name: Install templ CLI
+        run: go install github.com/a-h/templ/cmd/templ@latest
 
       - name: Install dependencies
         run: |
@@ -284,6 +293,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.1"
+
+      - name: Install templ CLI
+        run: go install github.com/a-h/templ/cmd/templ@latest
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Generate templates
+        run: templ generate
 
       - name: Run Go vulnerability scanner
         run: |
