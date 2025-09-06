@@ -1,3 +1,5 @@
+// Package ldap_cache provides efficient caching of LDAP directory data with automatic refresh capabilities.
+// It maintains synchronized in-memory caches for users, groups, and computers with concurrent-safe operations.
 package ldap_cache
 
 import (
@@ -7,31 +9,43 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Manager coordinates LDAP data caching with automatic background refresh.
+// It maintains separate caches for users, groups, and computers, refreshing every 30 seconds.
+// All operations are concurrent-safe and provide immediate access to cached data.
 type Manager struct {
-	stop chan struct{}
+	stop chan struct{} // Channel for graceful shutdown signaling
 
-	client *ldap.LDAP
+	client *ldap.LDAP // LDAP client for directory operations
 
-	Users     Cache[ldap.User]
-	Groups    Cache[ldap.Group]
-	Computers Cache[ldap.Computer]
+	Users     Cache[ldap.User]     // Cached user entries
+	Groups    Cache[ldap.Group]    // Cached group entries
+	Computers Cache[ldap.Computer] // Cached computer entries
 }
 
+// FullLDAPUser represents a user with populated group memberships.
+// This provides a complete view of user data including all associated groups.
 type FullLDAPUser struct {
 	ldap.User
-	Groups []ldap.Group
+	Groups []ldap.Group // All groups this user belongs to
 }
 
+// FullLDAPGroup represents a group with populated member list.
+// This provides a complete view of group data including all member users.
 type FullLDAPGroup struct {
 	ldap.Group
-	Members []ldap.User
+	Members []ldap.User // All users that belong to this group
 }
 
+// FullLDAPComputer represents a computer with populated group memberships.
+// This provides a complete view of computer data including all associated groups.
 type FullLDAPComputer struct {
 	ldap.Computer
-	Groups []ldap.Group
+	Groups []ldap.Group // All groups this computer belongs to
 }
 
+// New creates a new LDAP cache manager with the provided LDAP client.
+// The manager is initialized with empty caches for users, groups, and computers.
+// Call Run() to start the background refresh goroutine.
 func New(client *ldap.LDAP) *Manager {
 	return &Manager{
 		stop:      make(chan struct{}),
@@ -42,9 +56,13 @@ func New(client *ldap.LDAP) *Manager {
 	}
 }
 
+// Run starts the background cache refresh loop.
+// It performs an initial cache refresh, then continues refreshing every 30 seconds.
+// This method blocks until Stop() is called. Should be run in a separate goroutine.
 func (m *Manager) Run() {
 	t := time.NewTicker(30 * time.Second)
 
+	// Perform initial cache population
 	m.Refresh()
 
 	for {
@@ -52,7 +70,6 @@ func (m *Manager) Run() {
 		case <-m.stop:
 			t.Stop()
 			log.Info().Msg("LDAP cache stopped")
-
 			return
 		case <-t.C:
 			m.Refresh()
@@ -60,10 +77,14 @@ func (m *Manager) Run() {
 	}
 }
 
+// Stop gracefully shuts down the background refresh loop.
+// It sends a signal to the Run() method to terminate the refresh cycle.
 func (m *Manager) Stop() {
 	m.stop <- struct{}{}
 }
 
+// RefreshUsers fetches all users from LDAP and updates the user cache.
+// Returns an error if the LDAP query fails, otherwise replaces the entire user cache.
 func (m *Manager) RefreshUsers() error {
 	users, err := m.client.FindUsers()
 	if err != nil {
@@ -71,10 +92,11 @@ func (m *Manager) RefreshUsers() error {
 	}
 
 	m.Users.setAll(users)
-
 	return nil
 }
 
+// RefreshGroups fetches all groups from LDAP and updates the group cache.
+// Returns an error if the LDAP query fails, otherwise replaces the entire group cache.
 func (m *Manager) RefreshGroups() error {
 	groups, err := m.client.FindGroups()
 	if err != nil {
@@ -82,10 +104,11 @@ func (m *Manager) RefreshGroups() error {
 	}
 
 	m.Groups.setAll(groups)
-
 	return nil
 }
 
+// RefreshComputers fetches all computers from LDAP and updates the computer cache.
+// Returns an error if the LDAP query fails, otherwise replaces the entire computer cache.
 func (m *Manager) RefreshComputers() error {
 	computers, err := m.client.FindComputers()
 	if err != nil {
@@ -93,24 +116,27 @@ func (m *Manager) RefreshComputers() error {
 	}
 
 	m.Computers.setAll(computers)
-
 	return nil
 }
 
+// Refresh updates all caches (users, groups, computers) from LDAP.
+// Individual failures are logged as errors but don't stop other cache updates.
+// This method is called automatically by the background refresh loop.
 func (m *Manager) Refresh() {
 	if err := m.RefreshUsers(); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msg("Failed to refresh users cache")
 	}
 
 	if err := m.RefreshGroups(); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msg("Failed to refresh groups cache")
 	}
 
 	if err := m.RefreshComputers(); err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msg("Failed to refresh computers cache")
 	}
 
-	log.Debug().Msgf("Refreshed LDAP cache with %d users, %d groups and %d computers", m.Users.Count(), m.Groups.Count(), m.Computers.Count())
+	log.Debug().Msgf("Refreshed LDAP cache with %d users, %d groups and %d computers", 
+		m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 }
 
 func (m *Manager) FindUsers(showDisabled bool) []ldap.User {
