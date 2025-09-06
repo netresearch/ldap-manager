@@ -18,12 +18,12 @@ These settings must be configured for LDAP Manager to function:
 
 ### LDAP Connection Settings
 
-| Setting | Environment Variable | CLI Flag | Description | Example |
-|---------|---------------------|----------|-------------|---------|
-| LDAP Server | `LDAP_SERVER` | `--ldap-server` | LDAP server URI with protocol and port | `ldaps://dc1.example.com:636` |
-| Base DN | `LDAP_BASE_DN` | `--base-dn` | Base Distinguished Name for searches | `DC=example,DC=com` |
-| Readonly User | `LDAP_READONLY_USER` | `--readonly-user` | Service account username | `readonly` |
-| Readonly Password | `LDAP_READONLY_PASSWORD` | `--readonly-password` | Service account password | `secure_password123` |
+| Setting           | Environment Variable     | CLI Flag              | Description                            | Example                       |
+| ----------------- | ------------------------ | --------------------- | -------------------------------------- | ----------------------------- |
+| LDAP Server       | `LDAP_SERVER`            | `--ldap-server`       | LDAP server URI with protocol and port | `ldaps://dc1.example.com:636` |
+| Base DN           | `LDAP_BASE_DN`           | `--base-dn`           | Base Distinguished Name for searches   | `DC=example,DC=com`           |
+| Readonly User     | `LDAP_READONLY_USER`     | `--readonly-user`     | Service account username               | `readonly`                    |
+| Readonly Password | `LDAP_READONLY_PASSWORD` | `--readonly-password` | Service account password               | `secure_password123`          |
 
 ### LDAP Server URI Format
 
@@ -59,22 +59,23 @@ LDAP_BASE_DN=DC=subdomain,DC=example,DC=com
 
 ### Directory Type Settings
 
-| Setting | Environment Variable | CLI Flag | Default | Description |
-|---------|---------------------|----------|---------|-------------|
-| Active Directory | `LDAP_IS_AD` | `--active-directory` | `false` | Enable Active Directory specific features and attributes |
+| Setting          | Environment Variable | CLI Flag             | Default | Description                                              |
+| ---------------- | -------------------- | -------------------- | ------- | -------------------------------------------------------- |
+| Active Directory | `LDAP_IS_AD`         | `--active-directory` | `false` | Enable Active Directory specific features and attributes |
 
 **Active Directory Notes:**
+
 - Must use `ldaps://` (secure LDAP) for connections
 - Enables AD-specific user attributes (sAMAccountName, userPrincipalName, etc.)
 - Optimizes group membership queries for AD schema
 
 ### Session Management
 
-| Setting | Environment Variable | CLI Flag | Default | Description |
-|---------|---------------------|----------|---------|-------------|
-| Persist Sessions | `PERSIST_SESSIONS` | `--persist-sessions` | `false` | Store sessions in BBolt database |
-| Session Path | `SESSION_PATH` | `--session-path` | `db.bbolt` | Path to session database file |
-| Session Duration | `SESSION_DURATION` | `--session-duration` | `30m` | Session timeout duration |
+| Setting          | Environment Variable | CLI Flag             | Default    | Description                      |
+| ---------------- | -------------------- | -------------------- | ---------- | -------------------------------- |
+| Persist Sessions | `PERSIST_SESSIONS`   | `--persist-sessions` | `false`    | Store sessions in BBolt database |
+| Session Path     | `SESSION_PATH`       | `--session-path`     | `db.bbolt` | Path to session database file    |
+| Session Duration | `SESSION_DURATION`   | `--session-duration` | `30m`      | Session timeout duration         |
 
 #### Session Duration Format
 
@@ -84,7 +85,7 @@ Use Go duration syntax:
 # Minutes
 SESSION_DURATION=30m
 
-# Hours  
+# Hours
 SESSION_DURATION=2h
 
 # Mixed units
@@ -97,12 +98,14 @@ SESSION_DURATION=24h
 #### Session Storage Options
 
 **Memory Storage (Default)**
+
 - Fast performance
 - No persistent storage
 - Sessions lost on application restart
 - Suitable for development and testing
 
 **BBolt Database Storage**
+
 - Persistent across restarts
 - Slightly slower performance
 - Requires disk space and file permissions
@@ -110,11 +113,12 @@ SESSION_DURATION=24h
 
 ### Logging Configuration
 
-| Setting | Environment Variable | CLI Flag | Default | Description |
-|---------|---------------------|----------|---------|-------------|
-| Log Level | `LOG_LEVEL` | `--log-level` | `info` | Logging verbosity level |
+| Setting   | Environment Variable | CLI Flag      | Default | Description             |
+| --------- | -------------------- | ------------- | ------- | ----------------------- |
+| Log Level | `LOG_LEVEL`          | `--log-level` | `info`  | Logging verbosity level |
 
 **Valid log levels** (in order of verbosity):
+
 - `trace` - Extremely detailed debugging
 - `debug` - Detailed debugging information
 - `info` - General informational messages
@@ -125,9 +129,9 @@ SESSION_DURATION=24h
 
 ### Server Configuration
 
-| Setting | Environment Variable | CLI Flag | Default | Description |
-|---------|---------------------|----------|---------|-------------|
-| Listen Address | `LISTEN_ADDR` | `--listen` | `:3000` | Server listen address and port |
+| Setting        | Environment Variable | CLI Flag   | Default | Description                    |
+| -------------- | -------------------- | ---------- | ------- | ------------------------------ |
+| Listen Address | `LISTEN_ADDR`        | `--listen` | `:3000` | Server listen address and port |
 
 ## Configuration Examples
 
@@ -229,7 +233,7 @@ docker run -d \
 ### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   ldap-manager:
@@ -297,12 +301,14 @@ sudo update-ca-certificates
 ### Service Account Security
 
 **Principle of Least Privilege:**
+
 - Create dedicated service account for LDAP Manager
 - Grant only read permissions to necessary directory branches
 - Use strong, unique passwords
 - Regularly rotate credentials
 
 **Active Directory Example:**
+
 ```powershell
 # Create service account
 New-ADUser -Name "LDAP-Manager-Readonly" -UserPrincipalName "ldap-readonly@domain.com" -AccountPassword (ConvertTo-SecureString "StrongPassword123!" -AsPlainText -Force) -Enabled $true
@@ -315,11 +321,13 @@ dsacls "OU=Groups,DC=domain,DC=com" /G "LDAP-Manager-Readonly:GR"
 ### Session Security
 
 **Cookie Security:**
+
 - HTTP-only cookies (XSS protection)
 - SameSite=Strict policy (CSRF protection)
 - Secure flag when using HTTPS
 
 **Session Timeout:**
+
 - Balance security vs. usability
 - Shorter timeouts for sensitive environments
 - Consider user activity patterns
@@ -350,10 +358,10 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '0.5'
+          cpus: "0.5"
         reservations:
           memory: 256M
-          cpus: '0.25'
+          cpus: "0.25"
 ```
 
 ## Configuration Validation
@@ -393,6 +401,7 @@ ldapsearch -H ldaps://dc1.example.com:636 -D readonly -w password -b "DC=example
 ### LDAP Connection Issues
 
 **Cannot connect to LDAP server:**
+
 ```bash
 # Test network connectivity
 telnet dc1.example.com 636
@@ -405,6 +414,7 @@ ldapsearch -H ldaps://dc1.example.com:636 -D readonly -w password -b "DC=example
 ```
 
 **Certificate verification failed:**
+
 - Add server certificate to system trust store
 - Use appropriate certificate volume mounts in Docker
 - Verify certificate chain is complete
@@ -412,11 +422,13 @@ ldapsearch -H ldaps://dc1.example.com:636 -D readonly -w password -b "DC=example
 ### Authentication Problems
 
 **Invalid credentials:**
+
 - Test readonly user credentials with ldapsearch
 - Verify user format (DN vs. UPN for Active Directory)
 - Check account is not locked or expired
 
 **Permission denied:**
+
 - Verify service account has read access to Base DN
 - Check organizational unit permissions
 - Ensure account can read user/group attributes
@@ -424,11 +436,13 @@ ldapsearch -H ldaps://dc1.example.com:636 -D readonly -w password -b "DC=example
 ### Session Issues
 
 **Sessions not persisting:**
+
 - Verify `PERSIST_SESSIONS=true` is set
 - Check session file path permissions
 - Monitor disk space for session storage
 
 **Session timeout too short/long:**
+
 - Adjust `SESSION_DURATION` value
 - Use appropriate Go duration format
 - Consider user workflow requirements
@@ -436,12 +450,14 @@ ldapsearch -H ldaps://dc1.example.com:636 -D readonly -w password -b "DC=example
 ### Performance Issues
 
 **Slow LDAP queries:**
+
 - Enable debug logging to identify slow operations
 - Check LDAP server performance and indexing
 - Consider using LDAP replica for read operations
 - Monitor network latency to LDAP server
 
 **High memory usage:**
+
 - Monitor session count and storage
 - Check for connection leaks in debug logs
 - Consider shorter session timeouts

@@ -18,9 +18,10 @@ go version
 ```
 
 **Installation:**
+
 - **Linux/macOS**: Use official installer from https://golang.org/dl/
 - **Windows**: Download and run MSI installer
-- **Package Managers**: 
+- **Package Managers**:
   - Ubuntu: `sudo apt install golang-1.23`
   - macOS: `brew install go`
 
@@ -34,8 +35,9 @@ node --version
 ```
 
 **Installation:**
+
 - **Official**: Download from https://nodejs.org/
-- **nvm (recommended)**: 
+- **nvm (recommended)**:
   ```bash
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
   nvm install 16
@@ -45,6 +47,7 @@ node --version
 #### Package Management
 
 **Corepack for PNPM:**
+
 ```bash
 # Enable corepack (comes with Node.js 16+)
 npm install -g corepack
@@ -92,7 +95,7 @@ make setup
 
 # This runs:
 # - make setup-go      (Go dependencies)
-# - make setup-node    (Node.js dependencies)  
+# - make setup-node    (Node.js dependencies)
 # - make setup-tools   (Development tools)
 ```
 
@@ -154,8 +157,9 @@ make dev
 ```
 
 This starts multiple concurrent processes:
+
 - **Go server** with Air hot reloading
-- **CSS compilation** with TailwindCSS watch mode  
+- **CSS compilation** with TailwindCSS watch mode
 - **Template compilation** with templ watch mode
 
 **Alternative PNPM commands:**
@@ -234,6 +238,7 @@ make benchmark
 ```
 
 **Test Output:**
+
 - Coverage reports in `coverage-reports/coverage.html`
 - Test results with pass/fail status
 - Benchmark performance metrics
@@ -252,6 +257,7 @@ make lint-security # Security scanning
 ```
 
 **Linting Tools Used:**
+
 - **golangci-lint**: Comprehensive Go linting (30+ linters)
 - **govulncheck**: Security vulnerability scanning
 - **gocyclo**: Cyclomatic complexity analysis
@@ -277,7 +283,7 @@ make fix
 ldap-manager/
 ├── cmd/                    # Application entry points
 ├── internal/               # Private application code
-│   ├── web/               # HTTP handlers and middleware  
+│   ├── web/               # HTTP handlers and middleware
 │   ├── ldap_cache/        # LDAP connection and caching
 │   ├── options/           # Configuration management
 │   └── build.go           # Build information injection
@@ -303,28 +309,33 @@ ldap-manager/
 The `Makefile` provides comprehensive automation:
 
 #### Setup & Dependencies
+
 - `make setup` - Complete development environment setup
 - `make setup-go` - Go dependencies only
 - `make setup-node` - Node.js dependencies only
 - `make setup-tools` - Development tools installation
 
 #### Building & Assets
+
 - `make build` - Build application with assets
 - `make build-assets` - Build CSS and templates only
 - `make build-release` - Multi-platform release builds
 
 #### Testing & Quality
+
 - `make test` - Full test suite with coverage
 - `make benchmark` - Performance benchmarks
 - `make lint` - All linting tools
 - `make check` - Quality gate (lint + test)
 
 #### Development
+
 - `make dev` - Development server with hot reload
 - `make serve` - Run built application
 - `make clean` - Remove build artifacts
 
 #### Utilities
+
 - `make help` - List all available targets
 - `make info` - Show build environment information
 
@@ -336,12 +347,7 @@ Recommended extensions:
 
 ```json
 {
-  "recommendations": [
-    "golang.go",
-    "a-h.templ",
-    "bradlc.vscode-tailwindcss",
-    "esbenp.prettier-vscode"
-  ]
+  "recommendations": ["golang.go", "a-h.templ", "bradlc.vscode-tailwindcss", "esbenp.prettier-vscode"]
 }
 ```
 
@@ -427,16 +433,19 @@ internal/
 ### Test Categories
 
 #### Unit Tests
+
 - Test individual functions and methods
 - Use mocking for external dependencies
 - Fast execution, no external services
 
 #### Integration Tests
+
 - Test component interactions
 - May use test LDAP server
 - Slower execution, more realistic scenarios
 
 #### Benchmark Tests
+
 - Performance regression detection
 - Memory allocation profiling
 - Execution time measurement
@@ -497,7 +506,7 @@ go test ./internal/web -run TestHandlers
 # CPU profiling
 go test -cpuprofile=cpu.prof -bench=.
 
-# Memory profiling  
+# Memory profiling
 go test -memprofile=mem.prof -bench=.
 
 # View profiles

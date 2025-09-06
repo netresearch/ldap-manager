@@ -45,7 +45,6 @@ docker run -d \
 Create a `compose.yml` file:
 
 ```yaml
-
 services:
   ldap-manager:
     image: ghcr.io/netresearch/ldap-manager:latest
@@ -64,7 +63,7 @@ services:
       SESSION_DURATION: 30m
     volumes:
       - ./data:/data
-      - /etc/ssl/certs:/etc/ssl/certs:ro  # For custom SSL certificates
+      - /etc/ssl/certs:/etc/ssl/certs:ro # For custom SSL certificates
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/"]
@@ -286,7 +285,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # WebSocket support
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -298,7 +297,7 @@ server {
 #### Traefik v2
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   ldap-manager:
@@ -392,6 +391,7 @@ journalctl -u ldap-manager -f
 ```
 
 Look for messages like:
+
 ```
 INF Starting LDAP Manager server on :3000
 DBG LDAP connection test successful
@@ -408,22 +408,26 @@ DBG LDAP connection test successful
 ### Common Issues
 
 **LDAP Connection Failed**
+
 - Verify server hostname and port are accessible
 - Check firewall rules on both client and server
 - Validate LDAPS certificate if using secure connection
 - Test with `ldapsearch` command-line tool
 
 **Authentication Failures**
+
 - Verify readonly user credentials
 - Check user has read permissions to Base DN
 - Ensure Base DN covers the intended directory scope
 
 **Permission Denied**
+
 - Check file system permissions for binary and configuration
 - Ensure service user has required access
 - Verify network connectivity to LDAP server
 
 **Session Issues**
+
 - Check session duration format (Go duration syntax)
 - Verify session file path permissions when using persistence
 - Monitor disk space for session storage

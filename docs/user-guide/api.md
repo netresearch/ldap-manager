@@ -31,17 +31,17 @@ Display login form or authenticate user credentials.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `username` | string | No | Username for authentication |
-| `password` | string | No | Password for authentication |
+| Parameter  | Type   | Required | Description                 |
+| ---------- | ------ | -------- | --------------------------- |
+| `username` | string | No       | Username for authentication |
+| `password` | string | No       | Password for authentication |
 
 **Response Codes:**
 
-| Code | Description |
-|------|-------------|
-| 200 | Login form displayed or authentication failed |
-| 302 | Authentication successful, redirect to dashboard |
+| Code | Description                                      |
+| ---- | ------------------------------------------------ |
+| 200  | Login form displayed or authentication failed    |
+| 302  | Authentication successful, redirect to dashboard |
 
 **Examples:**
 
@@ -59,6 +59,7 @@ curl -i -X POST \
 ```
 
 **Success Response:**
+
 ```
 HTTP/1.1 302 Found
 Location: /
@@ -66,6 +67,7 @@ Set-Cookie: session=abc123...; HttpOnly; SameSite=Strict; Path=/
 ```
 
 **Authentication Flow:**
+
 1. User submits credentials via GET parameters or POST form
 2. Server validates against LDAP directory
 3. On success: Create session, set cookie, redirect to `/`
@@ -78,6 +80,7 @@ Set-Cookie: session=abc123...; HttpOnly; SameSite=Strict; Path=/
 Destroy user session and redirect to login page.
 
 **Response:**
+
 - **302 Found**: Redirect to `/login` with session cookie cleared
 
 **Example:**
@@ -87,6 +90,7 @@ curl -i -b "session=abc123..." http://localhost:3000/logout
 ```
 
 **Response:**
+
 ```
 HTTP/1.1 302 Found
 Location: /login
@@ -106,6 +110,7 @@ Display user dashboard with authenticated user information.
 **Authentication:** Required
 
 **Response:** HTML page with user dashboard containing:
+
 - Authenticated user details
 - Navigation to user/group/computer management
 - Session information
@@ -125,6 +130,7 @@ List all users in the LDAP directory.
 **Authentication:** Required
 
 **Response:** HTML page with paginated user listing including:
+
 - User display names
 - Account names (sAMAccountName for AD)
 - Email addresses
@@ -132,6 +138,7 @@ List all users in the LDAP directory.
 - Links to individual user detail pages
 
 **Features:**
+
 - Cached data with 30-second refresh
 - Sorted by display name
 - Responsive layout
@@ -142,13 +149,14 @@ Display detailed information for a specific user.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userDN` | string | Yes | URL-encoded Distinguished Name of the user |
+| Parameter | Type   | Required | Description                                |
+| --------- | ------ | -------- | ------------------------------------------ |
+| `userDN`  | string | Yes      | URL-encoded Distinguished Name of the user |
 
 **Authentication:** Required
 
 **Response:** HTML page with user details and edit form containing:
+
 - All LDAP attributes
 - Group memberships
 - Account information
@@ -168,9 +176,9 @@ Modify user attributes in LDAP directory.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userDN` | string | Yes | URL-encoded Distinguished Name of the user |
+| Parameter | Type   | Required | Description                                |
+| --------- | ------ | -------- | ------------------------------------------ |
+| `userDN`  | string | Yes      | URL-encoded Distinguished Name of the user |
 
 **Authentication:** Required
 
@@ -178,10 +186,10 @@ Modify user attributes in LDAP directory.
 
 **Response Codes:**
 
-| Code | Description |
-|------|-------------|
-| 200 | User updated successfully or validation error |
-| 302 | Redirect after successful update |
+| Code | Description                                   |
+| ---- | --------------------------------------------- |
+| 200  | User updated successfully or validation error |
+| 302  | Redirect after successful update              |
 
 **Example:**
 
@@ -194,6 +202,7 @@ curl -i -X POST \
 ```
 
 **Supported Attributes** (varies by LDAP schema):
+
 - `givenName` - First name
 - `sn` - Last name
 - `mail` - Email address
@@ -210,6 +219,7 @@ List all groups in the LDAP directory.
 **Authentication:** Required
 
 **Response:** HTML page with group listing including:
+
 - Group names
 - Group types (security/distribution for AD)
 - Member counts
@@ -222,13 +232,14 @@ Display detailed information for a specific group.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `groupDN` | string | Yes | URL-encoded Distinguished Name of the group |
+| Parameter | Type   | Required | Description                                 |
+| --------- | ------ | -------- | ------------------------------------------- |
+| `groupDN` | string | Yes      | URL-encoded Distinguished Name of the group |
 
 **Authentication:** Required
 
 **Response:** HTML page with group details including:
+
 - Group attributes
 - Member list with names and types
 - Group membership management interface
@@ -246,9 +257,9 @@ Modify group attributes and membership.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `groupDN` | string | Yes | URL-encoded Distinguished Name of the group |
+| Parameter | Type   | Required | Description                                 |
+| --------- | ------ | -------- | ------------------------------------------- |
+| `groupDN` | string | Yes      | URL-encoded Distinguished Name of the group |
 
 **Authentication:** Required
 
@@ -273,6 +284,7 @@ List all computer accounts in the LDAP directory.
 **Authentication:** Required
 
 **Response:** HTML page with computer listing including:
+
 - Computer names
 - Operating system information
 - Last logon timestamps
@@ -285,13 +297,14 @@ Display detailed information for a specific computer.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `computerDN` | string | Yes | URL-encoded Distinguished Name of the computer |
+| Parameter    | Type   | Required | Description                                    |
+| ------------ | ------ | -------- | ---------------------------------------------- |
+| `computerDN` | string | Yes      | URL-encoded Distinguished Name of the computer |
 
 **Authentication:** Required
 
 **Response:** HTML page with computer details including:
+
 - Computer attributes
 - System information
 - Network details
@@ -351,14 +364,14 @@ Custom error page with optional error details.
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Error - LDAP Manager</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Internal Server Error</h1>
     <p>An error occurred while processing your request.</p>
     <!-- Error details shown only in debug mode -->
-</body>
+  </body>
 </html>
 ```
 
@@ -430,6 +443,7 @@ LOG_LEVEL=debug ./ldap-manager
 ```
 
 Monitor logs for:
+
 - LDAP query execution times
 - Cache hit/miss ratios
 - Session creation/destruction
@@ -441,26 +455,26 @@ Monitor logs for:
 
 ```javascript
 // Form submission example
-document.getElementById('userForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const userDN = encodeURIComponent(this.dataset.userDn);
-    
-    fetch(`/users/${userDN}`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin'  // Include session cookie
+document.getElementById("userForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const formData = new FormData(this);
+  const userDN = encodeURIComponent(this.dataset.userDn);
+
+  fetch(`/users/${userDN}`, {
+    method: "POST",
+    body: formData,
+    credentials: "same-origin" // Include session cookie
+  })
+    .then((response) => {
+      if (response.redirected) {
+        window.location.href = response.url;
+      }
+      return response.text();
     })
-    .then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-        }
-        return response.text();
-    })
-    .then(html => {
-        // Update page content
-        document.body.innerHTML = html;
+    .then((html) => {
+      // Update page content
+      document.body.innerHTML = html;
     });
 });
 ```
@@ -497,21 +511,25 @@ curl -s -b "session=$SESSION_COOKIE" "http://localhost:3000/users" | grep -q "Us
 ### Common Problems
 
 **Session Not Persisting:**
+
 - Check cookie settings in browser
 - Verify session configuration
 - Check for clock synchronization issues
 
 **LDAP Queries Failing:**
+
 - Verify service account permissions
 - Check LDAP server connectivity
 - Review Base DN configuration
 
 **Slow Response Times:**
+
 - Monitor LDAP server performance
 - Check network latency
 - Review cache hit rates in debug logs
 
 **Authentication Failures:**
+
 - Test LDAP credentials manually
 - Verify user account status
 - Check for account lockouts

@@ -29,7 +29,7 @@ COVERAGE_DIR := coverage-reports
 COVERAGE_FILE := coverage.out
 HTML_COVERAGE_FILE := $(COVERAGE_DIR)/coverage.html
 
-.PHONY: help setup build test lint clean dev docker
+.PHONY: help setup build test lint clean dev docker docker-dev docker-test docker-lint docker-check docker-shell docker-clean
 
 # Default target
 all: setup lint test build
@@ -206,6 +206,83 @@ docker:
 docker-run: docker
 	@echo "$(BLUE)Running Docker container...$(RESET)"
 	@docker run -p 3000:3000 --env-file .env.example $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+## Docker Dev: Build development container with all tools
+docker-dev-build:
+	@echo "$(BLUE)Building development container...$(RESET)"
+	@docker compose build ldap-manager-dev
+	@echo "$(GREEN)✓ Development container built$(RESET)"
+
+## Docker Dev: Start development environment with live reload
+docker-dev: docker-dev-build
+	@echo "$(BLUE)Starting development environment...$(RESET)"
+	@echo "$(YELLOW)Starting LDAP server...$(RESET)"
+	@docker compose up -d openldap phpldapadmin
+	@sleep 5
+	@echo "$(YELLOW)Starting development container...$(RESET)"
+	@docker compose --profile dev up ldap-manager-dev
+
+## Docker Test: Run tests in container
+docker-test:
+	@echo "$(BLUE)Running tests in container...$(RESET)"
+	@docker compose up -d openldap
+	@sleep 5
+	@docker compose --profile test run --rm ldap-manager-test
+	@if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✅ All tests passed!$(RESET)"; \
+	else \
+		echo "$(RED)❌ Some tests failed!$(RESET)"; \
+		exit 1; \
+	fi
+
+## Docker Lint: Run linter in container
+docker-lint:
+	@echo "$(BLUE)Running linter in container...$(RESET)"
+	@docker compose --profile test run --rm ldap-manager-test sh -c "make lint"
+	@if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✅ Linting passed!$(RESET)"; \
+	else \
+		echo "$(RED)❌ Linting failed!$(RESET)"; \
+		exit 1; \
+	fi
+
+## Docker Check: Run all quality checks in container
+docker-check:
+	@echo "$(BLUE)Running all quality checks in container...$(RESET)"
+	@docker compose up -d openldap
+	@sleep 5
+	@docker compose --profile test run --rm ldap-manager-test
+	@if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✅ All quality checks passed!$(RESET)"; \
+	else \
+		echo "$(RED)❌ Some quality checks failed!$(RESET)"; \
+		exit 1; \
+	fi
+
+## Docker Shell: Open shell in development container
+docker-shell:
+	@echo "$(BLUE)Opening shell in development container...$(RESET)"
+	@docker compose up -d openldap
+	@sleep 2
+	@docker compose --profile dev run --rm ldap-manager-dev sh
+
+## Docker Clean: Clean up containers and volumes
+docker-clean:
+	@echo "$(YELLOW)⚠️ This will stop all containers and remove volumes. Continue? [y/N]$(RESET)"
+	@read -r response; \
+	if [ "$$response" = "y" ] || [ "$$response" = "Y" ]; then \
+		echo "$(BLUE)Cleaning up containers and volumes...$(RESET)"; \
+		docker compose down -v; \
+		docker system prune -f; \
+		echo "$(GREEN)✓ Docker cleanup completed$(RESET)"; \
+	else \
+		echo "$(YELLOW)Docker cleanup cancelled$(RESET)"; \
+	fi
+
+## Docker Logs: Show logs from development container
+docker-logs:
+	@echo "$(BLUE)Showing logs from development container...$(RESET)"
+	@docker compose logs -f ldap-manager-dev
 
 ## Clean: Remove build artifacts and caches
 clean:
