@@ -1,4 +1,6 @@
 // Package ldap_cache provides thread-safe generic caching for LDAP entities.
+// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+// nolint:revive
 package ldap_cache
 
 import (
@@ -81,6 +83,7 @@ func (c *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
 			if c.metrics != nil {
 				c.metrics.RecordCacheHit()
 			}
+
 			return &item, true
 		}
 	}
@@ -88,6 +91,7 @@ func (c *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
 	if c.metrics != nil {
 		c.metrics.RecordCacheMiss()
 	}
+
 	return nil, false
 }
 

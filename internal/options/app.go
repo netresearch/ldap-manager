@@ -1,8 +1,9 @@
+// Package options provides configuration parsing and environment variable handling
+// for the LDAP Manager application.
 package options
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Opts holds all configuration options for the LDAP Manager application.
+// It includes LDAP connection settings, session management, and logging configuration.
 type Opts struct {
 	LogLevel zerolog.Level
 
@@ -40,7 +43,7 @@ func envStringOrDefault(name, d string) string {
 }
 
 func envDurationOrDefault(name string, d time.Duration) time.Duration {
-	raw := envStringOrDefault(name, fmt.Sprintf("%v", d))
+	raw := envStringOrDefault(name, d.String())
 
 	v, err := time.ParseDuration(raw)
 	if err != nil {
@@ -61,7 +64,7 @@ func envLogLevelOrDefault(name string, d zerolog.Level) string {
 }
 
 func envBoolOrDefault(name string, d bool) bool {
-	raw := envStringOrDefault(name, fmt.Sprintf("%v", d))
+	raw := envStringOrDefault(name, strconv.FormatBool(d))
 
 	v2, err := strconv.ParseBool(raw)
 	if err != nil {
@@ -71,23 +74,34 @@ func envBoolOrDefault(name string, d bool) bool {
 	return v2
 }
 
+// Parse parses command line flags and environment variables to build application configuration.
+// It loads from .env files, parses flags, and validates required settings.
 func Parse() *Opts {
 	if err := godotenv.Load(".env.local", ".env"); err != nil {
 		log.Warn().Err(err).Msg("could not load .env file")
 	}
 
 	var (
-		fLogLevel = flag.String("log-level", envLogLevelOrDefault("LOG_LEVEL", zerolog.InfoLevel), "Log level. Valid values are: trace, debug, info, warn, error, fatal, panic.")
+		fLogLevel = flag.String("log-level", envLogLevelOrDefault("LOG_LEVEL", zerolog.InfoLevel),
+			"Log level. Valid values are: trace, debug, info, warn, error, fatal, panic.")
 
-		fLdapServer        = flag.String("ldap-server", envStringOrDefault("LDAP_SERVER", ""), "LDAP server URI, has to begin with `ldap://` or `ldaps://`. If this is an ActiveDirectory server, this *has* to be `ldaps://`.")
-		fIsActiveDirectory = flag.Bool("active-directory", envBoolOrDefault("LDAP_IS_AD", false), "Mark the LDAP server as ActiveDirectory.")
-		fBaseDN            = flag.String("base-dn", envStringOrDefault("LDAP_BASE_DN", ""), "Base DN of your LDAP directory.")
-		fReadonlyUser      = flag.String("readonly-user", envStringOrDefault("LDAP_READONLY_USER", ""), "User that can read all users in your LDAP directory.")
-		fReadonlyPassword  = flag.String("readonly-password", envStringOrDefault("LDAP_READONLY_PASSWORD", ""), "Password for the readonly user.")
+		fLdapServer = flag.String("ldap-server", envStringOrDefault("LDAP_SERVER", ""),
+			"LDAP server URI, has to begin with `ldap://` or `ldaps://`. "+
+				"If this is an ActiveDirectory server, this *has* to be `ldaps://`.")
+		fIsActiveDirectory = flag.Bool("active-directory", envBoolOrDefault("LDAP_IS_AD", false),
+			"Mark the LDAP server as ActiveDirectory.")
+		fBaseDN       = flag.String("base-dn", envStringOrDefault("LDAP_BASE_DN", ""), "Base DN of your LDAP directory.")
+		fReadonlyUser = flag.String("readonly-user", envStringOrDefault("LDAP_READONLY_USER", ""),
+			"User that can read all users in your LDAP directory.")
+		fReadonlyPassword = flag.String("readonly-password", envStringOrDefault("LDAP_READONLY_PASSWORD", ""),
+			"Password for the readonly user.")
 
-		fPersistSessions = flag.Bool("persist-sessions", envBoolOrDefault("PERSIST_SESSIONS", false), "Whether or not to persist sessions into a Bolt database. Useful for development.")
-		fSessionPath     = flag.String("session-path", envStringOrDefault("SESSION_PATH", "db.bbolt"), "Path to the session database file. (Only required when --persist-sessions is set)")
-		fSessionDuration = flag.Duration("session-duration", envDurationOrDefault("SESSION_DURATION", 30*time.Minute), "Duration of the session. (Only required when --persist-sessions is set)")
+		fPersistSessions = flag.Bool("persist-sessions", envBoolOrDefault("PERSIST_SESSIONS", false),
+			"Whether or not to persist sessions into a Bolt database. Useful for development.")
+		fSessionPath = flag.String("session-path", envStringOrDefault("SESSION_PATH", "db.bbolt"),
+			"Path to the session database file. (Only required when --persist-sessions is set)")
+		fSessionDuration = flag.Duration("session-duration", envDurationOrDefault("SESSION_DURATION", 30*time.Minute),
+			"Duration of the session. (Only required when --persist-sessions is set)")
 	)
 
 	if !flag.Parsed() {

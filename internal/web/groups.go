@@ -5,9 +5,10 @@ import (
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
+	ldap "github.com/netresearch/simple-ldap-go"
+
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
-	ldap "github.com/netresearch/simple-ldap-go"
 )
 
 func (a *App) groupsHandler(c *fiber.Ctx) error {
@@ -18,6 +19,7 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Groups(groups).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -44,6 +46,7 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Group(group, unassignedUsers, templates.Flashes()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -53,6 +56,7 @@ type groupModifyForm struct {
 	PasswordConfirm string  `form:"password_confirm"`
 }
 
+// nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
 func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
 	groupDN, err := url.PathUnescape(c.Params("groupDN"))
@@ -71,15 +75,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 	// Require password confirmation for sensitive operations
 	if form.PasswordConfirm == "" {
-		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
-		if err != nil {
-			return handle500(c, err)
-		}
-		showDisabledUsers := c.Query("show-disabled", "0") == "1"
-		group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-		unassignedUsers := a.findUnassignedUsers(group)
-		return templates.Group(group, unassignedUsers, templates.Flashes(templates.ErrorFlash("Password confirmation required for modifications"))).Render(c.UserContext(), c.Response().BodyWriter())
+		return a.renderGroupWithError(c, groupDN, "Password confirmation required for modifications")
 	}
 
 	executorDN, err := RequireUserDN(c)
@@ -88,74 +84,16 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	}
 	l, err := a.authenticateLDAPClient(executorDN, form.PasswordConfirm)
 	if err != nil {
-		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
-		if err != nil {
-			return handle500(c, err)
-		}
-		showDisabledUsers := c.Query("show-disabled", "0") == "1"
-		group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-		unassignedUsers := a.findUnassignedUsers(group)
-		return templates.Group(group, unassignedUsers, templates.Flashes(templates.ErrorFlash("Invalid password"))).Render(c.UserContext(), c.Response().BodyWriter())
+		return a.renderGroupWithError(c, groupDN, "Invalid password")
 	}
 
-	thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
-	if err != nil {
-		return handle500(c, err)
+	// Perform the group modification
+	if err := a.performGroupModification(l, &form, groupDN); err != nil {
+		return a.renderGroupWithError(c, groupDN, "Failed to modify: "+err.Error())
 	}
 
-	showDisabledUsers := c.Query("show-disabled", "0") == "1"
-	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-	sort.SliceStable(group.Members, func(i, j int) bool {
-		return group.Members[i].CN() < group.Members[j].CN()
-	})
-	unassignedUsers := a.findUnassignedUsers(group)
-	sort.SliceStable(unassignedUsers, func(i, j int) bool {
-		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
-	})
-
-	if form.AddUser != nil {
-		if err := l.AddUserToGroup(*form.AddUser, thinGroup.DN()); err != nil {
-			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-			return templates.Group(
-				group, unassignedUsers, templates.Flashes(
-					templates.ErrorFlash("Failed to modify: "+err.Error()),
-				),
-			).Render(c.UserContext(), c.Response().BodyWriter())
-		}
-
-		a.ldapCache.OnAddUserToGroup(*form.AddUser, thinGroup.DN())
-	} else if form.RemoveUser != nil {
-		if err := l.RemoveUserFromGroup(*form.RemoveUser, thinGroup.DN()); err != nil {
-			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-			return templates.Group(
-				group, unassignedUsers, templates.Flashes(
-					templates.ErrorFlash("Failed to modify: "+err.Error()),
-				),
-			).Render(c.UserContext(), c.Response().BodyWriter())
-		}
-
-		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, thinGroup.DN())
-	}
-
-	thinGroup, err = a.ldapCache.FindGroupByDN(groupDN)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	group = a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-	sort.SliceStable(group.Members, func(i, j int) bool {
-		return group.Members[i].CN() < group.Members[j].CN()
-	})
-	unassignedUsers = a.findUnassignedUsers(group)
-	sort.SliceStable(unassignedUsers, func(i, j int) bool {
-		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
-	})
-
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return templates.Group(
-		group, unassignedUsers, templates.Flashes(templates.SuccessFlash("Successfully modified group")),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	// Render success response
+	return a.renderGroupWithSuccess(c, groupDN, "Successfully modified group")
 }
 
 func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {
@@ -168,4 +106,69 @@ func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {
 
 		return true
 	})
+}
+
+// loadGroupData loads and prepares group data with proper sorting
+func (a *App) loadGroupData(c *fiber.Ctx, groupDN string) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
+	thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	showDisabledUsers := c.Query("show-disabled", "0") == "1"
+	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
+	sort.SliceStable(group.Members, func(i, j int) bool {
+		return group.Members[i].CN() < group.Members[j].CN()
+	})
+	unassignedUsers := a.findUnassignedUsers(group)
+	sort.SliceStable(unassignedUsers, func(i, j int) bool {
+		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
+	})
+
+	return group, unassignedUsers, nil
+}
+
+// renderGroupWithError renders the group page with an error message
+func (a *App) renderGroupWithError(c *fiber.Ctx, groupDN, errorMsg string) error {
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
+	if err != nil {
+		return handle500(c, err)
+	}
+
+	return templates.Group(
+		group, unassignedUsers,
+		templates.Flashes(templates.ErrorFlash(errorMsg)),
+	).Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// renderGroupWithSuccess renders the group page with a success message
+func (a *App) renderGroupWithSuccess(c *fiber.Ctx, groupDN, successMsg string) error {
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
+	if err != nil {
+		return handle500(c, err)
+	}
+
+	return templates.Group(
+		group, unassignedUsers,
+		templates.Flashes(templates.SuccessFlash(successMsg)),
+	).Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// performGroupModification handles the actual LDAP group modification operation
+func (a *App) performGroupModification(l *ldap.LDAP, form *groupModifyForm, groupDN string) error {
+	if form.AddUser != nil {
+		if err := l.AddUserToGroup(*form.AddUser, groupDN); err != nil {
+			return err
+		}
+		a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
+	} else if form.RemoveUser != nil {
+		if err := l.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
+			return err
+		}
+		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
+	}
+
+	return nil
 }

@@ -1,0 +1,48 @@
+# Test coverage configuration for LDAP Manager
+# Defines coverage thresholds and reporting settings
+
+# Coverage thresholds
+threshold:
+  # Overall project coverage threshold
+  total: 80
+  
+  # Per-file coverage threshold  
+  file: 70
+  
+  # Per-package coverage threshold
+  package: 75
+
+# Reporting configuration
+report:
+  # Output formats
+  html: true
+  json: true
+  text: true
+  
+  # Output directories
+  html-dir: coverage-reports/html
+  json-file: coverage-reports/coverage.json
+  text-file: coverage-reports/coverage.txt
+
+# Exclusions
+exclude:
+  # Exclude generated files
+  files:
+    - "**/*_templ.go"
+    - "**/mock_*.go" 
+    - "**/testdata/**"
+    
+  # Exclude specific functions/methods
+  patterns:
+    - "func main"
+    - "func init"
+    - "func.*Test.*"
+    - "func.*Benchmark.*"
+
+# Package-specific overrides
+packages:
+  "github.com/netresearch/ldap-manager/internal/web/templates":
+    threshold: 50  # Lower threshold for template packages
+    
+  "github.com/netresearch/ldap-manager/internal/ldap_cache":
+    threshold: 90  # Higher threshold for core cache functionality

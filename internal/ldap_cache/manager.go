@@ -1,5 +1,8 @@
 // Package ldap_cache provides efficient caching of LDAP directory data with automatic refresh capabilities.
 // It maintains synchronized in-memory caches for users, groups, and computers with concurrent-safe operations.
+//
+// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+// nolint:revive
 package ldap_cache
 
 import (
@@ -279,8 +282,8 @@ func (m *Manager) Refresh() {
 // When false, returns only enabled users. Uses efficient filtering on cached data.
 func (m *Manager) FindUsers(showDisabled bool) []ldap.User {
 	if !showDisabled {
-		return m.Users.Filter(func(t ldap.User) bool {
-			return t.Enabled
+		return m.Users.Filter(func(u ldap.User) bool {
+			return u.Enabled
 		})
 	}
 
@@ -337,8 +340,8 @@ func (m *Manager) FindGroupByDN(dn string) (*ldap.Group, error) {
 // When false, returns only enabled computers. Uses efficient filtering on cached data.
 func (m *Manager) FindComputers(showDisabled bool) []ldap.Computer {
 	if !showDisabled {
-		return m.Computers.Filter(func(t ldap.Computer) bool {
-			return t.Enabled
+		return m.Computers.Filter(func(c ldap.Computer) bool {
+			return c.Enabled
 		})
 	}
 
@@ -422,7 +425,7 @@ func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPCo
 // OnAddUserToGroup updates cache when a user is added to a group.
 // Synchronizes both user and group cache entries to maintain consistency.
 // Should be called after successful LDAP operations to keep cache current.
-func (m *Manager) OnAddUserToGroup(userDN string, groupDN string) {
+func (m *Manager) OnAddUserToGroup(userDN, groupDN string) {
 	m.Users.update(func(user *ldap.User) {
 		if user.DN() != userDN {
 			return
@@ -443,7 +446,7 @@ func (m *Manager) OnAddUserToGroup(userDN string, groupDN string) {
 // OnRemoveUserFromGroup updates cache when a user is removed from a group.
 // Synchronizes both user and group cache entries to maintain consistency.
 // Should be called after successful LDAP operations to keep cache current.
-func (m *Manager) OnRemoveUserFromGroup(userDN string, groupDN string) {
+func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 	m.Users.update(func(user *ldap.User) {
 		if user.DN() != userDN {
 			return

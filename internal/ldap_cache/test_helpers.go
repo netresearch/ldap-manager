@@ -1,3 +1,5 @@
+// Package ldap_cache provides thread-safe caching for LDAP entities with test helpers.
+// nolint:revive
 package ldap_cache
 
 import (
@@ -50,18 +52,18 @@ func (m *mockLDAPClient) FindComputers() ([]ldap.Computer, error) {
 	return m.computers, nil
 }
 
-func (m *mockLDAPClient) CheckPasswordForSAMAccountName(samAccountName, password string) (*ldap.User, error) {
+func (m *mockLDAPClient) CheckPasswordForSAMAccountName(_, _ string) (*ldap.User, error) {
 	return nil, errors.New("not implemented in mock")
 }
 
-func (m *mockLDAPClient) WithCredentials(dn, password string) (*ldap.LDAP, error) {
+func (m *mockLDAPClient) WithCredentials(_, _ string) (*ldap.LDAP, error) {
 	return nil, errors.New("not implemented in mock")
 }
 
 // NewMockUser creates a mock LDAP user for testing purposes.
 // Parameters: dn (Distinguished Name), samAccountName, enabled status, and group DNs.
 // Returns a properly configured ldap.User instance for use in unit tests.
-func NewMockUser(dn, samAccountName string, enabled bool, groups []string) ldap.User {
+func NewMockUser(_, samAccountName string, enabled bool, groups []string) ldap.User {
 	return ldap.User{
 		SAMAccountName: samAccountName,
 		Enabled:        enabled,
@@ -72,7 +74,7 @@ func NewMockUser(dn, samAccountName string, enabled bool, groups []string) ldap.
 // NewMockGroup creates a mock LDAP group for testing purposes.
 // Parameters: dn (Distinguished Name), group name, and member user DNs.
 // Returns a properly configured ldap.Group instance for use in unit tests.
-func NewMockGroup(dn, name string, members []string) ldap.Group {
+func NewMockGroup(_, _ string, members []string) ldap.Group {
 	return ldap.Group{
 		Members: members,
 	}
@@ -81,7 +83,7 @@ func NewMockGroup(dn, name string, members []string) ldap.Group {
 // NewMockComputer creates a mock LDAP computer for testing purposes.
 // Parameters: dn (Distinguished Name), samAccountName, enabled status, and group DNs.
 // Returns a properly configured ldap.Computer instance for use in unit tests.
-func NewMockComputer(dn, samAccountName string, enabled bool, groups []string) ldap.Computer {
+func NewMockComputer(_, samAccountName string, enabled bool, groups []string) ldap.Computer {
 	return ldap.Computer{
 		SAMAccountName: samAccountName,
 		Enabled:        enabled,

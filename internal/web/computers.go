@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
@@ -17,6 +18,7 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Computers(computers).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -38,5 +40,6 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 	})
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Computer(computer).Render(c.UserContext(), c.Response().BodyWriter())
 }

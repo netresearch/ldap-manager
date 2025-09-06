@@ -1,16 +1,45 @@
 package web
 
 import (
+	"net/http"
 	"net/http/httptest"
-	"testing"
 	"net/url"
+	"testing"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
-	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	ldap "github.com/netresearch/simple-ldap-go"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
+
+// Test helpers for HTTP response validation
+func assertHTTPRedirect(t *testing.T, resp *http.Response, expectedLocation string) {
+	t.Helper()
+	if resp.StatusCode != 302 {
+		t.Errorf("Expected redirect status 302, got %d", resp.StatusCode)
+	}
+
+	location := resp.Header.Get("Location")
+	if location != expectedLocation {
+		t.Errorf("Expected redirect to '%s', got '%s'", expectedLocation, location)
+	}
+}
+
+func assertHTTPStatus(t *testing.T, resp *http.Response, expectedStatus int) {
+	t.Helper()
+	if resp.StatusCode != expectedStatus {
+		t.Errorf("Expected status %d, got %d", expectedStatus, resp.StatusCode)
+	}
+}
+
+func closeHTTPResponse(t *testing.T, resp *http.Response) {
+	t.Helper()
+	if err := resp.Body.Close(); err != nil {
+		t.Logf("Failed to close response body: %v", err)
+	}
+}
 
 // Simple mock LDAP client for testing
 type testLDAPClient struct {
@@ -32,7 +61,7 @@ func (t *testLDAPClient) FindComputers() ([]ldap.Computer, error) {
 	return t.computers, nil
 }
 
-func (t *testLDAPClient) CheckPasswordForSAMAccountName(samAccountName, password string) (*ldap.User, error) {
+func (t *testLDAPClient) CheckPasswordForSAMAccountName(samAccountName, _ string) (*ldap.User, error) {
 	if t.authError != nil {
 		return nil, t.authError
 	}
@@ -41,13 +70,17 @@ func (t *testLDAPClient) CheckPasswordForSAMAccountName(samAccountName, password
 			return &t.users[i], nil
 		}
 	}
+
 	return nil, ldap.ErrUserNotFound
 }
 
-func (t *testLDAPClient) WithCredentials(dn, password string) (*ldap.LDAP, error) {
+func (t *testLDAPClient) WithCredentials(_, _ string) (*ldap.LDAP, error) {
 	return &ldap.LDAP{}, nil
 }
 
+// setupTestApp creates a test application with mock LDAP client.
+// Returns testLDAPClient for potential future test scenarios requiring client access.
+// nolint:unparam // testLDAPClient return value preserved for future test extensibility
 func setupTestApp() (*App, *testLDAPClient) {
 	mockClient := &testLDAPClient{
 		users: []ldap.User{
@@ -77,33 +110,47 @@ func setupTestApp() (*App, *testLDAPClient) {
 		fiber:        f,
 	}
 
-	// Populate cache
-	app.ldapCache.RefreshUsers()
-	app.ldapCache.RefreshGroups() 
-	app.ldapCache.RefreshComputers()
+	// Populate cache - errors are expected in test environment with mock client
+	_ = app.ldapCache.RefreshUsers()     //nolint:errcheck
+	_ = app.ldapCache.RefreshGroups()    //nolint:errcheck
+	_ = app.ldapCache.RefreshComputers() //nolint:errcheck
 
 	// Setup routes
 	f.Get("/login", app.loginHandler)
 	f.Get("/logout", app.logoutHandler)
-	f.Get("/users", app.usersHandler)
-	f.Get("/users/:userDN", app.userHandler)
+
+	// Protected routes with authentication middleware
+	f.Get("/users", app.RequireAuth(), app.usersHandler)
+	f.Get("/users/:userDN", app.RequireAuth(), app.userHandler)
 
 	return app, mockClient
+}
+
+// testRedirectToLogin is a helper to test that a handler redirects unauthenticated requests to login
+func testRedirectToLogin(t *testing.T, app *App, path string) {
+	t.Helper()
+	req := httptest.NewRequest("GET", path, http.NoBody)
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer closeHTTPResponse(t, resp)
+
+	assertHTTPRedirect(t, resp, "/login")
 }
 
 func TestLoginHandlerBasic(t *testing.T) {
 	app, _ := setupTestApp()
 
 	t.Run("shows login form on GET", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/login", nil)
+		req := httptest.NewRequest("GET", "/login", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
 		}
+		defer closeHTTPResponse(t, resp)
 
-		if resp.StatusCode != 200 {
-			t.Errorf("Expected status 200, got %d", resp.StatusCode)
-		}
+		assertHTTPStatus(t, resp, 200)
 	})
 
 	// Note: Full authentication tests require complex LDAP client mocking
@@ -114,20 +161,7 @@ func TestLogoutHandler(t *testing.T) {
 	app, _ := setupTestApp()
 
 	t.Run("redirects to login", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/logout", nil)
-		resp, err := app.fiber.Test(req)
-		if err != nil {
-			t.Fatalf("Request failed: %v", err)
-		}
-
-		if resp.StatusCode != 302 {
-			t.Errorf("Expected redirect status 302, got %d", resp.StatusCode)
-		}
-
-		location := resp.Header.Get("Location")
-		if location != "/login" {
-			t.Errorf("Expected redirect to '/login', got '%s'", location)
-		}
+		testRedirectToLogin(t, app, "/logout")
 	})
 }
 
@@ -135,20 +169,7 @@ func TestUsersHandlerBasic(t *testing.T) {
 	app, _ := setupTestApp()
 
 	t.Run("redirects unauthenticated requests to login", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/users", nil)
-		resp, err := app.fiber.Test(req)
-		if err != nil {
-			t.Fatalf("Request failed: %v", err)
-		}
-
-		if resp.StatusCode != 302 {
-			t.Errorf("Expected redirect status 302, got %d", resp.StatusCode)
-		}
-
-		location := resp.Header.Get("Location")
-		if location != "/login" {
-			t.Errorf("Expected redirect to '/login', got '%s'", location)
-		}
+		testRedirectToLogin(t, app, "/users")
 	})
 }
 
@@ -157,20 +178,7 @@ func TestUserHandlerBasic(t *testing.T) {
 	userDN := url.PathEscape("cn=john.doe,ou=users,dc=example,dc=com")
 
 	t.Run("redirects unauthenticated requests to login", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/users/"+userDN, nil)
-		resp, err := app.fiber.Test(req)
-		if err != nil {
-			t.Fatalf("Request failed: %v", err)
-		}
-
-		if resp.StatusCode != 302 {
-			t.Errorf("Expected redirect status 302, got %d", resp.StatusCode)
-		}
-
-		location := resp.Header.Get("Location")
-		if location != "/login" {
-			t.Errorf("Expected redirect to '/login', got '%s'", location)
-		}
+		testRedirectToLogin(t, app, "/users/"+userDN)
 	})
 
 	// Note: Testing invalid URL parameters is complex with httptest

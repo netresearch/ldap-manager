@@ -1,5 +1,7 @@
 // Package ldap_cache provides metrics and observability for LDAP cache operations.
 // Tracks cache performance, hit rates, refresh cycles, and health status.
+// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+// nolint:revive
 package ldap_cache
 
 import (
@@ -13,25 +15,25 @@ import (
 type Metrics struct {
 	// Cache performance metrics
 	CacheHits   int64 // Total number of successful cache lookups
-	CacheMisses int64 // Total number of failed cache lookups  
-	
+	CacheMisses int64 // Total number of failed cache lookups
+
 	// Refresh cycle metrics
 	RefreshCount    int64     // Total number of cache refresh operations
 	LastRefresh     time.Time // Timestamp of the last successful refresh
 	RefreshErrors   int64     // Total number of refresh failures
 	RefreshDuration int64     // Duration of last refresh in nanoseconds
-	
+
 	// Entity-specific metrics
 	UserCount     int64 // Current number of cached users
-	GroupCount    int64 // Current number of cached groups  
+	GroupCount    int64 // Current number of cached groups
 	ComputerCount int64 // Current number of cached computers
-	
+
 	// Operational metrics
-	StartTime       time.Time // Cache manager startup time
-	UptimeSeconds   int64     // Total uptime in seconds
-	HealthStatus    int32     // Health status: 0=healthy, 1=degraded, 2=unhealthy
-	ErrorRate       float64   // Recent error rate percentage (0-100)
-	
+	StartTime     time.Time // Cache manager startup time
+	UptimeSeconds int64     // Total uptime in seconds
+	HealthStatus  int32     // Health status: 0=healthy, 1=degraded, 2=unhealthy
+	ErrorRate     float64   // Recent error rate percentage (0-100)
+
 	// Internal state protection
 	mu sync.RWMutex // Protects non-atomic fields during updates
 }
@@ -40,9 +42,12 @@ type Metrics struct {
 type CacheHealth int32
 
 const (
-	HealthHealthy  CacheHealth = 0 // All systems operational
-	HealthDegraded CacheHealth = 1 // Some issues but still functional
-	HealthUnhealthy CacheHealth = 2 // Critical issues affecting functionality
+	// HealthHealthy indicates all cache systems are operational.
+	HealthHealthy CacheHealth = 0
+	// HealthDegraded indicates some issues exist but the cache is still functional.
+	HealthDegraded CacheHealth = 1
+	// HealthUnhealthy indicates critical issues that affect cache functionality.
+	HealthUnhealthy CacheHealth = 2
 )
 
 // NewMetrics creates a new metrics instance with initialized counters.
@@ -70,6 +75,7 @@ func (m *Metrics) RecordCacheMiss() {
 // Updates the refresh count and sets the start time for duration tracking.
 func (m *Metrics) RecordRefreshStart() time.Time {
 	atomic.AddInt64(&m.RefreshCount, 1)
+
 	return time.Now()
 }
 
@@ -77,16 +83,16 @@ func (m *Metrics) RecordRefreshStart() time.Time {
 // Updates the last refresh time, duration, and current entity counts.
 func (m *Metrics) RecordRefreshComplete(startTime time.Time, userCount, groupCount, computerCount int) {
 	duration := time.Since(startTime)
-	
+
 	m.mu.Lock()
 	m.LastRefresh = time.Now()
 	m.mu.Unlock()
-	
+
 	atomic.StoreInt64(&m.RefreshDuration, duration.Nanoseconds())
 	atomic.StoreInt64(&m.UserCount, int64(userCount))
 	atomic.StoreInt64(&m.GroupCount, int64(groupCount))
 	atomic.StoreInt64(&m.ComputerCount, int64(computerCount))
-	
+
 	m.updateHealthStatus()
 }
 
@@ -104,24 +110,24 @@ func (m *Metrics) updateHealthStatus() {
 	if totalRefresh == 0 {
 		return
 	}
-	
+
 	errorCount := atomic.LoadInt64(&m.RefreshErrors)
 	errorRate := float64(errorCount) / float64(totalRefresh) * 100
-	
+
 	m.mu.Lock()
 	m.ErrorRate = errorRate
 	m.mu.Unlock()
-	
+
 	var newStatus CacheHealth
 	switch {
 	case errorRate == 0:
 		newStatus = HealthHealthy
 	case errorRate < 10:
-		newStatus = HealthDegraded  
+		newStatus = HealthDegraded
 	default:
 		newStatus = HealthUnhealthy
 	}
-	
+
 	atomic.StoreInt32(&m.HealthStatus, int32(newStatus))
 }
 
@@ -131,11 +137,11 @@ func (m *Metrics) GetCacheHitRate() float64 {
 	hits := atomic.LoadInt64(&m.CacheHits)
 	misses := atomic.LoadInt64(&m.CacheMisses)
 	total := hits + misses
-	
+
 	if total == 0 {
 		return 0.0
 	}
-	
+
 	return float64(hits) / float64(total) * 100
 }
 
@@ -144,7 +150,7 @@ func (m *Metrics) GetUptime() time.Duration {
 	m.mu.RLock()
 	startTime := m.StartTime
 	m.mu.RUnlock()
-	
+
 	return time.Since(startTime)
 }
 
@@ -156,29 +162,30 @@ func (m *Metrics) GetHealthStatus() CacheHealth {
 // GetLastRefreshDuration returns the duration of the most recent refresh operation.
 func (m *Metrics) GetLastRefreshDuration() time.Duration {
 	nanos := atomic.LoadInt64(&m.RefreshDuration)
+
 	return time.Duration(nanos)
 }
 
 // GetEntityCounts returns the current count of cached entities.
 func (m *Metrics) GetEntityCounts() (users, groups, computers int64) {
 	return atomic.LoadInt64(&m.UserCount),
-		   atomic.LoadInt64(&m.GroupCount),
-		   atomic.LoadInt64(&m.ComputerCount)
+		atomic.LoadInt64(&m.GroupCount),
+		atomic.LoadInt64(&m.ComputerCount)
 }
 
-// GetSummaryStats returns a comprehensive view of cache metrics.
-// Useful for monitoring dashboards and health check endpoints.
+// SummaryStats provides a comprehensive view of cache metrics and performance data.
+// Used by monitoring dashboards and health check endpoints for system observability.
 type SummaryStats struct {
-	CacheHitRate       float64       `json:"cache_hit_rate"`
-	TotalOperations    int64         `json:"total_operations"`
-	RefreshCount       int64         `json:"refresh_count"`
-	RefreshErrors      int64         `json:"refresh_errors"`
-	LastRefreshAge     time.Duration `json:"last_refresh_age"`
-	RefreshDuration    time.Duration `json:"refresh_duration"`
-	Uptime             time.Duration `json:"uptime"`
-	HealthStatus       string        `json:"health_status"`
-	ErrorRate          float64       `json:"error_rate"`
-	EntityCounts       EntityCounts  `json:"entity_counts"`
+	CacheHitRate    float64       `json:"cache_hit_rate"`
+	TotalOperations int64         `json:"total_operations"`
+	RefreshCount    int64         `json:"refresh_count"`
+	RefreshErrors   int64         `json:"refresh_errors"`
+	LastRefreshAge  time.Duration `json:"last_refresh_age"`
+	RefreshDuration time.Duration `json:"refresh_duration"`
+	Uptime          time.Duration `json:"uptime"`
+	HealthStatus    string        `json:"health_status"`
+	ErrorRate       float64       `json:"error_rate"`
+	EntityCounts    EntityCounts  `json:"entity_counts"`
 }
 
 // EntityCounts represents the current count of each entity type.
@@ -191,17 +198,17 @@ type EntityCounts struct {
 // GetSummaryStats returns comprehensive cache statistics for monitoring.
 func (m *Metrics) GetSummaryStats() SummaryStats {
 	users, groups, computers := m.GetEntityCounts()
-	
+
 	m.mu.RLock()
 	lastRefresh := m.LastRefresh
 	errorRate := m.ErrorRate
 	m.mu.RUnlock()
-	
+
 	var lastRefreshAge time.Duration
 	if !lastRefresh.IsZero() {
 		lastRefreshAge = time.Since(lastRefresh)
 	}
-	
+
 	healthStatus := m.GetHealthStatus()
 	var healthStr string
 	switch healthStatus {
@@ -212,7 +219,7 @@ func (m *Metrics) GetSummaryStats() SummaryStats {
 	case HealthUnhealthy:
 		healthStr = "unhealthy"
 	}
-	
+
 	return SummaryStats{
 		CacheHitRate:    m.GetCacheHitRate(),
 		TotalOperations: atomic.LoadInt64(&m.CacheHits) + atomic.LoadInt64(&m.CacheMisses),
