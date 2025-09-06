@@ -9,13 +9,23 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// LDAPClient interface defines the LDAP operations needed by the cache manager.
+// This allows for easier testing with mock implementations.
+type LDAPClient interface {
+	FindUsers() ([]ldap.User, error)
+	FindGroups() ([]ldap.Group, error)
+	FindComputers() ([]ldap.Computer, error)
+	CheckPasswordForSAMAccountName(samAccountName, password string) (*ldap.User, error)
+	WithCredentials(dn, password string) (*ldap.LDAP, error)
+}
+
 // Manager coordinates LDAP data caching with automatic background refresh.
 // It maintains separate caches for users, groups, and computers, refreshing every 30 seconds.
 // All operations are concurrent-safe and provide immediate access to cached data.
 type Manager struct {
 	stop chan struct{} // Channel for graceful shutdown signaling
 
-	client *ldap.LDAP // LDAP client for directory operations
+	client LDAPClient // LDAP client for directory operations
 
 	Users     Cache[ldap.User]     // Cached user entries
 	Groups    Cache[ldap.Group]    // Cached group entries
@@ -46,7 +56,7 @@ type FullLDAPComputer struct {
 // New creates a new LDAP cache manager with the provided LDAP client.
 // The manager is initialized with empty caches for users, groups, and computers.
 // Call Run() to start the background refresh goroutine.
-func New(client *ldap.LDAP) *Manager {
+func New(client LDAPClient) *Manager {
 	return &Manager{
 		stop:      make(chan struct{}),
 		client:    client,
