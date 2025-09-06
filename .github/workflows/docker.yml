@@ -22,14 +22,14 @@ jobs:
   docker:
     name: Build Images
     runs-on: ubuntu-latest
-    
+
     # Job-specific permissions following least-privilege principle
     permissions:
-      contents: read        # Required for actions/checkout
-      packages: write       # Required for pushing to GHCR
-      id-token: write       # Required for OIDC token generation
+      contents: read # Required for actions/checkout
+      packages: write # Required for pushing to GHCR
+      id-token: write # Required for OIDC token generation
       security-events: write # Required for vulnerability scanning
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -93,14 +93,14 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          format: "sarif"
+          output: "trivy-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       # Move cache to prevent unlimited growth
       - name: Move cache

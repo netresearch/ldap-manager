@@ -1,132 +1,177 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html>
-	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>internal: Go Coverage Report</title>
-		<style>
-			body {
-				background: black;
-				color: rgb(80, 80, 80);
-			}
-			body, pre, #legend span {
-				font-family: Menlo, monospace;
-				font-weight: bold;
-			}
-			#topbar {
-				background: black;
-				position: fixed;
-				top: 0; left: 0; right: 0;
-				height: 42px;
-				border-bottom: 1px solid rgb(80, 80, 80);
-			}
-			#content {
-				margin-top: 50px;
-			}
-			#nav, #legend {
-				float: left;
-				margin-left: 10px;
-			}
-			#legend {
-				margin-top: 12px;
-			}
-			#nav {
-				margin-top: 10px;
-			}
-			#legend span {
-				margin: 0 5px;
-			}
-			.cov0 { color: rgb(192, 0, 0) }
-.cov1 { color: rgb(128, 128, 128) }
-.cov2 { color: rgb(116, 140, 131) }
-.cov3 { color: rgb(104, 152, 134) }
-.cov4 { color: rgb(92, 164, 137) }
-.cov5 { color: rgb(80, 176, 140) }
-.cov6 { color: rgb(68, 188, 143) }
-.cov7 { color: rgb(56, 200, 146) }
-.cov8 { color: rgb(44, 212, 149) }
-.cov9 { color: rgb(32, 224, 152) }
-.cov10 { color: rgb(20, 236, 155) }
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>internal: Go Coverage Report</title>
+    <style>
+      body {
+        background: black;
+        color: rgb(80, 80, 80);
+      }
+      body,
+      pre,
+      #legend span {
+        font-family: Menlo, monospace;
+        font-weight: bold;
+      }
+      #topbar {
+        background: black;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 42px;
+        border-bottom: 1px solid rgb(80, 80, 80);
+      }
+      #content {
+        margin-top: 50px;
+      }
+      #nav,
+      #legend {
+        float: left;
+        margin-left: 10px;
+      }
+      #legend {
+        margin-top: 12px;
+      }
+      #nav {
+        margin-top: 10px;
+      }
+      #legend span {
+        margin: 0 5px;
+      }
+      .cov0 {
+        color: rgb(192, 0, 0);
+      }
+      .cov1 {
+        color: rgb(128, 128, 128);
+      }
+      .cov2 {
+        color: rgb(116, 140, 131);
+      }
+      .cov3 {
+        color: rgb(104, 152, 134);
+      }
+      .cov4 {
+        color: rgb(92, 164, 137);
+      }
+      .cov5 {
+        color: rgb(80, 176, 140);
+      }
+      .cov6 {
+        color: rgb(68, 188, 143);
+      }
+      .cov7 {
+        color: rgb(56, 200, 146);
+      }
+      .cov8 {
+        color: rgb(44, 212, 149);
+      }
+      .cov9 {
+        color: rgb(32, 224, 152);
+      }
+      .cov10 {
+        color: rgb(20, 236, 155);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="topbar">
+      <div id="nav">
+        <select id="files">
+          <option value="file0">github.com/netresearch/ldap-manager/internal/build.go (0.0%)</option>
 
-		</style>
-	</head>
-	<body>
-		<div id="topbar">
-			<div id="nav">
-				<select id="files">
-				
-				<option value="file0">github.com/netresearch/ldap-manager/internal/build.go (0.0%)</option>
-				
-				<option value="file1">github.com/netresearch/ldap-manager/internal/ldap_cache/cache.go (100.0%)</option>
-				
-				<option value="file2">github.com/netresearch/ldap-manager/internal/ldap_cache/manager.go (75.0%)</option>
-				
-				<option value="file3">github.com/netresearch/ldap-manager/internal/ldap_cache/metrics.go (44.1%)</option>
-				
-				<option value="file4">github.com/netresearch/ldap-manager/internal/ldap_cache/test_helpers.go (88.2%)</option>
-				
-				<option value="file5">github.com/netresearch/ldap-manager/internal/options/app.go (40.0%)</option>
-				
-				<option value="file6">github.com/netresearch/ldap-manager/internal/web/auth.go (47.8%)</option>
-				
-				<option value="file7">github.com/netresearch/ldap-manager/internal/web/computers.go (0.0%)</option>
-				
-				<option value="file8">github.com/netresearch/ldap-manager/internal/web/groups.go (0.0%)</option>
-				
-				<option value="file9">github.com/netresearch/ldap-manager/internal/web/health.go (0.0%)</option>
-				
-				<option value="file10">github.com/netresearch/ldap-manager/internal/web/middleware.go (18.2%)</option>
-				
-				<option value="file11">github.com/netresearch/ldap-manager/internal/web/server.go (0.0%)</option>
-				
-				<option value="file12">github.com/netresearch/ldap-manager/internal/web/templates/base_templ.go (0.0%)</option>
-				
-				<option value="file13">github.com/netresearch/ldap-manager/internal/web/templates/computer_templ.go (0.0%)</option>
-				
-				<option value="file14">github.com/netresearch/ldap-manager/internal/web/templates/errors_templ.go (0.0%)</option>
-				
-				<option value="file15">github.com/netresearch/ldap-manager/internal/web/templates/flash.go (100.0%)</option>
-				
-				<option value="file16">github.com/netresearch/ldap-manager/internal/web/templates/groups_templ.go (0.0%)</option>
-				
-				<option value="file17">github.com/netresearch/ldap-manager/internal/web/templates/icons_templ.go (0.0%)</option>
-				
-				<option value="file18">github.com/netresearch/ldap-manager/internal/web/templates/index_templ.go (0.0%)</option>
-				
-				<option value="file19">github.com/netresearch/ldap-manager/internal/web/templates/list_templ.go (0.0%)</option>
-				
-				<option value="file20">github.com/netresearch/ldap-manager/internal/web/templates/logged_in_templ.go (0.0%)</option>
-				
-				<option value="file21">github.com/netresearch/ldap-manager/internal/web/templates/login_templ.go (0.0%)</option>
-				
-				<option value="file22">github.com/netresearch/ldap-manager/internal/web/templates/users_templ.go (0.0%)</option>
-				
-				<option value="file23">github.com/netresearch/ldap-manager/internal/web/users.go (4.1%)</option>
-				
-				<option value="file24">github.com/netresearch/ldap-manager/main.go (0.0%)</option>
-				
-				</select>
-			</div>
-			<div id="legend">
-				<span>not tracked</span>
-			
-				<span class="cov0">no coverage</span>
-				<span class="cov1">low coverage</span>
-				<span class="cov2">*</span>
-				<span class="cov3">*</span>
-				<span class="cov4">*</span>
-				<span class="cov5">*</span>
-				<span class="cov6">*</span>
-				<span class="cov7">*</span>
-				<span class="cov8">*</span>
-				<span class="cov9">*</span>
-				<span class="cov10">high coverage</span>
-			
-			</div>
-		</div>
-		<div id="content">
-		
-		<pre class="file" id="file0" style="display: none">// Package internal provides build-time information and version management.
+          <option value="file1">github.com/netresearch/ldap-manager/internal/ldap_cache/cache.go (100.0%)</option>
+
+          <option value="file2">github.com/netresearch/ldap-manager/internal/ldap_cache/manager.go (75.0%)</option>
+
+          <option value="file3">github.com/netresearch/ldap-manager/internal/ldap_cache/metrics.go (44.1%)</option>
+
+          <option value="file4">github.com/netresearch/ldap-manager/internal/ldap_cache/test_helpers.go (88.2%)</option>
+
+          <option value="file5">github.com/netresearch/ldap-manager/internal/options/app.go (40.0%)</option>
+
+          <option value="file6">github.com/netresearch/ldap-manager/internal/web/auth.go (47.8%)</option>
+
+          <option value="file7">github.com/netresearch/ldap-manager/internal/web/computers.go (0.0%)</option>
+
+          <option value="file8">github.com/netresearch/ldap-manager/internal/web/groups.go (0.0%)</option>
+
+          <option value="file9">github.com/netresearch/ldap-manager/internal/web/health.go (0.0%)</option>
+
+          <option value="file10">github.com/netresearch/ldap-manager/internal/web/middleware.go (18.2%)</option>
+
+          <option value="file11">github.com/netresearch/ldap-manager/internal/web/server.go (0.0%)</option>
+
+          <option value="file12">
+            github.com/netresearch/ldap-manager/internal/web/templates/base_templ.go (0.0%)
+          </option>
+
+          <option value="file13">
+            github.com/netresearch/ldap-manager/internal/web/templates/computer_templ.go (0.0%)
+          </option>
+
+          <option value="file14">
+            github.com/netresearch/ldap-manager/internal/web/templates/errors_templ.go (0.0%)
+          </option>
+
+          <option value="file15">github.com/netresearch/ldap-manager/internal/web/templates/flash.go (100.0%)</option>
+
+          <option value="file16">
+            github.com/netresearch/ldap-manager/internal/web/templates/groups_templ.go (0.0%)
+          </option>
+
+          <option value="file17">
+            github.com/netresearch/ldap-manager/internal/web/templates/icons_templ.go (0.0%)
+          </option>
+
+          <option value="file18">
+            github.com/netresearch/ldap-manager/internal/web/templates/index_templ.go (0.0%)
+          </option>
+
+          <option value="file19">
+            github.com/netresearch/ldap-manager/internal/web/templates/list_templ.go (0.0%)
+          </option>
+
+          <option value="file20">
+            github.com/netresearch/ldap-manager/internal/web/templates/logged_in_templ.go (0.0%)
+          </option>
+
+          <option value="file21">
+            github.com/netresearch/ldap-manager/internal/web/templates/login_templ.go (0.0%)
+          </option>
+
+          <option value="file22">
+            github.com/netresearch/ldap-manager/internal/web/templates/users_templ.go (0.0%)
+          </option>
+
+          <option value="file23">github.com/netresearch/ldap-manager/internal/web/users.go (4.1%)</option>
+
+          <option value="file24">github.com/netresearch/ldap-manager/main.go (0.0%)</option>
+        </select>
+      </div>
+      <div id="legend">
+        <span>not tracked</span>
+
+        <span class="cov0">no coverage</span>
+        <span class="cov1">low coverage</span>
+        <span class="cov2">*</span>
+        <span class="cov3">*</span>
+        <span class="cov4">*</span>
+        <span class="cov5">*</span>
+        <span class="cov6">*</span>
+        <span class="cov7">*</span>
+        <span class="cov8">*</span>
+        <span class="cov9">*</span>
+        <span class="cov10">high coverage</span>
+      </div>
+    </div>
+    <div id="content">
+      <pre
+        class="file"
+        id="file0"
+        style="display: none"
+      >// Package internal provides build-time information and version management.
 package internal
 
 import "fmt"
@@ -148,8 +193,12 @@ func FormatVersion() string <span class="cov0" title="0">{
         <span class="cov0" title="0">return fmt.Sprintf("%s (%s, built at %s)", Version, CommitHash, BuildTimestamp)</span>
 }
 </pre>
-		
-		<pre class="file" id="file1" style="display: none">// Package ldap_cache provides thread-safe generic caching for LDAP entities.
+
+      <pre
+        class="file"
+        id="file1"
+        style="display: none"
+      >// Package ldap_cache provides thread-safe generic caching for LDAP entities.
 // Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
 // nolint:var-naming
 package ldap_cache
@@ -279,8 +328,12 @@ func (c *Cache[T]) Count() int <span class="cov8" title="39">{
         return len(c.items)
 }</span>
 </pre>
-		
-		<pre class="file" id="file2" style="display: none">// Package ldap_cache provides efficient caching of LDAP directory data with automatic refresh capabilities.
+
+      <pre
+        class="file"
+        id="file2"
+        style="display: none"
+      >// Package ldap_cache provides efficient caching of LDAP directory data with automatic refresh capabilities.
 // It maintains synchronized in-memory caches for users, groups, and computers with concurrent-safe operations.
 //
 // Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
@@ -772,8 +825,12 @@ func (m *Manager) IsHealthy() bool <span class="cov0" title="0">{
         return m.metrics.GetHealthStatus() == HealthHealthy
 }</span>
 </pre>
-		
-		<pre class="file" id="file3" style="display: none">// Package ldap_cache provides metrics and observability for LDAP cache operations.
+
+      <pre
+        class="file"
+        id="file3"
+        style="display: none"
+      >// Package ldap_cache provides metrics and observability for LDAP cache operations.
 // Tracks cache performance, hit rates, refresh cycles, and health status.
 // Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
 // nolint:var-naming
@@ -1013,8 +1070,12 @@ func (m *Metrics) GetSummaryStats() SummaryStats <span class="cov0" title="0">{
         }</span>
 }
 </pre>
-		
-		<pre class="file" id="file4" style="display: none">// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+
+      <pre
+        class="file"
+        id="file4"
+        style="display: none"
+      >// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
 // nolint:var-naming
 package ldap_cache
 
@@ -1107,8 +1168,12 @@ func NewMockComputer(_ string, samAccountName string, enabled bool, groups []str
         }
 }</span>
 </pre>
-		
-		<pre class="file" id="file5" style="display: none">// Package options provides configuration parsing and environment variable handling
+
+      <pre
+        class="file"
+        id="file5"
+        style="display: none"
+      >// Package options provides configuration parsing and environment variable handling
 // for the LDAP Manager application.
 package options
 
@@ -1251,8 +1316,12 @@ func Parse() *Opts <span class="cov0" title="0">{
         }</span>
 }
 </pre>
-		
-		<pre class="file" id="file6" style="display: none">// Package web provides HTTP handlers and middleware for the LDAP Manager web application.
+
+      <pre
+        class="file"
+        id="file6"
+        style="display: none"
+      >// Package web provides HTTP handlers and middleware for the LDAP Manager web application.
 package web
 
 import (
@@ -1311,8 +1380,8 @@ func (a *App) loginHandler(c *fiber.Ctx) error <span class="cov8" title="1">{
                 c.UserContext(), c.Response().BodyWriter())</span>
 }
 </pre>
-		
-		<pre class="file" id="file7" style="display: none">package web
+
+      <pre class="file" id="file7" style="display: none">package web
 
 import (
         "net/url"
@@ -1358,8 +1427,8 @@ func (a *App) computerHandler(c *fiber.Ctx) error <span class="cov0" title="0">{
         return templates.Computer(computer).Render(c.UserContext(), c.Response().BodyWriter())</span>
 }
 </pre>
-		
-		<pre class="file" id="file8" style="display: none">package web
+
+      <pre class="file" id="file8" style="display: none">package web
 
 import (
         "net/url"
@@ -1533,8 +1602,8 @@ func (a *App) performGroupModification(l *ldap.LDAP, form *groupModifyForm, grou
         <span class="cov0" title="0">return nil</span>
 }
 </pre>
-		
-		<pre class="file" id="file9" style="display: none">package web
+
+      <pre class="file" id="file9" style="display: none">package web
 
 import (
         "github.com/gofiber/fiber/v2"
@@ -1607,8 +1676,8 @@ func (a *App) livenessHandler(c *fiber.Ctx) error <span class="cov0" title="0">{
         })
 }</span>
 </pre>
-		
-		<pre class="file" id="file10" style="display: none">package web
+
+      <pre class="file" id="file10" style="display: none">package web
 
 import (
         "github.com/gofiber/fiber/v2"
@@ -1705,8 +1774,8 @@ func RequireUserDN(c *fiber.Ctx) (string, error) <span class="cov0" title="0">{
         <span class="cov0" title="0">return userDN, nil</span>
 }
 </pre>
-		
-		<pre class="file" id="file11" style="display: none">package web
+
+      <pre class="file" id="file11" style="display: none">package web
 
 import (
         "net/http"
@@ -1859,8 +1928,8 @@ func (a *App) authenticateLDAPClient(userDN, password string) (*ldap.LDAP, error
         <span class="cov0" title="0">return a.ldapClient.WithCredentials(executor.DN(), password)</span>
 }
 </pre>
-		
-		<pre class="file" id="file12" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file12" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -1924,8 +1993,8 @@ func base(title string) templ.Component <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file13" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file13" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -2157,8 +2226,8 @@ func computerUrl(computer ldap.Computer) templ.SafeURL <span class="cov0" title=
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file14" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file14" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -2261,8 +2330,12 @@ func FiveHundred(err error) templ.Component <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file15" style="display: none">// Package templates provides flash message functionality for the web interface.
+
+      <pre
+        class="file"
+        id="file15"
+        style="display: none"
+      >// Package templates provides flash message functionality for the web interface.
 // Handles success, error, and info messages with associated styling classes.
 package templates
 
@@ -2347,8 +2420,8 @@ func (f Flash) BorderColor() string <span class="cov10" title="4">{
         }
 }
 </pre>
-		
-		<pre class="file" id="file16" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file16" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -2754,8 +2827,8 @@ func groupUrl(group ldap.Group) templ.SafeURL <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file17" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file17" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -3095,8 +3168,8 @@ func xIcon() templ.Component <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file18" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file18" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -3237,8 +3310,8 @@ func Code(content string) templ.Component <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file19" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file19" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -3359,8 +3432,8 @@ func mapSlice[A any, B any](list []A, convert func(A) B) []B <span class="cov0" 
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file20" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file20" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -3598,8 +3671,8 @@ func loggedIn(current, title string, flashes []Flash) templ.Component <span clas
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file21" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file21" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -3706,8 +3779,8 @@ func Login(flashes []Flash, version string) templ.Component <span class="cov0" t
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file22" style="display: none">// Code generated by templ - DO NOT EDIT.
+
+      <pre class="file" id="file22" style="display: none">// Code generated by templ - DO NOT EDIT.
 
 // templ: version: v0.3.898
 package templates
@@ -4222,8 +4295,8 @@ func disabledUsersClass(showDisabled bool) string <span class="cov0" title="0">{
 
 var _ = templruntime.GeneratedTemplate
 </pre>
-		
-		<pre class="file" id="file23" style="display: none">package web
+
+      <pre class="file" id="file23" style="display: none">package web
 
 import (
         "net/url"
@@ -4396,8 +4469,12 @@ func (a *App) performUserModification(l *ldap.LDAP, form *userModifyForm, userDN
         <span class="cov0" title="0">return nil</span>
 }
 </pre>
-		
-		<pre class="file" id="file24" style="display: none">// Package main provides the entry point for the LDAP Manager web application.
+
+      <pre
+        class="file"
+        id="file24"
+        style="display: none"
+      >// Package main provides the entry point for the LDAP Manager web application.
 // It initializes logging, parses configuration options, and starts the web server.
 package main
 
@@ -4430,34 +4507,31 @@ func main() <span class="cov0" title="0">{
         }</span>
 }
 </pre>
-		
-		</div>
-	</body>
-	<script>
-	(function() {
-		var files = document.getElementById('files');
-		var visible;
-		files.addEventListener('change', onChange, false);
-		function select(part) {
-			if (visible)
-				visible.style.display = 'none';
-			visible = document.getElementById(part);
-			if (!visible)
-				return;
-			files.value = part;
-			visible.style.display = 'block';
-			location.hash = part;
-		}
-		function onChange() {
-			select(files.value);
-			window.scrollTo(0, 0);
-		}
-		if (location.hash != "") {
-			select(location.hash.substr(1));
-		}
-		if (!visible) {
-			select("file0");
-		}
-	})();
-	</script>
+    </div>
+  </body>
+  <script>
+    (function () {
+      var files = document.getElementById("files");
+      var visible;
+      files.addEventListener("change", onChange, false);
+      function select(part) {
+        if (visible) visible.style.display = "none";
+        visible = document.getElementById(part);
+        if (!visible) return;
+        files.value = part;
+        visible.style.display = "block";
+        location.hash = part;
+      }
+      function onChange() {
+        select(files.value);
+        window.scrollTo(0, 0);
+      }
+      if (location.hash != "") {
+        select(location.hash.substr(1));
+      }
+      if (!visible) {
+        select("file0");
+      }
+    })();
+  </script>
 </html>

@@ -48,7 +48,7 @@ USER nonroot:nonroot
 
 # Health check to ensure the application is running
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD /ldap-passwd --health-check || exit 1
+  CMD ["/ldap-passwd", "--health-check"]
 
 # Use vector form for ENTRYPOINT as recommended by distroless docs
 ENTRYPOINT ["/ldap-passwd"]
