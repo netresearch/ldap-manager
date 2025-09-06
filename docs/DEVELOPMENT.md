@@ -136,15 +136,18 @@ The `Makefile` provides comprehensive development automation:
 ### Daily Development
 
 1. **Start Development Server**:
+
    ```bash
    make dev
    ```
+
    This starts concurrent processes:
    - Go server with live reload (Air)
    - CSS compilation with TailwindCSS watch mode
    - Template compilation with templ watch mode
 
 2. **Run Quality Checks**:
+
    ```bash
    make check  # Run all linting and tests
    ```
@@ -222,6 +225,7 @@ pre-commit run --all-files
 ```
 
 **Enabled hooks:**
+
 - Go formatting (gofumpt)
 - Import organization (goimports)
 - Markdown linting (markdownlint)
@@ -346,6 +350,7 @@ make setup-tools
 ```
 
 This installs:
+
 - golangci-lint (comprehensive linting)
 - staticcheck (static analysis)
 - govulncheck (security scanning)
@@ -359,17 +364,20 @@ This installs:
 ### Common Issues
 
 1. **templ command not found**:
+
    ```bash
    go install github.com/a-h/templ/cmd/templ@latest
    ```
 
 2. **PNPM not available**:
+
    ```bash
    npm install -g corepack
    corepack enable
    ```
 
 3. **Permission issues with pre-commit**:
+
    ```bash
    pip install --user pre-commit
    make setup-hooks
