@@ -9,14 +9,18 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/bbolt/v2"
 	"github.com/gofiber/storage/memory/v2"
+	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web/static"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
-	ldap "github.com/netresearch/simple-ldap-go"
-	"github.com/rs/zerolog/log"
 )
 
+// App represents the main web application structure.
+// It encapsulates LDAP client, cache manager, session store, and Fiber web framework.
+// Provides centralized management of authentication, caching, and HTTP request handling.
 type App struct {
 	ldapClient   *ldap.LDAP
 	ldapCache    *ldap_cache.Manager
@@ -36,6 +40,9 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 	return memory.New()
 }
 
+// NewApp creates a new web application instance with the provided configuration options.
+// It initializes the LDAP client, session management, Fiber web server, and registers all routes.
+// Returns a configured App instance ready to start serving requests via Listen().
 func NewApp(opts *options.Opts) (*App, error) {
 	ldapClient, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
 	if err != nil {
@@ -71,7 +78,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	// Public routes (no authentication required)
 	f.All("/login", a.loginHandler)
-	
+
 	// Health check endpoints (no authentication required)
 	f.Get("/health", a.healthHandler)
 	f.Get("/health/ready", a.readinessHandler)
@@ -95,6 +102,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 	return a, nil
 }
 
+// Listen starts the web application server on the specified address.
+// It launches the LDAP cache manager in a background goroutine and begins serving HTTP requests.
+// This method blocks until the server is shutdown or encounters an error.
 func (a *App) Listen(addr string) error {
 	go a.ldapCache.Run()
 
@@ -105,6 +115,7 @@ func handle500(c *fiber.Ctx, err error) error {
 	log.Error().Err(err).Send()
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -121,11 +132,13 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.Index(user).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 

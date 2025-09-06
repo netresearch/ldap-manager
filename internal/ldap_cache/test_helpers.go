@@ -2,7 +2,7 @@ package ldap_cache
 
 import (
 	"errors"
-	
+
 	ldap "github.com/netresearch/simple-ldap-go"
 )
 
@@ -11,11 +11,11 @@ type mockLDAPClient struct {
 	users     []ldap.User
 	groups    []ldap.Group
 	computers []ldap.Computer
-	
+
 	findUsersError     error
 	findGroupsError    error
 	findComputersError error
-	
+
 	callCounts struct {
 		findUsers     int
 		findGroups    int
@@ -28,6 +28,7 @@ func (m *mockLDAPClient) FindUsers() ([]ldap.User, error) {
 	if m.findUsersError != nil {
 		return nil, m.findUsersError
 	}
+
 	return m.users, nil
 }
 
@@ -36,6 +37,7 @@ func (m *mockLDAPClient) FindGroups() ([]ldap.Group, error) {
 	if m.findGroupsError != nil {
 		return nil, m.findGroupsError
 	}
+
 	return m.groups, nil
 }
 
@@ -44,6 +46,7 @@ func (m *mockLDAPClient) FindComputers() ([]ldap.Computer, error) {
 	if m.findComputersError != nil {
 		return nil, m.findComputersError
 	}
+
 	return m.computers, nil
 }
 
@@ -55,7 +58,9 @@ func (m *mockLDAPClient) WithCredentials(dn, password string) (*ldap.LDAP, error
 	return nil, errors.New("not implemented in mock")
 }
 
-// Helper functions to create test data
+// NewMockUser creates a mock LDAP user for testing purposes.
+// Parameters: dn (Distinguished Name), samAccountName, enabled status, and group DNs.
+// Returns a properly configured ldap.User instance for use in unit tests.
 func NewMockUser(dn, samAccountName string, enabled bool, groups []string) ldap.User {
 	return ldap.User{
 		SAMAccountName: samAccountName,
@@ -64,12 +69,18 @@ func NewMockUser(dn, samAccountName string, enabled bool, groups []string) ldap.
 	}
 }
 
+// NewMockGroup creates a mock LDAP group for testing purposes.
+// Parameters: dn (Distinguished Name), group name, and member user DNs.
+// Returns a properly configured ldap.Group instance for use in unit tests.
 func NewMockGroup(dn, name string, members []string) ldap.Group {
 	return ldap.Group{
 		Members: members,
 	}
 }
 
+// NewMockComputer creates a mock LDAP computer for testing purposes.
+// Parameters: dn (Distinguished Name), samAccountName, enabled status, and group DNs.
+// Returns a properly configured ldap.Computer instance for use in unit tests.
 func NewMockComputer(dn, samAccountName string, enabled bool, groups []string) ldap.Computer {
 	return ldap.Computer{
 		SAMAccountName: samAccountName,
