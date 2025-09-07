@@ -7,6 +7,7 @@ This document describes the implementation of LDAP connection pooling for the LD
 ## Problem Statement
 
 ### Original Issue
+
 - New LDAP connection created for each modification operation
 - `WithCredentials()` creates new client instances per request
 - No connection pooling or reuse mechanism
@@ -14,6 +15,7 @@ This document describes the implementation of LDAP connection pooling for the LD
 - Performance degradation under concurrent load
 
 ### Performance Impact
+
 - Connection establishment overhead on every modification
 - Resource waste from creating/destroying connections
 - Poor scalability under concurrent user operations
@@ -48,6 +50,7 @@ This document describes the implementation of LDAP connection pooling for the LD
 ## Key Features
 
 ### Connection Management
+
 - **Pool Size Control**: Configurable min/max connections (default: 2-10)
 - **Connection Lifecycle**: Automatic creation, validation, and cleanup
 - **Idle Timeout**: Configurable maximum idle time (default: 15 minutes)
@@ -55,12 +58,14 @@ This document describes the implementation of LDAP connection pooling for the LD
 - **Health Monitoring**: Periodic health checks (default: 30 seconds)
 
 ### Performance Optimizations
+
 - **Connection Reuse**: Efficient reuse for same credentials
 - **Concurrent Safety**: Thread-safe operations with proper locking
 - **Resource Management**: Automatic cleanup of expired connections
 - **Fast Acquisition**: Configurable timeout for connection acquisition (default: 10 seconds)
 
 ### Monitoring and Observability
+
 - **Pool Statistics**: Total, active, available connections
 - **Operation Metrics**: Acquired count, failure count, success rates
 - **Health Status**: Overall pool health and individual connection status
@@ -69,6 +74,7 @@ This document describes the implementation of LDAP connection pooling for the LD
 ## Configuration Options
 
 ### Environment Variables
+
 ```bash
 # Connection Pool Settings
 LDAP_POOL_MAX_CONNECTIONS=10        # Maximum pool size
@@ -80,6 +86,7 @@ LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Timeout for getting connections
 ```
 
 ### Command Line Flags
+
 ```bash
 --pool-max-connections=10
 --pool-min-connections=2
@@ -92,12 +99,14 @@ LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Timeout for getting connections
 ## Performance Improvements
 
 ### Expected Performance Gains
+
 - **2-3x faster modification operations** due to connection reuse
 - **Reduced connection establishment overhead** by ~95%
 - **Better resource utilization** with controlled pool size
 - **Improved concurrent operation handling** through connection sharing
 
 ### Benchmark Results
+
 - Connection establishment time eliminated for pooled operations
 - Consistent response times under load
 - Scalable performance with increasing concurrent users
@@ -106,6 +115,7 @@ LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Timeout for getting connections
 ## API Changes
 
 ### Before (Original)
+
 ```go
 // Old approach - creates new connection each time
 l, err := a.authenticateLDAPClient(executorDN, form.PasswordConfirm)
@@ -116,6 +126,7 @@ if err != nil {
 ```
 
 ### After (With Pool)
+
 ```go
 // New approach - uses pooled connection
 pooledClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
@@ -126,6 +137,7 @@ defer pooledClient.Close() // Explicitly return to pool
 ```
 
 ### Key Changes
+
 1. **Context Support**: All operations now accept context for timeouts
 2. **Explicit Cleanup**: Must call `Close()` to return connections to pool
 3. **Same Interface**: LDAP operations remain identical
@@ -134,11 +146,13 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Monitoring Endpoints
 
 ### Health Check Enhancement
+
 - **GET `/health`**: Includes connection pool health status
 - **GET `/health/ready`**: Validates both cache and pool readiness
 - **GET `/debug/ldap-pool`**: Detailed pool statistics and metrics
 
 ### Sample Health Response
+
 ```json
 {
   "cache": {
@@ -162,6 +176,7 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Integration Points
 
 ### Modified Files
+
 1. **`internal/ldap/pool.go`** - Core connection pool implementation
 2. **`internal/ldap/manager.go`** - Pool manager and high-level interface
 3. **`internal/options/app.go`** - Configuration parsing and validation
@@ -171,6 +186,7 @@ defer pooledClient.Close() // Explicitly return to pool
 7. **`internal/web/health.go`** - Enhanced health checks
 
 ### Backwards Compatibility
+
 - **Configuration**: New options have sensible defaults
 - **API**: Existing read operations unchanged
 - **Behavior**: Same functionality with improved performance
@@ -179,12 +195,14 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Error Handling
 
 ### Pool-Specific Errors
+
 - **`ErrPoolClosed`**: Pool has been shut down
 - **`ErrConnectionTimeout`**: Timeout acquiring connection
 - **`ErrInvalidCredentials`**: Authentication failure
 - **Connection Health Failures**: Automatic recovery and retry
 
 ### Graceful Degradation
+
 - Failed connections automatically replaced
 - Pool health monitoring prevents cascade failures
 - Configurable timeouts prevent hanging operations
@@ -193,12 +211,14 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Testing
 
 ### Unit Tests
+
 - Configuration validation tests
 - Pool lifecycle management tests
 - Connection state management tests
 - Statistics and metrics accuracy tests
 
 ### Integration Testing
+
 - End-to-end modification workflows
 - Concurrent operation testing
 - Pool exhaustion and recovery scenarios
@@ -207,17 +227,20 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Deployment Considerations
 
 ### Resource Planning
+
 - **Memory**: ~5-50MB additional (depending on pool size)
-- **Connections**: Plan for max_connections * expected concurrent users
+- **Connections**: Plan for max_connections \* expected concurrent users
 - **Monitoring**: Watch pool statistics for optimization opportunities
 
 ### Tuning Recommendations
+
 - **Small Deployments** (< 10 concurrent users): 5 max connections
-- **Medium Deployments** (10-50 users): 10-15 max connections  
+- **Medium Deployments** (10-50 users): 10-15 max connections
 - **Large Deployments** (> 50 users): 20+ max connections
 - **High Availability**: Monitor failure rates and adjust timeouts
 
 ### Production Checklist
+
 - [ ] Configure appropriate pool sizes for expected load
 - [ ] Set up monitoring for pool health and statistics
 - [ ] Test connection recovery under failure scenarios
@@ -227,6 +250,7 @@ defer pooledClient.Close() // Explicitly return to pool
 ## Future Enhancements
 
 ### Potential Improvements
+
 - **Connection Warmup**: Pre-authenticate common user connections
 - **Adaptive Pool Sizing**: Dynamic adjustment based on load
 - **Connection Prioritization**: Priority queues for critical operations
@@ -234,6 +258,7 @@ defer pooledClient.Close() // Explicitly return to pool
 - **Circuit Breaker**: Fail-fast patterns for LDAP server issues
 
 ### Monitoring Integration
+
 - Prometheus metrics export
 - Grafana dashboard templates
 - Alert manager integration
