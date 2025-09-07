@@ -11,7 +11,7 @@ All development tools are now containerized and available through the Makefile:
 make docker-lint
 
 # Run tests in container
-make docker-test  
+make docker-test
 
 # Run all quality checks in container
 make docker-check
@@ -28,16 +28,16 @@ make docker-clean
 
 ## Available Docker Targets
 
-| Target | Description |
-|--------|-------------|
-| `make docker-dev-build` | Build development container with all tools |
-| `make docker-dev` | Start development environment with live reload |
-| `make docker-test` | Run tests in container |
-| `make docker-lint` | Run linter in container |
-| `make docker-check` | Run all quality checks in container |
-| `make docker-shell` | Open shell in development container |
-| `make docker-clean` | Clean up containers and volumes |
-| `make docker-logs` | Show logs from development container |
+| Target                  | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `make docker-dev-build` | Build development container with all tools     |
+| `make docker-dev`       | Start development environment with live reload |
+| `make docker-test`      | Run tests in container                         |
+| `make docker-lint`      | Run linter in container                        |
+| `make docker-check`     | Run all quality checks in container            |
+| `make docker-shell`     | Open shell in development container            |
+| `make docker-clean`     | Clean up containers and volumes                |
+| `make docker-logs`      | Show logs from development container           |
 
 ## Development Container Features
 
@@ -52,11 +52,11 @@ The development container includes:
 
 ## Docker Compose Profiles
 
-| Profile | Usage | Description |
-|---------|-------|-------------|
-| `dev` | `docker compose --profile dev up` | Development with live reload |
-| `test` | `docker compose --profile test run ldap-manager-test` | Testing environment |
-| `prod` | `docker compose up` (default) | Production deployment |
+| Profile | Usage                                                 | Description                  |
+| ------- | ----------------------------------------------------- | ---------------------------- |
+| `dev`   | `docker compose --profile dev up`                     | Development with live reload |
+| `test`  | `docker compose --profile test run ldap-manager-test` | Testing environment          |
+| `prod`  | `docker compose up` (default)                         | Production deployment        |
 
 ## Persistent Volumes
 
