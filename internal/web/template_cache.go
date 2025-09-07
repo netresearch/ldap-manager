@@ -276,6 +276,7 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 	// Try to get from cache first
 	if cachedContent, found := tc.Get(cacheKey); found {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 		return c.Send(cachedContent)
 	}
 
@@ -292,6 +293,7 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 
 	// Send to client
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return c.Send(content)
 }
 
@@ -319,6 +321,7 @@ func (tc *TemplateCache) CacheMiddleware(paths ...string) fiber.Handler {
 		// Try to serve from cache
 		if cachedContent, found := tc.Get(cacheKey); found {
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 			return c.Send(cachedContent)
 		}
 
