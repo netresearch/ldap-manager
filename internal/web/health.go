@@ -11,14 +11,17 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 	poolHealthStatus := a.ldapPool.GetHealthStatus()
 
 	// Determine overall health status
-	overallHealthy := cacheHealthStats.HealthStatus == "healthy" &&
-		poolHealthStatus["healthy"].(bool)
+	poolHealthy, ok := poolHealthStatus["healthy"].(bool)
+	if !ok {
+		poolHealthy = false
+	}
+	overallHealthy := cacheHealthStats.HealthStatus == "healthy" && poolHealthy
 
 	var statusCode int
 	if overallHealthy {
 		statusCode = fiber.StatusOK
 	} else if cacheHealthStats.HealthStatus == "degraded" ||
-		(cacheHealthStats.HealthStatus == "healthy" && !poolHealthStatus["healthy"].(bool)) {
+		(cacheHealthStats.HealthStatus == "healthy" && !poolHealthy) {
 		statusCode = fiber.StatusOK // Still functional but degraded
 	} else {
 		statusCode = fiber.StatusServiceUnavailable
@@ -42,7 +45,10 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
 	poolHealthStatus := a.ldapPool.GetHealthStatus()
-	isPoolHealthy := poolHealthStatus["healthy"].(bool)
+	isPoolHealthy, ok := poolHealthStatus["healthy"].(bool)
+	if !ok {
+		isPoolHealthy = false
+	}
 
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {
 		return c.JSON(fiber.Map{

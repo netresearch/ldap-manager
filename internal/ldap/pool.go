@@ -145,6 +145,7 @@ func (p *ConnectionPool) warmupPool() error {
 		conn, err := p.createConnection(nil)
 		if err != nil {
 			log.Warn().Err(err).Int("attempt", i+1).Msg("Failed to create warmup connection")
+
 			continue
 		}
 
@@ -159,6 +160,7 @@ func (p *ConnectionPool) warmupPool() error {
 	}
 
 	log.Debug().Int("warmed_connections", len(p.connections)).Msg("Connection pool warmed up")
+
 	return nil
 }
 
@@ -178,6 +180,7 @@ func (p *ConnectionPool) AcquireConnection(ctx context.Context, dn, password str
 	conn, err := p.getOrCreateConnection(timeoutCtx, credentials)
 	if err != nil {
 		atomic.AddInt64(&p.failedConnections, 1)
+
 		return nil, err
 	}
 
@@ -194,7 +197,9 @@ func (p *ConnectionPool) AcquireConnection(ctx context.Context, dn, password str
 }
 
 // getOrCreateConnection attempts to reuse or create a connection
-func (p *ConnectionPool) getOrCreateConnection(ctx context.Context, creds *ConnectionCredentials) (*PooledConnection, error) {
+func (p *ConnectionPool) getOrCreateConnection(
+	ctx context.Context, creds *ConnectionCredentials,
+) (*PooledConnection, error) {
 	// Try to get an existing connection with matching credentials
 	select {
 	case conn := <-p.available:
@@ -211,7 +216,11 @@ func (p *ConnectionPool) getOrCreateConnection(ctx context.Context, creds *Conne
 	}
 
 	// Check if we can create more connections
-	if atomic.LoadInt32(&p.totalConnections) >= int32(p.config.MaxConnections) {
+	maxConnections := p.config.MaxConnections
+	if maxConnections > 2147483647 { // int32 max
+		maxConnections = 2147483647
+	}
+	if atomic.LoadInt32(&p.totalConnections) >= int32(maxConnections) {
 		// Wait for an available connection
 		select {
 		case conn := <-p.available:
@@ -332,11 +341,7 @@ func (p *ConnectionPool) isConnectionValid(conn *PooledConnection) bool {
 	}
 
 	now := time.Now()
-	if now.Sub(conn.createdAt) > p.config.MaxLifetime {
-		return false
-	}
-
-	return true
+	return now.Sub(conn.createdAt) <= p.config.MaxLifetime
 }
 
 // closeConnection properly closes a connection and cleans up resources
@@ -414,13 +419,21 @@ func (conn *PooledConnection) GetClient() *ldap.LDAP {
 
 // GetStats returns current pool statistics for monitoring
 func (p *ConnectionPool) GetStats() PoolStats {
+	availableLen := len(p.available)
+	if availableLen > 2147483647 { // int32 max
+		availableLen = 2147483647
+	}
+	maxConnections := p.config.MaxConnections
+	if maxConnections > 2147483647 { // int32 max
+		maxConnections = 2147483647
+	}
 	return PoolStats{
 		TotalConnections:     atomic.LoadInt32(&p.totalConnections),
 		ActiveConnections:    atomic.LoadInt32(&p.activeConnections),
-		AvailableConnections: int32(len(p.available)),
+		AvailableConnections: int32(availableLen),
 		AcquiredCount:        atomic.LoadInt64(&p.acquiredConnections),
 		FailedCount:          atomic.LoadInt64(&p.failedConnections),
-		MaxConnections:       int32(p.config.MaxConnections),
+		MaxConnections:       int32(maxConnections),
 	}
 }
 
