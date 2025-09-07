@@ -216,11 +216,8 @@ func (p *ConnectionPool) getOrCreateConnection(
 	}
 
 	// Check if we can create more connections
-	maxConnections := p.config.MaxConnections
-	if maxConnections > 2147483647 { // int32 max
-		maxConnections = 2147483647
-	}
-	if atomic.LoadInt32(&p.totalConnections) >= int32(maxConnections) {
+	maxConn32 := safeIntToInt32(p.config.MaxConnections)
+	if atomic.LoadInt32(&p.totalConnections) >= maxConn32 {
 		// Wait for an available connection
 		select {
 		case conn := <-p.available:
@@ -419,22 +416,25 @@ func (conn *PooledConnection) GetClient() *ldap.LDAP {
 
 // GetStats returns current pool statistics for monitoring
 func (p *ConnectionPool) GetStats() PoolStats {
-	availableLen := len(p.available)
-	if availableLen > 2147483647 { // int32 max
-		availableLen = 2147483647
-	}
-	maxConnections := p.config.MaxConnections
-	if maxConnections > 2147483647 { // int32 max
-		maxConnections = 2147483647
-	}
 	return PoolStats{
 		TotalConnections:     atomic.LoadInt32(&p.totalConnections),
 		ActiveConnections:    atomic.LoadInt32(&p.activeConnections),
-		AvailableConnections: int32(availableLen),
+		AvailableConnections: safeIntToInt32(len(p.available)),
 		AcquiredCount:        atomic.LoadInt64(&p.acquiredConnections),
 		FailedCount:          atomic.LoadInt64(&p.failedConnections),
-		MaxConnections:       int32(maxConnections),
+		MaxConnections:       safeIntToInt32(p.config.MaxConnections),
 	}
+}
+
+// safeIntToInt32 safely converts int to int32 with overflow protection
+func safeIntToInt32(value int) int32 {
+	if value > 2147483647 { // int32 max
+		return 2147483647
+	}
+	if value < -2147483648 { // int32 min
+		return -2147483648
+	}
+	return int32(value) // #nosec G115 - safe conversion after bounds check
 }
 
 // PoolStats contains statistics about pool usage

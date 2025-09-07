@@ -29,7 +29,9 @@ func TestPoolConfigValidation(t *testing.T) {
 	if err == nil && pool != nil {
 		// Should default to 10
 		assert.Equal(t, 10, pool.config.MaxConnections)
-		_ = pool.Close()
+		if err := pool.Close(); err != nil {
+			t.Logf("Pool close error: %v", err)
+		}
 	}
 
 	// Test config with MinConnections > MaxConnections
@@ -43,7 +45,9 @@ func TestPoolConfigValidation(t *testing.T) {
 		// MinConnections should be adjusted to MaxConnections
 		assert.Equal(t, 5, pool2.config.MinConnections)
 		assert.Equal(t, 5, pool2.config.MaxConnections)
-		_ = pool2.Close()
+		if err := pool2.Close(); err != nil {
+			t.Logf("Pool close error: %v", err)
+		}
 	}
 }
 

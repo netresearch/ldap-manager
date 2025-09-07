@@ -1,4 +1,4 @@
-package ldap_cache
+package ldap_cache //nolint:revive // package name matches directory structure
 
 import (
 	"fmt"

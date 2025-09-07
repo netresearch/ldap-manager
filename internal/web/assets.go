@@ -36,7 +36,7 @@ func LoadAssetManifest(manifestPath string) (*AssetManifest, error) {
 		}, nil
 	}
 
-	data, err := os.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath) // #nosec G304 - manifestPath is a trusted static path
 	if err != nil {
 		return nil, err
 	}
