@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 
+	ldappool "github.com/netresearch/ldap-manager/internal/ldap"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
@@ -18,9 +19,8 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 		return groups[i].CN() < groups[j].CN()
 	})
 
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Groups(groups).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use template caching
+	return a.templateCache.RenderWithCache(c, templates.Groups(groups))
 }
 
 func (a *App) groupHandler(c *fiber.Ctx) error {
@@ -30,24 +30,17 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
+	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
 	if err != nil {
 		return handle500(c, err)
 	}
 
-	showDisabledUsers := c.Query("show-disabled", "0") == "1"
-	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-	sort.SliceStable(group.Members, func(i, j int) bool {
-		return group.Members[i].CN() < group.Members[j].CN()
-	})
-	unassignedUsers := a.findUnassignedUsers(group)
-	sort.SliceStable(unassignedUsers, func(i, j int) bool {
-		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
-	})
-
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Group(group, unassignedUsers, templates.Flashes()).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use template caching with group DN as additional cache data
+	return a.templateCache.RenderWithCache(
+		c,
+		templates.Group(group, unassignedUsers, templates.Flashes(), a.GetCSRFToken(c)),
+		"groupDN:"+groupDN,
+	)
 }
 
 type groupModifyForm struct {
@@ -82,15 +75,20 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	l, err := a.authenticateLDAPClient(executorDN, form.PasswordConfirm)
+
+	pooledClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
 	if err != nil {
 		return a.renderGroupWithError(c, groupDN, "Invalid password")
 	}
+	defer pooledClient.Close()
 
 	// Perform the group modification
-	if err := a.performGroupModification(l, &form, groupDN); err != nil {
+	if err := a.performGroupModification(pooledClient, &form, groupDN); err != nil {
 		return a.renderGroupWithError(c, groupDN, "Failed to modify: "+err.Error())
 	}
+
+	// Invalidate template cache after successful modification
+	a.invalidateTemplateCacheOnGroupModification(groupDN)
 
 	// Render success response
 	return a.renderGroupWithSuccess(c, groupDN, "Successfully modified group")
@@ -139,6 +137,7 @@ func (a *App) renderGroupWithError(c *fiber.Ctx, groupDN, errorMsg string) error
 	return templates.Group(
 		group, unassignedUsers,
 		templates.Flashes(templates.ErrorFlash(errorMsg)),
+		a.GetCSRFToken(c),
 	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -153,22 +152,39 @@ func (a *App) renderGroupWithSuccess(c *fiber.Ctx, groupDN, successMsg string) e
 	return templates.Group(
 		group, unassignedUsers,
 		templates.Flashes(templates.SuccessFlash(successMsg)),
+		a.GetCSRFToken(c),
 	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // performGroupModification handles the actual LDAP group modification operation
-func (a *App) performGroupModification(l *ldap.LDAP, form *groupModifyForm, groupDN string) error {
+func (a *App) performGroupModification(pooledClient *ldappool.PooledLDAPClient, form *groupModifyForm, groupDN string) error {
 	if form.AddUser != nil {
-		if err := l.AddUserToGroup(*form.AddUser, groupDN); err != nil {
+		if err := pooledClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err
 		}
 		a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
 	} else if form.RemoveUser != nil {
-		if err := l.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
+		if err := pooledClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
 			return err
 		}
 		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
 	}
 
 	return nil
+}
+
+// invalidateTemplateCacheOnGroupModification invalidates relevant cache entries after group modification
+func (a *App) invalidateTemplateCacheOnGroupModification(groupDN string) {
+	// Invalidate the specific group page
+	a.invalidateTemplateCache("/groups/" + groupDN)
+
+	// Invalidate groups list page (counts may have changed)
+	a.invalidateTemplateCache("/groups")
+
+	// Invalidate users pages (user membership may have changed)
+	a.invalidateTemplateCache("/users")
+
+	// Clear all cache entries for safety (this could be optimized further)
+	// In a high-traffic environment, you might want to be more selective
+	a.templateCache.Clear()
 }

@@ -39,7 +39,9 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 			return templates.Login(
-				templates.Flashes(templates.ErrorFlash("Invalid username or password")), "",
+				templates.Flashes(templates.ErrorFlash("Invalid username or password")),
+				"",
+				a.GetCSRFToken(c),
 			).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
@@ -53,6 +55,6 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.Login(templates.Flashes(), version.FormatVersion()).Render(
+	return templates.Login(templates.Flashes(), version.FormatVersion(), a.GetCSRFToken(c)).Render(
 		c.UserContext(), c.Response().BodyWriter())
 }

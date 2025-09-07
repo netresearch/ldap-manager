@@ -1,17 +1,22 @@
 package web
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/bbolt/v2"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
+	ldappool "github.com/netresearch/ldap-manager/internal/ldap"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web/static"
@@ -19,13 +24,16 @@ import (
 )
 
 // App represents the main web application structure.
-// It encapsulates LDAP client, cache manager, session store, and Fiber web framework.
-// Provides centralized management of authentication, caching, and HTTP request handling.
+// It encapsulates LDAP client, connection pool, cache manager, session store, template cache, and Fiber web framework.
+// Provides centralized management of authentication, caching, connection pooling, and HTTP request handling.
 type App struct {
-	ldapClient   *ldap.LDAP
-	ldapCache    *ldap_cache.Manager
-	sessionStore *session.Store
-	fiber        *fiber.App
+	ldapClient    *ldap.LDAP
+	ldapPool      *ldappool.PoolManager
+	ldapCache     *ldap_cache.Manager
+	sessionStore  *session.Store
+	templateCache *TemplateCache
+	csrfHandler   fiber.Handler
+	fiber         *fiber.App
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -41,10 +49,25 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 }
 
 // NewApp creates a new web application instance with the provided configuration options.
-// It initializes the LDAP client, session management, Fiber web server, and registers all routes.
+// It initializes the LDAP client, connection pool, session management, template cache, Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
 func NewApp(opts *options.Opts) (*App, error) {
 	ldapClient, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize LDAP connection pool with configuration from options
+	poolConfig := &ldappool.PoolConfig{
+		MaxConnections:      opts.PoolMaxConnections,
+		MinConnections:      opts.PoolMinConnections,
+		MaxIdleTime:         opts.PoolMaxIdleTime,
+		MaxLifetime:         opts.PoolMaxLifetime,
+		HealthCheckInterval: opts.PoolHealthCheckInterval,
+		AcquireTimeout:      opts.PoolAcquireTimeout,
+	}
+
+	ldapPool, err := ldappool.NewPoolManager(ldapClient, poolConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -54,50 +77,102 @@ func NewApp(opts *options.Opts) (*App, error) {
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
 		CookieSameSite: "Strict",
+		CookieSecure:   true, // Enable secure flag for HTTPS
 	})
+
+	// Initialize template cache with optimized settings
+	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
 
 	f := fiber.New(fiber.Config{
 		AppName:      "netresearch/ldap-manager",
 		BodyLimit:    4 * 1024,
 		ErrorHandler: handle500,
 	})
+
+	// Security Headers Middleware
+	f.Use(helmet.New(helmet.Config{
+		XSSProtection:         "1; mode=block",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		HSTSMaxAge:            31536000, // 1 year
+		HSTSExcludeSubdomains: false,    // Include subdomains
+		HSTSPreloadEnabled:    true,
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+	}))
+
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
 	}))
+
 	f.Use("/static", filesystem.New(filesystem.Config{
 		Root:   http.FS(static.Static),
 		MaxAge: 24 * 60 * 60,
 	}))
 
+	// Initialize CSRF protection
+	csrfHandler := csrf.New(csrf.Config{
+		KeyLookup:      "form:csrf_token",
+		CookieName:     "csrf_",
+		CookieSameSite: "Strict",
+		CookieSecure:   true,
+		CookieHTTPOnly: true,
+		Expiration:     3600, // 1 hour
+		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			log.Warn().Err(err).Msg("CSRF validation failed")
+			c.Status(fiber.StatusForbidden)
+			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+			return templates.FourOhThree("CSRF token validation failed").Render(c.UserContext(), c.Response().BodyWriter())
+		},
+	})
+
 	a := &App{
-		ldapClient:   ldapClient,
-		ldapCache:    ldap_cache.New(ldapClient),
-		sessionStore: sessionStore,
-		fiber:        f,
+		ldapClient:    ldapClient,
+		ldapPool:      ldapPool,
+		ldapCache:     ldap_cache.New(ldapClient),
+		templateCache: templateCache,
+		sessionStore:  sessionStore,
+		csrfHandler:   csrfHandler,
+		fiber:         f,
 	}
 
 	// Public routes (no authentication required)
-	f.All("/login", a.loginHandler)
+	f.All("/login", a.csrfHandler, a.loginHandler)
 
-	// Health check endpoints (no authentication required)
+	// Health check endpoints (no authentication required, no CSRF needed)
 	f.Get("/health", a.healthHandler)
 	f.Get("/health/ready", a.readinessHandler)
 	f.Get("/health/live", a.livenessHandler)
 
-	// Protected routes (require authentication)
-	protected := f.Group("/", a.RequireAuth())
-	protected.Get("/", a.indexHandler)
-	protected.Get("/users", a.usersHandler)
-	protected.Get("/users/:userDN", a.userHandler)
+	// Template cache stats endpoint for monitoring (authenticated)
+	f.Get("/debug/cache", a.RequireAuth(), a.cacheStatsHandler)
+
+	// LDAP connection pool stats endpoint for monitoring (authenticated)
+	f.Get("/debug/ldap-pool", a.RequireAuth(), a.poolStatsHandler)
+
+	// Protected routes with template caching for GET requests
+	protected := f.Group("/", a.RequireAuth(), a.csrfHandler)
+
+	// Apply template caching middleware to read-only endpoints
+	cacheable := protected.Group("/", a.templateCacheMiddleware())
+	cacheable.Get("/", a.indexHandler)
+	cacheable.Get("/users", a.usersHandler)
+	cacheable.Get("/users/:userDN", a.userHandler)
+	cacheable.Get("/groups", a.groupsHandler)
+	cacheable.Get("/groups/:groupDN", a.groupHandler)
+	cacheable.Get("/computers", a.computersHandler)
+	cacheable.Get("/computers/:computerDN", a.computerHandler)
+
+	// POST routes without caching (these invalidate cache)
 	protected.Post("/users/:userDN", a.userModifyHandler)
-	protected.Get("/groups", a.groupsHandler)
-	protected.Get("/groups/:groupDN", a.groupHandler)
 	protected.Post("/groups/:groupDN", a.groupModifyHandler)
-	protected.Get("/computers", a.computersHandler)
-	protected.Get("/computers/:computerDN", a.computerHandler)
+
 	protected.Get("/logout", a.logoutHandler)
 
 	f.Use(a.fourOhFourHandler)
+
+	// Log template cache stats periodically
+	go a.periodicCacheLogging()
 
 	return a, nil
 }
@@ -109,6 +184,84 @@ func (a *App) Listen(addr string) error {
 	go a.ldapCache.Run()
 
 	return a.fiber.Listen(addr)
+}
+
+// Shutdown gracefully shuts down the application
+func (a *App) Shutdown() error {
+	a.templateCache.Stop()
+
+	if a.ldapPool != nil {
+		if err := a.ldapPool.Close(); err != nil {
+			log.Warn().Err(err).Msg("Failed to close LDAP connection pool")
+		}
+	}
+
+	return nil
+}
+
+// templateCacheMiddleware creates middleware for template caching
+func (a *App) templateCacheMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Only cache GET requests
+		if c.Method() != fiber.MethodGet {
+			return c.Next()
+		}
+
+		// Generate cache key
+		cacheKey := a.templateCache.generateCacheKey(c)
+
+		// Try to serve from cache
+		if cachedContent, found := a.templateCache.Get(cacheKey); found {
+			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+			c.Set("X-Cache", "HIT")
+			return c.Send(cachedContent)
+		}
+
+		// Set cache miss header for debugging
+		c.Set("X-Cache", "MISS")
+
+		return c.Next()
+	}
+}
+
+// invalidateTemplateCache invalidates cache entries after data modifications
+func (a *App) invalidateTemplateCache(paths ...string) {
+	for _, path := range paths {
+		count := a.templateCache.InvalidateByPath(path)
+		log.Debug().Str("path", path).Int("invalidated", count).Msg("Template cache invalidated")
+	}
+}
+
+// cacheStatsHandler provides cache statistics for monitoring
+func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
+	stats := a.templateCache.Stats()
+	return c.JSON(stats)
+}
+
+// poolStatsHandler provides LDAP connection pool statistics for monitoring
+func (a *App) poolStatsHandler(c *fiber.Ctx) error {
+	stats := a.ldapPool.GetStats()
+	healthStatus := a.ldapPool.GetHealthStatus()
+
+	response := map[string]interface{}{
+		"stats":  stats,
+		"health": healthStatus,
+	}
+
+	return c.JSON(response)
+}
+
+// periodicCacheLogging logs cache statistics periodically for monitoring
+func (a *App) periodicCacheLogging() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			a.templateCache.LogStats()
+		}
+	}
 }
 
 func handle500(c *fiber.Ctx, err error) error {
@@ -131,9 +284,8 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Index(user).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use template caching
+	return a.templateCache.RenderWithCache(c, templates.Index(user))
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
@@ -142,11 +294,19 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-func (a *App) authenticateLDAPClient(userDN, password string) (*ldap.LDAP, error) {
+func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password string) (*ldappool.PooledLDAPClient, error) {
 	executor, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.ldapClient.WithCredentials(executor.DN(), password)
+	return a.ldapPool.WithCredentials(ctx, executor.DN(), password)
+}
+
+// GetCSRFToken extracts the CSRF token from the context
+func (a *App) GetCSRFToken(c *fiber.Ctx) string {
+	if token := c.Locals("token"); token != nil {
+		return token.(string)
+	}
+	return ""
 }

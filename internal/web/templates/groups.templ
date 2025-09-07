@@ -26,7 +26,7 @@ func specializeGroups(groups []ldap.Group) []Displayer {
 	})
 }
 
-templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashes []Flash) {
+templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashes []Flash, csrfToken string) {
 	@loggedIn(string(groupUrl(group.Group)), group.CN(), flashes) {
 		<h1 class="text-3xl">{ group.CN() }</h1>
 		<p class="text-sm text-gray-500">{ group.DN() }</p>
@@ -43,7 +43,9 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 						@rightArrowIcon()
 					</a>
 					<form action={ groupUrl(group.Group) } method="POST" class="flex-end pr-3">
+						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="removeuser" value={ user.DN() }/>
+						<input type="password" name="password_confirm" placeholder="Confirm password" class="form-input w-32 rounded-md border border-gray-600 bg-black px-2 py-1 text-xs outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
 						<button
 							class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
 							type="submit"
@@ -59,21 +61,25 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 		}
 		<h2 class="mt-4 text-xl">Add user</h2>
 		<form action={ groupUrl(group.Group) } method="POST">
-			<div class="flex items-center gap-2">
-				<select
-					class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
-					name="adduser"
-				>
-					for _, user := range unassignedUsers {
-						<option value={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</option>
-					}
-				</select>
-				<button
-					type="submit"
-					class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
-				>
-					@plusIcon()
-				</button>
+			<input type="hidden" name="csrf_token" value={ csrfToken }/>
+			<div class="flex flex-col gap-2">
+				<div class="flex items-center gap-2">
+					<select
+						class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
+						name="adduser"
+					>
+						for _, user := range unassignedUsers {
+							<option value={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</option>
+						}
+					</select>
+					<button
+						type="submit"
+						class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
+					>
+						@plusIcon()
+					</button>
+				</div>
+				<input type="password" name="password_confirm" placeholder="Confirm password to add user" class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
 			</div>
 		</form>
 	}
