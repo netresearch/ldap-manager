@@ -306,7 +306,9 @@ func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password strin
 // GetCSRFToken extracts the CSRF token from the context
 func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 	if token := c.Locals("token"); token != nil {
-		return token.(string)
+		if tokenStr, ok := token.(string); ok {
+			return tokenStr
+		}
 	}
 	return ""
 }

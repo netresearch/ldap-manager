@@ -33,6 +33,7 @@ func NewPoolManager(baseClient *ldap.LDAP, config *PoolConfig) (*PoolManager, er
 	}
 
 	log.Info().Msg("LDAP pool manager initialized")
+
 	return manager, nil
 }
 
@@ -103,6 +104,7 @@ func (pm *PoolManager) GetHealthStatus() map[string]interface{} {
 // Close gracefully shuts down the pool manager
 func (pm *PoolManager) Close() error {
 	log.Info().Msg("Closing LDAP pool manager")
+
 	return pm.pool.Close()
 }
 
@@ -120,6 +122,7 @@ func (plc *PooledLDAPClient) AddUserToGroup(userDN, groupDN string) error {
 	if plc.closed {
 		return fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.AddUserToGroup(userDN, groupDN)
 }
 
@@ -128,6 +131,7 @@ func (plc *PooledLDAPClient) RemoveUserFromGroup(userDN, groupDN string) error {
 	if plc.closed {
 		return fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.RemoveUserFromGroup(userDN, groupDN)
 }
 
@@ -136,6 +140,7 @@ func (plc *PooledLDAPClient) FindUsers() ([]ldap.User, error) {
 	if plc.closed {
 		return nil, fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.FindUsers()
 }
 
@@ -144,6 +149,7 @@ func (plc *PooledLDAPClient) FindGroups() ([]ldap.Group, error) {
 	if plc.closed {
 		return nil, fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.FindGroups()
 }
 
@@ -152,6 +158,7 @@ func (plc *PooledLDAPClient) FindComputers() ([]ldap.Computer, error) {
 	if plc.closed {
 		return nil, fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.FindComputers()
 }
 
@@ -160,6 +167,7 @@ func (plc *PooledLDAPClient) CheckPasswordForSAMAccountName(samAccountName, pass
 	if plc.closed {
 		return nil, fmt.Errorf("pooled client is closed")
 	}
+
 	return plc.client.CheckPasswordForSAMAccountName(samAccountName, password)
 }
 
@@ -186,7 +194,9 @@ func (plc *PooledLDAPClient) Close() {
 
 // WithPooledLDAPClient is a utility function that automatically handles connection lifecycle
 // It acquires a connection, executes the provided function, and ensures the connection is returned
-func WithPooledLDAPClient(ctx context.Context, pm *PoolManager, dn, password string, fn func(*PooledLDAPClient) error) error {
+func WithPooledLDAPClient(
+	ctx context.Context, pm *PoolManager, dn, password string, fn func(*PooledLDAPClient) error,
+) error {
 	client, err := pm.WithCredentials(ctx, dn, password)
 	if err != nil {
 		return err
