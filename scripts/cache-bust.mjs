@@ -17,18 +17,18 @@ async function generateCacheBustedAssets() {
     console.log("🔄 Starting cache-busting process...");
 
     const cssPath = path.join(STATIC_DIR, "styles.css");
-    const cssExists = await fs
-      .access(cssPath)
-      .then(() => true)
-      .catch(() => false);
 
-    if (!cssExists) {
-      console.warn("⚠️  styles.css not found, skipping cache-busting");
-      return;
+    // Generate hash for CSS file - handle file not found directly
+    let cssContent;
+    try {
+      cssContent = await fs.readFile(cssPath);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        console.warn("⚠️  styles.css not found, skipping cache-busting");
+        return;
+      }
+      throw error;
     }
-
-    // Generate hash for CSS file
-    const cssContent = await fs.readFile(cssPath);
     const cssHash = crypto.createHash("md5").update(cssContent).digest("hex").substring(0, 8);
     const hashedCssName = `styles.${cssHash}.css`;
     const hashedCssPath = path.join(STATIC_DIR, hashedCssName);
