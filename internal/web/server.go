@@ -48,6 +48,41 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 	return memory.New()
 }
 
+// createPoolConfig creates LDAP connection pool configuration from options
+func createPoolConfig(opts *options.Opts) *ldappool.PoolConfig {
+	return &ldappool.PoolConfig{
+		MaxConnections:      opts.PoolMaxConnections,
+		MinConnections:      opts.PoolMinConnections,
+		MaxIdleTime:         opts.PoolMaxIdleTime,
+		MaxLifetime:         opts.PoolMaxLifetime,
+		HealthCheckInterval: opts.PoolHealthCheckInterval,
+		AcquireTimeout:      opts.PoolAcquireTimeout,
+	}
+}
+
+// createSessionStore creates session store with configuration from options
+func createSessionStore(opts *options.Opts) *session.Store {
+	return session.New(session.Config{
+		Storage:        getSessionStorage(opts),
+		Expiration:     opts.SessionDuration,
+		CookieHTTPOnly: true,
+		CookieSameSite: "Strict",
+		CookieSecure:   true, // Enable secure flag for HTTPS
+	})
+}
+
+// createFiberApp creates and configures a new Fiber application
+func createFiberApp() *fiber.App {
+	f := fiber.New(fiber.Config{
+		AppName:      "netresearch/ldap-manager",
+		BodyLimit:    4 * 1024,
+		ErrorHandler: handle500,
+	})
+	setupMiddleware(f)
+
+	return f
+}
+
 // NewApp creates a new web application instance with the provided configuration options.
 // It initializes the LDAP client, connection pool, session management, template cache,
 // Fiber web server, and registers all routes.
@@ -58,38 +93,34 @@ func NewApp(opts *options.Opts) (*App, error) {
 		return nil, err
 	}
 
-	// Initialize LDAP connection pool with configuration from options
-	poolConfig := &ldappool.PoolConfig{
-		MaxConnections:      opts.PoolMaxConnections,
-		MinConnections:      opts.PoolMinConnections,
-		MaxIdleTime:         opts.PoolMaxIdleTime,
-		MaxLifetime:         opts.PoolMaxLifetime,
-		HealthCheckInterval: opts.PoolHealthCheckInterval,
-		AcquireTimeout:      opts.PoolAcquireTimeout,
-	}
-
-	ldapPool, err := ldappool.NewPoolManager(ldapClient, poolConfig)
+	ldapPool, err := ldappool.NewPoolManager(ldapClient, createPoolConfig(opts))
 	if err != nil {
 		return nil, err
 	}
 
-	sessionStore := session.New(session.Config{
-		Storage:        getSessionStorage(opts),
-		Expiration:     opts.SessionDuration,
-		CookieHTTPOnly: true,
-		CookieSameSite: "Strict",
-		CookieSecure:   true, // Enable secure flag for HTTPS
-	})
-
-	// Initialize template cache with optimized settings
+	sessionStore := createSessionStore(opts)
 	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
+	f := createFiberApp()
+	csrfHandler := *createCSRFConfig()
 
-	f := fiber.New(fiber.Config{
-		AppName:      "netresearch/ldap-manager",
-		BodyLimit:    4 * 1024,
-		ErrorHandler: handle500,
-	})
+	a := &App{
+		ldapClient:    ldapClient,
+		ldapPool:      ldapPool,
+		ldapCache:     ldap_cache.New(ldapClient),
+		templateCache: templateCache,
+		sessionStore:  sessionStore,
+		csrfHandler:   csrfHandler,
+		fiber:         f,
+	}
 
+	// Setup all routes
+	a.setupRoutes()
+
+	return a, nil
+}
+
+// setupMiddleware configures all middleware for the Fiber app
+func setupMiddleware(f *fiber.App) {
 	// Security Headers Middleware
 	f.Use(helmet.New(helmet.Config{
 		XSSProtection:         "1; mode=block",
@@ -111,8 +142,10 @@ func NewApp(opts *options.Opts) (*App, error) {
 		Root:   http.FS(static.Static),
 		MaxAge: 24 * 60 * 60,
 	}))
+}
 
-	// Initialize CSRF protection
+// createCSRFConfig creates and returns CSRF middleware configuration
+func createCSRFConfig() *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
@@ -130,15 +163,12 @@ func NewApp(opts *options.Opts) (*App, error) {
 		},
 	})
 
-	a := &App{
-		ldapClient:    ldapClient,
-		ldapPool:      ldapPool,
-		ldapCache:     ldap_cache.New(ldapClient),
-		templateCache: templateCache,
-		sessionStore:  sessionStore,
-		csrfHandler:   csrfHandler,
-		fiber:         f,
-	}
+	return &csrfHandler
+}
+
+// setupRoutes configures all routes for the application
+func (a *App) setupRoutes() {
+	f := a.fiber
 
 	// Public routes (no authentication required)
 	f.All("/login", a.csrfHandler, a.loginHandler)
@@ -177,8 +207,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	// Log template cache stats periodically
 	go a.periodicCacheLogging()
-
-	return a, nil
 }
 
 // Listen starts the web application server on the specified address.
