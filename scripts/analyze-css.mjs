@@ -1,41 +1,41 @@
 #!/usr/bin/env node
 
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const STYLES_PATH = path.join(__dirname, '../internal/web/static/styles.css');
-const ANALYSIS_OUTPUT = path.join(__dirname, '../claudedocs/css-analysis.md');
+const STYLES_PATH = path.join(__dirname, "../internal/web/static/styles.css");
+const ANALYSIS_OUTPUT = path.join(__dirname, "../claudedocs/css-analysis.md");
 
 async function analyzeCSS() {
   try {
-    const cssContent = await fs.readFile(STYLES_PATH, 'utf-8');
+    const cssContent = await fs.readFile(STYLES_PATH, "utf-8");
     const stats = await fs.stat(STYLES_PATH);
-    
+
     // Basic metrics
     const sizeBytes = stats.size;
     const sizeKB = (sizeBytes / 1024).toFixed(2);
-    const lines = cssContent.split('\n').length;
-    
+    const lines = cssContent.split("\n").length;
+
     // CSS analysis
     const classMatches = cssContent.match(/\.[a-zA-Z][a-zA-Z0-9_-]*\s*{/g) || [];
-    const uniqueClasses = new Set(classMatches.map(c => c.replace(/\s*{/, '').trim()));
-    
+    const uniqueClasses = new Set(classMatches.map((c) => c.replace(/\s*{/, "").trim()));
+
     const mediaQueryMatches = cssContent.match(/@media[^{]*{/g) || [];
     const layerMatches = cssContent.match(/@layer[^{]*{/g) || [];
     const propertyMatches = cssContent.match(/@property[^{]*{/g) || [];
-    
+
     // Compression analysis (rough estimate)
     const minifiedContent = cssContent
-      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove comments
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\/\*[\s\S]*?\*\//g, "") // Remove comments
+      .replace(/\s+/g, " ") // Normalize whitespace
       .trim();
     const compressedSize = minifiedContent.length;
     const compressionRatio = ((1 - compressedSize / sizeBytes) * 100).toFixed(1);
-    
+
     // Generate report
     const timestamp = new Date().toISOString();
     const report = `# CSS Build Analysis
@@ -62,7 +62,7 @@ ${generatePerformanceAssessment(sizeKB, uniqueClasses.size)}
 ### Size History
 | Date | Size (KB) | Classes | Notes |
 |------|-----------|---------|-------|
-| ${timestamp.split('T')[0]} | ${sizeKB} | ${uniqueClasses.size} | Current build |
+| ${timestamp.split("T")[0]} | ${sizeKB} | ${uniqueClasses.size} | Current build |
 
 ### Recommendations
 ${generateRecommendations(sizeKB, uniqueClasses.size, mediaQueryMatches.length)}
@@ -73,72 +73,71 @@ ${generateRecommendations(sizeKB, uniqueClasses.size, mediaQueryMatches.length)}
 
     // Ensure directory exists
     await fs.mkdir(path.dirname(ANALYSIS_OUTPUT), { recursive: true });
-    
+
     // Write analysis
     await fs.writeFile(ANALYSIS_OUTPUT, report);
-    
+
     // Console output
-    console.log('📊 CSS Analysis Complete');
+    console.log("📊 CSS Analysis Complete");
     console.log(`📁 File: ${STYLES_PATH}`);
     console.log(`📏 Size: ${sizeKB} KB`);
     console.log(`🎨 Classes: ${uniqueClasses.size}`);
     console.log(`📱 Media Queries: ${mediaQueryMatches.length}`);
     console.log(`📝 Report: ${ANALYSIS_OUTPUT}`);
-    
+
     // Warnings
     if (parseFloat(sizeKB) > 50) {
-      console.warn('⚠️  CSS bundle is large (>50KB) - consider additional optimization');
+      console.warn("⚠️  CSS bundle is large (>50KB) - consider additional optimization");
     }
-    
+
     if (uniqueClasses.size > 500) {
-      console.warn('⚠️  High class count - verify unused styles are being purged');
+      console.warn("⚠️  High class count - verify unused styles are being purged");
     }
-    
   } catch (error) {
-    console.error('❌ CSS Analysis Failed:', error.message);
+    console.error("❌ CSS Analysis Failed:", error.message);
     process.exit(1);
   }
 }
 
 function generatePerformanceAssessment(sizeKB, classCount) {
   const size = parseFloat(sizeKB);
-  
+
   if (size < 10) {
-    return '✅ **Excellent** - Very lightweight CSS bundle';
+    return "✅ **Excellent** - Very lightweight CSS bundle";
   } else if (size < 25) {
-    return '🟢 **Good** - Reasonable CSS bundle size';
+    return "🟢 **Good** - Reasonable CSS bundle size";
   } else if (size < 50) {
-    return '🟡 **Fair** - CSS bundle is getting large, monitor growth';
+    return "🟡 **Fair** - CSS bundle is getting large, monitor growth";
   } else {
-    return '🔴 **Poor** - CSS bundle is very large, optimization needed';
+    return "🔴 **Poor** - CSS bundle is very large, optimization needed";
   }
 }
 
 function generateRecommendations(sizeKB, classCount, mediaQueries) {
   const recommendations = [];
   const size = parseFloat(sizeKB);
-  
+
   if (size > 25) {
-    recommendations.push('- Consider implementing CSS purging for unused styles');
-    recommendations.push('- Review if all Tailwind components are necessary');
+    recommendations.push("- Consider implementing CSS purging for unused styles");
+    recommendations.push("- Review if all Tailwind components are necessary");
   }
-  
+
   if (classCount > 400) {
-    recommendations.push('- Verify content extraction is working correctly');
-    recommendations.push('- Check for unused utility classes');
+    recommendations.push("- Verify content extraction is working correctly");
+    recommendations.push("- Check for unused utility classes");
   }
-  
+
   if (mediaQueries > 20) {
-    recommendations.push('- Review responsive breakpoint usage');
-    recommendations.push('- Consider consolidating similar media queries');
+    recommendations.push("- Review responsive breakpoint usage");
+    recommendations.push("- Consider consolidating similar media queries");
   }
-  
+
   if (size < 15 && classCount < 200) {
-    recommendations.push('- CSS optimization is working well');
-    recommendations.push('- Current bundle size is optimal for performance');
+    recommendations.push("- CSS optimization is working well");
+    recommendations.push("- Current bundle size is optimal for performance");
   }
-  
-  return recommendations.length > 0 ? recommendations.join('\n') : '- CSS bundle is well optimized';
+
+  return recommendations.length > 0 ? recommendations.join("\n") : "- CSS bundle is well optimized";
 }
 
 // Run analysis

@@ -18,6 +18,7 @@ A comprehensive template caching system has been implemented with the following 
 #### 1. Core Caching Infrastructure (`internal/web/template_cache.go`)
 
 **TemplateCache**: Thread-safe cache with advanced features:
+
 - **TTL-based expiration** (default 30 seconds)
 - **Memory management** (max 1000 entries with LRU eviction)
 - **Automatic cleanup** (background goroutine every 60 seconds)
@@ -25,6 +26,7 @@ A comprehensive template caching system has been implemented with the following 
 - **Statistics tracking** for monitoring
 
 **Key Features**:
+
 ```go
 type TemplateCache struct {
     entries         map[string]*cacheEntry
@@ -39,6 +41,7 @@ type TemplateCache struct {
 #### 2. Smart Cache Key Generation
 
 Cache keys are generated using SHA-256 hashing of:
+
 - Request path (`/users`, `/groups`, etc.)
 - Query parameters (`show-disabled=1`)
 - User session context (authenticated user DN)
@@ -49,12 +52,14 @@ This ensures proper cache isolation between different users and request contexts
 #### 3. Integration Points
 
 **Server Integration** (`internal/web/server.go`):
+
 - Template cache initialization in `NewApp()`
 - Cache middleware for GET requests
 - Cache statistics endpoint (`/debug/cache`)
 - Periodic cache statistics logging
 
 **Handler Integration**:
+
 - **Users** (`internal/web/users.go`): Cached user lists and individual user pages
 - **Groups** (`internal/web/groups.go`): Cached group lists and individual group pages
 - **Computers** (`internal/web/computers.go`): Cached computer lists and individual computer pages
@@ -62,11 +67,13 @@ This ensures proper cache isolation between different users and request contexts
 #### 4. Cache Invalidation Strategy
 
 **Intelligent Invalidation**: Cache is invalidated when data changes:
+
 - User/group modifications trigger targeted cache clearing
 - POST operations automatically clear related cache entries
 - Fallback to full cache clear for safety
 
 **Invalidation Triggers**:
+
 - User-to-group assignments/removals
 - Any POST operation affecting LDAP data
 - Configurable TTL expiration (30 seconds)
@@ -74,18 +81,21 @@ This ensures proper cache isolation between different users and request contexts
 ### Performance Benefits
 
 #### Before Optimization:
+
 - **Template Rendering**: 5-15ms per request
 - **Repeated Sorting**: O(n log n) for every request
 - **CPU Usage**: High due to repeated operations
 - **Memory Pressure**: Constant allocation/deallocation
 
 #### After Optimization:
+
 - **Cached Responses**: ~1-2ms (90% reduction)
 - **Smart Sorting**: Results cached, no repeated sorting
 - **CPU Efficiency**: Significant reduction in processing
 - **Memory Optimization**: Controlled cache size with LRU eviction
 
 **Expected Performance Gains**:
+
 - **5-10x faster** template rendering
 - **50-70% reduction** in CPU usage for repeated requests
 - **Improved scalability** for multiple concurrent users
@@ -94,6 +104,7 @@ This ensures proper cache isolation between different users and request contexts
 ### Configuration and Monitoring
 
 #### Default Configuration:
+
 ```go
 DefaultTemplateCacheConfig{
     DefaultTTL:      30 * time.Second,  // Cache validity
@@ -103,6 +114,7 @@ DefaultTemplateCacheConfig{
 ```
 
 #### Monitoring Features:
+
 - **Debug Endpoint**: `/debug/cache` for cache statistics
 - **Logging**: Periodic cache statistics in application logs
 - **HTTP Headers**: `X-Cache: HIT/MISS` for debugging
@@ -111,17 +123,20 @@ DefaultTemplateCacheConfig{
 ### Safety and Reliability
 
 #### Thread Safety:
+
 - All cache operations use proper locking (`sync.RWMutex`)
 - Reader-writer locks for optimal concurrent access
 - Safe background cleanup operations
 
 #### Memory Management:
+
 - **Bounded cache size** prevents unbounded growth
 - **LRU eviction** removes least recently accessed entries
 - **Automatic cleanup** removes expired entries
 - **Statistics monitoring** for memory usage tracking
 
 #### Data Consistency:
+
 - **TTL expiration** ensures data freshness
 - **Smart invalidation** on data modifications
 - **Fallback cache clearing** for safety
@@ -130,6 +145,7 @@ DefaultTemplateCacheConfig{
 ### Implementation Details
 
 #### Cache Key Example:
+
 ```
 Path: /users/cn=john.doe,ou=users,dc=example,dc=com
 Query: show-disabled=0
@@ -139,6 +155,7 @@ Additional: userDN:cn=john.doe,ou=users,dc=example,dc=com
 ```
 
 #### Caching Flow:
+
 1. **Request arrives** → Generate cache key
 2. **Check cache** → Return if found and valid
 3. **Cache miss** → Render template
@@ -146,6 +163,7 @@ Additional: userDN:cn=john.doe,ou=users,dc=example,dc=com
 5. **Return response** → Send to client
 
 #### Invalidation Flow:
+
 1. **POST operation** → Data modification
 2. **LDAP update** → Successful change
 3. **Cache invalidation** → Clear related entries
@@ -154,6 +172,7 @@ Additional: userDN:cn=john.doe,ou=users,dc=example,dc=com
 ### Usage Examples
 
 #### Cached Template Rendering:
+
 ```go
 // Before: Direct template rendering
 return templates.Users(users, showDisabled, templates.Flashes()).
@@ -161,12 +180,13 @@ return templates.Users(users, showDisabled, templates.Flashes()).
 
 // After: Cached template rendering
 return a.templateCache.RenderWithCache(
-    c, 
+    c,
     templates.Users(users, showDisabled, templates.Flashes())
 )
 ```
 
 #### Cache Invalidation:
+
 ```go
 // After successful user modification
 a.invalidateTemplateCacheOnUserModification(userDN)
@@ -176,12 +196,14 @@ a.invalidateTemplateCacheOnUserModification(userDN)
 ### Deployment Considerations
 
 #### Production Settings:
+
 - Monitor cache hit rates via `/debug/cache` endpoint
 - Adjust TTL based on data change frequency
 - Scale cache size based on user count and memory availability
 - Monitor memory usage and eviction rates
 
 #### Development Settings:
+
 - Use shorter TTL for faster development cycles
 - Enable debug headers for cache testing
 - Monitor cache statistics during load testing
