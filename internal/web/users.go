@@ -1,3 +1,5 @@
+// Package web provides HTTP handlers for user management endpoints.
+// This file contains handlers for listing users, viewing user details, and modifying user attributes.
 package web
 
 import (
@@ -12,6 +14,20 @@ import (
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
+// usersHandler handles GET /users requests to list all user accounts in the LDAP directory.
+// Supports optional show-disabled query parameter to include disabled user accounts.
+// Users are sorted alphabetically by CN (Common Name) and returned as HTML using template caching.
+//
+// Query Parameters:
+//   - show-disabled: Set to "1" to include disabled users in the listing
+//
+// Returns:
+//   - 200: HTML page with user listing including display names, account names, and email addresses
+//   - 500: Internal server error if LDAP query fails
+//
+// Example:
+//
+//	GET /users?show-disabled=1
 func (a *App) usersHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
 	showDisabled := c.Query("show-disabled", "0") == "1"
@@ -24,6 +40,20 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 	return a.templateCache.RenderWithCache(c, templates.Users(users, showDisabled, templates.Flashes()))
 }
 
+// userHandler handles GET /users/:userDN requests to display detailed information for a specific user.
+// The userDN path parameter must be URL-encoded Distinguished Name of the user account.
+// Returns user details including all LDAP attributes, group memberships, and edit form with CSRF protection.
+//
+// Path Parameters:
+//   - userDN: URL-encoded Distinguished Name of the user (e.g. "CN=John Doe,OU=Users,DC=example,DC=com")
+//
+// Returns:
+//   - 200: HTML page with user details, group memberships, and editable form fields
+//   - 500: Internal server error if user not found or LDAP query fails
+//
+// Example:
+//
+//	GET /users/CN%3DJohn%20Doe%2COU%3DUsers%2CDC%3Dexample%2CDC%3Dcom
 func (a *App) userHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
 	userDN, err := url.PathUnescape(c.Params("userDN"))
