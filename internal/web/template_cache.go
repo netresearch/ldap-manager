@@ -71,7 +71,8 @@ func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string
 
 	// Include query parameters (sorted for consistency)
 	queryKeys := []string{}
-	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) { //nolint:staticcheck // No direct replacement available
+	// nolint:staticcheck // No direct replacement available
+	c.Request().URI().QueryArgs().VisitAll(func(key, value []byte) {
 		queryKeys = append(queryKeys, string(key)+"="+string(value))
 	})
 	for _, q := range queryKeys {

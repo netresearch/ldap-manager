@@ -127,13 +127,16 @@ func Parse() *Opts {
 			"Maximum number of connections in the LDAP connection pool.")
 		fPoolMinConnections = flag.Int("pool-min-connections", envIntOrDefault("LDAP_POOL_MIN_CONNECTIONS", 2),
 			"Minimum number of connections to maintain in the LDAP connection pool.")
-		fPoolMaxIdleTime = flag.Duration("pool-max-idle-time", envDurationOrDefault("LDAP_POOL_MAX_IDLE_TIME", 15*time.Minute),
+		fPoolMaxIdleTime = flag.Duration("pool-max-idle-time",
+			envDurationOrDefault("LDAP_POOL_MAX_IDLE_TIME", 15*time.Minute),
 			"Maximum time a connection can be idle in the pool before being closed.")
 		fPoolMaxLifetime = flag.Duration("pool-max-lifetime", envDurationOrDefault("LDAP_POOL_MAX_LIFETIME", 1*time.Hour),
 			"Maximum lifetime of a connection in the pool.")
-		fPoolHealthCheckInterval = flag.Duration("pool-health-check-interval", envDurationOrDefault("LDAP_POOL_HEALTH_CHECK_INTERVAL", 30*time.Second),
+		fPoolHealthCheckInterval = flag.Duration("pool-health-check-interval",
+			envDurationOrDefault("LDAP_POOL_HEALTH_CHECK_INTERVAL", 30*time.Second),
 			"Interval for connection health checks in the pool.")
-		fPoolAcquireTimeout = flag.Duration("pool-acquire-timeout", envDurationOrDefault("LDAP_POOL_ACQUIRE_TIMEOUT", 10*time.Second),
+		fPoolAcquireTimeout = flag.Duration("pool-acquire-timeout",
+			envDurationOrDefault("LDAP_POOL_ACQUIRE_TIMEOUT", 10*time.Second),
 			"Timeout for acquiring a connection from the pool.")
 	)
 

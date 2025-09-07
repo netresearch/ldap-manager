@@ -17,15 +17,8 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 	}
 	overallHealthy := cacheHealthStats.HealthStatus == "healthy" && poolHealthy
 
-	var statusCode int
-	if overallHealthy {
-		statusCode = fiber.StatusOK
-	} else if cacheHealthStats.HealthStatus == "degraded" ||
-		(cacheHealthStats.HealthStatus == "healthy" && !poolHealthy) {
-		statusCode = fiber.StatusOK // Still functional but degraded
-	} else {
-		statusCode = fiber.StatusServiceUnavailable
-	}
+	// Determine status code based on health state
+	statusCode := a.getHealthStatusCode(overallHealthy, cacheHealthStats.HealthStatus, poolHealthy)
 
 	c.Status(statusCode)
 
@@ -36,6 +29,18 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(response)
+}
+
+// getHealthStatusCode determines the appropriate HTTP status code based on health state
+func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolHealthy bool) int {
+	if overallHealthy {
+		return fiber.StatusOK
+	}
+	if cacheStatus == "degraded" || (cacheStatus == "healthy" && !poolHealthy) {
+		return fiber.StatusOK // Still functional but degraded
+	}
+
+	return fiber.StatusServiceUnavailable
 }
 
 // readinessHandler provides a simple readiness check.
@@ -50,6 +55,7 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 		isPoolHealthy = false
 	}
 
+	// Check if fully ready
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {
 		return c.JSON(fiber.Map{
 			"status":          "ready",
@@ -59,28 +65,9 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get status and reason for not ready state
+	status, reason := a.getReadinessStatus(isCacheHealthy, isWarmedUp, isPoolHealthy)
 	c.Status(fiber.StatusServiceUnavailable)
-	status := "not ready"
-	reason := ""
-
-	switch {
-	case !isCacheHealthy && !isWarmedUp && !isPoolHealthy:
-		reason = "cache unhealthy, not warmed up, and connection pool unhealthy"
-	case !isCacheHealthy && !isWarmedUp:
-		reason = "cache unhealthy and not warmed up"
-	case !isCacheHealthy && !isPoolHealthy:
-		reason = "cache and connection pool unhealthy"
-	case !isWarmedUp && !isPoolHealthy:
-		reason = "cache warming in progress and connection pool unhealthy"
-		status = "warming up"
-	case !isCacheHealthy:
-		reason = "cache degraded or unhealthy"
-	case !isWarmedUp:
-		reason = "cache warming in progress"
-		status = "warming up"
-	case !isPoolHealthy:
-		reason = "connection pool unhealthy"
-	}
 
 	return c.JSON(fiber.Map{
 		"status":          status,
@@ -88,6 +75,32 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 		"warmed_up":       isWarmedUp,
 		"connection_pool": "unhealthy",
 	})
+}
+
+// getReadinessStatus determines status and reason based on readiness conditions
+func (a *App) getReadinessStatus(cacheHealthy, warmedUp, poolHealthy bool) (status, reason string) {
+	status = "not ready"
+
+	switch {
+	case !cacheHealthy && !warmedUp && !poolHealthy:
+		reason = "cache unhealthy, not warmed up, and connection pool unhealthy"
+	case !cacheHealthy && !warmedUp:
+		reason = "cache unhealthy and not warmed up"
+	case !cacheHealthy && !poolHealthy:
+		reason = "cache and connection pool unhealthy"
+	case !warmedUp && !poolHealthy:
+		reason = "cache warming in progress and connection pool unhealthy"
+		status = "warming up"
+	case !cacheHealthy:
+		reason = "cache degraded or unhealthy"
+	case !warmedUp:
+		reason = "cache warming in progress"
+		status = "warming up"
+	case !poolHealthy:
+		reason = "connection pool unhealthy"
+	}
+
+	return status, reason
 }
 
 // livenessHandler provides a simple liveness check.
