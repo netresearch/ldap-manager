@@ -17,9 +17,8 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 		return computers[i].CN() < computers[j].CN()
 	})
 
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Computers(computers).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use template caching with query parameter differentiation
+	return a.templateCache.RenderWithCache(c, templates.Computers(computers))
 }
 
 func (a *App) computerHandler(c *fiber.Ctx) error {
@@ -39,7 +38,10 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 		return computer.Groups[i].CN() < computer.Groups[j].CN()
 	})
 
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Computer(computer).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use template caching with computer DN as additional cache data
+	return a.templateCache.RenderWithCache(
+		c,
+		templates.Computer(computer),
+		"computerDN:"+computerDN,
+	)
 }

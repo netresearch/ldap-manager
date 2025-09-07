@@ -35,9 +35,9 @@ type Manager struct {
 	refreshInterval time.Duration // Configurable refresh interval (default 30s)
 	warmupComplete  bool          // Tracks if initial cache warming is complete
 
-	Users     Cache[ldap.User]     // Cached user entries with metrics
-	Groups    Cache[ldap.Group]    // Cached group entries with metrics
-	Computers Cache[ldap.Computer] // Cached computer entries with metrics
+	Users     Cache[ldap.User]     // Cached user entries with O(1) indexed lookups
+	Groups    Cache[ldap.Group]    // Cached group entries with O(1) indexed lookups
+	Computers Cache[ldap.Computer] // Cached computer entries with O(1) indexed lookups
 }
 
 // FullLDAPUser represents a user with populated group memberships.
@@ -292,7 +292,7 @@ func (m *Manager) FindUsers(showDisabled bool) []ldap.User {
 
 // FindUserByDN finds a user by their Distinguished Name (DN) in the cache.
 // Returns the user if found, or ErrUserNotFound if no matching user exists.
-// This is an O(n) operation that searches the cached user data.
+// This is now an O(1) operation using hash-based index lookup for optimal performance.
 func (m *Manager) FindUserByDN(dn string) (*ldap.User, error) {
 	user, found := m.Users.FindByDN(dn)
 	if !found {
@@ -304,11 +304,10 @@ func (m *Manager) FindUserByDN(dn string) (*ldap.User, error) {
 
 // FindUserBySAMAccountName finds a user by their SAMAccountName in the cache.
 // Returns the user if found, or ErrUserNotFound if no matching user exists.
-// This is an O(n) operation that searches the cached user data.
+// This is now an O(1) operation using hash-based index lookup for optimal performance.
+// Provides significant performance improvement over the previous O(n) linear search.
 func (m *Manager) FindUserBySAMAccountName(samAccountName string) (*ldap.User, error) {
-	user, found := m.Users.Find(func(user ldap.User) bool {
-		return user.SAMAccountName == samAccountName
-	})
+	user, found := m.Users.FindBySAMAccountName(samAccountName)
 	if !found {
 		return nil, ldap.ErrUserNotFound
 	}
@@ -324,7 +323,7 @@ func (m *Manager) FindGroups() []ldap.Group {
 
 // FindGroupByDN finds a group by its Distinguished Name (DN) in the cache.
 // Returns the group if found, or ErrGroupNotFound if no matching group exists.
-// This is an O(n) operation that searches the cached group data.
+// This is now an O(1) operation using hash-based index lookup for optimal performance.
 func (m *Manager) FindGroupByDN(dn string) (*ldap.Group, error) {
 	group, found := m.Groups.FindByDN(dn)
 
@@ -350,9 +349,22 @@ func (m *Manager) FindComputers(showDisabled bool) []ldap.Computer {
 
 // FindComputerByDN finds a computer by its Distinguished Name (DN) in the cache.
 // Returns the computer if found, or ErrComputerNotFound if no matching computer exists.
-// This is an O(n) operation that searches the cached computer data.
+// This is now an O(1) operation using hash-based index lookup for optimal performance.
 func (m *Manager) FindComputerByDN(dn string) (*ldap.Computer, error) {
 	computer, found := m.Computers.FindByDN(dn)
+	if !found {
+		return nil, ldap.ErrComputerNotFound
+	}
+
+	return computer, nil
+}
+
+// FindComputerBySAMAccountName finds a computer by its SAMAccountName in the cache.
+// Returns the computer if found, or ErrComputerNotFound if no matching computer exists.
+// This is an O(1) operation using hash-based index lookup for optimal performance.
+// Provides significant performance improvement for computer lookups by account name.
+func (m *Manager) FindComputerBySAMAccountName(samAccountName string) (*ldap.Computer, error) {
+	computer, found := m.Computers.FindBySAMAccountName(samAccountName)
 	if !found {
 		return nil, ldap.ErrComputerNotFound
 	}

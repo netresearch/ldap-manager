@@ -5,39 +5,51 @@ import (
 )
 
 // healthHandler provides a comprehensive health check endpoint.
-// Returns cache metrics, system health status, and operational statistics.
+// Returns cache metrics, connection pool health, system health status, and operational statistics.
 func (a *App) healthHandler(c *fiber.Ctx) error {
-	healthStats := a.ldapCache.GetHealthCheck()
+	cacheHealthStats := a.ldapCache.GetHealthCheck()
+	poolHealthStatus := a.ldapPool.GetHealthStatus()
+
+	// Determine overall health status
+	overallHealthy := cacheHealthStats.HealthStatus == "healthy" &&
+		poolHealthStatus["healthy"].(bool)
 
 	var statusCode int
-	switch healthStats.HealthStatus {
-	case "healthy":
+	if overallHealthy {
 		statusCode = fiber.StatusOK
-	case "degraded":
-		statusCode = fiber.StatusOK // Still functional
-	case "unhealthy":
+	} else if cacheHealthStats.HealthStatus == "degraded" ||
+		(cacheHealthStats.HealthStatus == "healthy" && !poolHealthStatus["healthy"].(bool)) {
+		statusCode = fiber.StatusOK // Still functional but degraded
+	} else {
 		statusCode = fiber.StatusServiceUnavailable
-	default:
-		statusCode = fiber.StatusInternalServerError
 	}
 
 	c.Status(statusCode)
 
-	return c.JSON(healthStats)
+	response := fiber.Map{
+		"cache":           cacheHealthStats,
+		"connection_pool": poolHealthStatus,
+		"overall_healthy": overallHealthy,
+	}
+
+	return c.JSON(response)
 }
 
 // readinessHandler provides a simple readiness check.
-// Returns 200 OK if the cache system is operational and ready to serve requests.
-// Includes cache warming status to indicate if initial population is complete.
+// Returns 200 OK if the cache system and connection pool are operational and ready to serve requests.
+// Includes cache warming status and connection pool health to indicate if system is ready.
 func (a *App) readinessHandler(c *fiber.Ctx) error {
-	isHealthy := a.ldapCache.IsHealthy()
+	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
+	poolHealthStatus := a.ldapPool.GetHealthStatus()
+	isPoolHealthy := poolHealthStatus["healthy"].(bool)
 
-	if isHealthy && isWarmedUp {
+	if isCacheHealthy && isWarmedUp && isPoolHealthy {
 		return c.JSON(fiber.Map{
-			"status":    "ready",
-			"cache":     "healthy",
-			"warmed_up": true,
+			"status":          "ready",
+			"cache":           "healthy",
+			"warmed_up":       true,
+			"connection_pool": "healthy",
 		})
 	}
 
@@ -46,19 +58,29 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	reason := ""
 
 	switch {
-	case !isHealthy && !isWarmedUp:
+	case !isCacheHealthy && !isWarmedUp && !isPoolHealthy:
+		reason = "cache unhealthy, not warmed up, and connection pool unhealthy"
+	case !isCacheHealthy && !isWarmedUp:
 		reason = "cache unhealthy and not warmed up"
-	case !isHealthy:
+	case !isCacheHealthy && !isPoolHealthy:
+		reason = "cache and connection pool unhealthy"
+	case !isWarmedUp && !isPoolHealthy:
+		reason = "cache warming in progress and connection pool unhealthy"
+		status = "warming up"
+	case !isCacheHealthy:
 		reason = "cache degraded or unhealthy"
 	case !isWarmedUp:
 		reason = "cache warming in progress"
 		status = "warming up"
+	case !isPoolHealthy:
+		reason = "connection pool unhealthy"
 	}
 
 	return c.JSON(fiber.Map{
-		"status":    status,
-		"cache":     reason,
-		"warmed_up": isWarmedUp,
+		"status":          status,
+		"cache":           reason,
+		"warmed_up":       isWarmedUp,
+		"connection_pool": "unhealthy",
 	})
 }
 

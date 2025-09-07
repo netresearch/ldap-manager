@@ -15,7 +15,7 @@ import (
 )
 
 // Opts holds all configuration options for the LDAP Manager application.
-// It includes LDAP connection settings, session management, and logging configuration.
+// It includes LDAP connection settings, session management, connection pooling, and logging configuration.
 type Opts struct {
 	LogLevel zerolog.Level
 
@@ -26,6 +26,14 @@ type Opts struct {
 	PersistSessions bool
 	SessionPath     string
 	SessionDuration time.Duration
+
+	// LDAP Connection Pool settings
+	PoolMaxConnections      int
+	PoolMinConnections      int
+	PoolMaxIdleTime         time.Duration
+	PoolMaxLifetime         time.Duration
+	PoolHealthCheckInterval time.Duration
+	PoolAcquireTimeout      time.Duration
 }
 
 func panicWhenEmpty(name string, value *string) {
@@ -74,6 +82,17 @@ func envBoolOrDefault(name string, d bool) bool {
 	return v2
 }
 
+func envIntOrDefault(name string, d int) int {
+	raw := envStringOrDefault(name, strconv.Itoa(d))
+
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Fatal().Msgf("could not parse environment variable \"%s\" (containing \"%s\") as int: %v", name, raw, err)
+	}
+
+	return v
+}
+
 // Parse parses command line flags and environment variables to build application configuration.
 // It loads from .env files, parses flags, and validates required settings.
 func Parse() *Opts {
@@ -102,6 +121,20 @@ func Parse() *Opts {
 			"Path to the session database file. (Only required when --persist-sessions is set)")
 		fSessionDuration = flag.Duration("session-duration", envDurationOrDefault("SESSION_DURATION", 30*time.Minute),
 			"Duration of the session. (Only required when --persist-sessions is set)")
+
+		// LDAP Connection Pool configuration
+		fPoolMaxConnections = flag.Int("pool-max-connections", envIntOrDefault("LDAP_POOL_MAX_CONNECTIONS", 10),
+			"Maximum number of connections in the LDAP connection pool.")
+		fPoolMinConnections = flag.Int("pool-min-connections", envIntOrDefault("LDAP_POOL_MIN_CONNECTIONS", 2),
+			"Minimum number of connections to maintain in the LDAP connection pool.")
+		fPoolMaxIdleTime = flag.Duration("pool-max-idle-time", envDurationOrDefault("LDAP_POOL_MAX_IDLE_TIME", 15*time.Minute),
+			"Maximum time a connection can be idle in the pool before being closed.")
+		fPoolMaxLifetime = flag.Duration("pool-max-lifetime", envDurationOrDefault("LDAP_POOL_MAX_LIFETIME", 1*time.Hour),
+			"Maximum lifetime of a connection in the pool.")
+		fPoolHealthCheckInterval = flag.Duration("pool-health-check-interval", envDurationOrDefault("LDAP_POOL_HEALTH_CHECK_INTERVAL", 30*time.Second),
+			"Interval for connection health checks in the pool.")
+		fPoolAcquireTimeout = flag.Duration("pool-acquire-timeout", envDurationOrDefault("LDAP_POOL_ACQUIRE_TIMEOUT", 10*time.Second),
+			"Timeout for acquiring a connection from the pool.")
 	)
 
 	if !flag.Parsed() {
@@ -138,5 +171,12 @@ func Parse() *Opts {
 		PersistSessions: *fPersistSessions,
 		SessionPath:     *fSessionPath,
 		SessionDuration: *fSessionDuration,
+
+		PoolMaxConnections:      *fPoolMaxConnections,
+		PoolMinConnections:      *fPoolMinConnections,
+		PoolMaxIdleTime:         *fPoolMaxIdleTime,
+		PoolMaxLifetime:         *fPoolMaxLifetime,
+		PoolHealthCheckInterval: *fPoolHealthCheckInterval,
+		PoolAcquireTimeout:      *fPoolAcquireTimeout,
 	}
 }
