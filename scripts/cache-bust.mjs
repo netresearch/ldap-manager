@@ -23,7 +23,7 @@ async function generateCacheBustedAssets() {
     try {
       cssContent = await fs.readFile(cssPath);
     } catch (error) {
-      if (error.code === 'ENOENT') {
+      if (error.code === "ENOENT") {
         console.warn("⚠️  styles.css not found, skipping cache-busting");
         return;
       }
