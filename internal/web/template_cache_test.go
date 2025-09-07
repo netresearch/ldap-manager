@@ -13,7 +13,7 @@ import (
 
 // Simple test template component
 func testTemplate(content string) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		_, err := w.Write([]byte(content))
 		return err
 	})
