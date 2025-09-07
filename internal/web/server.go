@@ -125,6 +125,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 			log.Warn().Err(err).Msg("CSRF validation failed")
 			c.Status(fiber.StatusForbidden)
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 			return templates.FourOhThree("CSRF token validation failed").Render(c.UserContext(), c.Response().BodyWriter())
 		},
 	})
@@ -217,6 +218,7 @@ func (a *App) templateCacheMiddleware() fiber.Handler {
 		if cachedContent, found := a.templateCache.Get(cacheKey); found {
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 			c.Set("X-Cache", "HIT")
+
 			return c.Send(cachedContent)
 		}
 
@@ -238,6 +240,7 @@ func (a *App) invalidateTemplateCache(paths ...string) {
 // cacheStatsHandler provides cache statistics for monitoring
 func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 	stats := a.templateCache.Stats()
+
 	return c.JSON(stats)
 }
 
@@ -310,5 +313,6 @@ func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 			return tokenStr
 		}
 	}
+
 	return ""
 }

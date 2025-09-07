@@ -44,6 +44,7 @@ func createUserCache(count int) *Cache[ldap.User] {
 
 	cache := NewCached[ldap.User]()
 	cache.setAll(users)
+
 	return &cache
 }
 
