@@ -28,7 +28,7 @@ LDAP Manager implements a **defense-in-depth security model** with multiple laye
 │  HTTPS, Reverse Proxy, WAF, Firewall    │
 ├─────────────────────────────────────────┤
 │         Application Security            │
-│  Security Headers, CSRF, Input Val.     │  
+│  Security Headers, CSRF, Input Val.     │
 ├─────────────────────────────────────────┤
 │        Authentication Security          │
 │  LDAP Auth, Session Management          │
@@ -111,13 +111,14 @@ LDAP_READONLY_PASSWORD=secure_random_password_here
 
 # Service account should have:
 # - Read permission on Users container
-# - Read permission on Groups container  
+# - Read permission on Groups container
 # - Read permission on Computers container
 # - NO write/modify/delete permissions
 # - NO admin privileges
 ```
 
 **Service Account Permissions (Active Directory)**:
+
 ```powershell
 # Example PowerShell commands for AD service account setup
 # Create service account
@@ -128,7 +129,7 @@ New-ADUser -Name "ldap-reader" -Path "OU=Service Accounts,DC=example,DC=com" `
 # Grant read permissions on Users OU
 dsacls "OU=Users,DC=example,DC=com" /G "ldap-reader@example.com:GR"
 
-# Grant read permissions on Groups OU  
+# Grant read permissions on Groups OU
 dsacls "OU=Groups,DC=example,DC=com" /G "ldap-reader@example.com:GR"
 
 # Grant read permissions on Computers OU
@@ -205,6 +206,7 @@ SECURITY_REFERRER_POLICY=strict-origin-when-cross-origin
 **Cross-Site Request Forgery** protection is enabled by default:
 
 #### CSRF Configuration
+
 ```bash
 # CSRF token configuration
 CSRF_KEY_LOOKUP=form:csrf_token         # Look for token in form data
@@ -222,13 +224,13 @@ All state-changing forms include CSRF tokens:
 ```html
 <!-- Example form with CSRF protection -->
 <form method="POST" action="/users/CN=John%20Doe,OU=Users,DC=example,DC=com">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    
-    <input type="text" name="givenName" value="John">
-    <input type="text" name="sn" value="Doe">
-    <input type="email" name="mail" value="john.doe@example.com">
-    
-    <button type="submit">Update User</button>
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+  <input type="text" name="givenName" value="John" />
+  <input type="text" name="sn" value="Doe" />
+  <input type="email" name="mail" value="john.doe@example.com" />
+
+  <button type="submit">Update User</button>
 </form>
 ```
 
@@ -237,6 +239,7 @@ All state-changing forms include CSRF tokens:
 Comprehensive input validation prevents various attacks:
 
 #### Parameter Validation
+
 ```go
 // Example input validation (built into handlers)
 func validateUserDN(dn string) error {
@@ -245,17 +248,18 @@ func validateUserDN(dn string) error {
     if err != nil {
         return fmt.Errorf("invalid DN encoding: %w", err)
     }
-    
+
     // Basic DN format validation
     if !strings.Contains(decodedDN, "=") {
         return fmt.Errorf("invalid DN format")
     }
-    
+
     return nil
 }
 ```
 
 #### Form Data Validation
+
 - **Size Limits**: 4KB maximum request body size
 - **Type Validation**: All form fields validated for expected types
 - **Length Limits**: Reasonable limits on text field lengths
@@ -266,6 +270,7 @@ func validateUserDN(dn string) error {
 Secure error handling prevents information disclosure:
 
 #### Production Error Messages
+
 ```go
 // Development: Detailed error information
 if err != nil {
@@ -273,7 +278,7 @@ if err != nil {
     return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-// Production: Generic error messages  
+// Production: Generic error messages
 if err != nil {
     log.Error().Err(err).Msg("LDAP query failed") // Detailed logging
     return templates.FiveHundred(errors.New("Internal server error")).Render(c.UserContext(), c.Response().BodyWriter())
@@ -281,6 +286,7 @@ if err != nil {
 ```
 
 #### Error Information Limits
+
 - **Generic Messages**: No sensitive information in user-facing errors
 - **Detailed Logging**: Complete error details logged securely
 - **No Stack Traces**: Stack traces only in debug mode
@@ -301,7 +307,7 @@ LDAP Manager should always run behind HTTPS termination:
 server {
     listen 443 ssl http2;
     server_name ldap-manager.example.com;
-    
+
     # TLS configuration
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
@@ -310,17 +316,17 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
-    
+
     # HSTS header
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-    
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
-        
+
         # Security headers
         proxy_set_header X-Content-Type-Options nosniff;
         proxy_set_header X-Frame-Options DENY;
@@ -405,13 +411,13 @@ location / {
     # Allow corporate IP ranges
     allow 192.168.1.0/24;
     allow 10.0.0.0/8;
-    
+
     # Allow VPN gateway
     allow 203.0.113.1;
-    
+
     # Deny all others
     deny all;
-    
+
     proxy_pass http://localhost:3000;
 }
 ```
@@ -543,20 +549,20 @@ spec:
     seccompProfile:
       type: RuntimeDefault
   containers:
-  - name: ldap-manager
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-        - ALL
-    resources:
-      limits:
-        cpu: "1"
-        memory: "512Mi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
+    - name: ldap-manager
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
 ```
 
 #### Read-Only Filesystem
@@ -566,15 +572,15 @@ Use read-only filesystem with temporary volumes:
 ```yaml
 # Read-only root filesystem with temporary volumes
 volumeMounts:
-- name: tmp
-  mountPath: /tmp
-- name: cache
-  mountPath: /app/.cache
+  - name: tmp
+    mountPath: /tmp
+  - name: cache
+    mountPath: /app/.cache
 volumes:
-- name: tmp
-  emptyDir: {}
-- name: cache
-  emptyDir: {}
+  - name: tmp
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
 ```
 
 ### Container Scanning
@@ -812,18 +818,21 @@ EOF
 For SOC 2 compliance, ensure:
 
 #### Access Controls
+
 - **Authentication**: All access requires LDAP authentication
 - **Authorization**: Users can only access data they have permissions for
 - **Session Management**: Automatic session timeout and secure cookies
 - **Audit Trail**: Comprehensive logging of all access and changes
 
-#### Security Monitoring  
+#### Security Monitoring
+
 - **Log Retention**: Maintain logs for required retention period
 - **Security Monitoring**: Real-time monitoring of security events
 - **Incident Response**: Procedures for security incidents
 - **Vulnerability Management**: Regular security updates and scanning
 
 #### Data Protection
+
 - **Encryption in Transit**: LDAPS and HTTPS for all connections
 - **Encryption at Rest**: Encrypted session storage and logs
 - **Data Minimization**: Only collect necessary data
@@ -834,18 +843,21 @@ For SOC 2 compliance, ensure:
 For GDPR compliance:
 
 #### Data Processing
+
 - **Lawful Basis**: Processing necessary for legitimate business interests
 - **Data Minimization**: Only display necessary LDAP attributes
 - **Purpose Limitation**: Data used only for directory management
 - **Storage Limitation**: Sessions and logs have defined retention
 
 #### Individual Rights
+
 - **Right to Access**: Users can view their own LDAP data
 - **Right to Rectification**: Users can update their information (if LDAP permissions allow)
 - **Right to Erasure**: Data removed when deleted from LDAP directory
 - **Right to Portability**: LDAP data can be exported
 
 #### Security Measures
+
 - **Encryption**: All data encrypted in transit and at rest
 - **Access Controls**: Strong authentication and authorization
 - **Audit Trail**: Detailed logging for compliance verification
@@ -856,12 +868,14 @@ For GDPR compliance:
 For PCI DSS compliance:
 
 #### Network Security
+
 - **Firewall Configuration**: Proper network segmentation
 - **Default Passwords**: All default passwords changed
 - **Data Transmission**: Encrypted transmission of sensitive data
 - **Network Testing**: Regular penetration testing
 
 #### Access Control
+
 - **Unique User IDs**: Each user has unique LDAP account
 - **Access Restrictions**: Data access based on business need-to-know
 - **Authentication**: Strong authentication mechanisms

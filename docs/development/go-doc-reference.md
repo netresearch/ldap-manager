@@ -23,8 +23,9 @@ Complete Go package documentation for LDAP Manager, generated from inline doc co
 **type Opts struct** - Holds all configuration options for the LDAP Manager application. Includes LDAP connection settings, session management, connection pooling, and logging configuration.
 
 Fields:
+
 - `LogLevel zerolog.Level` - Application log level
-- `LDAP ldap.Config` - LDAP server configuration  
+- `LDAP ldap.Config` - LDAP server configuration
 - `ReadonlyUser string` - Service account username for LDAP operations
 - `ReadonlyPassword string` - Service account password
 - `PersistSessions bool` - Whether to persist sessions to database
@@ -39,7 +40,7 @@ Fields:
 
 #### Functions
 
-**Parse() *Opts** - Parses command line flags and environment variables to build application configuration. Loads from .env files, parses flags, and validates required settings.
+**Parse() \*Opts** - Parses command line flags and environment variables to build application configuration. Loads from .env files, parses flags, and validates required settings.
 
 ---
 
@@ -75,11 +76,11 @@ Fields:
 
 #### Key Methods
 
-**NewPoolManager(baseClient *ldap.LDAP, config *PoolConfig) (*PoolManager, error)** - Creates a new pool manager with the specified base client and configuration.
+**NewPoolManager(baseClient *ldap.LDAP, config *PoolConfig) (\*PoolManager, error)** - Creates a new pool manager with the specified base client and configuration.
 
-**WithCredentials(ctx context.Context, dn, password string) (*PooledLDAPClient, error)** - Gets an authenticated LDAP client from the connection pool. Replaces the simple-ldap-go WithCredentials method with pooled connections.
+**WithCredentials(ctx context.Context, dn, password string) (\*PooledLDAPClient, error)** - Gets an authenticated LDAP client from the connection pool. Replaces the simple-ldap-go WithCredentials method with pooled connections.
 
-**GetReadOnlyClient(ctx context.Context) (*PooledLDAPClient, error)** - Gets a read-only LDAP client from the connection pool. Useful for operations that don't require specific user credentials.
+**GetReadOnlyClient(ctx context.Context) (\*PooledLDAPClient, error)** - Gets a read-only LDAP client from the connection pool. Useful for operations that don't require specific user credentials.
 
 **GetStats() PoolStats** - Returns connection pool statistics.
 
@@ -96,8 +97,9 @@ Fields:
 **type Manager struct** - Coordinates LDAP data caching with automatic background refresh. Maintains separate caches for users, groups, and computers with configurable refresh intervals.
 
 Fields:
+
 - `Users Cache[ldap.User]` - Cached user entries with O(1) indexed lookups
-- `Groups Cache[ldap.Group]` - Cached group entries with O(1) indexed lookups  
+- `Groups Cache[ldap.Group]` - Cached group entries with O(1) indexed lookups
 - `Computers Cache[ldap.Computer]` - Cached computer entries with O(1) indexed lookups
 
 **type Cache[T cacheable] struct** - Provides thread-safe storage for LDAP entities with O(1) indexed lookups. Maintains both slice storage for iteration and hash-based indexes for fast lookups.
@@ -110,9 +112,9 @@ Fields:
 
 #### Key Methods
 
-**New(client LDAPClient) *Manager** - Creates a new LDAP cache manager with 30-second refresh interval.
+**New(client LDAPClient) \*Manager** - Creates a new LDAP cache manager with 30-second refresh interval.
 
-**NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager** - Creates a new LDAP cache manager with configurable refresh interval.
+**NewWithConfig(client LDAPClient, refreshInterval time.Duration) \*Manager** - Creates a new LDAP cache manager with configurable refresh interval.
 
 **FindUsers(includeDisabled bool) []ldap.User** - Returns all cached users, optionally including disabled accounts.
 
@@ -131,6 +133,7 @@ Fields:
 **type App struct** - Represents the main web application structure. Encapsulates LDAP client, connection pool, cache manager, session store, template cache, and Fiber web framework.
 
 Fields:
+
 - `ldapClient *ldap.LDAP` - LDAP client instance
 - `ldapPool *ldappool.PoolManager` - Connection pool manager
 - `ldapCache *ldap_cache.Manager` - Cache manager
@@ -148,19 +151,19 @@ Fields:
 
 #### Handler Methods
 
-**usersHandler(c *fiber.Ctx) error** - Handles GET /users requests to list all user accounts. Supports show-disabled query parameter.
+**usersHandler(c \*fiber.Ctx) error** - Handles GET /users requests to list all user accounts. Supports show-disabled query parameter.
 
-**userHandler(c *fiber.Ctx) error** - Handles GET /users/:userDN requests for specific user details.
+**userHandler(c \*fiber.Ctx) error** - Handles GET /users/:userDN requests for specific user details.
 
-**userModifyHandler(c *fiber.Ctx) error** - Handles POST /users/:userDN requests to modify user attributes.
+**userModifyHandler(c \*fiber.Ctx) error** - Handles POST /users/:userDN requests to modify user attributes.
 
-**groupsHandler(c *fiber.Ctx) error** - Handles GET /groups requests to list all groups.
+**groupsHandler(c \*fiber.Ctx) error** - Handles GET /groups requests to list all groups.
 
-**groupHandler(c *fiber.Ctx) error** - Handles GET /groups/:groupDN requests for specific group details.
+**groupHandler(c \*fiber.Ctx) error** - Handles GET /groups/:groupDN requests for specific group details.
 
-**computersHandler(c *fiber.Ctx) error** - Handles GET /computers requests to list all computer accounts.
+**computersHandler(c \*fiber.Ctx) error** - Handles GET /computers requests to list all computer accounts.
 
-**computerHandler(c *fiber.Ctx) error** - Handles GET /computers/:computerDN requests for specific computer details.
+**computerHandler(c \*fiber.Ctx) error** - Handles GET /computers/:computerDN requests for specific computer details.
 
 ---
 
@@ -191,8 +194,9 @@ Uses [templ](https://templ.guide/) for type-safe HTML templating with Go. Templa
 ### Connection Pooling
 
 The LDAP connection pool provides:
+
 - **Concurrent Connections**: Up to 10 simultaneous LDAP connections
-- **Connection Reuse**: Automatic pooling and reuse of authenticated connections  
+- **Connection Reuse**: Automatic pooling and reuse of authenticated connections
 - **Health Monitoring**: Periodic health checks and automatic recovery
 - **Graceful Degradation**: Handles connection failures and timeouts
 - **Metrics**: Comprehensive statistics for monitoring
@@ -200,6 +204,7 @@ The LDAP connection pool provides:
 ### Caching System
 
 Multi-level caching architecture:
+
 - **LDAP Data Cache**: 30-second refresh for users/groups/computers
 - **Template Cache**: Rendered HTML templates cached with automatic invalidation
 - **Static Asset Cache**: 24-hour browser cache for CSS/JS/images
@@ -208,6 +213,7 @@ Multi-level caching architecture:
 ### Template Caching
 
 The template caching system provides:
+
 - **Automatic Cache Keys**: Generated from request path and parameters
 - **Cache Invalidation**: Automatic invalidation after data modifications
 - **Cache Statistics**: Hit/miss ratios and performance metrics
@@ -256,6 +262,7 @@ The template caching system provides:
 ### Metrics
 
 Comprehensive metrics collection:
+
 - **Cache Performance**: Hit/miss ratios, eviction counts
 - **Connection Pool**: Active connections, acquisition times
 - **Request Metrics**: Response times, error rates
@@ -264,6 +271,7 @@ Comprehensive metrics collection:
 ### Logging
 
 Structured logging with configurable levels:
+
 - **Levels**: trace, debug, info, warn, error, fatal, panic
 - **Format**: JSON logging for production, console for development
 - **Context**: Request IDs and user context in all log entries
@@ -277,7 +285,7 @@ This documentation is derived from Go doc comments in the source code. For the m
 ```bash
 # Generate and serve documentation locally
 go doc -all ./cmd/ldap-manager
-go doc -all ./internal/options  
+go doc -all ./internal/options
 go doc -all ./internal/ldap
 go doc -all ./internal/ldap_cache
 go doc -all ./internal/web

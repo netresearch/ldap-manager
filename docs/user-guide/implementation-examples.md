@@ -83,7 +83,7 @@ dsacls $UsersOU /G "${ServiceAccount}:GR"
 $GroupsOU = "OU=Groups,DC=example,DC=com"
 dsacls $GroupsOU /G "${ServiceAccount}:GR"
 
-# Grant read permissions on Computers container  
+# Grant read permissions on Computers container
 $ComputersOU = "OU=Computers,DC=example,DC=com"
 dsacls $ComputersOU /G "${ServiceAccount}:GR"
 
@@ -183,7 +183,7 @@ EOF
 ldapadd -x -D "cn=admin,dc=example,dc=com" -W -f service-account.ldif
 
 # Grant read access with ACL
-cat > read-access.ldif << EOF  
+cat > read-access.ldif << EOF
 dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 replace: olcAccess
@@ -238,35 +238,35 @@ upstream ldap_manager_backend {
 server {
     listen 443 ssl http2;
     server_name ldap-manager.example.com;
-    
+
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/ldap-manager.crt;
     ssl_certificate_key /etc/nginx/ssl/ldap-manager.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    
+
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
     add_header X-XSS-Protection "1; mode=block" always;
-    
+
     location / {
         proxy_pass http://ldap_manager_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Health check configuration
         proxy_connect_timeout 5s;
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
-        
+
         # Session affinity (optional, improves cache performance)
         ip_hash;
     }
-    
+
     # Health check endpoint
     location /health {
         proxy_pass http://ldap_manager_backend;
@@ -341,45 +341,45 @@ spec:
         app: ldap-manager
     spec:
       containers:
-      - name: ldap-manager
-        image: ldap-manager:latest
-        ports:
-        - containerPort: 3000
-        envFrom:
-        - configMapRef:
-            name: ldap-manager-config
-        - secretRef:
-            name: ldap-manager-secret
-        volumeMounts:
-        - name: sessions
-          mountPath: /shared
-        resources:
-          requests:
-            cpu: 200m
-            memory: 256Mi
-          limits:
-            cpu: 1000m
-            memory: 512Mi
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 2
+        - name: ldap-manager
+          image: ldap-manager:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: ldap-manager-config
+            - secretRef:
+                name: ldap-manager-secret
+          volumeMounts:
+            - name: sessions
+              mountPath: /shared
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
       volumes:
-      - name: sessions
-        persistentVolumeClaim:
-          claimName: ldap-manager-sessions
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: ldap-manager-sessions
 
 ---
 apiVersion: v1
@@ -406,20 +406,20 @@ metadata:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   tls:
-  - hosts:
-    - ldap-manager.example.com
-    secretName: ldap-manager-tls
+    - hosts:
+        - ldap-manager.example.com
+      secretName: ldap-manager-tls
   rules:
-  - host: ldap-manager.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ldap-manager-service
-            port:
-              number: 80
+    - host: ldap-manager.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ldap-manager-service
+                port:
+                  number: 80
 ```
 
 ### Multi-Domain Configuration
@@ -437,7 +437,7 @@ LDAP_READONLY_PASSWORD=password_a
 SESSION_PATH=/data/sessions-domain-a.db
 EOF
 
-# Instance 2: Domain B  
+# Instance 2: Domain B
 cat > .env.domain-b << EOF
 LDAP_SERVER=ldaps://dc-b.example.com:636
 LDAP_BASE_DN=DC=domain-b,DC=example,DC=com
@@ -459,9 +459,9 @@ services:
       - .env.domain-a
     volumes:
       - ./data:/data
-      
+
   ldap-manager-domain-b:
-    image: ldap-manager:latest  
+    image: ldap-manager:latest
     container_name: ldap-manager-domain-b
     ports:
       - "3002:3000"
@@ -495,11 +495,11 @@ location /auth {
 
 location / {
     auth_request /auth;
-    
+
     # Pass SAML attributes to application
     auth_request_set $user $upstream_http_x_user;
     auth_request_set $groups $upstream_http_x_groups;
-    
+
     proxy_pass http://ldap-manager:3000;
     proxy_set_header X-Remote-User $user;
     proxy_set_header X-Remote-Groups $groups;
@@ -568,14 +568,14 @@ chmod +x prometheus-metrics.sh
       },
       {
         "title": "Connection Pool",
-        "type": "graph", 
+        "type": "graph",
         "targets": [
           {
             "expr": "ldap_manager_pool_active_connections",
             "legendFormat": "Active Connections"
           },
           {
-            "expr": "ldap_manager_pool_total_connections", 
+            "expr": "ldap_manager_pool_total_connections",
             "legendFormat": "Total Connections"
           }
         ]
@@ -606,20 +606,20 @@ filter {
       add_field => { "log_level" => "%{level}" }
     }
   }
-  
+
   if [event] {
     mutate {
       add_field => { "event_type" => "%{event}" }
     }
   }
-  
+
   if [source_ip] {
     geoip {
       source => "source_ip"
       target => "geo"
     }
   }
-  
+
   date {
     match => [ "time", "ISO8601" ]
     target => "@timestamp"
@@ -699,7 +699,7 @@ EOF
 }
 
 .logo {
-  content: url('/static/your-company-logo.png');
+  content: url("/static/your-company-logo.png");
 }
 
 .navbar-brand {
@@ -733,7 +733,7 @@ EOF
 Configuration for read-only directory browsing:
 
 ```bash
-# Read-only browser configuration  
+# Read-only browser configuration
 cat > .env.readonly << EOF
 LDAP_SERVER=ldaps://dc.example.com:636
 LDAP_BASE_DN=DC=example,DC=com
@@ -852,7 +852,7 @@ echo "2. Cache Statistics:"
 curl -s -b "session=$SESSION_COOKIE" http://localhost:3000/debug/cache | jq '.'
 echo
 
-echo "3. Connection Pool Statistics:" 
+echo "3. Connection Pool Statistics:"
 curl -s -b "session=$SESSION_COOKIE" http://localhost:3000/debug/ldap-pool | jq '.'
 echo
 
@@ -890,7 +890,7 @@ echo "1. Testing health endpoint (no auth required):"
 ab -n 100 -c 10 http://localhost:3000/health
 echo
 
-# Test authenticated endpoint (requires valid session)  
+# Test authenticated endpoint (requires valid session)
 if [ -n "$SESSION_COOKIE" ]; then
     echo "2. Testing authenticated endpoint:"
     ab -n 50 -c 5 -C "session=$SESSION_COOKIE" http://localhost:3000/users
@@ -956,7 +956,7 @@ LDAP_POOL_MAX_CONNECTIONS=5
 PERSIST_SESSIONS=false
 EOF
 
-# .env.staging  
+# .env.staging
 cat > .env.staging << EOF
 LOG_LEVEL=info
 SESSION_DURATION=1h
@@ -980,7 +980,7 @@ EOF
 #!/bin/bash
 validate_config() {
     echo "Validating LDAP Manager configuration..."
-    
+
     # Required variables
     required_vars=(
         "LDAP_SERVER"
@@ -988,7 +988,7 @@ validate_config() {
         "LDAP_READONLY_USER"
         "LDAP_READONLY_PASSWORD"
     )
-    
+
     for var in "${required_vars[@]}"; do
         if [ -z "${!var}" ]; then
             echo "ERROR: $var is not set"
@@ -997,24 +997,24 @@ validate_config() {
             echo "✓ $var is set"
         fi
     done
-    
+
     # Validate LDAP server format
     if [[ ! "$LDAP_SERVER" =~ ^ldaps?:// ]]; then
         echo "ERROR: LDAP_SERVER must start with ldap:// or ldaps://"
         exit 1
     fi
     echo "✓ LDAP_SERVER format is valid"
-    
+
     # Test connectivity
     hostname=$(echo "$LDAP_SERVER" | sed 's|.*://||' | sed 's|:.*||')
     port=$(echo "$LDAP_SERVER" | grep -o ':[0-9]*' | sed 's/://' || echo "389")
-    
+
     if nc -zv "$hostname" "$port" 2>/dev/null; then
         echo "✓ LDAP server is reachable"
     else
         echo "WARNING: LDAP server connectivity test failed"
     fi
-    
+
     echo "Configuration validation completed"
 }
 
@@ -1034,13 +1034,13 @@ deploy_blue_green() {
     local new_version=$1
     local current_service="ldap-manager-blue"
     local new_service="ldap-manager-green"
-    
+
     echo "Starting blue-green deployment of version $new_version"
-    
+
     # Deploy new version to green environment
     echo "Deploying to green environment..."
     docker-compose -f docker-compose.green.yml up -d
-    
+
     # Wait for green to be healthy
     echo "Waiting for green environment to be healthy..."
     for i in {1..30}; do
@@ -1051,12 +1051,12 @@ deploy_blue_green() {
         echo "Waiting... ($i/30)"
         sleep 10
     done
-    
+
     # Switch traffic to green
     echo "Switching traffic to green environment..."
     # Update load balancer configuration here
     # nginx reload, or update Kubernetes service, etc.
-    
+
     # Keep blue running for rollback capability
     echo "Deployment complete. Blue environment kept for rollback."
     echo "To complete deployment: docker-compose -f docker-compose.blue.yml down"
@@ -1078,7 +1078,7 @@ monitor_health() {
             echo "$(date): Health check FAILED"
             # Alert here
         fi
-        
+
         # Readiness check
         if curl -f http://localhost:3000/health/ready; then
             echo "$(date): Readiness check PASSED"
@@ -1086,14 +1086,14 @@ monitor_health() {
             echo "$(date): Readiness check FAILED - LDAP connectivity issues"
             # Alert here
         fi
-        
+
         # Performance check
         response_time=$(curl -o /dev/null -s -w '%{time_total}' http://localhost:3000/health)
         if (( $(echo "$response_time > 1.0" | bc -l) )); then
             echo "$(date): Performance degradation detected: ${response_time}s response time"
             # Alert here
         fi
-        
+
         sleep 60
     done
 }
@@ -1112,11 +1112,11 @@ monitor_health &
 security_audit() {
     echo "LDAP Manager Security Audit"
     echo "=========================="
-    
+
     # Check file permissions
     echo "1. File Permissions:"
     ls -la /opt/ldap-manager/
-    
+
     # Check for sensitive data in logs
     echo "2. Log Security Check:"
     if grep -i "password\|secret\|key" /var/log/ldap-manager/*.log; then
@@ -1124,16 +1124,16 @@ security_audit() {
     else
         echo "✓ No sensitive data found in logs"
     fi
-    
+
     # Check container security
     echo "3. Container Security:"
     docker exec ldap-manager whoami
     docker exec ldap-manager ls -la /app
-    
+
     # Check network security
     echo "4. Network Security:"
     ss -tuln | grep :3000
-    
+
     # Check SSL/TLS configuration
     echo "5. SSL/TLS Security:"
     openssl s_client -connect dc.example.com:636 -cipher 'ALL:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA'

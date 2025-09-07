@@ -6,7 +6,7 @@ Comprehensive technical architecture overview for developers working on LDAP Man
 
 - [System Overview](#system-overview)
 - [Application Architecture](#application-architecture)
-- [Package Organization](#package-organization)  
+- [Package Organization](#package-organization)
 - [Data Flow](#data-flow)
 - [Caching Architecture](#caching-architecture)
 - [Security Architecture](#security-architecture)
@@ -110,7 +110,7 @@ ldap-manager/
 │   ├── ldap/                 # LDAP connection pooling
 │   ├── ldap_cache/           # LDAP data caching
 │   ├── options/              # Configuration management
-│   ├── version/              # Version information  
+│   ├── version/              # Version information
 │   └── web/                  # HTTP handlers and middleware
 ├── docs/                     # Documentation
 ├── scripts/                  # Build and deployment scripts
@@ -134,26 +134,31 @@ cmd/ldap-manager
 ### Internal Package Details
 
 #### internal/options
+
 - **Purpose**: Configuration parsing and validation
 - **Key Types**: `Opts` struct with all configuration options
 - **Features**: Environment variable support, flag parsing, validation
 
-#### internal/ldap  
+#### internal/ldap
+
 - **Purpose**: LDAP connection pool management
 - **Key Types**: `PoolManager`, `ConnectionPool`, `PooledLDAPClient`
 - **Features**: Connection pooling, health monitoring, automatic recovery
 
 #### internal/ldap_cache
-- **Purpose**: LDAP data caching with automatic refresh  
+
+- **Purpose**: LDAP data caching with automatic refresh
 - **Key Types**: `Manager`, `Cache[T]`, `FullLDAPUser/Group/Computer`
 - **Features**: Thread-safe caching, background refresh, metrics
 
 #### internal/web
+
 - **Purpose**: HTTP server, handlers, middleware, templates
 - **Key Types**: `App`, template functions, middleware
 - **Features**: Fiber integration, session management, CSRF protection
 
 #### internal/version
+
 - **Purpose**: Build-time version information
 - **Features**: Version string formatting, build metadata
 
@@ -172,7 +177,7 @@ cmd/ldap-manager
        │
        ├─→ Security Middleware
        │   ├── Helmet (security headers)
-       │   ├── CSRF protection  
+       │   ├── CSRF protection
        │   └── Compression
        │
        ├─→ Authentication Check
@@ -219,7 +224,7 @@ cmd/ldap-manager
    │   └── Return user object or error
    │
    ├─→ Session Creation
-   │   ├── Generate session ID  
+   │   ├── Generate session ID
    │   ├── Store user DN in session
    │   └── Set HTTP-only cookie
    │
@@ -242,7 +247,7 @@ cmd/ldap-manager
    │   ├── Execute LDAP query/modify
    │   └── Release connection back to pool
    │
-   ├─→ Cache Update  
+   ├─→ Cache Update
    │   ├── Update LDAP cache
    │   └── Invalidate template cache
    │
@@ -258,6 +263,7 @@ cmd/ldap-manager
 LDAP Manager implements a **three-tier caching system** for optimal performance:
 
 #### Level 1: LDAP Data Cache (Hot Cache)
+
 - **Purpose**: Cache LDAP directory data
 - **TTL**: 30 seconds (configurable)
 - **Storage**: In-memory with thread-safe access
@@ -278,7 +284,8 @@ LDAP Cache Architecture:
 ```
 
 #### Level 2: Template Cache (Warm Cache)
-- **Purpose**: Cache rendered HTML templates  
+
+- **Purpose**: Cache rendered HTML templates
 - **TTL**: Until data modification
 - **Storage**: In-memory LRU cache
 - **Invalidation**: Path-based invalidation after LDAP modifications
@@ -295,11 +302,12 @@ Request ──→ Generate Cache Key ──→ Check Cache
                     Return Cached HTML    Render Template
                                                  │
                                           Store in Cache
-                                                 │  
+                                                 │
                                           Return HTML
 ```
 
 #### Level 3: Static Asset Cache (Cold Cache)
+
 - **Purpose**: Cache CSS, JavaScript, images
 - **TTL**: 24 hours (browser cache)
 - **Storage**: Browser cache + CDN-ready
@@ -309,18 +317,21 @@ Request ──→ Generate Cache Key ──→ Check Cache
 ### Cache Performance
 
 Typical cache performance metrics:
+
 - **LDAP Cache**: 95%+ hit ratio for read operations
-- **Template Cache**: 80%+ hit ratio for authenticated users  
+- **Template Cache**: 80%+ hit ratio for authenticated users
 - **Static Cache**: 99%+ hit ratio with proper cache headers
 
 ### Cache Invalidation Strategy
 
 **LDAP Data Cache**:
+
 - Time-based: Automatic refresh every 30 seconds
 - Event-based: Manual refresh after modifications
 - Health-based: Refresh on LDAP connection recovery
 
 **Template Cache**:
+
 - Path-based: Invalidate specific URL patterns
 - User-based: Invalidate user-specific cached content
 - Global: Clear all cache after schema changes
@@ -339,7 +350,7 @@ LDAP Manager implements multiple security layers:
 │  (HTTPS, Reverse Proxy, Firewall)       │
 ├─────────────────────────────────────────┤
 │         Application Security            │
-│  (Security Headers, CSRF, Input Val.)   │  
+│  (Security Headers, CSRF, Input Val.)   │
 ├─────────────────────────────────────────┤
 │        Authentication Security          │
 │  (LDAP Auth, Session Management)        │
@@ -352,6 +363,7 @@ LDAP Manager implements multiple security layers:
 ### Security Controls
 
 #### HTTP Security Headers
+
 ```http
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'
@@ -361,18 +373,21 @@ X-XSS-Protection: 1; mode=block
 ```
 
 #### Session Security
+
 - **HTTP-only cookies**: Prevents XSS access to session data
 - **SameSite=Strict**: CSRF protection via cookie policy
 - **Secure flag**: HTTPS-only cookie transmission
 - **Configurable expiration**: Automatic session timeout
 
 #### CSRF Protection
+
 - **Token-based**: Unique tokens for each form submission
 - **SameSite cookies**: Additional CSRF protection
 - **Server validation**: All state-changing operations validated
 - **Error handling**: Secure error messages without information leakage
 
 #### Input Validation
+
 - **Parameter sanitization**: URL decoding with validation
 - **Form data validation**: Type checking and bounds validation
 - **LDAP injection prevention**: Proper escaping and parameterization
@@ -405,12 +420,14 @@ User Credentials
 ### Authorization Model
 
 **User Context Operations**:
+
 - All LDAP operations use authenticated user's credentials
 - No privilege escalation or service account operations
 - User can only modify what they have LDAP permissions for
 - Read operations cached but still respect user permissions
 
 **Permission Inheritance**:
+
 - LDAP permissions determine available operations
 - Web interface reflects actual LDAP capabilities
 - No additional permission layer in application
@@ -451,20 +468,23 @@ Connection Pool Architecture:
 ```
 
 **Pool Benefits**:
+
 - **Connection Reuse**: Avoid expensive LDAP bind operations
-- **Concurrency**: Multiple concurrent LDAP operations  
+- **Concurrency**: Multiple concurrent LDAP operations
 - **Health Monitoring**: Automatic recovery from connection failures
 - **Resource Management**: Limits prevent LDAP server overload
 
 ### Template Performance
 
 **Compiled Templates**:
+
 - [templ](https://templ.guide/) compiles templates to Go code
 - Type-safe template generation at compile time
 - No runtime template parsing overhead
 - Automatic escaping and security validation
 
 **Template Caching**:
+
 - Rendered HTML cached in memory
 - Cache keys include user context and parameters
 - LRU eviction prevents memory growth
@@ -473,12 +493,14 @@ Connection Pool Architecture:
 ### Memory Management
 
 **Cache Memory**:
+
 - LDAP cache: ~1MB per 10,000 users (estimated)
 - Template cache: Configurable LRU with size limits
 - Connection pool: Minimal overhead per connection
 - Session storage: Configurable in-memory or persistent
 
 **Garbage Collection**:
+
 - Efficient object reuse in critical paths
 - Minimal allocations in request handling
 - Periodic cache cleanup and maintenance
@@ -543,12 +565,14 @@ Connection Pool Architecture:
 ### Configuration Management
 
 **Environment-based Configuration**:
+
 - All settings configurable via environment variables
 - Sensible defaults for development
 - Production-ready defaults for containers
 - No hardcoded configuration in binaries
 
 **Configuration Validation**:
+
 - Startup validation of required parameters
 - Clear error messages for misconfiguration
 - Fail-fast approach for invalid settings
@@ -556,11 +580,13 @@ Connection Pool Architecture:
 ### Health Monitoring
 
 **Health Check Endpoints**:
+
 - `GET /health` - Basic application health
 - `GET /health/ready` - Readiness probe (LDAP connectivity)
 - `GET /health/live` - Liveness probe (application status)
 
 **Monitoring Integration**:
+
 - Structured JSON logging
 - Metrics endpoints for Prometheus
 - Connection pool statistics
@@ -569,12 +595,14 @@ Connection Pool Architecture:
 ### Scaling Considerations
 
 **Horizontal Scaling**:
+
 - Stateless application design
 - Session storage can be shared (BoltDB or external)
 - LDAP connection pools per instance
 - No inter-instance coordination required
 
 **Vertical Scaling**:
+
 - Memory usage scales with cache size
 - CPU usage minimal with compiled templates
 - Connection pool size configurable per instance

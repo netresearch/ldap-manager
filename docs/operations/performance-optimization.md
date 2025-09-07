@@ -54,13 +54,15 @@ LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Timeout for connection acquisition
 ### Sizing Guidelines
 
 #### Small Deployment (< 100 users)
+
 ```bash
 LDAP_POOL_MAX_CONNECTIONS=5
 LDAP_POOL_MIN_CONNECTIONS=2
 LDAP_POOL_MAX_IDLE_TIME=30m
 ```
 
-#### Medium Deployment (100-1000 users)  
+#### Medium Deployment (100-1000 users)
+
 ```bash
 LDAP_POOL_MAX_CONNECTIONS=10
 LDAP_POOL_MIN_CONNECTIONS=3
@@ -68,6 +70,7 @@ LDAP_POOL_MAX_IDLE_TIME=15m
 ```
 
 #### Large Deployment (1000+ users)
+
 ```bash
 LDAP_POOL_MAX_CONNECTIONS=20
 LDAP_POOL_MIN_CONNECTIONS=5
@@ -103,6 +106,7 @@ curl -H "Cookie: session=..." http://localhost:3000/debug/ldap-pool
 ### Performance Tuning
 
 #### High-Load Optimization
+
 ```bash
 # Increase pool size for high concurrent load
 LDAP_POOL_MAX_CONNECTIONS=30
@@ -116,6 +120,7 @@ LDAP_POOL_HEALTH_CHECK_INTERVAL=15s
 ```
 
 #### Low-Latency Optimization
+
 ```bash
 # Maintain more warm connections
 LDAP_POOL_MIN_CONNECTIONS=8
@@ -145,7 +150,7 @@ LDAP_CACHE_REFRESH_INTERVAL=30s
 # For high-change environments
 LDAP_CACHE_REFRESH_INTERVAL=15s
 
-# For stable environments  
+# For stable environments
 LDAP_CACHE_REFRESH_INTERVAL=60s
 ```
 
@@ -180,6 +185,7 @@ Monitor these key metrics for optimal cache performance:
 ### Cache Tuning
 
 #### High-Traffic Optimization
+
 ```bash
 # Increase cache memory limits
 TEMPLATE_CACHE_MAX_SIZE=1000        # Number of cached templates
@@ -190,6 +196,7 @@ LDAP_CACHE_REFRESH_INTERVAL=20s
 ```
 
 #### Memory-Constrained Environment
+
 ```bash
 # Reduce cache sizes
 TEMPLATE_CACHE_MAX_SIZE=200
@@ -208,7 +215,7 @@ LDAP_CACHE_REFRESH_INTERVAL=60s
 LDAP Manager uses [templ](https://templ.guide/) for zero-runtime-overhead templates:
 
 - **Compile-Time Generation**: Templates compiled to Go code
-- **Type Safety**: No runtime template parsing errors  
+- **Type Safety**: No runtime template parsing errors
 - **Automatic Escaping**: XSS protection built-in
 - **Optimal Performance**: Direct Go function calls
 
@@ -231,7 +238,7 @@ Examples:
 Smart cache invalidation ensures data consistency:
 
 - **Path-Based Invalidation**: Clear caches for affected URLs
-- **User-Context Invalidation**: Clear user-specific cached content  
+- **User-Context Invalidation**: Clear user-specific cached content
 - **Automatic Invalidation**: After any data modification
 
 ### Performance Best Practices
@@ -251,7 +258,7 @@ Smart cache invalidation ensures data consistency:
 Typical Memory Distribution:
 ├── Application Code: ~50MB (fixed)
 ├── LDAP Data Cache: ~100MB (10,000 users)
-├── Template Cache: ~50MB (500 templates)  
+├── Template Cache: ~50MB (500 templates)
 ├── Connection Pool: ~20MB (10 connections)
 ├── Session Storage: ~10MB (1000 sessions)
 └── Go Runtime: ~30MB (GC overhead)
@@ -285,13 +292,14 @@ curl http://localhost:3000/debug/metrics
 # Monitor RSS (Resident Set Size) for actual memory usage
 ps aux | grep ldap-manager
 
-# Container memory monitoring  
+# Container memory monitoring
 docker stats ldap-manager
 ```
 
 ### Memory Optimization
 
 #### Low-Memory Environment (<256MB)
+
 ```bash
 # Reduce cache sizes
 TEMPLATE_CACHE_MAX_MEMORY=25MB
@@ -305,9 +313,10 @@ SESSION_CACHE_MAX_SIZE=1000
 ```
 
 #### High-Memory Environment (>1GB)
+
 ```bash
 # Increase cache sizes for better performance
-TEMPLATE_CACHE_MAX_MEMORY=200MB  
+TEMPLATE_CACHE_MAX_MEMORY=200MB
 LDAP_POOL_MAX_CONNECTIONS=30
 
 # Relaxed garbage collection
@@ -336,6 +345,7 @@ LDAP_WRITE_TIMEOUT=30s                    # Write timeout
 ### Network Tuning
 
 #### Low-Latency Network
+
 ```bash
 # Faster timeouts for responsive network
 LDAP_CONNECT_TIMEOUT=5s
@@ -344,8 +354,9 @@ LDAP_POOL_ACQUIRE_TIMEOUT=5s
 ```
 
 #### High-Latency Network
+
 ```bash
-# Longer timeouts for unreliable network  
+# Longer timeouts for unreliable network
 LDAP_CONNECT_TIMEOUT=30s
 LDAP_READ_TIMEOUT=60s
 LDAP_POOL_ACQUIRE_TIMEOUT=15s
@@ -375,16 +386,19 @@ FIBER_WRITE_TIMEOUT=60s      # HTTP write timeout
 Monitor these critical metrics:
 
 #### Response Time Metrics
+
 - **P50 Response Time**: <100ms for cached requests
 - **P95 Response Time**: <500ms for LDAP queries
 - **P99 Response Time**: <1000ms under normal load
 
-#### Throughput Metrics  
+#### Throughput Metrics
+
 - **Requests Per Second**: Baseline throughput capability
 - **Concurrent Users**: Number of active sessions
 - **LDAP Operations/sec**: Directory operation rate
 
 #### Resource Metrics
+
 - **CPU Usage**: <50% under normal load
 - **Memory Usage**: <80% of allocated memory
 - **Connection Pool Utilization**: <80% of max connections
@@ -398,7 +412,7 @@ Monitor these critical metrics:
 # Template cache statistics
 curl -H "Cookie: session=..." http://localhost:3000/debug/cache
 
-# LDAP connection pool statistics  
+# LDAP connection pool statistics
 curl -H "Cookie: session=..." http://localhost:3000/debug/ldap-pool
 
 # Health check endpoints (no auth required)
@@ -422,7 +436,7 @@ grep "response_time" logs/app.log | jq '.response_time'
 # Monitor cache performance
 grep "cache_hit" logs/app.log | jq '.cache_hit'
 
-# Monitor LDAP operations  
+# Monitor LDAP operations
 grep "ldap_query" logs/app.log | jq '.query_time'
 ```
 
@@ -446,7 +460,7 @@ done
 Set up alerts for critical thresholds:
 
 - **Response Time**: Alert if P95 > 1000ms for 5 minutes
-- **Error Rate**: Alert if error rate > 5% for 2 minutes  
+- **Error Rate**: Alert if error rate > 5% for 2 minutes
 - **Cache Hit Ratio**: Alert if LDAP cache < 90% for 10 minutes
 - **Connection Pool**: Alert if pool utilization > 90% for 5 minutes
 - **Memory Usage**: Alert if memory > 90% of limit for 5 minutes
@@ -458,16 +472,19 @@ Set up alerts for critical thresholds:
 ### Vertical Scaling
 
 #### CPU Scaling
+
 - **2 CPUs**: Suitable for <500 users
-- **4 CPUs**: Suitable for <2000 users  
+- **4 CPUs**: Suitable for <2000 users
 - **8+ CPUs**: Required for >2000 users
 
 #### Memory Scaling
+
 - **512MB**: Minimum for production
 - **1GB**: Recommended for 1000+ users
 - **2GB+**: Required for large deployments with extensive caching
 
 #### Network Scaling
+
 - **100Mbps**: Sufficient for most deployments
 - **1Gbps**: Required for high-traffic or geographically distributed deployments
 
@@ -476,6 +493,7 @@ Set up alerts for critical thresholds:
 LDAP Manager supports horizontal scaling with these considerations:
 
 #### Stateless Design
+
 - **No Inter-Instance Dependencies**: Each instance operates independently
 - **Shared Session Storage**: Use persistent session storage (BoltDB file on shared storage)
 - **Cache Independence**: Each instance maintains its own LDAP and template caches
@@ -494,18 +512,18 @@ upstream ldap-manager {
 server {
     listen 443 ssl;
     server_name ldap-manager.example.com;
-    
+
     location / {
         proxy_pass http://ldap-manager;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Session affinity for better cache performance (optional)
         ip_hash;
     }
-    
+
     location /health {
         proxy_pass http://ldap-manager;
         proxy_set_header Host $host;
@@ -532,34 +550,34 @@ spec:
         app: ldap-manager
     spec:
       containers:
-      - name: ldap-manager
-        image: ldap-manager:latest
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "512Mi"
-          limits:
-            cpu: "1000m"  
-            memory: "1Gi"
-        env:
-        - name: LDAP_POOL_MAX_CONNECTIONS
-          value: "15"                     # Slightly less per instance
-        - name: PERSIST_SESSIONS
-          value: "true"
-        - name: SESSION_PATH
-          value: "/shared/sessions.db"    # Shared persistent storage
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: ldap-manager
+          image: ldap-manager:latest
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          env:
+            - name: LDAP_POOL_MAX_CONNECTIONS
+              value: "15" # Slightly less per instance
+            - name: PERSIST_SESSIONS
+              value: "true"
+            - name: SESSION_PATH
+              value: "/shared/sessions.db" # Shared persistent storage
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ```
 
 ### Auto-Scaling
@@ -567,6 +585,7 @@ spec:
 Configure auto-scaling based on performance metrics:
 
 #### CPU-Based Scaling
+
 ```yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -580,15 +599,16 @@ spec:
   minReplicas: 2
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 ```
 
 #### Custom Metrics Scaling
+
 - **Response Time**: Scale up if P95 response time > 500ms
 - **Request Rate**: Scale up if requests/sec > 100 per instance
 - **Connection Pool**: Scale up if pool utilization > 80%
@@ -602,16 +622,18 @@ spec:
 #### High Response Times
 
 **Symptoms**:
+
 - Slow page loads
 - User complaints about responsiveness
 - High P95/P99 response times in metrics
 
 **Diagnosis**:
+
 ```bash
 # Check cache hit ratios
 curl -H "Cookie: session=..." http://localhost:3000/debug/cache
 
-# Check LDAP connection pool utilization  
+# Check LDAP connection pool utilization
 curl -H "Cookie: session=..." http://localhost:3000/debug/ldap-pool
 
 # Monitor LDAP query times in logs
@@ -619,6 +641,7 @@ grep "ldap_query" logs/app.log | jq '.query_time' | sort -n
 ```
 
 **Solutions**:
+
 1. **Low Cache Hit Ratio**: Increase cache sizes, reduce refresh intervals
 2. **High Pool Utilization**: Increase connection pool size
 3. **Slow LDAP Queries**: Optimize LDAP server, check network latency
@@ -627,11 +650,13 @@ grep "ldap_query" logs/app.log | jq '.query_time' | sort -n
 #### Memory Issues
 
 **Symptoms**:
+
 - Out of memory errors
 - Frequent garbage collection
 - Container restarts due to memory limits
 
 **Diagnosis**:
+
 ```bash
 # Monitor memory usage
 docker stats ldap-manager
@@ -644,18 +669,21 @@ go tool pprof http://localhost:3000/debug/pprof/heap
 ```
 
 **Solutions**:
+
 1. **High Cache Memory**: Reduce cache sizes, implement more aggressive eviction
-2. **Memory Leaks**: Check for unclosed LDAP connections, review recent code changes  
+2. **Memory Leaks**: Check for unclosed LDAP connections, review recent code changes
 3. **Too Small Limits**: Increase memory limits for container/process
 
 #### Connection Pool Issues
 
 **Symptoms**:
+
 - Connection timeout errors
-- High connection acquisition times  
+- High connection acquisition times
 - LDAP authentication failures
 
 **Diagnosis**:
+
 ```bash
 # Check pool health and statistics
 curl -H "Cookie: session=..." http://localhost:3000/debug/ldap-pool
@@ -667,7 +695,8 @@ grep "connection" logs/app.log | grep "error"
 ldapsearch -H ldaps://dc.example.com -D "service_account" -W -b "dc=example,dc=com" "(objectclass=user)" cn
 ```
 
-**Solutions**:  
+**Solutions**:
+
 1. **Pool Exhaustion**: Increase max connections, reduce idle time
 2. **LDAP Server Overload**: Implement connection throttling, distribute load
 3. **Network Issues**: Check firewall rules, DNS resolution, certificate validity
