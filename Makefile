@@ -182,7 +182,7 @@ lint-format:
 ## Lint Complexity: Check code complexity
 lint-complexity:
 	@echo "$(BLUE)Checking code complexity...$(RESET)"
-	@gocyclo -over 10 .
+	@find . -name "*.go" -not -path "./vendor/*" -not -name "*_templ.go" -exec gocyclo -over 10 {} \;
 
 ## Fix: Auto-fix formatting and imports
 fix:
