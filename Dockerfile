@@ -19,12 +19,12 @@ WORKDIR /app
 
 # Install system dependencies for development
 RUN apk add --no-cache \
-    git \
-    make \
-    curl
+    git=2.49.1-r0 \
+    make=4.4.1-r3 \
+    curl=8.14.1-r1
 
 # Install Node.js and PNPM for frontend development
-RUN apk add --no-cache nodejs npm && \
+RUN apk add --no-cache nodejs=22.16.0-r2 npm=11.3.0-r1 && \
     npm i -g pnpm
 
 # Install Go development tools
