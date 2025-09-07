@@ -174,6 +174,7 @@ func (c *Cache[T]) FindByDN(dn string) (v *T, found bool) {
 		if c.metrics != nil {
 			c.metrics.RecordCacheHit()
 		}
+
 		return item, true
 	}
 
@@ -196,6 +197,7 @@ func (c *Cache[T]) FindBySAMAccountName(samAccountName string) (v *T, found bool
 		if c.metrics != nil {
 			c.metrics.RecordCacheHit()
 		}
+
 		return item, true
 	}
 

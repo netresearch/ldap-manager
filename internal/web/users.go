@@ -157,7 +157,9 @@ func (a *App) renderUserWithSuccess(c *fiber.Ctx, userDN, successMsg string) err
 }
 
 // performUserModification handles the actual LDAP user modification operation
-func (a *App) performUserModification(pooledClient *ldappool.PooledLDAPClient, form *userModifyForm, userDN string) error {
+func (a *App) performUserModification(
+	pooledClient *ldappool.PooledLDAPClient, form *userModifyForm, userDN string,
+) error {
 	if form.AddGroup != nil {
 		if err := pooledClient.AddUserToGroup(userDN, *form.AddGroup); err != nil {
 			return err

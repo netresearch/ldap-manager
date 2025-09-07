@@ -157,7 +157,9 @@ func (a *App) renderGroupWithSuccess(c *fiber.Ctx, groupDN, successMsg string) e
 }
 
 // performGroupModification handles the actual LDAP group modification operation
-func (a *App) performGroupModification(pooledClient *ldappool.PooledLDAPClient, form *groupModifyForm, groupDN string) error {
+func (a *App) performGroupModification(
+	pooledClient *ldappool.PooledLDAPClient, form *groupModifyForm, groupDN string,
+) error {
 	if form.AddUser != nil {
 		if err := pooledClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err

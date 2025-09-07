@@ -49,7 +49,8 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 }
 
 // NewApp creates a new web application instance with the provided configuration options.
-// It initializes the LDAP client, connection pool, session management, template cache, Fiber web server, and registers all routes.
+// It initializes the LDAP client, connection pool, session management, template cache,
+// Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
 func NewApp(opts *options.Opts) (*App, error) {
 	ldapClient, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
@@ -97,7 +98,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 		HSTSMaxAge:            31536000, // 1 year
 		HSTSExcludeSubdomains: false,    // Include subdomains
 		HSTSPreloadEnabled:    true,
-		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
+			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
 	}))
 
 	f.Use(compress.New(compress.Config{
@@ -256,11 +259,8 @@ func (a *App) periodicCacheLogging() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			a.templateCache.LogStats()
-		}
+	for range ticker.C {
+		a.templateCache.LogStats()
 	}
 }
 

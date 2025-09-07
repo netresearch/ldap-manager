@@ -238,6 +238,7 @@ func (p *ConnectionPool) getOrCreateConnection(
 	}
 
 	atomic.AddInt32(&p.totalConnections, 1)
+
 	return conn, nil
 }
 
@@ -314,6 +315,7 @@ func (p *ConnectionPool) ReleaseConnection(conn *PooledConnection) {
 	if !p.isConnectionValid(conn) {
 		p.closeConnection(conn)
 		atomic.AddInt32(&p.totalConnections, -1)
+
 		return
 	}
 
@@ -338,6 +340,7 @@ func (p *ConnectionPool) isConnectionValid(conn *PooledConnection) bool {
 	}
 
 	now := time.Now()
+
 	return now.Sub(conn.createdAt) <= p.config.MaxLifetime
 }
 
@@ -411,6 +414,7 @@ func (p *ConnectionPool) performMaintenance() {
 func (conn *PooledConnection) GetClient() *ldap.LDAP {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
+
 	return conn.client
 }
 
@@ -434,6 +438,7 @@ func safeIntToInt32(value int) int32 {
 	if value < -2147483648 { // int32 min
 		return -2147483648
 	}
+
 	return int32(value) // #nosec G115 - safe conversion after bounds check
 }
 
@@ -476,5 +481,6 @@ func (p *ConnectionPool) Close() error {
 	p.connections = nil
 
 	log.Info().Msg("LDAP connection pool shutdown complete")
+
 	return nil
 }

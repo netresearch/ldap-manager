@@ -57,6 +57,7 @@ func LoadAssetManifest(manifestPath string) (*AssetManifest, error) {
 	}
 
 	manifestCache = &manifest
+
 	return &manifest, nil
 }
 
@@ -65,6 +66,7 @@ func GetCachedManifest(manifestPath string) *AssetManifest {
 	manifestMutex.RLock()
 	if manifestCache != nil {
 		defer manifestMutex.RUnlock()
+
 		return manifestCache
 	}
 	manifestMutex.RUnlock()

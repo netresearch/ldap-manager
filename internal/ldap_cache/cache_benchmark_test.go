@@ -34,98 +34,56 @@ func BenchmarkFindBySAMAccountName_LinearSearch(b *testing.B) {
 	}
 }
 
-// BenchmarkFindBySAMAccountName_IndexedSearch benchmarks the new O(1) indexed search approach
-func BenchmarkFindBySAMAccountName_IndexedSearch(b *testing.B) {
-	// Create test data using mock users
-	users := make([]ldap.User, 1000)
-	for i := 0; i < 1000; i++ {
+// createUserCache creates a cache populated with users for benchmarking
+func createUserCache(count int) *Cache[ldap.User] {
+	users := make([]ldap.User, count)
+	for i := 0; i < count; i++ {
 		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
 		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
 	}
 
 	cache := NewCached[ldap.User]()
 	cache.setAll(users)
+	return &cache
+}
 
-	// Target SAMAccountName to search for (same as linear search)
-	targetSAM := "user999"
-
+// benchmarkSAMAccountSearch performs the actual benchmark search
+func benchmarkSAMAccountSearch(b *testing.B, cache *Cache[ldap.User], targetSAM string) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		// Use new indexed search
 		_, found := cache.FindBySAMAccountName(targetSAM)
 		if !found {
 			b.Fatal("User not found")
 		}
 	}
+}
+
+// BenchmarkFindBySAMAccountName_IndexedSearch benchmarks the new O(1) indexed search approach
+func BenchmarkFindBySAMAccountName_IndexedSearch(b *testing.B) {
+	cache := createUserCache(1000)
+	targetSAM := "user999"
+	benchmarkSAMAccountSearch(b, cache, targetSAM)
 }
 
 // BenchmarkFindBySAMAccountName_Scale1k tests 1k users
 func BenchmarkFindBySAMAccountName_Scale1k(b *testing.B) {
-	users := make([]ldap.User, 1000)
-	for i := 0; i < 1000; i++ {
-		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
-		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
-	}
-
-	cache := NewCached[ldap.User]()
-	cache.setAll(users)
-
-	// Search for user in the middle to show average case performance
+	cache := createUserCache(1000)
 	targetSAM := "user500"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, found := cache.FindBySAMAccountName(targetSAM)
-		if !found {
-			b.Fatal("User not found")
-		}
-	}
+	benchmarkSAMAccountSearch(b, cache, targetSAM)
 }
 
 // BenchmarkFindBySAMAccountName_Scale10k tests 10k users (realistic enterprise scale)
 func BenchmarkFindBySAMAccountName_Scale10k(b *testing.B) {
-	users := make([]ldap.User, 10000)
-	for i := 0; i < 10000; i++ {
-		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
-		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
-	}
-
-	cache := NewCached[ldap.User]()
-	cache.setAll(users)
-
-	// Search for user in the middle to show average case performance
+	cache := createUserCache(10000)
 	targetSAM := "user5000"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, found := cache.FindBySAMAccountName(targetSAM)
-		if !found {
-			b.Fatal("User not found")
-		}
-	}
+	benchmarkSAMAccountSearch(b, cache, targetSAM)
 }
 
 // BenchmarkFindBySAMAccountName_Scale50k tests 50k users (large enterprise scale)
 func BenchmarkFindBySAMAccountName_Scale50k(b *testing.B) {
-	users := make([]ldap.User, 50000)
-	for i := 0; i < 50000; i++ {
-		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
-		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
-	}
-
-	cache := NewCached[ldap.User]()
-	cache.setAll(users)
-
-	// Search for user in the middle to show average case performance
+	cache := createUserCache(50000)
 	targetSAM := "user25000"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, found := cache.FindBySAMAccountName(targetSAM)
-		if !found {
-			b.Fatal("User not found")
-		}
-	}
+	benchmarkSAMAccountSearch(b, cache, targetSAM)
 }
 
 // BenchmarkCacheUpdate_IndexRebuild benchmarks the performance impact of index rebuilding
