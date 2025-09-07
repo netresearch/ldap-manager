@@ -176,8 +176,8 @@ lint-security:
 ## Lint Format: Check code formatting
 lint-format:
 	@echo "$(BLUE)Checking code formatting...$(RESET)"
-	@test -z "$$(gofumpt -l .)" || (echo "$(RED)Code not formatted properly$(RESET)" && gofumpt -l . && exit 1)
-	@goimports -d . | diff /dev/null - || (echo "$(RED)Imports not formatted properly$(RESET)" && exit 1)
+	@test -z "$$(find . -name "*.go" -not -name "*_templ.go" -exec gofumpt -l {} +)" || (echo "$(RED)Code not formatted properly$(RESET)" && find . -name "*.go" -not -name "*_templ.go" -exec gofumpt -l {} + && exit 1)
+	@find . -name "*.go" -not -name "*_templ.go" -exec goimports -d {} + | diff /dev/null - || (echo "$(RED)Imports not formatted properly$(RESET)" && exit 1)
 
 ## Lint Complexity: Check code complexity
 lint-complexity:
@@ -187,8 +187,8 @@ lint-complexity:
 ## Fix: Auto-fix formatting and imports
 fix:
 	@echo "$(BLUE)Fixing code formatting...$(RESET)"
-	@gofumpt -w .
-	@goimports -w .
+	@find . -name "*.go" -not -name "*_templ.go" -exec gofumpt -w {} +
+	@find . -name "*.go" -not -name "*_templ.go" -exec goimports -w {} +
 	@echo "$(GREEN)✓ Code formatting fixed$(RESET)"
 
 ## Dev: Start development server with hot reload
