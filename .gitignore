@@ -2,16 +2,18 @@
 node_modules
 /.pnpm-store
 
-# Build artifacts  
+# Build artifacts
 bin/
 coverage.out
 coverage-reports/
 *.bbolt
+ldap-manager
 
 # Generated files
 internal/web/static/styles.css
 
 # Environment files
+.env
 .env.local
 
 # Renovate config (managed by CI)
