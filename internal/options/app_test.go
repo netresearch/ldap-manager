@@ -141,5 +141,74 @@ func TestEnvBoolOrDefault(t *testing.T) {
 	})
 }
 
+func TestEnvIntOrDefault(t *testing.T) {
+	t.Run("returns environment int when valid", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_INT", "42")()
+
+		result := envIntOrDefault("TEST_INT", 10)
+		if result != 42 {
+			t.Errorf("Expected 42, got %d", result)
+		}
+	})
+
+	t.Run("returns default when environment variable not set", func(t *testing.T) {
+		unsetEnvVar(t, "TEST_INT")
+
+		result := envIntOrDefault("TEST_INT", 100)
+		if result != 100 {
+			t.Errorf("Expected 100, got %d", result)
+		}
+	})
+
+	t.Run("returns default value of zero when env var not set", func(t *testing.T) {
+		unsetEnvVar(t, "TEST_INT")
+
+		result := envIntOrDefault("TEST_INT", 0)
+		if result != 0 {
+			t.Errorf("Expected 0, got %d", result)
+		}
+	})
+
+	t.Run("handles negative int values", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_INT", "-123")()
+
+		result := envIntOrDefault("TEST_INT", 10)
+		if result != -123 {
+			t.Errorf("Expected -123, got %d", result)
+		}
+	})
+}
+
+func TestOptsStructure(t *testing.T) {
+	opts := &Opts{
+		LogLevel:            zerolog.DebugLevel,
+		ReadonlyUser:        "cn=readonly,dc=example,dc=com",
+		ReadonlyPassword:    "secret",
+		PersistSessions:     true,
+		SessionPath:         "/data/sessions.db",
+		SessionDuration:     30 * time.Minute,
+		PoolMaxConnections:  10,
+		PoolMinConnections:  2,
+		PoolMaxIdleTime:     15 * time.Minute,
+		PoolMaxLifetime:     1 * time.Hour,
+		PoolHealthCheckInterval: 30 * time.Second,
+		PoolAcquireTimeout:  10 * time.Second,
+	}
+
+	// Verify struct fields are properly set
+	if opts.LogLevel != zerolog.DebugLevel {
+		t.Errorf("Expected DebugLevel, got %v", opts.LogLevel)
+	}
+	if opts.ReadonlyUser != "cn=readonly,dc=example,dc=com" {
+		t.Errorf("Expected readonly user, got %s", opts.ReadonlyUser)
+	}
+	if opts.PersistSessions != true {
+		t.Error("Expected PersistSessions to be true")
+	}
+	if opts.PoolMaxConnections != 10 {
+		t.Errorf("Expected 10 max connections, got %d", opts.PoolMaxConnections)
+	}
+}
+
 // Note: Integration tests for Parse() are complex to test due to fatal logging calls
 // The helper functions are thoroughly tested above and provide good coverage of the parsing logic
