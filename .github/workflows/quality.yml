@@ -94,7 +94,7 @@ jobs:
     services:
       # Start OpenLDAP for integration tests
       openldap:
-        image: bitnami/openldap:latest
+        image: bitnami/openldap:2
         env:
           LDAP_ADMIN_USERNAME: admin
           LDAP_ADMIN_PASSWORD: admin
