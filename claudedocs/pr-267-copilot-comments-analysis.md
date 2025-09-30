@@ -16,6 +16,7 @@ Copilot generated 2 comments on the PR after reviewing 41/44 files.
 **Status**: **GENUINE ISSUE - REQUIRES FIX**
 
 ### Current Code
+
 ```go
 func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
     return &ldap.PoolConfig{
@@ -30,14 +31,16 @@ func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
 ```
 
 ### Problem
+
 `ConnectionTimeout` and `GetTimeout` serve different purposes:
 
-| Field | Purpose | Current Value | Should Be |
-|-------|---------|---------------|-----------|
+| Field               | Purpose                                     | Current Value              | Should Be              |
+| ------------------- | ------------------------------------------- | -------------------------- | ---------------------- |
 | `ConnectionTimeout` | TCP connection establishment to LDAP server | `PoolAcquireTimeout` (10s) | Separate config option |
-| `GetTimeout` | Acquiring connection from pool | `PoolAcquireTimeout` (10s) | ✅ Correct |
+| `GetTimeout`        | Acquiring connection from pool              | `PoolAcquireTimeout` (10s) | ✅ Correct             |
 
 ### simple-ldap-go v1.5.0 PoolConfig Definition
+
 ```go
 type PoolConfig struct {
     MaxConnections      int           // Maximum concurrent connections (default: 10)
@@ -50,10 +53,12 @@ type PoolConfig struct {
 ```
 
 **Recommended defaults from upstream**:
+
 - `ConnectionTimeout`: 30s (TCP handshake + TLS)
 - `GetTimeout`: 10s (wait for available pooled connection)
 
 ### Current ldap-manager Configuration
+
 ```go
 // internal/options/app.go
 type Opts struct {
@@ -70,6 +75,7 @@ fPoolAcquireTimeout = flag.Duration("pool-acquire-timeout",
 **Missing**: `PoolConnectionTimeout` configuration option
 
 ### Solution Required
+
 Add separate `PoolConnectionTimeout` configuration:
 
 ```go
@@ -113,9 +119,11 @@ func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
 **Status**: **CURRENT CODE IS CORRECT, BUT BETTER API EXISTS IN v1.5.0**
 
 ### Copilot's Concern
+
 > "Creating a new LDAP client for each user authentication call could lead to connection pool exhaustion. Consider using GetWithCredentials() if available in v1.3.0, or implement a client caching mechanism."
 
 ### Current Code
+
 ```go
 func (a *App) authenticateLDAPClient(_ context.Context, userDN, password string) (*ldap.LDAP, error) {
     executor, err := a.ldapCache.FindUserByDN(userDN)
@@ -150,6 +158,7 @@ func (a *App) authenticateLDAPClient(_ context.Context, userDN, password string)
 4. **Pool Manages Resources**: Connection pool handles lifecycle, not clients
 
 **Evidence from simple-ldap-go v1.4.0 credential-aware pooling PR #44**:
+
 - Pool maintains `map[credentialsHash]*PooledConnection`
 - Connections are reused for same credentials
 - Different credentials get different connections (security requirement)
@@ -166,6 +175,7 @@ func (l *LDAP) WithCredentials(dn, password string) (*LDAP, error) {
 ```
 
 **Usage Pattern**:
+
 ```go
 // From examples/authentication/authentication.go:99
 userClient, err := client.WithCredentials(
@@ -186,6 +196,7 @@ func (p *ConnectionPool) GetWithCredentials(ctx context.Context, dn, password st
 ### Recommended Changes for v1.5.0
 
 **Option A: Use `WithCredentials()` (Recommended)**
+
 ```go
 func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password string) (*ldap.LDAP, error) {
     executor, err := a.ldapCache.FindUserByDN(userDN)
@@ -204,6 +215,7 @@ func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password strin
 ```
 
 **Benefits**:
+
 - Cleaner API
 - Explicitly shows credential switching
 - Same underlying pool sharing
@@ -218,14 +230,14 @@ Current code works correctly, just less idiomatic for v1.5.0.
 
 ### PoolConfig Fields in v1.5.0
 
-| Field | Purpose | Recommended Default | Current ldap-manager |
-|-------|---------|---------------------|---------------------|
-| `MaxConnections` | Pool size limit | 10 | ✅ Configurable via `LDAP_POOL_MAX_CONNECTIONS` |
-| `MinConnections` | Minimum idle | 2 | ✅ Configurable via `LDAP_POOL_MIN_CONNECTIONS` |
-| `MaxIdleTime` | Idle cleanup | 5min | ✅ Configurable via `LDAP_POOL_MAX_IDLE_TIME` |
-| `HealthCheckInterval` | Health check frequency | 30s | ✅ Configurable via `LDAP_POOL_HEALTH_CHECK_INTERVAL` |
-| `ConnectionTimeout` | TCP + TLS timeout | 30s | ❌ Using `PoolAcquireTimeout` incorrectly |
-| `GetTimeout` | Pool acquire timeout | 10s | ✅ Configurable via `LDAP_POOL_ACQUIRE_TIMEOUT` |
+| Field                 | Purpose                | Recommended Default | Current ldap-manager                                  |
+| --------------------- | ---------------------- | ------------------- | ----------------------------------------------------- |
+| `MaxConnections`      | Pool size limit        | 10                  | ✅ Configurable via `LDAP_POOL_MAX_CONNECTIONS`       |
+| `MinConnections`      | Minimum idle           | 2                   | ✅ Configurable via `LDAP_POOL_MIN_CONNECTIONS`       |
+| `MaxIdleTime`         | Idle cleanup           | 5min                | ✅ Configurable via `LDAP_POOL_MAX_IDLE_TIME`         |
+| `HealthCheckInterval` | Health check frequency | 30s                 | ✅ Configurable via `LDAP_POOL_HEALTH_CHECK_INTERVAL` |
+| `ConnectionTimeout`   | TCP + TLS timeout      | 30s                 | ❌ Using `PoolAcquireTimeout` incorrectly             |
+| `GetTimeout`          | Pool acquire timeout   | 10s                 | ✅ Configurable via `LDAP_POOL_ACQUIRE_TIMEOUT`       |
 
 ### Findings Summary
 
@@ -262,6 +274,7 @@ Current code works correctly, just less idiomatic for v1.5.0.
 ### 3. Add PR Comment Responses
 
 **Comment 1 Response**:
+
 ```markdown
 ✅ Valid concern - we're missing separate ConnectionTimeout configuration.
 
@@ -272,6 +285,7 @@ Fix tracked in: [link to commit/issue]
 ```
 
 **Comment 2 Response**:
+
 ```markdown
 Thanks for the suggestion! The current code is actually correct due to credential-aware
 connection pooling (added in simple-ldap-go v1.4.0):
