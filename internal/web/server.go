@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
-	ldappool "github.com/netresearch/ldap-manager/internal/ldap"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
 	"github.com/netresearch/ldap-manager/internal/web/static"
@@ -24,16 +24,19 @@ import (
 )
 
 // App represents the main web application structure.
-// It encapsulates LDAP client, connection pool, cache manager, session store, template cache, and Fiber web framework.
+// It encapsulates LDAP configuration, readonly client, cache manager, session store, template cache, and Fiber web framework.
 // Provides centralized management of authentication, caching, connection pooling, and HTTP request handling.
+// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware pooling support.
 type App struct {
-	ldapClient    *ldap.LDAP
-	ldapPool      *ldappool.PoolManager
+	ldapConfig    ldap.Config
+	ldapReadonly  *ldap.LDAP // Read-only client with shared pool
 	ldapCache     *ldap_cache.Manager
 	sessionStore  *session.Store
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
+	poolConfig    *ldap.PoolConfig
+	logger        *slog.Logger
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -49,14 +52,14 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 }
 
 // createPoolConfig creates LDAP connection pool configuration from options
-func createPoolConfig(opts *options.Opts) *ldappool.PoolConfig {
-	return &ldappool.PoolConfig{
+func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
+	return &ldap.PoolConfig{
 		MaxConnections:      opts.PoolMaxConnections,
 		MinConnections:      opts.PoolMinConnections,
 		MaxIdleTime:         opts.PoolMaxIdleTime,
-		MaxLifetime:         opts.PoolMaxLifetime,
 		HealthCheckInterval: opts.PoolHealthCheckInterval,
-		AcquireTimeout:      opts.PoolAcquireTimeout,
+		ConnectionTimeout:   opts.PoolAcquireTimeout,
+		GetTimeout:          opts.PoolAcquireTimeout,
 	}
 }
 
@@ -84,16 +87,25 @@ func createFiberApp() *fiber.App {
 }
 
 // NewApp creates a new web application instance with the provided configuration options.
-// It initializes the LDAP client, connection pool, session management, template cache,
-// Fiber web server, and registers all routes.
+// It initializes the LDAP configuration, readonly client with connection pooling, session management,
+// template cache, Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
+//
+// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware pooling.
+// The readonly client is created with a shared connection pool, and per-user clients
+// are created on-demand using GetClientWithCredentials().
 func NewApp(opts *options.Opts) (*App, error) {
-	ldapClient, err := ldap.New(opts.LDAP, opts.ReadonlyUser, opts.ReadonlyPassword)
-	if err != nil {
-		return nil, err
-	}
+	logger := slog.Default()
+	poolConfig := createPoolConfig(opts)
 
-	ldapPool, err := ldappool.NewPoolManager(ldapClient, createPoolConfig(opts))
+	// Create readonly LDAP client with connection pooling enabled
+	ldapReadonly, err := ldap.New(
+		opts.LDAP,
+		opts.ReadonlyUser,
+		opts.ReadonlyPassword,
+		ldap.WithConnectionPool(poolConfig),
+		ldap.WithLogger(logger),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -104,13 +116,15 @@ func NewApp(opts *options.Opts) (*App, error) {
 	csrfHandler := *createCSRFConfig()
 
 	a := &App{
-		ldapClient:    ldapClient,
-		ldapPool:      ldapPool,
-		ldapCache:     ldap_cache.New(ldapClient),
+		ldapConfig:    opts.LDAP,
+		ldapReadonly:  ldapReadonly,
+		ldapCache:     ldap_cache.New(ldapReadonly),
 		templateCache: templateCache,
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
 		fiber:         f,
+		poolConfig:    poolConfig,
+		logger:        logger,
 	}
 
 	// Setup all routes
@@ -222,9 +236,9 @@ func (a *App) Listen(addr string) error {
 func (a *App) Shutdown() error {
 	a.templateCache.Stop()
 
-	if a.ldapPool != nil {
-		if err := a.ldapPool.Close(); err != nil {
-			log.Warn().Err(err).Msg("Failed to close LDAP connection pool")
+	if a.ldapReadonly != nil {
+		if err := a.ldapReadonly.Close(); err != nil {
+			log.Warn().Err(err).Msg("Failed to close LDAP readonly client")
 		}
 	}
 
@@ -274,12 +288,10 @@ func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 
 // poolStatsHandler provides LDAP connection pool statistics for monitoring
 func (a *App) poolStatsHandler(c *fiber.Ctx) error {
-	stats := a.ldapPool.GetStats()
-	healthStatus := a.ldapPool.GetHealthStatus()
+	stats := a.ldapReadonly.GetPoolStats()
 
 	response := map[string]interface{}{
-		"stats":  stats,
-		"health": healthStatus,
+		"stats": stats,
 	}
 
 	return c.JSON(response)
@@ -325,13 +337,28 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password string) (*ldappool.PooledLDAPClient, error) {
+// authenticateLDAPClient creates an LDAP client authenticated with user credentials.
+// Uses simple-ldap-go v1.4.0 credential-aware connection pooling for efficient per-user connections.
+func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password string) (*ldap.LDAP, error) {
 	executor, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.ldapPool.WithCredentials(ctx, executor.DN(), password)
+	// Create new LDAP client with user credentials
+	// The underlying connection pool will be shared and credential-aware
+	userClient, err := ldap.New(
+		a.ldapConfig,
+		executor.DN(),
+		password,
+		ldap.WithConnectionPool(a.poolConfig),
+		ldap.WithLogger(a.logger),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return userClient, nil
 }
 
 // GetCSRFToken extracts the CSRF token from the context

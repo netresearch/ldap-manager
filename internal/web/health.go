@@ -8,13 +8,11 @@ import (
 // Returns cache metrics, connection pool health, system health status, and operational statistics.
 func (a *App) healthHandler(c *fiber.Ctx) error {
 	cacheHealthStats := a.ldapCache.GetHealthCheck()
-	poolHealthStatus := a.ldapPool.GetHealthStatus()
+	poolStats := a.ldapReadonly.GetPoolStats()
 
-	// Determine overall health status
-	poolHealthy, ok := poolHealthStatus["healthy"].(bool)
-	if !ok {
-		poolHealthy = false
-	}
+	// Determine pool health
+	poolHealthy := poolStats.TotalConnections > 0
+
 	overallHealthy := cacheHealthStats.HealthStatus == "healthy" && poolHealthy
 
 	// Determine status code based on health state
@@ -24,7 +22,7 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 
 	response := fiber.Map{
 		"cache":           cacheHealthStats,
-		"connection_pool": poolHealthStatus,
+		"connection_pool": poolStats,
 		"overall_healthy": overallHealthy,
 	}
 
@@ -49,11 +47,8 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 func (a *App) readinessHandler(c *fiber.Ctx) error {
 	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
-	poolHealthStatus := a.ldapPool.GetHealthStatus()
-	isPoolHealthy, ok := poolHealthStatus["healthy"].(bool)
-	if !ok {
-		isPoolHealthy = false
-	}
+	poolStats := a.ldapReadonly.GetPoolStats()
+	isPoolHealthy := poolStats.TotalConnections > 0
 
 	// Check if fully ready
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {
