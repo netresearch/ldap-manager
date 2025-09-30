@@ -7,7 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 
-	ldappool "github.com/netresearch/ldap-manager/internal/ldap"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
@@ -76,14 +75,14 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	pooledClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
+	ldapClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
 	if err != nil {
 		return a.renderGroupWithError(c, groupDN, "Invalid password")
 	}
-	defer pooledClient.Close()
+	defer ldapClient.Close()
 
 	// Perform the group modification
-	if err := a.performGroupModification(pooledClient, &form, groupDN); err != nil {
+	if err := a.performGroupModification(ldapClient, &form, groupDN); err != nil {
 		return a.renderGroupWithError(c, groupDN, "Failed to modify: "+err.Error())
 	}
 
@@ -158,15 +157,15 @@ func (a *App) renderGroupWithSuccess(c *fiber.Ctx, groupDN, successMsg string) e
 
 // performGroupModification handles the actual LDAP group modification operation
 func (a *App) performGroupModification(
-	pooledClient *ldappool.PooledLDAPClient, form *groupModifyForm, groupDN string,
+	ldapClient *ldap.LDAP, form *groupModifyForm, groupDN string,
 ) error {
 	if form.AddUser != nil {
-		if err := pooledClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
+		if err := ldapClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err
 		}
 		a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
 	} else if form.RemoveUser != nil {
-		if err := pooledClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
+		if err := ldapClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
 			return err
 		}
 		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)

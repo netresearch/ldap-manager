@@ -106,8 +106,16 @@ func setupTestApp() (*App, *testLDAPClient) {
 		ErrorHandler: handle500,
 	})
 
+	// Create a test LDAP client - simple-ldap-go allows example/test servers
+	testConfig := ldap.Config{
+		Server: "ldap://test.server.com",
+		Port:   389,
+		BaseDN: "dc=test,dc=com",
+	}
+	testClient, _ := ldap.New(testConfig, "cn=admin", "password") //nolint:errcheck
+
 	app := &App{
-		ldapClient:   (*ldap.LDAP)(nil), // We'll need to work around this for login tests
+		ldapReadonly: testClient, // Test client for testing
 		ldapCache:    ldap_cache.New(mockClient),
 		sessionStore: sessionStore,
 		fiber:        f,
