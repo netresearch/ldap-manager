@@ -33,6 +33,7 @@ type Opts struct {
 	PoolMaxIdleTime         time.Duration
 	PoolMaxLifetime         time.Duration
 	PoolHealthCheckInterval time.Duration
+	PoolConnectionTimeout   time.Duration
 	PoolAcquireTimeout      time.Duration
 }
 
@@ -135,6 +136,9 @@ func Parse() *Opts {
 		fPoolHealthCheckInterval = flag.Duration("pool-health-check-interval",
 			envDurationOrDefault("LDAP_POOL_HEALTH_CHECK_INTERVAL", 30*time.Second),
 			"Interval for connection health checks in the pool.")
+		fPoolConnectionTimeout = flag.Duration("pool-connection-timeout",
+			envDurationOrDefault("LDAP_POOL_CONNECTION_TIMEOUT", 30*time.Second),
+			"Timeout for establishing new LDAP server connections (TCP + TLS).")
 		fPoolAcquireTimeout = flag.Duration("pool-acquire-timeout",
 			envDurationOrDefault("LDAP_POOL_ACQUIRE_TIMEOUT", 10*time.Second),
 			"Timeout for acquiring a connection from the pool.")
@@ -180,6 +184,7 @@ func Parse() *Opts {
 		PoolMaxIdleTime:         *fPoolMaxIdleTime,
 		PoolMaxLifetime:         *fPoolMaxLifetime,
 		PoolHealthCheckInterval: *fPoolHealthCheckInterval,
+		PoolConnectionTimeout:   *fPoolConnectionTimeout,
 		PoolAcquireTimeout:      *fPoolAcquireTimeout,
 	}
 }

@@ -26,7 +26,7 @@ import (
 // App represents the main web application structure.
 // Encapsulates LDAP config, readonly client, cache, session store, template cache, Fiber framework.
 // Provides centralized auth, caching, connection pooling, and HTTP request handling.
-// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware support.
+// Uses simple-ldap-go v1.5.0 built-in connection pooling with credential-aware support.
 type App struct {
 	ldapConfig    ldap.Config
 	ldapReadonly  *ldap.LDAP // Read-only client with shared pool
@@ -58,7 +58,7 @@ func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
 		MinConnections:      opts.PoolMinConnections,
 		MaxIdleTime:         opts.PoolMaxIdleTime,
 		HealthCheckInterval: opts.PoolHealthCheckInterval,
-		ConnectionTimeout:   opts.PoolAcquireTimeout,
+		ConnectionTimeout:   opts.PoolConnectionTimeout,
 		GetTimeout:          opts.PoolAcquireTimeout,
 	}
 }
@@ -91,9 +91,9 @@ func createFiberApp() *fiber.App {
 // template cache, Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
 //
-// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware pooling.
+// Uses simple-ldap-go v1.5.0 built-in connection pooling with credential-aware pooling.
 // The readonly client is created with a shared connection pool, and per-user clients
-// are created on-demand using GetClientWithCredentials().
+// are created on-demand using WithCredentials().
 func NewApp(opts *options.Opts) (*App, error) {
 	logger := slog.Default()
 	poolConfig := createPoolConfig(opts)
@@ -338,22 +338,15 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 }
 
 // authenticateLDAPClient creates an LDAP client authenticated with user credentials.
-// Uses simple-ldap-go v1.4.0 credential-aware connection pooling for efficient per-user connections.
+// Uses simple-ldap-go v1.5.0 WithCredentials() for credential switching with shared connection pooling.
 func (a *App) authenticateLDAPClient(_ context.Context, userDN, password string) (*ldap.LDAP, error) {
 	executor, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create new LDAP client with user credentials
-	// The underlying connection pool will be shared and credential-aware
-	userClient, err := ldap.New(
-		a.ldapConfig,
-		executor.DN(),
-		password,
-		ldap.WithConnectionPool(a.poolConfig),
-		ldap.WithLogger(a.logger),
-	)
+	// Use v1.5.0 WithCredentials() method for credential switching
+	userClient, err := a.ldapReadonly.WithCredentials(executor.DN(), password)
 	if err != nil {
 		return nil, err
 	}
