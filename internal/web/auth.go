@@ -1,5 +1,6 @@
-// Package web provides HTTP handlers and middleware for the LDAP Manager web application.
 package web
+
+// HTTP handlers and middleware for authentication and session management.
 
 import (
 	"github.com/gofiber/fiber/v2"
