@@ -12,6 +12,7 @@
 This package contains all materials needed to contribute credential-aware connection pooling to the simple-ldap-go project. The enhancement enables per-user connection tracking and credential-aware connection reuse, solving a critical gap for multi-user applications (web apps, multi-tenant systems).
 
 **Key Benefits:**
+
 - ✅ Enables multi-user connection pooling for web applications
 - ✅ Prevents credential mixing security issues
 - ✅ Maintains connection efficiency per user (>80% reuse rate)
@@ -26,6 +27,7 @@ This package contains all materials needed to contribute credential-aware connec
 ### For Sebastian: How to Use This Package
 
 **Step 1: Review Materials** (15 minutes)
+
 ```bash
 cd /srv/www/sme/ldap-manager/claudedocs/upstream-pr-simple-ldap-go/
 
@@ -37,6 +39,7 @@ cat 05-IMPLEMENTATION-GUIDE.md
 ```
 
 **Step 2: Follow Implementation Guide** (70 minutes)
+
 ```bash
 # The guide walks you through:
 # - Forking the repository
@@ -49,6 +52,7 @@ cat 05-IMPLEMENTATION-GUIDE.md
 ```
 
 **Step 3: Submit PR**
+
 ```bash
 # Use GitHub CLI (recommended)
 gh pr create --repo netresearch/simple-ldap-go \
@@ -62,24 +66,26 @@ gh pr create --repo netresearch/simple-ldap-go \
 
 ### Core Materials
 
-| File | Purpose | Use When |
-|------|---------|----------|
-| `00-README.md` | Package overview (this file) | Starting point |
-| `01-PR-description.md` | GitHub PR description | Creating PR |
-| `02-pool-enhancements.go` | Code changes with detailed comments | Implementing changes |
-| `03-pool_credentials_test.go` | Comprehensive test suite | Adding tests |
-| `04-pool_credentials_bench_test.go` | Performance benchmarks | Validating performance |
-| `05-IMPLEMENTATION-GUIDE.md` | Step-by-step submission guide | Entire process |
-| `06-CODE-EXAMPLES.md` | Usage examples for documentation | Answering "how to use" |
-| `07-DESIGN-RATIONALE.md` | Technical design decisions | Answering "why this way" |
+| File                                | Purpose                             | Use When                 |
+| ----------------------------------- | ----------------------------------- | ------------------------ |
+| `00-README.md`                      | Package overview (this file)        | Starting point           |
+| `01-PR-description.md`              | GitHub PR description               | Creating PR              |
+| `02-pool-enhancements.go`           | Code changes with detailed comments | Implementing changes     |
+| `03-pool_credentials_test.go`       | Comprehensive test suite            | Adding tests             |
+| `04-pool_credentials_bench_test.go` | Performance benchmarks              | Validating performance   |
+| `05-IMPLEMENTATION-GUIDE.md`        | Step-by-step submission guide       | Entire process           |
+| `06-CODE-EXAMPLES.md`               | Usage examples for documentation    | Answering "how to use"   |
+| `07-DESIGN-RATIONALE.md`            | Technical design decisions          | Answering "why this way" |
 
 ### Document Breakdown
 
 #### 01-PR-description.md (GitHub PR Description)
+
 **Length:** ~350 lines
 **Purpose:** Copy-paste ready PR description for GitHub
 
 **Contents:**
+
 - Problem statement and use cases
 - Proposed solution with benefits
 - Implementation details and API examples
@@ -92,10 +98,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 02-pool-enhancements.go (Code Implementation)
+
 **Length:** ~350 lines
 **Purpose:** Complete code changes with detailed integration instructions
 
 **Contents:**
+
 - 4 core modifications clearly marked
 - Integration instructions at each change point
 - Complete method implementations
@@ -105,6 +113,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 **When to use:** Applying code changes to simple-ldap-go's pool.go
 
 **Key Changes:**
+
 1. Add `ConnectionCredentials` struct
 2. Extend `pooledConnection` with `credentials` field
 3. Add `GetWithCredentials()` method
@@ -114,10 +123,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 03-pool_credentials_test.go (Test Suite)
+
 **Length:** ~350 lines
 **Purpose:** Comprehensive test coverage for new functionality
 
 **Test Coverage:**
+
 1. **TestCredentialIsolation** - Prevents cross-user connection reuse
 2. **TestCredentialReuse** - Validates efficient same-user reuse
 3. **TestConcurrentMultiUser** - Thread-safety with mixed credentials
@@ -129,10 +140,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 04-pool_credentials_bench_test.go (Performance Benchmarks)
+
 **Length:** ~350 lines
 **Purpose:** Measure and validate performance impact
 
 **Benchmarks:**
+
 1. **BenchmarkPoolGet_Baseline** - Establishes baseline performance
 2. **BenchmarkPoolGetWithCredentials_SingleUser** - Measures overhead (<5%)
 3. **BenchmarkPoolGetWithCredentials_MultiUserSequential** - Rotation efficiency
@@ -145,10 +158,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 05-IMPLEMENTATION-GUIDE.md (Submission Process)
+
 **Length:** ~500 lines
 **Purpose:** Complete step-by-step guide from fork to merged PR
 
 **Sections:**
+
 1. Prerequisites and setup
 2. Fork and clone repository
 3. Create feature branch
@@ -164,6 +179,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 **When to use:** Entire submission process
 
 **Estimated Time:** 70 minutes total
+
 - Fork and setup: 10 minutes
 - Apply changes: 30 minutes
 - Testing: 20 minutes
@@ -172,10 +188,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 06-CODE-EXAMPLES.md (Usage Documentation)
+
 **Length:** ~400 lines
 **Purpose:** Real-world usage examples for various scenarios
 
 **Examples:**
+
 1. Basic single-user pooling (existing API)
 2. Multi-user web application
 3. HTTP handler with per-request user
@@ -184,6 +202,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 6. Error handling best practices
 
 **When to use:**
+
 - Answering maintainer questions about usage
 - Updating simple-ldap-go README
 - Documenting new features
@@ -192,10 +211,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 ---
 
 #### 07-DESIGN-RATIONALE.md (Technical Decisions)
+
 **Length:** ~600 lines
 **Purpose:** Explain technical design decisions and trade-offs
 
 **Sections:**
+
 1. Problem analysis
 2. Design decisions (4 key decisions explained)
 3. Alternative approaches considered (4 alternatives rejected)
@@ -206,6 +227,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 8. Lessons learned from production
 
 **When to use:**
+
 - Answering "why did you design it this way?"
 - Defending design decisions
 - Discussing alternative approaches
@@ -221,18 +243,19 @@ gh pr create --repo netresearch/simple-ldap-go \
 
 **Line Locations (approximate):**
 
-| Change | Location | Lines Added |
-|--------|----------|-------------|
-| ConnectionCredentials struct | After line ~145 | 8 |
-| credentials field in pooledConnection | Line ~158 | 1 |
-| GetWithCredentials() method | After line ~250 | 60 |
-| findAvailableConnection() helper | After line ~320 | 15 |
-| canReuseConnection() helper | After line ~340 | 40 |
-| Update createNewConnection() | Line ~450 | 10 |
+| Change                                | Location        | Lines Added |
+| ------------------------------------- | --------------- | ----------- |
+| ConnectionCredentials struct          | After line ~145 | 8           |
+| credentials field in pooledConnection | Line ~158       | 1           |
+| GetWithCredentials() method           | After line ~250 | 60          |
+| findAvailableConnection() helper      | After line ~320 | 15          |
+| canReuseConnection() helper           | After line ~340 | 40          |
+| Update createNewConnection()          | Line ~450       | 10          |
 
 **Total Changes:** ~150 lines of production code
 
 **New Files:**
+
 - `pool_credentials_test.go` (~350 lines)
 - `pool_credentials_bench_test.go` (~350 lines)
 
@@ -247,6 +270,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 **Existing Tests:** All pass without modification (backward compatibility)
 
 **New Tests:**
+
 - 5 comprehensive test scenarios
 - 6 performance benchmarks
 - Thread-safety validation (10+ goroutines)
@@ -256,12 +280,12 @@ gh pr create --repo netresearch/simple-ldap-go \
 
 ### Performance Benchmarks
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Single-user overhead | 0% | 0% | ✅ Pass |
-| Multi-user overhead | <10% | <5% | ✅ Pass |
-| Reuse efficiency | >70% | >80% | ✅ Pass |
-| Matching cost | <100ns | <50ns | ✅ Pass |
+| Metric               | Target | Actual | Status  |
+| -------------------- | ------ | ------ | ------- |
+| Single-user overhead | 0%     | 0%     | ✅ Pass |
+| Multi-user overhead  | <10%   | <5%    | ✅ Pass |
+| Reuse efficiency     | >70%   | >80%   | ✅ Pass |
+| Matching cost        | <100ns | <50ns  | ✅ Pass |
 
 ### Production Validation
 
@@ -295,14 +319,14 @@ gh pr create --repo netresearch/simple-ldap-go \
 
 ### Supporting Materials Matrix
 
-| Question Type | Reference Document |
-|---------------|-------------------|
-| How to use? | 06-CODE-EXAMPLES.md |
-| Why this design? | 07-DESIGN-RATIONALE.md |
+| Question Type           | Reference Document                |
+| ----------------------- | --------------------------------- |
+| How to use?             | 06-CODE-EXAMPLES.md               |
+| Why this design?        | 07-DESIGN-RATIONALE.md            |
 | What's the performance? | 04-pool_credentials_bench_test.go |
-| How does it work? | 02-pool-enhancements.go |
-| Is it tested? | 03-pool_credentials_test.go |
-| How to implement? | 05-IMPLEMENTATION-GUIDE.md |
+| How does it work?       | 02-pool-enhancements.go           |
+| Is it tested?           | 03-pool_credentials_test.go       |
+| How to implement?       | 05-IMPLEMENTATION-GUIDE.md        |
 
 ---
 
@@ -345,6 +369,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 ### Immediate Actions
 
 1. **Review Package** (15 min)
+
    ```bash
    cd /srv/www/sme/ldap-manager/claudedocs/upstream-pr-simple-ldap-go/
    ls -lh
@@ -383,6 +408,7 @@ gh pr create --repo netresearch/simple-ldap-go \
 ### If Not Proceeding Now
 
 This package is ready whenever you decide to proceed:
+
 - All materials are complete
 - No dependencies or blockers
 - Can be submitted at any time
@@ -402,6 +428,7 @@ This package is ready whenever you decide to proceed:
 ### For Questions
 
 Contact Sebastian if you need:
+
 - Clarification on any materials
 - Adjustments to PR description
 - Help with submission process
@@ -410,6 +437,7 @@ Contact Sebastian if you need:
 ### Maintenance
 
 **Update Triggers:**
+
 - simple-ldap-go releases major pool changes
 - ldap-manager pool implementation changes significantly
 - Maintainer feedback requires material updates
@@ -421,6 +449,7 @@ Contact Sebastian if you need:
 **Ready for Submission:** ✅ All materials complete
 
 **Confidence Level:** High
+
 - Production-tested implementation
 - Comprehensive documentation
 - Clear value proposition

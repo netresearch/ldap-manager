@@ -38,13 +38,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@4e52b510f39e457d24848f4e47c6e4b8c8217d67 # v3.3.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
       - name: Cache docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.2.0
         id: cache
         with:
           path: /tmp/.buildx-cache
@@ -54,7 +54,7 @@ jobs:
 
       - name: Gather Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@df159b28a8f01bd003d26085c14cc96d16331c06 # v5.7.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -71,14 +71,14 @@ jobs:
             org.opencontainers.image.licenses=MIT
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@74a5a45e77e5906a39d21e45f164ab4d65e6ae28 # v3.5.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: build
         with:
           context: .
@@ -90,7 +90,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # 0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           format: "sarif"

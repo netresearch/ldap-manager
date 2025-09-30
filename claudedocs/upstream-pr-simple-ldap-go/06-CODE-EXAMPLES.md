@@ -72,6 +72,7 @@ func main() {
 ```
 
 **Key Points:**
+
 - ✅ No code changes required
 - ✅ Existing Get() method works as before
 - ✅ 100% backward compatible
@@ -187,6 +188,7 @@ func main() {
 ```
 
 **Key Benefits:**
+
 - ✅ Each user's operations use their own credentials
 - ✅ LDAP permissions enforced per user
 - ✅ Efficient connection reuse for same user across requests
@@ -357,6 +359,7 @@ func main() {
 ```
 
 **Key Benefits:**
+
 - ✅ Tenant isolation enforced by LDAP credentials
 - ✅ Connection pooling per tenant
 - ✅ Efficient reuse for repeated tenant operations
@@ -531,6 +534,7 @@ defer pool.Put(conn)
 ```
 
 All patterns ensure:
+
 - ✅ Connections are returned to pool via defer
 - ✅ Errors are handled appropriately
 - ✅ Context timeouts are respected

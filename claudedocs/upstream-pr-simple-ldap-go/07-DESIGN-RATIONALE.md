@@ -30,6 +30,7 @@ type ConnectionPool struct {
 ```
 
 This design assumes:
+
 - All connections use the same service account
 - Operations are performed with uniform permissions
 - No need to distinguish between users
@@ -39,18 +40,21 @@ This design assumes:
 Many applications need per-user LDAP operations:
 
 **Use Case 1: Web Applications**
+
 ```
 User A logs in → performs LDAP query with User A's credentials
 User B logs in → performs LDAP query with User B's credentials
 ```
 
 **Use Case 2: Delegated Administration**
+
 ```
 Admin performs operation → uses admin credentials
 Regular user performs operation → uses user credentials
 ```
 
 **Use Case 3: Multi-Tenant Systems**
+
 ```
 Tenant A accesses data → sees only Tenant A's data (LDAP enforces this via credentials)
 Tenant B accesses data → sees only Tenant B's data
@@ -59,6 +63,7 @@ Tenant B accesses data → sees only Tenant B's data
 ### Why Not Manage Connections Manually?
 
 **Option A: Create new connection per operation**
+
 ```go
 // No pooling - inefficient
 conn := ldap.Dial(...)
@@ -68,12 +73,14 @@ conn.Close()
 ```
 
 ❌ **Problems:**
+
 - High overhead (connection establishment cost)
 - No connection reuse
 - Poor performance under load
 - Defeats the purpose of connection pooling
 
 **Option B: One pool per user**
+
 ```go
 // Multiple pools - resource intensive
 pools := make(map[string]*ConnectionPool)
@@ -81,18 +88,21 @@ pool := pools[userDN]  // Separate pool per user
 ```
 
 ❌ **Problems:**
+
 - Memory overhead (multiple pools)
 - Complex pool management
 - Resource limits per pool, not global
 - Doesn't scale with many users
 
 **Option C: Our Solution - Credential-aware single pool**
+
 ```go
 // Single pool, credential-aware connections
 conn := pool.GetWithCredentials(userDN, password)
 ```
 
 ✅ **Benefits:**
+
 - Single pool for all users
 - Efficient connection reuse per user
 - Global resource limits
@@ -109,23 +119,27 @@ conn := pool.GetWithCredentials(userDN, password)
 **Options:**
 
 **A. Modify Get() signature**
+
 ```go
 // REJECTED
 func (p *ConnectionPool) Get(dn, password string) (*ldap.Conn, error)
 ```
 
 ❌ **Problems:**
+
 - **Breaking change** - all existing code must be updated
 - Users forced to migrate even if not needed
 - Violates backward compatibility principle
 
 **B. Add GetWithCredentials() method**
+
 ```go
 // ACCEPTED
 func (p *ConnectionPool) GetWithCredentials(dn, password string) (*ldap.Conn, error)
 ```
 
 ✅ **Benefits:**
+
 - **100% backward compatible** - existing Get() unchanged
 - Opt-in - use only when needed
 - Clear intent - method name describes functionality
@@ -142,6 +156,7 @@ func (p *ConnectionPool) GetWithCredentials(dn, password string) (*ldap.Conn, er
 **Options:**
 
 **A. Store in ConnectionPool (current design)**
+
 ```go
 type ConnectionPool struct {
     user     string
@@ -152,6 +167,7 @@ type ConnectionPool struct {
 ❌ **Problem:** Only supports single credential
 
 **B. Store in pooledConnection (our enhancement)**
+
 ```go
 type pooledConnection struct {
     credentials *ConnectionCredentials
@@ -160,6 +176,7 @@ type pooledConnection struct {
 ```
 
 ✅ **Benefits:**
+
 - Per-connection tracking
 - Enables credential matching
 - Minimal memory overhead (only when used)
@@ -263,6 +280,7 @@ type ConnectionPool struct {
 ```
 
 ❌ **Rejected because:**
+
 - More complex (two data structures to maintain)
 - Thread-safety concerns (two locks needed)
 - No clear advantage over storing in struct
@@ -280,6 +298,7 @@ type ConnectionCredentials struct {
 ```
 
 ❌ **Rejected because:**
+
 - Premature optimization
 - Benchmarks show string comparison is fast enough (<50ns)
 - Adds complexity without proven need
@@ -297,6 +316,7 @@ type ConnectionPool struct {
 ```
 
 ❌ **Rejected because:**
+
 - Duplicates pool management logic
 - Complex resource limits (split between pools)
 - Doesn't solve per-user credential problem
@@ -313,6 +333,7 @@ func (p *ConnectionPool) GetWithFactory(factory ConnectionFactory) (*ldap.Conn, 
 ```
 
 ❌ **Rejected because:**
+
 - Too abstract - hides common pattern
 - Users must write boilerplate for simple use case
 - Pool can't track credentials for reuse
@@ -400,6 +421,7 @@ Credential Matching on Get:
 **Answer:** Yes, with caveats:
 
 **Current Implementation:**
+
 ```go
 type ConnectionPool struct {
     user     string  // Already stored in memory
@@ -408,6 +430,7 @@ type ConnectionPool struct {
 ```
 
 **Our Enhancement:**
+
 ```go
 type pooledConnection struct {
     credentials *ConnectionCredentials  // Also in memory
@@ -415,6 +438,7 @@ type pooledConnection struct {
 ```
 
 **Security Profile:**
+
 - Same as existing implementation
 - No additional attack surface
 - Credentials never persisted to disk
@@ -422,6 +446,7 @@ type pooledConnection struct {
 - Protected by Go's memory management
 
 **Recommendation for Users:**
+
 - Use TLS for LDAP connections
 - Rotate credentials regularly
 - Use service accounts with minimal permissions
@@ -432,6 +457,7 @@ type pooledConnection struct {
 **Guarantee:** Connections with different credentials are NEVER shared
 
 **Enforcement:**
+
 ```go
 // Strict equality check
 return conn.credentials.DN == creds.DN &&
@@ -439,6 +465,7 @@ return conn.credentials.DN == creds.DN &&
 ```
 
 **Test Coverage:**
+
 - `TestCredentialIsolation` - Verifies User A never gets User B's connection
 - `TestConcurrentMultiUser` - Validates no mixing under concurrent load
 
@@ -447,12 +474,14 @@ return conn.credentials.DN == creds.DN &&
 **Risk:** Credentials exposed in logs/errors
 
 **Mitigation:**
+
 ```go
 // Never log credentials
 log.Printf("Acquired connection for DN: %s", creds.DN)  // ❌ Password not logged
 ```
 
 **Recommendation for Users:**
+
 - Don't log ConnectionCredentials structs
 - Use structured logging with field filtering
 - Implement audit trails with hashed identifiers
@@ -475,11 +504,13 @@ for _, conn := range p.connections {
 ```
 
 **Mitigation:**
+
 - Early exit on first match
 - Connections typically small (10-50 in pool)
 - Benchmark shows <50ns per comparison
 
 **Measured Overhead:**
+
 - Single-user: 0% (same code path as Get())
 - Multi-user: <5% (credential matching overhead)
 - Concurrent: <3% (efficient lock management)
@@ -487,6 +518,7 @@ for _, conn := range p.connections {
 ### Memory Overhead
 
 **Per Connection:**
+
 ```go
 type ConnectionCredentials struct {
     DN       string  // ~50-100 bytes typical
@@ -503,6 +535,7 @@ type ConnectionCredentials struct {
 **Key Metric:** How often do we reuse vs create new connections?
 
 **Measured Results:**
+
 - Same user, sequential: **100% reuse**
 - 3 users rotating: **85% reuse** (after warmup)
 - 10 concurrent users: **80% reuse**
@@ -583,26 +616,31 @@ type ConnectionCredentials struct {
 ### Insights from 6+ Months in Production (ldap-manager)
 
 **1. Connection Reuse is Highly Effective**
+
 - Web application: same user makes multiple requests
 - 80%+ connection reuse in production
 - Significant performance improvement over per-request connections
 
 **2. Credential Isolation is Critical**
+
 - Prevented multiple security issues during testing
 - Users only see data they have permissions for
 - LDAP server enforces security through credentials
 
 **3. Zero Backward Compatibility Issues**
+
 - Existing Get() method continues to work
 - Gradual migration to GetWithCredentials() was seamless
 - No user complaints or breaking changes
 
 **4. Monitoring is Essential**
+
 - Pool statistics helped identify bottlenecks
 - FailedCount metric caught authentication issues early
 - Utilization metrics guided capacity planning
 
 **5. Simple Design Wins**
+
 - Credential matching logic is straightforward
 - Easy to understand and debug
 - Minimal edge cases

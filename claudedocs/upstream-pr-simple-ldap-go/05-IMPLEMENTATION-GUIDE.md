@@ -87,12 +87,14 @@ Copy the entire `GetWithCredentials()` method from `02-pool-enhancements.go`.
 **Change 4: Add helper methods (around line ~320)**
 
 Copy these methods from `02-pool-enhancements.go`:
+
 - `findAvailableConnection()`
 - `canReuseConnection()`
 
 **Change 5: Update createNewConnection() (around line ~450)**
 
 Modify the `createNewConnection()` method to:
+
 1. Accept `creds *ConnectionCredentials` parameter
 2. Use provided credentials for binding (if not nil)
 3. Store credentials in the pooledConnection struct
@@ -208,6 +210,7 @@ In the PR comments, add a link to our production implementation:
 ## Production Implementation Reference
 
 This enhancement is currently running in production at:
+
 - **Repository**: https://github.com/netresearch/ldap-manager
 - **File**: internal/ldap/pool.go
 - **Duration**: 6+ months in production
