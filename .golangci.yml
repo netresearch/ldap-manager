@@ -9,7 +9,8 @@ run:
   modules-download-mode: readonly
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
@@ -175,9 +176,15 @@ issues:
         - cyclop
 
     # Ignore complexity warnings for specific functions
-    - text: "Function 'Parse' is too long"
-    - text: "Function 'WarmupCache' is too long"
-    - text: "calculated cyclomatic complexity for function getReadinessStatus"
+    - linters:
+        - funlen
+      text: "Function 'Parse' is too long"
+    - linters:
+        - funlen
+      text: "Function 'WarmupCache' is too long"
+    - linters:
+        - cyclop
+      text: "calculated cyclomatic complexity for function getReadinessStatus"
 
   # Maximum issues count per one linter
   max-issues-per-linter: 50
