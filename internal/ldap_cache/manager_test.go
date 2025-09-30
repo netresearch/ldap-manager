@@ -581,3 +581,140 @@ func TestManagerOnRemoveUserFromGroup(t *testing.T) {
 		errorMessage:  "User gained groups unexpectedly after OnRemoveUserFromGroup",
 	})
 }
+
+func TestManagerIsWarmedUp(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		users:     createMockUsers(),
+		groups:    createMockGroups(),
+		computers: createMockComputers(),
+	}
+	manager := New(mockClient)
+
+	// Test that IsWarmedUp doesn't panic and returns a boolean
+	_ = manager.IsWarmedUp()
+
+	// After refreshing all caches, test again
+	if err := manager.RefreshUsers(); err != nil {
+		t.Fatalf("Failed to refresh users: %v", err)
+	}
+	if err := manager.RefreshGroups(); err != nil {
+		t.Fatalf("Failed to refresh groups: %v", err)
+	}
+	if err := manager.RefreshComputers(); err != nil {
+		t.Fatalf("Failed to refresh computers: %v", err)
+	}
+
+	// Test that method still works after refreshes
+	_ = manager.IsWarmedUp()
+}
+
+func TestManagerFindComputerBySAMAccountName(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		computers: createMockComputers(),
+	}
+	manager := New(mockClient)
+	if err := manager.RefreshComputers(); err != nil {
+		t.Fatalf("Failed to refresh computers: %v", err)
+	}
+
+	t.Run("find existing computer by SAMAccountName", func(t *testing.T) {
+		computer, err := manager.FindComputerBySAMAccountName("workstation-01$")
+		if err != nil {
+			t.Errorf("Expected to find computer, got error: %v", err)
+		}
+		if computer == nil {
+			t.Error("Expected to find computer, got nil")
+		}
+		if computer != nil && computer.SAMAccountName != "workstation-01$" {
+			t.Errorf("Expected SAMAccountName 'workstation-01$', got '%s'", computer.SAMAccountName)
+		}
+	})
+
+	t.Run("find non-existent computer by SAMAccountName", func(t *testing.T) {
+		computer, err := manager.FindComputerBySAMAccountName("nonexistent$")
+		assertEntityNotFound(t, computer, err, ldap.ErrComputerNotFound)
+	})
+}
+
+func TestManagerGetMetrics(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		users:  createMockUsers(),
+		groups: createMockGroups(),
+	}
+	manager := New(mockClient)
+	if err := manager.RefreshUsers(); err != nil {
+		t.Fatalf("Failed to refresh users: %v", err)
+	}
+	if err := manager.RefreshGroups(); err != nil {
+		t.Fatalf("Failed to refresh groups: %v", err)
+	}
+
+	metrics := manager.GetMetrics()
+
+	// Test that GetMetrics doesn't panic and returns valid structure
+	if metrics == nil {
+		t.Fatal("Expected non-nil metrics")
+	}
+
+	// Verify metrics has required fields
+	_ = metrics.UserCount
+	_ = metrics.GroupCount
+	_ = metrics.ComputerCount
+	_ = metrics.RefreshCount
+	_ = metrics.HealthStatus
+}
+
+func TestManagerGetHealthCheck(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		users:  createMockUsers(),
+		groups: createMockGroups(),
+	}
+	manager := New(mockClient)
+	if err := manager.RefreshUsers(); err != nil {
+		t.Fatalf("Failed to refresh users: %v", err)
+	}
+	if err := manager.RefreshGroups(); err != nil {
+		t.Fatalf("Failed to refresh groups: %v", err)
+	}
+
+	health := manager.GetHealthCheck()
+
+	// Test that GetHealthCheck doesn't panic and returns valid structure
+	if health.HealthStatus == "" {
+		t.Error("Expected non-empty health status")
+	}
+
+	// Verify structure has required fields
+	_ = health.RefreshCount
+	_ = health.ErrorRate
+	_ = health.EntityCounts.Users
+	_ = health.EntityCounts.Groups
+	_ = health.EntityCounts.Computers
+}
+
+func TestManagerIsHealthy(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		users:  createMockUsers(),
+		groups: createMockGroups(),
+	}
+	manager := New(mockClient)
+
+	// Manager starts as healthy (0 = healthy status)
+	// It only becomes unhealthy after errors accumulate
+	initialHealth := manager.IsHealthy()
+	if !initialHealth {
+		t.Log("Note: Manager is not healthy initially, which is acceptable")
+	}
+
+	// After successful refreshes, should definitely be healthy
+	if err := manager.RefreshUsers(); err != nil {
+		t.Fatalf("Failed to refresh users: %v", err)
+	}
+	if err := manager.RefreshGroups(); err != nil {
+		t.Fatalf("Failed to refresh groups: %v", err)
+	}
+
+	if !manager.IsHealthy() {
+		t.Error("Expected manager to be healthy after successful refreshes")
+	}
+}
