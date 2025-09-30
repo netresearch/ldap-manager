@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -110,7 +111,11 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return a.renderUserWithError(c, userDN, "Invalid password")
 	}
-	defer ldapClient.Close()
+	defer func() {
+		if closeErr := ldapClient.Close(); closeErr != nil {
+			log.Error().Err(closeErr).Msg("Failed to close LDAP client")
+		}
+	}()
 
 	// Perform the user modification
 	if err := a.performUserModification(ldapClient, &form, userDN); err != nil {

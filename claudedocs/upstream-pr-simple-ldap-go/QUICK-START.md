@@ -113,6 +113,7 @@ Materials are ready whenever you want to proceed. No rush, no dependencies.
 ## Decision Point
 
 **Submit PR?**
+
 - ✅ Yes → Follow Option 2 or read `05-IMPLEMENTATION-GUIDE.md`
 - ⏸️ Not now → Materials remain valid, submit anytime
 - ❓ Unsure → Read `00-README.md` and `01-PR-description.md`

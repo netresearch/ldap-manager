@@ -13,6 +13,7 @@ The current connection pool implementation assumes a single-user model where all
 ### Current Limitation
 
 When using `Get()`, all connections share the same credentials. There's no way to:
+
 - Pool connections per user while maintaining efficiency
 - Safely reuse connections based on credential matching
 - Support concurrent operations with different user credentials
@@ -58,6 +59,7 @@ Add credential-aware connection pooling that enables per-user connection trackin
 ### API Examples
 
 **Single-User (Existing API - Unchanged)**
+
 ```go
 // Current usage continues to work exactly as before
 pool := NewConnectionPool(config, ldapConfig)
@@ -66,6 +68,7 @@ defer pool.Put(conn)
 ```
 
 **Multi-User (New API)**
+
 ```go
 // New capability for per-user pooling
 pool := NewConnectionPool(config, ldapConfig)
@@ -88,6 +91,7 @@ defer pool.Put(connA2)  // Same connection as connA
 ### Production Usage
 
 This implementation has been battle-tested in production at:
+
 - **Project**: [ldap-manager](https://github.com/netresearch/ldap-manager)
 - **Duration**: 6+ months in production
 - **Scale**: Multi-user web application with concurrent LDAP operations
@@ -97,11 +101,11 @@ This implementation has been battle-tested in production at:
 
 **Benchmarks** (from production implementation):
 
-| Scenario | Overhead | Reuse Rate |
-|----------|----------|------------|
-| Single-user (Get) | 0% | N/A |
-| Multi-user (GetWithCredentials) | <5% | >80% |
-| Concurrent (10 goroutines, 5 users) | <3% | 85% |
+| Scenario                            | Overhead | Reuse Rate |
+| ----------------------------------- | -------- | ---------- |
+| Single-user (Get)                   | 0%       | N/A        |
+| Multi-user (GetWithCredentials)     | <5%      | >80%       |
+| Concurrent (10 goroutines, 5 users) | <3%      | 85%        |
 
 **Conclusion**: Minimal overhead, high efficiency for multi-user scenarios
 
@@ -115,18 +119,22 @@ This implementation has been battle-tested in production at:
 ## Risk Assessment
 
 ### Security
+
 **Concern**: Storing credentials per connection
 **Mitigation**: Uses same in-memory approach as existing user/password fields, no additional security surface
 
 ### Performance
+
 **Concern**: Overhead from credential matching
 **Mitigation**: Benchmarks show <5% overhead only when using new method, zero impact on existing Get()
 
 ### Complexity
+
 **Concern**: API becoming more complex
 **Mitigation**: Optional feature, doesn't affect simple use cases, existing Get() remains unchanged
 
 ### Breaking Changes
+
 **Concern**: Existing users impacted
 **Mitigation**: 100% backward compatible, no changes to existing API
 
@@ -135,12 +143,14 @@ This implementation has been battle-tested in production at:
 **None needed!** This is a purely additive feature.
 
 Existing code continues to work without any changes:
+
 ```go
 // This code requires zero modifications
 conn, err := pool.Get()
 ```
 
 New multi-user functionality is opt-in:
+
 ```go
 // Use new method only when needed
 conn, err := pool.GetWithCredentials(dn, password)

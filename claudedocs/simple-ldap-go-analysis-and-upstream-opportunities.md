@@ -12,6 +12,7 @@
 **✅ Status:** We updated to simple-ldap-go v1.3.0 but haven't leveraged its new batch lookup features yet.
 
 **🎯 Opportunities:**
+
 1. **Use new batch features** - Replace sequential lookups with batch operations
 2. **Upstream our pool implementation** - simple-ldap-go has basic pooling, we have advanced features
 3. **Contribute metrics** - Our pool stats could enhance their monitoring
@@ -28,6 +29,7 @@ func (l *LDAP) FindUsersBySAMAccountNames(sAMAccountNames []string) ([]*User, er
 ```
 
 **Features:**
+
 - Looks up multiple users by SAMAccountName
 - Context-aware with cancellation support
 - Returns partial results if some users not found
@@ -35,6 +37,7 @@ func (l *LDAP) FindUsersBySAMAccountNames(sAMAccountNames []string) ([]*User, er
 - **Sequential execution** (not parallel)
 
 **Usage Example:**
+
 ```go
 usernames := []string{"user1", "user2", "user3"}
 users, err := ldapClient.FindUsersBySAMAccountNames(usernames)
@@ -52,6 +55,7 @@ func (l *LDAP) BulkFindUsersBySAMAccountName(ctx context.Context,
 **Status:** 🚧 Stub implementation only (lines 588-615 in client.go)
 
 **Planned Features (commented):**
+
 - Batch splitting based on `options.BatchSize`
 - Concurrent execution up to `options.MaxConcurrency`
 - Caching support via `options.UseCache`
@@ -65,6 +69,7 @@ func (l *LDAP) BulkFindUsersBySAMAccountName(ctx context.Context,
 simple-ldap-go **already has** connection pooling in `pool.go`:
 
 **Their Pool Features:**
+
 - Basic connection pooling with min/max connections
 - Health checking every 30s
 - Connection lifecycle management
@@ -72,6 +77,7 @@ simple-ldap-go **already has** connection pooling in `pool.go`:
 - Thread-safe with RWMutex
 
 **Their Pool Config:**
+
 ```go
 type PoolConfig struct {
     MaxConnections      int           // default: 10
@@ -89,22 +95,23 @@ type PoolConfig struct {
 
 ### Feature Comparison
 
-| Feature | simple-ldap-go Pool | ldap-manager Pool | Winner |
-|---------|---------------------|-------------------|--------|
-| **Basic Pooling** | ✅ Yes | ✅ Yes | Tie |
-| **Health Checks** | ✅ Every 30s | ✅ Configurable | Tie |
-| **Connection Reuse** | ✅ Basic | ✅ **Credential-aware** | 🏆 Us |
-| **Lifecycle Management** | ✅ MaxIdleTime | ✅ MaxIdleTime + MaxLifetime | 🏆 Us |
-| **Statistics** | ✅ Basic | ✅ Comprehensive | 🏆 Us |
-| **Credential Handling** | ❌ Single user | ✅ **Per-user pooling** | 🏆 Us |
-| **Background Maintenance** | ⚠️ Basic | ✅ Advanced cleanup | 🏆 Us |
-| **Testing** | ✅ Integration tests | ✅ Unit + integration | Tie |
+| Feature                    | simple-ldap-go Pool  | ldap-manager Pool            | Winner |
+| -------------------------- | -------------------- | ---------------------------- | ------ |
+| **Basic Pooling**          | ✅ Yes               | ✅ Yes                       | Tie    |
+| **Health Checks**          | ✅ Every 30s         | ✅ Configurable              | Tie    |
+| **Connection Reuse**       | ✅ Basic             | ✅ **Credential-aware**      | 🏆 Us  |
+| **Lifecycle Management**   | ✅ MaxIdleTime       | ✅ MaxIdleTime + MaxLifetime | 🏆 Us  |
+| **Statistics**             | ✅ Basic             | ✅ Comprehensive             | 🏆 Us  |
+| **Credential Handling**    | ❌ Single user       | ✅ **Per-user pooling**      | 🏆 Us  |
+| **Background Maintenance** | ⚠️ Basic             | ✅ Advanced cleanup          | 🏆 Us  |
+| **Testing**                | ✅ Integration tests | ✅ Unit + integration        | Tie    |
 
 ### Key Differentiators in Our Implementation
 
 #### 1. **Credential-Aware Connection Reuse**
 
 **Our Innovation:**
+
 ```go
 // We track credentials per connection and only reuse matching ones
 type PooledConnection struct {
@@ -127,6 +134,7 @@ func (p *ConnectionPool) canReuseConnection(conn *PooledConnection, creds *Conne
 ```
 
 **Why This Matters:**
+
 - simple-ldap-go pools connections for a single service account
 - We pool connections **per user** for multi-user scenarios
 - Enables connection reuse in web apps with user-specific LDAP operations
@@ -134,6 +142,7 @@ func (p *ConnectionPool) canReuseConnection(conn *PooledConnection, creds *Conne
 #### 2. **Dual Lifecycle Management**
 
 **Our Approach:**
+
 ```go
 // Both MaxIdleTime AND MaxLifetime
 type PoolConfig struct {
@@ -147,6 +156,7 @@ type PoolConfig struct {
 #### 3. **Advanced Statistics**
 
 **Our Stats:**
+
 ```go
 type PoolStats struct {
     TotalConnections     int32
@@ -167,6 +177,7 @@ type PoolStats struct {
 ### 1. Batch User Lookups ❌
 
 **Current ldap-manager Code:**
+
 ```go
 // We do NOT use FindUsersBySAMAccountNames
 // Instead, we use FindUserBySAMAccountName individually
@@ -175,6 +186,7 @@ user, err := ldapClient.FindUserBySAMAccountName("username")
 
 **Opportunity:**
 If we ever need to look up multiple users at once, we should use:
+
 ```go
 users, err := ldapClient.FindUsersBySAMAccountNames([]string{"user1", "user2", "user3"})
 ```
@@ -194,16 +206,19 @@ users, err := ldapClient.FindUsersBySAMAccountNames([]string{"user1", "user2", "
 ### 🏆 HIGH VALUE: Credential-Aware Connection Pooling
 
 **What to Contribute:**
+
 - Our `ConnectionCredentials` struct
 - `canReuseConnection()` credential matching logic
 - Per-user connection pooling design pattern
 
 **Why simple-ldap-go Needs This:**
+
 - Their pool assumes single service account
 - Many applications need per-user LDAP operations
 - Web apps with user authentication benefit significantly
 
 **PR Scope:**
+
 1. Add `ConnectionCredentials` tracking to `pooledConnection`
 2. Implement credential matching in connection reuse logic
 3. Add tests for multi-credential scenarios
@@ -214,14 +229,17 @@ users, err := ldapClient.FindUsersBySAMAccountNames([]string{"user1", "user2", "
 ### 🥈 MEDIUM VALUE: Dual Lifecycle Management
 
 **What to Contribute:**
+
 - `MaxLifetime` in addition to `MaxIdleTime`
 - Maintenance logic for both expiry types
 
 **Why simple-ldap-go Needs This:**
+
 - Long-lived connections can accumulate issues
 - Industry best practice (used by database pools)
 
 **PR Scope:**
+
 1. Add `MaxLifetime` to `PoolConfig`
 2. Update maintenance to check both expiry types
 3. Add tests for lifetime-based expiry
@@ -232,15 +250,18 @@ users, err := ldapClient.FindUsersBySAMAccountNames([]string{"user1", "user2", "
 ### 🥉 LOW VALUE: Enhanced Pool Statistics
 
 **What to Contribute:**
+
 - Additional counters: `AcquiredCount`, `FailedCount`
 - Monitoring-friendly stats structure
 
 **Why simple-ldap-go Needs This:**
+
 - Current stats focus on pool internals
 - Missing operational metrics for monitoring
 - No failure tracking
 
 **PR Scope:**
+
 1. Extend `PoolStats` with operational metrics
 2. Add atomic counters for thread safety
 3. Add example metrics integration (Prometheus)
@@ -261,6 +282,7 @@ users, err := ldapClient.FindUsersBySAMAccountNames([]string{"user1", "user2", "
 ### Phase 2: Quick Wins (Optional, Low Priority)
 
 If we have batch lookup needs:
+
 ```go
 // Replace sequential lookups with batch API
 users, err := ldapClient.FindUsersBySAMAccountNames(usernames)
@@ -272,17 +294,20 @@ users, err := ldapClient.FindUsersBySAMAccountNames(usernames)
 ### Phase 3: Upstream Contribution (Recommended)
 
 **Priority 1: Credential-Aware Pooling**
+
 - Extract credential matching logic
 - Create comprehensive PR with tests
 - Document multi-user use case
 - **Timeline:** 1 week (includes PR review process)
 
 **Priority 2: Dual Lifecycle Management**
+
 - Extract MaxLifetime logic
 - Add to existing pool implementation
 - **Timeline:** 3-4 days
 
 **Priority 3: Enhanced Statistics**
+
 - Extract monitoring metrics
 - Add Prometheus integration example
 - **Timeline:** 3-4 days
@@ -339,6 +364,7 @@ users, err := ldapClient.FindUsersBySAMAccountNames(usernames)
 Medium - Not urgent, but valuable for both projects
 
 **Next Steps:**
+
 1. Discuss with team: upstream contribution strategy
 2. If approved: Create upstream PR for credential-aware pooling
 3. Monitor simple-ldap-go v1.4.0 for bulk operations completion

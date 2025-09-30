@@ -24,9 +24,9 @@ import (
 )
 
 // App represents the main web application structure.
-// It encapsulates LDAP configuration, readonly client, cache manager, session store, template cache, and Fiber web framework.
-// Provides centralized management of authentication, caching, connection pooling, and HTTP request handling.
-// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware pooling support.
+// Encapsulates LDAP config, readonly client, cache, session store, template cache, Fiber framework.
+// Provides centralized auth, caching, connection pooling, and HTTP request handling.
+// Uses simple-ldap-go v1.4.0 built-in connection pooling with credential-aware support.
 type App struct {
 	ldapConfig    ldap.Config
 	ldapReadonly  *ldap.LDAP // Read-only client with shared pool
@@ -339,7 +339,7 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 
 // authenticateLDAPClient creates an LDAP client authenticated with user credentials.
 // Uses simple-ldap-go v1.4.0 credential-aware connection pooling for efficient per-user connections.
-func (a *App) authenticateLDAPClient(ctx context.Context, userDN, password string) (*ldap.LDAP, error) {
+func (a *App) authenticateLDAPClient(_ context.Context, userDN, password string) (*ldap.LDAP, error) {
 	executor, err := a.ldapCache.FindUserByDN(userDN)
 	if err != nil {
 		return nil, err
