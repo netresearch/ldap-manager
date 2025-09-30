@@ -70,6 +70,8 @@ docker run \
 
 ## Documentation
 
+**📌 [Complete Documentation Index](docs/INDEX.md)** - Navigate all documentation with cross-references and quick links
+
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
 ### For Users
