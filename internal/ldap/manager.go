@@ -77,10 +77,7 @@ func (pm *PoolManager) GetHealthStatus() map[string]interface{} {
 	stats := pm.pool.GetStats()
 
 	// Determine health based on available connections and error rates
-	healthy := true
-	if stats.TotalConnections == 0 {
-		healthy = false
-	}
+	healthy := stats.TotalConnections > 0
 
 	// Consider unhealthy if high error rate (>10% failures)
 	if stats.AcquiredCount > 0 {

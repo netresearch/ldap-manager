@@ -181,18 +181,18 @@ func TestEnvIntOrDefault(t *testing.T) {
 
 func TestOptsStructure(t *testing.T) {
 	opts := &Opts{
-		LogLevel:            zerolog.DebugLevel,
-		ReadonlyUser:        "cn=readonly,dc=example,dc=com",
-		ReadonlyPassword:    "secret",
-		PersistSessions:     true,
-		SessionPath:         "/data/sessions.db",
-		SessionDuration:     30 * time.Minute,
-		PoolMaxConnections:  10,
-		PoolMinConnections:  2,
-		PoolMaxIdleTime:     15 * time.Minute,
-		PoolMaxLifetime:     1 * time.Hour,
+		LogLevel:                zerolog.DebugLevel,
+		ReadonlyUser:            "cn=readonly,dc=example,dc=com",
+		ReadonlyPassword:        "secret",
+		PersistSessions:         true,
+		SessionPath:             "/data/sessions.db",
+		SessionDuration:         30 * time.Minute,
+		PoolMaxConnections:      10,
+		PoolMinConnections:      2,
+		PoolMaxIdleTime:         15 * time.Minute,
+		PoolMaxLifetime:         1 * time.Hour,
 		PoolHealthCheckInterval: 30 * time.Second,
-		PoolAcquireTimeout:  10 * time.Second,
+		PoolAcquireTimeout:      10 * time.Second,
 	}
 
 	// Verify struct fields are properly set

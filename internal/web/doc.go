@@ -225,5 +225,4 @@
 //   - internal/web/templates: Templ template components
 //   - docs/API_REFERENCE.md: Complete API documentation
 //   - docs/development/architecture.md: System architecture
-//
 package web
