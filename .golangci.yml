@@ -144,7 +144,6 @@ linters:
     - wastedassign # Find wasted assignments
     - whitespace # Check whitespace issues
 
-
 issues:
   exclude-use-default: false
   exclude-files:

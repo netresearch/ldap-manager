@@ -26,6 +26,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Status:** ✅ Above 75% minimum threshold
 
 **Added Tests:**
+
 - `TestManagerIsWarmedUp` - Warmup state validation
 - `TestManagerFindComputerBySAMAccountName` - Computer lookup by SAM account
 - `TestManagerGetMetrics` - Metrics collection and reporting
@@ -33,6 +34,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 - `TestManagerIsHealthy` - Health status determination
 
 **Remaining Gaps (to reach 90%):**
+
 - Complex refresh error scenarios (~3%)
 - Edge cases in group/computer population (~2%)
 - Metrics recording under various failure modes (~2%)
@@ -49,6 +51,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Status:** ⚠️ Below 75% target but significant progress
 
 **Added Tests:**
+
 - `TestEnvIntOrDefault` - Integer environment variable parsing
   - Valid int parsing
   - Default value fallback
@@ -57,6 +60,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 - `TestOptsStructure` - Configuration struct validation
 
 **Remaining Gaps (to reach 75%):**
+
 - `Parse()` function (~30%) - Uses `log.Fatal()` making it difficult to test
 - Error path validation for invalid durations/log levels
 - Flag parsing integration tests
@@ -75,12 +79,14 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Status:** ❌ Significantly below target
 
 **Current Test Coverage:**
+
 - Basic pool configuration validation
 - Pool stats structure tests
 - Connection credentials testing
 - Basic pooled connection operations
 
 **Missing Coverage (~48%):**
+
 - Connection pool lifecycle (acquire/release)
 - Connection health checking and recycling
 - Pool manager operations with real LDAP connections
@@ -89,6 +95,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 - Connection timeout scenarios
 
 **Structural Limitations:**
+
 - Requires mock LDAP server or extensive mocking
 - Connection pool has complex lifecycle management
 - Thread-safety testing requires sophisticated concurrency tests
@@ -106,12 +113,14 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Status:** ❌ Significantly below target
 
 **Current Test Coverage:**
+
 - Basic handler routing tests
 - Authentication redirect tests
 - Template cache operations
 - Flash message helpers (100%)
 
 **Missing Coverage (~58%):**
+
 - Complete request/response cycle testing
 - Session management flows
 - CSRF protection validation
@@ -122,6 +131,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 - Form validation and submission
 
 **Structural Limitations:**
+
 - Requires Fiber test framework setup
 - Needs mock LDAP cache manager
 - Template rendering requires compiled templates
@@ -136,19 +146,20 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 
 ### Weighted Coverage Calculation
 
-| Package | Current Coverage | LOC (approx) | Weighted Contribution |
-|---------|------------------|--------------|----------------------|
-| ldap_cache | 83.2% | 800 | 23.5% |
-| options | 45.0% | 200 | 3.2% |
-| ldap | 27.4% | 600 | 5.8% |
-| web | 17.3% | 1200 | 7.3% |
-| templates | 0.8% | 1500 | 0.4% |
-| version | 0.0% | 50 | 0.0% |
-| **Total** | **~40%** | **4350** | **40.2%** |
+| Package    | Current Coverage | LOC (approx) | Weighted Contribution |
+| ---------- | ---------------- | ------------ | --------------------- |
+| ldap_cache | 83.2%            | 800          | 23.5%                 |
+| options    | 45.0%            | 200          | 3.2%                  |
+| ldap       | 27.4%            | 600          | 5.8%                  |
+| web        | 17.3%            | 1200         | 7.3%                  |
+| templates  | 0.8%             | 1500         | 0.4%                  |
+| version    | 0.0%             | 50           | 0.0%                  |
+| **Total**  | **~40%**         | **4350**     | **40.2%**             |
 
 ### To Reach 80% Overall Coverage
 
 **Required improvements:**
+
 - web package: 17.3% → 85% (+67.7 points) = ~810 LOC covered
 - ldap package: 27.4% → 85% (+57.6 points) = ~345 LOC covered
 - options: 45% → 75% (+30 points) = ~60 LOC covered (blocked by log.Fatal)
@@ -167,6 +178,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Packages affected:** ldap, web
 
 **Solutions:**
+
 - Create comprehensive LDAP mock server
 - Implement test LDAP fixtures
 - Mock BBolt session storage
@@ -179,6 +191,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Packages affected:** options
 
 **Solutions:**
+
 - Refactor to return errors instead of calling log.Fatal()
 - Use dependency injection for logger
 - Accept lower coverage for initialization code
@@ -190,6 +203,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Packages affected:** web/templates (0.8% coverage)
 
 **Solutions:**
+
 - Exclude generated code from coverage (add `// Code generated` comment)
 - Focus on template logic tests rather than generated code
 - Accept low coverage for generated code
@@ -201,6 +215,7 @@ Initiated systematic test coverage improvements targeting 80%+ overall coverage.
 **Packages affected:** web
 
 **Solutions:**
+
 - Create comprehensive test fixtures
 - Use table-driven tests for handlers
 - Implement helper functions for common setup
@@ -281,6 +296,7 @@ Instead of aiming for 80% overall, consider package-specific targets based on cr
 ### Testing Gaps and Production Impact
 
 **High Risk (Inadequate Coverage):**
+
 - Connection pool management (ldap: 27.4%)
   - **Risk:** Connection leaks, pool exhaustion
   - **Mitigation:** Extensive manual testing, monitoring in production
@@ -290,11 +306,13 @@ Instead of aiming for 80% overall, consider package-specific targets based on cr
   - **Mitigation:** Code review, integration testing, error monitoring
 
 **Medium Risk (Acceptable Coverage):**
+
 - Cache operations (ldap_cache: 83.2%)
   - **Risk:** Cache inconsistency, stale data
   - **Mitigation:** Good test coverage, well-understood behavior
 
 **Low Risk (Simple Code):**
+
 - Configuration parsing (options: 45%)
   - **Risk:** Startup failures from invalid config
   - **Mitigation:** Validation at startup, documentation
@@ -306,12 +324,14 @@ Instead of aiming for 80% overall, consider package-specific targets based on cr
 ### Reaching 80% Overall Coverage
 
 **Benefits:**
+
 - Higher confidence in code correctness
 - Easier refactoring with safety net
 - Better documentation through tests
 - Catches edge case bugs
 
 **Costs:**
+
 - 2-3 days of dedicated testing effort
 - Test maintenance overhead
 - Mock infrastructure complexity
@@ -324,12 +344,14 @@ The structural limitations (LDAP dependencies, generated code, log.Fatal) mean t
 ### Alternative: Targeted Improvements
 
 **Benefits:**
+
 - Focus on high-value, high-risk code
 - Practical coverage levels for each package
 - Lower maintenance burden
 - Faster delivery
 
 **Costs:**
+
 - Lower overall coverage number
 - Some code paths untested
 - Requires good judgment on what to test
@@ -337,6 +359,7 @@ The structural limitations (LDAP dependencies, generated code, log.Fatal) mean t
 **Recommendation:** **Proceed with targeted approach**
 
 Aim for:
+
 - Critical packages: 80-90%
 - Important packages: 60-70%
 - Utility/generated: 30-50%
@@ -385,12 +408,14 @@ Aim for:
 Successfully improved test coverage for high-value packages (ldap_cache, options). Identified structural limitations that make 80% overall coverage impractical without significant refactoring.
 
 **Recommended Path Forward:**
+
 1. Commit current improvements
 2. Document testing strategy and gaps
 3. Focus on manual testing and production monitoring
 4. Plan structural improvements for future sprint
 
 **Test Coverage Strategy:**
+
 - **Critical business logic:** High coverage through unit tests
 - **Complex integrations:** Manual and E2E testing
 - **Generated code:** Excluded from coverage metrics
@@ -400,4 +425,4 @@ This pragmatic approach balances testing value with development velocity.
 
 ---
 
-*Generated as part of test coverage improvement initiative*
+_Generated as part of test coverage improvement initiative_
