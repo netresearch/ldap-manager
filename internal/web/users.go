@@ -1,6 +1,6 @@
-// Package web provides HTTP handlers for user management endpoints.
-// This file contains handlers for listing users, viewing user details, and modifying user attributes.
 package web
+
+// HTTP handlers for user management endpoints.
 
 import (
 	"net/url"

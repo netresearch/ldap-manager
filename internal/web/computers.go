@@ -1,6 +1,6 @@
-// Package web provides HTTP handlers for computer management endpoints.
-// This file contains handlers for listing computers and viewing individual computer details.
 package web
+
+// HTTP handlers for computer management endpoints.
 
 import (
 	"net/url"
