@@ -122,8 +122,7 @@ func NewConnectionPool(baseClient *ldap.LDAP, config *PoolConfig) (*ConnectionPo
 	}
 
 	// Start background maintenance
-	pool.wg.Add(1)
-	go pool.maintenanceLoop()
+	pool.wg.Go(pool.maintenanceLoop)
 
 	log.Info().
 		Int("max_connections", config.MaxConnections).
@@ -141,7 +140,7 @@ func (p *ConnectionPool) warmupPool() error {
 	defer p.mutex.Unlock()
 
 	// Create readonly connections for warmup (using base client credentials)
-	for i := 0; i < p.config.MinConnections; i++ {
+	for i := range p.config.MinConnections {
 		conn, err := p.createConnection(nil)
 		if err != nil {
 			log.Warn().Err(err).Int("attempt", i+1).Msg("Failed to create warmup connection")
@@ -359,7 +358,6 @@ func (p *ConnectionPool) closeConnection(conn *PooledConnection) {
 
 // maintenanceLoop runs periodic maintenance tasks
 func (p *ConnectionPool) maintenanceLoop() {
-	defer p.wg.Done()
 
 	ticker := time.NewTicker(p.config.HealthCheckInterval)
 	defer ticker.Stop()

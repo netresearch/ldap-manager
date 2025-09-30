@@ -286,11 +286,8 @@ func TestCacheConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Test concurrent reads
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(_ int) {
-			defer wg.Done()
-
+	for range 10 {
+		wg.Go(func() {
 			// Concurrent Get operations
 			items := cache.Get()
 			if items == nil {
@@ -307,33 +304,27 @@ func TestCacheConcurrentAccess(t *testing.T) {
 
 			// Concurrent Count operations
 			cache.Count()
-		}(i)
+		})
 	}
 
 	// Test concurrent writes
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func(_ int) {
-			defer wg.Done()
-
+	for range 5 {
+		wg.Go(func() {
 			newItems := []mockCacheable{
 				{dn: "cn=concurrent1,dc=example,dc=com", data: "concurrent1"},
 				{dn: "cn=concurrent2,dc=example,dc=com", data: "concurrent2"},
 			}
 			cache.setAll(newItems)
-		}(i)
+		})
 	}
 
 	// Test concurrent updates
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func(_ int) {
-			defer wg.Done()
-
+	for range 5 {
+		wg.Go(func() {
 			cache.update(func(item *mockCacheable) {
 				item.data = testUpdatedValue
 			})
-		}(i)
+		})
 	}
 
 	wg.Wait()

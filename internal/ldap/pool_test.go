@@ -750,13 +750,11 @@ func TestConcurrentPoolAccess(t *testing.T) {
 		var wg sync.WaitGroup
 		goroutines := 50
 
-		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
-			go func() {
-				defer wg.Done()
+		for range goroutines {
+			wg.Go(func() {
 				stats := pool.GetStats()
 				assert.NotNil(t, stats)
-			}()
+			})
 		}
 
 		wg.Wait()
@@ -766,14 +764,12 @@ func TestConcurrentPoolAccess(t *testing.T) {
 		var wg sync.WaitGroup
 		goroutines := 100
 
-		wg.Add(goroutines)
-		for i := 0; i < goroutines; i++ {
-			go func() {
-				defer wg.Done()
+		for range goroutines {
+			wg.Go(func() {
 				atomic.AddInt32(&pool.totalConnections, 1)
 				atomic.AddInt32(&pool.activeConnections, 1)
 				atomic.AddInt64(&pool.acquiredConnections, 1)
-			}()
+			})
 		}
 
 		wg.Wait()
