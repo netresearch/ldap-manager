@@ -20,6 +20,7 @@ LDAP Manager is a production-ready Go web application for LDAP/Active Directory 
 ## Project Metrics
 
 ### Codebase Statistics
+
 - **Language:** Go 1.25.1
 - **Source Files:** 19 Go files in `internal/`
 - **Test Files:** 8 test files
@@ -28,6 +29,7 @@ LDAP Manager is a production-ready Go web application for LDAP/Active Directory 
 - **Technical Debt:** 0 TODO/FIXME markers
 
 ### Package Structure
+
 ```
 ldap-manager/
 ├── cmd/ldap-manager/        # CLI entry point
@@ -45,6 +47,7 @@ ldap-manager/
 ```
 
 ### Dependencies
+
 - **Web Framework:** Fiber v2.52.9
 - **Templates:** Templ v0.3.943
 - **Logging:** zerolog v1.34.0
@@ -57,6 +60,7 @@ ldap-manager/
 ## Architecture Analysis
 
 ### Layered Design
+
 ```
 ┌─────────────────────────────────────┐
 │  Web Layer (Fiber v2)               │
@@ -106,19 +110,21 @@ ldap-manager/
 ## Quality & Testing
 
 ### Coverage Thresholds
+
 ```yaml
-Overall Project:  80%
-Per Package:      75%
-Per File:         70%
+Overall Project: 80%
+Per Package: 75%
+Per File: 70%
 
 Overrides:
-  ldap_cache:     90% (core functionality)
-  templates:      50% (generated code)
+  ldap_cache: 90% (core functionality)
+  templates: 50% (generated code)
 ```
 
 ### Quality Gates (Automated)
 
 **Pre-commit Hooks:**
+
 - Go formatting (gofmt, goimports)
 - Go linting (golangci-lint with --config)
 - Go testing (short tests with race detection)
@@ -128,11 +134,13 @@ Overrides:
 - Docker linting (hadolint)
 
 **CI/CD Workflows:**
+
 1. **quality.yml** - Linting, static analysis, security checks (weekly + on push)
 2. **check.yml** - Full test suite with coverage validation
 3. **docker.yml** - Container build and registry push
 
 ### Linting Configuration
+
 - **golangci-lint:** 20+ enabled linters
 - **Complexity:** Max 15 cyclomatic, 20 cognitive
 - **Line length:** 120 characters
@@ -144,6 +152,7 @@ Overrides:
 ## Development Workflow
 
 ### Quick Start
+
 ```bash
 # 1. Setup (one-time)
 make setup              # Installs Go tools, pnpm deps, templ CLI
@@ -161,45 +170,52 @@ make docker-dev         # Full containerized environment
 ### Docker Compose Profiles
 
 **Profile: `dev` (Development)**
+
 ```bash
 docker compose --profile dev up ldap-manager-dev
 ```
+
 - Source mounted for live reload
 - LDAP server + phpLDAPadmin
 - Debug logging enabled
 - Go module caching
 
 **Profile: `test` (Testing)**
+
 ```bash
 docker compose --profile test run --rm ldap-manager-test
 ```
+
 - Runs `make check` in container
 - Integration tests with real LDAP
 - Coverage validation
 
 **Profile: `prod` (Production)**
+
 ```bash
 docker compose --profile prod up ldap-manager
 ```
+
 - Production build target
 - Health checks enabled
 - BBolt session persistence
 
 ### Key Commands
 
-| Command | Purpose |
-|---------|---------|
-| `make help` | Show all available targets |
-| `make build` | Build binary with version info |
-| `make test` | Full test suite with 80% coverage |
-| `make test-quick` | Quick tests without coverage |
-| `make lint` | Run all linters (golangci, security, format) |
-| `make fix` | Auto-fix formatting issues |
-| `make dev` | Hot reload dev server (CSS + templates + Go) |
-| `make check` | Quality gate (lint + test) |
-| `make clean` | Remove artifacts and caches |
+| Command           | Purpose                                      |
+| ----------------- | -------------------------------------------- |
+| `make help`       | Show all available targets                   |
+| `make build`      | Build binary with version info               |
+| `make test`       | Full test suite with 80% coverage            |
+| `make test-quick` | Quick tests without coverage                 |
+| `make lint`       | Run all linters (golangci, security, format) |
+| `make fix`        | Auto-fix formatting issues                   |
+| `make dev`        | Hot reload dev server (CSS + templates + Go) |
+| `make check`      | Quality gate (lint + test)                   |
+| `make clean`      | Remove artifacts and caches                  |
 
 ### Asset Pipeline
+
 ```bash
 # Frontend assets (CSS + templates)
 pnpm build:assets       # Build both CSS and templates
@@ -217,12 +233,14 @@ pnpm templ:dev          # Watch templates only
 ## Security Posture
 
 ### Authentication & Authorization
+
 - **Session-based:** HTTP-only cookies with SameSite=Strict
 - **Storage:** BBolt encrypted database or memory
 - **Expiration:** Configurable (default 30 minutes)
 - **User context:** All operations run with authenticated user's LDAP credentials
 
 ### Input Validation
+
 ```go
 // LDAP injection prevention (internal/ldap/)
 func escapeLDAPFilter(input string) string {
@@ -236,12 +254,14 @@ func validateUserInput(form map[string]string) error {
 ```
 
 ### Secrets Management
+
 - **Never in VCS:** Enforced by detect-secrets baseline
 - **Environment variables:** All secrets via env vars or .env file
 - **No logging:** Passwords/tokens never logged (enforced in code reviews)
 - **LDAPS support:** TLS encryption for Active Directory
 
 ### Security Scanning
+
 - **Vulnerability checks:** govulncheck in CI
 - **Dependency scanning:** Renovate bot for automated updates
 - **Container scanning:** Docker image security checks
@@ -254,15 +274,18 @@ func validateUserInput(form map[string]string) error {
 ### 2025-09-30: AGENTS.md Agentization (Commit 8136c2b)
 
 **Added Files:**
+
 - `AGENTS.md` (root) - Global conventions, house rules, index
 - `cmd/AGENTS.md` - CLI entry point patterns
 - `internal/AGENTS.md` - Core Go best practices
 - `internal/web/AGENTS.md` - HTTP handlers, Fiber, Templ patterns
 
 **Modified:**
+
 - `.envrc` - Added welcome message with `make help` reminder
 
 **Benefits:**
+
 - AI-assisted development with scoped guidelines
 - Nearest-file-wins precedence for context
 - Comprehensive development patterns and examples
@@ -275,6 +298,7 @@ func validateUserInput(form map[string]string) error {
 ### Immediate Actions (Start Here)
 
 1. **Setup Development Environment**
+
    ```bash
    direnv allow           # Load environment
    make setup             # Install dependencies
@@ -282,6 +306,7 @@ func validateUserInput(form map[string]string) error {
    ```
 
 2. **Verify Setup**
+
    ```bash
    make check             # Should pass all quality gates
    git status             # Currently ahead 1 commit (AGENTS.md)
@@ -328,6 +353,7 @@ func validateUserInput(form map[string]string) error {
 ## File Organization Quick Reference
 
 ### Where to Put Files
+
 ```
 claudedocs/              # Claude-specific reports, analyses
 tests/ or __tests__/     # Test files (not next to source)
@@ -338,6 +364,7 @@ cmd/                     # CLI entry points
 ```
 
 ### AGENTS.md Precedence
+
 1. `internal/web/AGENTS.md` (most specific)
 2. `internal/AGENTS.md`
 3. `cmd/AGENTS.md`
@@ -378,4 +405,4 @@ LDAP Manager is a well-architected, production-ready application with excellent 
 
 ---
 
-*Report generated by comprehensive project context loading with Sequential MCP analysis*
+_Report generated by comprehensive project context loading with Sequential MCP analysis_

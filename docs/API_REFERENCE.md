@@ -49,6 +49,7 @@ Authenticate user and create session.
 #### Request
 
 **Form Data:**
+
 ```
 username=jdoe
 password=SecurePass123
@@ -61,6 +62,7 @@ csrf_token=<generated-token>
 
 **Code:** `302 Found`
 **Headers:**
+
 ```
 Location: /
 Set-Cookie: session_id=...; HttpOnly; Secure; SameSite=Strict
@@ -70,6 +72,7 @@ Set-Cookie: session_id=...; HttpOnly; Secure; SameSite=Strict
 
 **Code:** `401 Unauthorized`
 **Content:**
+
 ```json
 {
   "error": "invalid_credentials",
@@ -79,6 +82,7 @@ Set-Cookie: session_id=...; HttpOnly; Secure; SameSite=Strict
 
 **Code:** `400 Bad Request`
 **Content:**
+
 ```json
 {
   "error": "missing_fields",
@@ -108,6 +112,7 @@ Terminate user session.
 
 **Code:** `302 Found`
 **Headers:**
+
 ```
 Location: /login
 Set-Cookie: session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT
@@ -137,6 +142,7 @@ Basic health check endpoint.
 
 **Code:** `200 OK`
 **Content:**
+
 ```json
 {
   "status": "healthy",
@@ -149,6 +155,7 @@ Basic health check endpoint.
 
 **Code:** `503 Service Unavailable`
 **Content:**
+
 ```json
 {
   "status": "unhealthy",
@@ -178,6 +185,7 @@ Readiness probe with dependency checks.
 
 **Code:** `200 OK`
 **Content:**
+
 ```json
 {
   "status": "ready",
@@ -194,6 +202,7 @@ Readiness probe with dependency checks.
 
 **Code:** `503 Service Unavailable`
 **Content:**
+
 ```json
 {
   "status": "not_ready",
@@ -228,6 +237,7 @@ Liveness probe for restart detection.
 
 **Code:** `200 OK`
 **Content:**
+
 ```json
 {
   "status": "alive",
@@ -257,6 +267,7 @@ Template cache statistics (authenticated endpoint for monitoring).
 
 **Code:** `200 OK`
 **Content:**
+
 ```json
 {
   "total_entries": 42,
@@ -290,6 +301,7 @@ LDAP connection pool statistics.
 
 **Code:** `200 OK`
 **Content:**
+
 ```json
 {
   "active_connections": 3,
@@ -327,6 +339,7 @@ Dashboard/home page (redirects to users list).
 **Code:** `200 OK`
 **Content-Type:** `text/html`
 **Headers:**
+
 ```
 X-Cache: HIT | MISS
 ```
@@ -350,17 +363,18 @@ List all LDAP users.
 
 #### Query Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `search` | string | ❌ No | Filter users by name/email |
-| `page` | integer | ❌ No | Pagination page (default: 1) |
-| `limit` | integer | ❌ No | Results per page (default: 50, max: 100) |
+| Parameter | Type    | Required | Description                              |
+| --------- | ------- | -------- | ---------------------------------------- |
+| `search`  | string  | ❌ No    | Filter users by name/email               |
+| `page`    | integer | ❌ No    | Pagination page (default: 1)             |
+| `limit`   | integer | ❌ No    | Results per page (default: 50, max: 100) |
 
 #### Success Response
 
 **Code:** `200 OK`
 **Content-Type:** `text/html`
 **Headers:**
+
 ```
 X-Cache: HIT | MISS
 ```
@@ -387,9 +401,9 @@ Display single user details.
 
 #### URL Parameters
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `userDN` | URL-encoded user Distinguished Name | `cn%3Djdoe%2Cou%3Dusers%2Cdc%3Dexample%2Cdc%3Dcom` |
+| Parameter | Description                         | Example                                            |
+| --------- | ----------------------------------- | -------------------------------------------------- |
+| `userDN`  | URL-encoded user Distinguished Name | `cn%3Djdoe%2Cou%3Dusers%2Cdc%3Dexample%2Cdc%3Dcom` |
 
 #### Success Response
 
@@ -397,6 +411,7 @@ Display single user details.
 **Content-Type:** `text/html`
 
 **Rendered HTML with:**
+
 - User attributes (cn, mail, telephoneNumber, etc.)
 - Group memberships
 - Modification form with CSRF token
@@ -405,6 +420,7 @@ Display single user details.
 
 **Code:** `404 Not Found`
 **Content:**
+
 ```json
 {
   "error": "user_not_found",
@@ -432,13 +448,14 @@ Modify user attributes.
 
 #### URL Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `userDN` | URL-encoded user Distinguished Name |
+| Parameter | Description                         |
+| --------- | ----------------------------------- |
+| `userDN`  | URL-encoded user Distinguished Name |
 
 #### Request
 
 **Form Data:**
+
 ```
 csrf_token=<token>
 mail=newemail@example.com
@@ -450,6 +467,7 @@ description=Updated description
 
 **Code:** `302 Found`
 **Headers:**
+
 ```
 Location: /users/:userDN
 Set-Cookie: flash_message=User updated successfully
@@ -459,6 +477,7 @@ Set-Cookie: flash_message=User updated successfully
 
 **Code:** `400 Bad Request`
 **Content:**
+
 ```json
 {
   "error": "validation_failed",
@@ -469,6 +488,7 @@ Set-Cookie: flash_message=User updated successfully
 
 **Code:** `403 Forbidden`
 **Content:**
+
 ```json
 {
   "error": "insufficient_permissions",
@@ -502,6 +522,7 @@ List all LDAP groups.
 **Content-Type:** `text/html`
 
 **Rendered HTML with:**
+
 - Group list table
 - Member counts
 - Links to group details
@@ -525,8 +546,8 @@ Display single group details.
 
 #### URL Parameters
 
-| Parameter | Description |
-|-----------|-------------|
+| Parameter | Description                          |
+| --------- | ------------------------------------ |
 | `groupDN` | URL-encoded group Distinguished Name |
 
 #### Success Response
@@ -535,6 +556,7 @@ Display single group details.
 **Content-Type:** `text/html`
 
 **Rendered HTML with:**
+
 - Group attributes
 - Member list
 - Modification form
@@ -553,6 +575,7 @@ Modify group (add/remove members).
 #### Request
 
 **Form Data:**
+
 ```
 csrf_token=<token>
 action=add_member | remove_member
@@ -563,6 +586,7 @@ member_dn=cn=jdoe,ou=users,dc=example,dc=com
 
 **Code:** `302 Found`
 **Headers:**
+
 ```
 Location: /groups/:groupDN
 Set-Cookie: flash_message=Member added successfully
@@ -636,16 +660,16 @@ All error responses follow this structure:
 
 ### Common Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `invalid_credentials` | 401 | Authentication failed |
-| `session_expired` | 401 | Session timeout, re-login required |
-| `unauthorized` | 403 | Insufficient permissions |
-| `not_found` | 404 | Resource doesn't exist |
-| `validation_failed` | 400 | Input validation error |
-| `csrf_invalid` | 403 | CSRF token missing or invalid |
-| `ldap_error` | 500 | LDAP operation failed |
-| `internal_error` | 500 | Unexpected server error |
+| Code                  | HTTP Status | Description                        |
+| --------------------- | ----------- | ---------------------------------- |
+| `invalid_credentials` | 401         | Authentication failed              |
+| `session_expired`     | 401         | Session timeout, re-login required |
+| `unauthorized`        | 403         | Insufficient permissions           |
+| `not_found`           | 404         | Resource doesn't exist             |
+| `validation_failed`   | 400         | Input validation error             |
+| `csrf_invalid`        | 403         | CSRF token missing or invalid      |
+| `ldap_error`          | 500         | LDAP operation failed              |
+| `internal_error`      | 500         | Unexpected server error            |
 
 ---
 
@@ -702,6 +726,7 @@ All error responses follow this structure:
 ### cURL Examples
 
 **Login:**
+
 ```bash
 # Get CSRF token from login page first
 curl -c cookies.txt http://localhost:3000/login
@@ -714,11 +739,13 @@ curl -b cookies.txt -X POST http://localhost:3000/login \
 ```
 
 **List Users:**
+
 ```bash
 curl -b cookies.txt http://localhost:3000/users
 ```
 
 **Modify User:**
+
 ```bash
 curl -b cookies.txt -X POST \
   "http://localhost:3000/users/cn%3Djdoe%2Cou%3Dusers%2Cdc%3Dexample%2Cdc%3Dcom" \
@@ -737,4 +764,4 @@ curl -b cookies.txt -X POST \
 
 ---
 
-*Last Updated: 2025-09-30 | Version: 1.0.8*
+_Last Updated: 2025-09-30 | Version: 1.0.8_

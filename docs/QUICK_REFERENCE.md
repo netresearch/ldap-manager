@@ -10,38 +10,38 @@ Instant-access information for daily development and operations.
 
 ### Development
 
-| Command | Purpose | Time |
-|---------|---------|------|
-| `make help` | Show all available targets | <1s |
-| `make setup` | Install all dependencies (one-time) | ~2min |
-| `make dev` | Start hot-reload dev server | ~5s |
-| `make build` | Build production binary | ~10s |
-| `make test` | Run full test suite with coverage | ~30s |
-| `make test-quick` | Quick tests without coverage | ~15s |
-| `make lint` | Run all linters | ~20s |
-| `make fix` | Auto-fix formatting issues | ~5s |
-| `make check` | Quality gate (lint + test) | ~45s |
-| `make clean` | Remove artifacts and caches | ~2s |
+| Command           | Purpose                             | Time  |
+| ----------------- | ----------------------------------- | ----- |
+| `make help`       | Show all available targets          | <1s   |
+| `make setup`      | Install all dependencies (one-time) | ~2min |
+| `make dev`        | Start hot-reload dev server         | ~5s   |
+| `make build`      | Build production binary             | ~10s  |
+| `make test`       | Run full test suite with coverage   | ~30s  |
+| `make test-quick` | Quick tests without coverage        | ~15s  |
+| `make lint`       | Run all linters                     | ~20s  |
+| `make fix`        | Auto-fix formatting issues          | ~5s   |
+| `make check`      | Quality gate (lint + test)          | ~45s  |
+| `make clean`      | Remove artifacts and caches         | ~2s   |
 
 ### Docker
 
-| Command | Purpose |
-|---------|---------|
-| `make docker-dev` | Full containerized dev environment |
-| `make docker-test` | Run tests in container |
-| `make docker-lint` | Run linter in container |
-| `make docker-shell` | Open shell in dev container |
-| `docker compose --profile dev up` | Start dev profile |
-| `docker compose --profile test run --rm ldap-manager-test` | Run tests |
+| Command                                                    | Purpose                            |
+| ---------------------------------------------------------- | ---------------------------------- |
+| `make docker-dev`                                          | Full containerized dev environment |
+| `make docker-test`                                         | Run tests in container             |
+| `make docker-lint`                                         | Run linter in container            |
+| `make docker-shell`                                        | Open shell in dev container        |
+| `docker compose --profile dev up`                          | Start dev profile                  |
+| `docker compose --profile test run --rm ldap-manager-test` | Run tests                          |
 
 ### Frontend Assets
 
-| Command | Purpose |
-|---------|---------|
-| `pnpm build:assets` | Build CSS + templates |
-| `pnpm css:build:prod` | Minified CSS with purging |
-| `pnpm templ:build` | Generate Go from .templ files |
-| `pnpm dev` | Watch all (CSS + templates + Go) |
+| Command               | Purpose                          |
+| --------------------- | -------------------------------- |
+| `pnpm build:assets`   | Build CSS + templates            |
+| `pnpm css:build:prod` | Minified CSS with purging        |
+| `pnpm templ:build`    | Generate Go from .templ files    |
+| `pnpm dev`            | Watch all (CSS + templates + Go) |
 
 ---
 
@@ -49,37 +49,37 @@ Instant-access information for daily development and operations.
 
 ### Configuration
 
-| File | Purpose | Modify? |
-|------|---------|---------|
-| `.env` | Development secrets (gitignored) | ✅ Yes |
-| `.env.example` | Configuration template | ⚠️ Update when adding vars |
-| `.envrc` | direnv environment setup | ⚠️ Rarely |
-| `compose.yml` | Docker services (3 profiles) | ⚠️ Rarely |
-| `.golangci.yml` | Linter configuration | ⚠️ Rarely |
-| `.testcoverage.yml` | Coverage thresholds | ⚠️ Rarely |
-| `Makefile` | Build commands | ⚠️ Rarely |
+| File                | Purpose                          | Modify?                    |
+| ------------------- | -------------------------------- | -------------------------- |
+| `.env`              | Development secrets (gitignored) | ✅ Yes                     |
+| `.env.example`      | Configuration template           | ⚠️ Update when adding vars |
+| `.envrc`            | direnv environment setup         | ⚠️ Rarely                  |
+| `compose.yml`       | Docker services (3 profiles)     | ⚠️ Rarely                  |
+| `.golangci.yml`     | Linter configuration             | ⚠️ Rarely                  |
+| `.testcoverage.yml` | Coverage thresholds              | ⚠️ Rarely                  |
+| `Makefile`          | Build commands                   | ⚠️ Rarely                  |
 
 ### Documentation
 
-| File | Purpose |
-|------|---------|
-| `README.md` | Project overview + quick start |
-| `docs/INDEX.md` | 📌 Master documentation hub |
-| `docs/API_REFERENCE.md` | Complete endpoint reference |
-| `AGENTS.md` (root) | AI assistant global rules |
-| `internal/AGENTS.md` | Go best practices |
-| `internal/web/AGENTS.md` | Web handler patterns |
+| File                     | Purpose                        |
+| ------------------------ | ------------------------------ |
+| `README.md`              | Project overview + quick start |
+| `docs/INDEX.md`          | 📌 Master documentation hub    |
+| `docs/API_REFERENCE.md`  | Complete endpoint reference    |
+| `AGENTS.md` (root)       | AI assistant global rules      |
+| `internal/AGENTS.md`     | Go best practices              |
+| `internal/web/AGENTS.md` | Web handler patterns           |
 
 ### Source Code
 
-| Package | Purpose | Coverage |
-|---------|---------|----------|
-| `cmd/ldap-manager/` | Application entry point | N/A |
-| `internal/ldap/` | LDAP client & connection pool | 75% |
-| `internal/ldap_cache/` | Caching layer | **90%** |
-| `internal/options/` | Configuration parsing | 75% |
-| `internal/version/` | Build version info | N/A |
-| `internal/web/` | HTTP handlers & templates | 75% |
+| Package                | Purpose                       | Coverage |
+| ---------------------- | ----------------------------- | -------- |
+| `cmd/ldap-manager/`    | Application entry point       | N/A      |
+| `internal/ldap/`       | LDAP client & connection pool | 75%      |
+| `internal/ldap_cache/` | Caching layer                 | **90%**  |
+| `internal/options/`    | Configuration parsing         | 75%      |
+| `internal/version/`    | Build version info            | N/A      |
+| `internal/web/`        | HTTP handlers & templates     | 75%      |
 
 ---
 
@@ -87,32 +87,32 @@ Instant-access information for daily development and operations.
 
 ### Build/Test Issues
 
-| Problem | Quick Fix | Details |
-|---------|-----------|---------|
-| Build fails | `make clean && make setup` | [Setup Guide](development/setup.md) |
-| Tests fail | Check LDAP server: `docker compose ps` | [Docker Dev](DOCKER_DEVELOPMENT.md) |
-| Lint fails | `make fix` first, then `make lint` | [AGENTS.md](../AGENTS.md#minimal-pre-commit-checks) |
-| Templates not compiling | `pnpm templ:build` | [Web AGENTS.md](../internal/web/AGENTS.md#template-development) |
-| CSS not updating | `pnpm css:build` | [Web AGENTS.md](../internal/web/AGENTS.md#frontend-assets--styling) |
+| Problem                 | Quick Fix                              | Details                                                             |
+| ----------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| Build fails             | `make clean && make setup`             | [Setup Guide](development/setup.md)                                 |
+| Tests fail              | Check LDAP server: `docker compose ps` | [Docker Dev](DOCKER_DEVELOPMENT.md)                                 |
+| Lint fails              | `make fix` first, then `make lint`     | [AGENTS.md](../AGENTS.md#minimal-pre-commit-checks)                 |
+| Templates not compiling | `pnpm templ:build`                     | [Web AGENTS.md](../internal/web/AGENTS.md#template-development)     |
+| CSS not updating        | `pnpm css:build`                       | [Web AGENTS.md](../internal/web/AGENTS.md#frontend-assets--styling) |
 
 ### Runtime Issues
 
-| Problem | Quick Fix |
-|---------|-----------|
-| Can't connect to LDAP | Check `.env` LDAP settings |
-| Session expires immediately | Check `SESSION_DURATION` env var |
-| CSRF errors | Clear cookies and re-login |
-| 404 on `/static/*` | Run `pnpm build:assets` |
-| Slow performance | Check `/debug/cache` and `/debug/ldap-pool` |
+| Problem                     | Quick Fix                                   |
+| --------------------------- | ------------------------------------------- |
+| Can't connect to LDAP       | Check `.env` LDAP settings                  |
+| Session expires immediately | Check `SESSION_DURATION` env var            |
+| CSRF errors                 | Clear cookies and re-login                  |
+| 404 on `/static/*`          | Run `pnpm build:assets`                     |
+| Slow performance            | Check `/debug/cache` and `/debug/ldap-pool` |
 
 ### Docker Issues
 
-| Problem | Quick Fix |
-|---------|-----------|
-| Port already in use | Change port in `compose.yml` or stop conflicting service |
-| LDAP server not starting | `docker compose logs openldap` |
-| Volume permission errors | Run with correct user or fix volume permissions |
-| Out of disk space | `docker system prune -a` (⚠️ deletes all unused images) |
+| Problem                  | Quick Fix                                                |
+| ------------------------ | -------------------------------------------------------- |
+| Port already in use      | Change port in `compose.yml` or stop conflicting service |
+| LDAP server not starting | `docker compose logs openldap`                           |
+| Volume permission errors | Run with correct user or fix volume permissions          |
+| Out of disk space        | `docker system prune -a` (⚠️ deletes all unused images)  |
 
 ---
 
@@ -225,17 +225,20 @@ pnpm build:assets   # ✅ Assets build successfully
 ### CI/CD Pipeline
 
 **quality.yml** (runs on push/PR):
+
 - Go linting (golangci-lint)
 - Security scanning (govulncheck)
 - Secret detection
 - Code formatting validation
 
 **check.yml** (runs on push/PR):
+
 - Full test suite
 - Coverage validation (80% minimum)
 - Race detection
 
 **docker.yml** (runs on tag):
+
 - Docker image build
 - Multi-arch support
 - Registry push
@@ -246,23 +249,23 @@ pnpm build:assets   # ✅ Assets build successfully
 
 ### Required
 
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `LDAP_SERVER` | LDAP server URL | `ldaps://dc1.example.com:636` |
-| `LDAP_BASE_DN` | Search base | `DC=example,DC=com` |
-| `LDAP_READONLY_USER` | Bind username | `cn=readonly,dc=example,dc=com` |
-| `LDAP_READONLY_PASSWORD` | Bind password | `SecurePassword123` |
+| Variable                 | Purpose         | Example                         |
+| ------------------------ | --------------- | ------------------------------- |
+| `LDAP_SERVER`            | LDAP server URL | `ldaps://dc1.example.com:636`   |
+| `LDAP_BASE_DN`           | Search base     | `DC=example,DC=com`             |
+| `LDAP_READONLY_USER`     | Bind username   | `cn=readonly,dc=example,dc=com` |
+| `LDAP_READONLY_PASSWORD` | Bind password   | `SecurePassword123`             |
 
 ### Optional
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PORT` | `3000` | HTTP listen port |
-| `LOG_LEVEL` | `info` | Logging level (debug/info/warn/error) |
-| `SESSION_DURATION` | `30m` | Session timeout |
-| `PERSIST_SESSIONS` | `false` | Use BBolt for persistent sessions |
-| `SESSION_PATH` | `/data/session.bbolt` | BBolt database path |
-| `LDAP_IS_AD` | `false` | Active Directory mode |
+| Variable           | Default               | Purpose                               |
+| ------------------ | --------------------- | ------------------------------------- |
+| `PORT`             | `3000`                | HTTP listen port                      |
+| `LOG_LEVEL`        | `info`                | Logging level (debug/info/warn/error) |
+| `SESSION_DURATION` | `30m`                 | Session timeout                       |
+| `PERSIST_SESSIONS` | `false`               | Use BBolt for persistent sessions     |
+| `SESSION_PATH`     | `/data/session.bbolt` | BBolt database path                   |
+| `LDAP_IS_AD`       | `false`               | Active Directory mode                 |
 
 ---
 
@@ -321,6 +324,7 @@ pnpm build:assets   # ✅ Assets build successfully
 **Quick:** Check [docs/INDEX.md](INDEX.md) for navigation to all documentation
 
 **Detailed:**
+
 - **User issues:** [docs/user-guide/](user-guide/)
 - **Dev questions:** [docs/development/](development/)
 - **Ops problems:** [docs/operations/](operations/)
@@ -328,4 +332,4 @@ pnpm build:assets   # ✅ Assets build successfully
 
 ---
 
-*Keep this card bookmarked for instant access to daily development information.*
+_Keep this card bookmarked for instant access to daily development information._

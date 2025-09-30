@@ -22,36 +22,36 @@ Choose your path:
 
 Get started with installation, configuration, and API usage:
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **[Installation Guide](user-guide/installation.md)** | Docker & native setup instructions | Sysadmins, DevOps |
-| **[Configuration Reference](user-guide/configuration.md)** | Complete configuration options & examples | Administrators |
-| **[API Documentation](user-guide/api.md)** | REST API endpoints & usage | Developers, Integrators |
-| **[Implementation Examples](user-guide/implementation-examples.md)** | Real-world scenarios & tutorials | All users |
+| Document                                                             | Purpose                                   | Audience                |
+| -------------------------------------------------------------------- | ----------------------------------------- | ----------------------- |
+| **[Installation Guide](user-guide/installation.md)**                 | Docker & native setup instructions        | Sysadmins, DevOps       |
+| **[Configuration Reference](user-guide/configuration.md)**           | Complete configuration options & examples | Administrators          |
+| **[API Documentation](user-guide/api.md)**                           | REST API endpoints & usage                | Developers, Integrators |
+| **[Implementation Examples](user-guide/implementation-examples.md)** | Real-world scenarios & tutorials          | All users               |
 
 ### For Developers
 
 Contributing, architecture, and development practices:
 
-| Document | Purpose | Cross-References |
-|----------|---------|------------------|
-| **[Development Setup](development/setup.md)** | Local environment configuration | → [AGENTS.md](../AGENTS.md), [Docker Dev](DOCKER_DEVELOPMENT.md) |
-| **[Contributing Guidelines](development/contributing.md)** | Code standards & PR workflow | → [AGENTS.md](../AGENTS.md), [Architecture](development/architecture.md) |
-| **[Architecture Overview](development/architecture.md)** | System design & patterns | → [Detailed Architecture](development/architecture-detailed.md) |
-| **[Architecture Detailed](development/architecture-detailed.md)** | Comprehensive technical deep-dive | → [API](user-guide/api.md), [Go Docs](development/go-doc-reference.md) |
-| **[Go Documentation](development/go-doc-reference.md)** | Package API reference | → [Architecture](development/architecture.md) |
+| Document                                                          | Purpose                           | Cross-References                                                         |
+| ----------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| **[Development Setup](development/setup.md)**                     | Local environment configuration   | → [AGENTS.md](../AGENTS.md), [Docker Dev](DOCKER_DEVELOPMENT.md)         |
+| **[Contributing Guidelines](development/contributing.md)**        | Code standards & PR workflow      | → [AGENTS.md](../AGENTS.md), [Architecture](development/architecture.md) |
+| **[Architecture Overview](development/architecture.md)**          | System design & patterns          | → [Detailed Architecture](development/architecture-detailed.md)          |
+| **[Architecture Detailed](development/architecture-detailed.md)** | Comprehensive technical deep-dive | → [API](user-guide/api.md), [Go Docs](development/go-doc-reference.md)   |
+| **[Go Documentation](development/go-doc-reference.md)**           | Package API reference             | → [Architecture](development/architecture.md)                            |
 
 ### For Operations
 
 Deployment, monitoring, and production management:
 
-| Document | Purpose | Integration Points |
-|----------|---------|-------------------|
-| **[Deployment Guide](operations/deployment.md)** | Production deployment strategies | → [Configuration](user-guide/configuration.md), [Docker](DOCKER_DEVELOPMENT.md) |
-| **[Monitoring & Troubleshooting](operations/monitoring.md)** | Operational procedures | → [Health Endpoints](user-guide/api.md#health-checks), [Performance](operations/performance-optimization.md) |
-| **[Performance Optimization](operations/performance-optimization.md)** | Tuning & optimization | → [Architecture](development/architecture.md#performance), [Troubleshooting](operations/troubleshooting.md) |
-| **[Security Configuration](operations/security-configuration.md)** | Hardening & best practices | → [Configuration](user-guide/configuration.md), [Architecture](development/architecture.md#security) |
-| **[Troubleshooting Guide](operations/troubleshooting.md)** | Problem resolution | → [Monitoring](operations/monitoring.md), [Logs Analysis](operations/monitoring.md#logging) |
+| Document                                                               | Purpose                          | Integration Points                                                                                           |
+| ---------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **[Deployment Guide](operations/deployment.md)**                       | Production deployment strategies | → [Configuration](user-guide/configuration.md), [Docker](DOCKER_DEVELOPMENT.md)                              |
+| **[Monitoring & Troubleshooting](operations/monitoring.md)**           | Operational procedures           | → [Health Endpoints](user-guide/api.md#health-checks), [Performance](operations/performance-optimization.md) |
+| **[Performance Optimization](operations/performance-optimization.md)** | Tuning & optimization            | → [Architecture](development/architecture.md#performance), [Troubleshooting](operations/troubleshooting.md)  |
+| **[Security Configuration](operations/security-configuration.md)**     | Hardening & best practices       | → [Configuration](user-guide/configuration.md), [Architecture](development/architecture.md#security)         |
+| **[Troubleshooting Guide](operations/troubleshooting.md)**             | Problem resolution               | → [Monitoring](operations/monitoring.md), [Logs Analysis](operations/monitoring.md#logging)                  |
 
 ---
 
@@ -59,12 +59,12 @@ Deployment, monitoring, and production management:
 
 New! AI coding assistant guidelines with scoped context:
 
-| File | Scope | Use When |
-|------|-------|----------|
-| **[AGENTS.md](../AGENTS.md)** (root) | Global conventions & house rules | Starting any task, PR reviews |
-| **[cmd/AGENTS.md](../cmd/AGENTS.md)** | CLI entry point patterns | Working on main.go, startup |
-| **[internal/AGENTS.md](../internal/AGENTS.md)** | Core Go best practices | Business logic, LDAP ops |
-| **[internal/web/AGENTS.md](../internal/web/AGENTS.md)** | HTTP handlers, Templ, Fiber | Web development, templates |
+| File                                                    | Scope                            | Use When                      |
+| ------------------------------------------------------- | -------------------------------- | ----------------------------- |
+| **[AGENTS.md](../AGENTS.md)** (root)                    | Global conventions & house rules | Starting any task, PR reviews |
+| **[cmd/AGENTS.md](../cmd/AGENTS.md)**                   | CLI entry point patterns         | Working on main.go, startup   |
+| **[internal/AGENTS.md](../internal/AGENTS.md)**         | Core Go best practices           | Business logic, LDAP ops      |
+| **[internal/web/AGENTS.md](../internal/web/AGENTS.md)** | HTTP handlers, Templ, Fiber      | Web development, templates    |
 
 **Precedence Rule:** Nearest AGENTS.md wins. Use the closest file to your work location.
 
@@ -74,36 +74,36 @@ New! AI coding assistant guidelines with scoped context:
 
 ### Common Tasks
 
-| Task | Command | Documentation |
-|------|---------|---------------|
-| Setup development | `make setup` | [Development Setup](development/setup.md) |
-| Start dev server | `make dev` | [Docker Development](DOCKER_DEVELOPMENT.md) |
-| Run tests | `make test` | [Contributing](development/contributing.md#testing) |
-| Run linter | `make lint` | [AGENTS.md](../AGENTS.md#minimal-pre-commit-checks) |
-| Build production | `make build` | [Deployment](operations/deployment.md) |
-| Health check | `curl /health` | [API Docs](user-guide/api.md#health-checks) |
+| Task              | Command        | Documentation                                       |
+| ----------------- | -------------- | --------------------------------------------------- |
+| Setup development | `make setup`   | [Development Setup](development/setup.md)           |
+| Start dev server  | `make dev`     | [Docker Development](DOCKER_DEVELOPMENT.md)         |
+| Run tests         | `make test`    | [Contributing](development/contributing.md#testing) |
+| Run linter        | `make lint`    | [AGENTS.md](../AGENTS.md#minimal-pre-commit-checks) |
+| Build production  | `make build`   | [Deployment](operations/deployment.md)              |
+| Health check      | `curl /health` | [API Docs](user-guide/api.md#health-checks)         |
 
 ### Key Endpoints
 
-| Endpoint | Purpose | Auth Required |
-|----------|---------|---------------|
-| `GET /health` | Health check | ❌ No |
-| `POST /login` | Authentication | ❌ No |
-| `GET /users` | List all users | ✅ Yes |
-| `GET /groups` | List all groups | ✅ Yes |
-| `GET /computers` | List computers | ✅ Yes |
+| Endpoint         | Purpose         | Auth Required |
+| ---------------- | --------------- | ------------- |
+| `GET /health`    | Health check    | ❌ No         |
+| `POST /login`    | Authentication  | ❌ No         |
+| `GET /users`     | List all users  | ✅ Yes        |
+| `GET /groups`    | List all groups | ✅ Yes        |
+| `GET /computers` | List computers  | ✅ Yes        |
 
 📖 **Full API Reference:** [user-guide/api.md](user-guide/api.md)
 
 ### Configuration Locations
 
-| File | Purpose | Environment |
-|------|---------|-------------|
-| `.env` | Development secrets | Local dev |
-| `.env.example` | Configuration template | All |
-| `compose.yml` | Docker services | Dev/Test/Prod |
-| `.golangci.yml` | Linter configuration | CI/CD |
-| `Makefile` | Build commands | All |
+| File            | Purpose                | Environment   |
+| --------------- | ---------------------- | ------------- |
+| `.env`          | Development secrets    | Local dev     |
+| `.env.example`  | Configuration template | All           |
+| `compose.yml`   | Docker services        | Dev/Test/Prod |
+| `.golangci.yml` | Linter configuration   | CI/CD         |
+| `Makefile`      | Build commands         | All           |
 
 ---
 
@@ -136,13 +136,13 @@ ldap-manager/
 
 Critical security information and best practices:
 
-| Topic | Documentation | Priority |
-|-------|---------------|----------|
-| Authentication | [Architecture § Security](development/architecture.md#security-architecture) | 🔴 Critical |
-| Session Management | [Security Config](operations/security-configuration.md) | 🔴 Critical |
-| LDAP Injection Prevention | [AGENTS.md § Security](../internal/AGENTS.md#security--safety) | 🔴 Critical |
-| Secrets Management | [Configuration](user-guide/configuration.md#secrets) | 🔴 Critical |
-| Input Validation | [Web AGENTS.md](../internal/web/AGENTS.md#security--safety) | 🟡 Important |
+| Topic                     | Documentation                                                                | Priority     |
+| ------------------------- | ---------------------------------------------------------------------------- | ------------ |
+| Authentication            | [Architecture § Security](development/architecture.md#security-architecture) | 🔴 Critical  |
+| Session Management        | [Security Config](operations/security-configuration.md)                      | 🔴 Critical  |
+| LDAP Injection Prevention | [AGENTS.md § Security](../internal/AGENTS.md#security--safety)               | 🔴 Critical  |
+| Secrets Management        | [Configuration](user-guide/configuration.md#secrets)                         | 🔴 Critical  |
+| Input Validation          | [Web AGENTS.md](../internal/web/AGENTS.md#security--safety)                  | 🟡 Important |
 
 ---
 
@@ -188,12 +188,12 @@ Current project health indicators:
 
 ### Common Issues
 
-| Problem | Solution | Reference |
-|---------|----------|-----------|
-| Build fails | `make clean && make setup` | [Setup](development/setup.md) |
-| Tests fail | Check LDAP server running | [Docker Dev](DOCKER_DEVELOPMENT.md) |
-| Can't connect | Verify .env configuration | [Configuration](user-guide/configuration.md) |
-| Performance issues | Check cache settings | [Performance](operations/performance-optimization.md) |
+| Problem            | Solution                   | Reference                                             |
+| ------------------ | -------------------------- | ----------------------------------------------------- |
+| Build fails        | `make clean && make setup` | [Setup](development/setup.md)                         |
+| Tests fail         | Check LDAP server running  | [Docker Dev](DOCKER_DEVELOPMENT.md)                   |
+| Can't connect      | Verify .env configuration  | [Configuration](user-guide/configuration.md)          |
+| Performance issues | Check cache settings       | [Performance](operations/performance-optimization.md) |
 
 ---
 
@@ -221,17 +221,20 @@ Current project health indicators:
 Based on your role:
 
 ### 👤 Users
+
 1. Read [Installation Guide](user-guide/installation.md)
 2. Configure via [Configuration Reference](user-guide/configuration.md)
 3. Deploy using [Deployment Guide](operations/deployment.md)
 
 ### 👨‍💻 Developers
+
 1. Setup environment: [Development Setup](development/setup.md)
 2. Read [AGENTS.md](../AGENTS.md) for AI-assisted coding
 3. Review [Architecture](development/architecture.md)
 4. Start coding with `make dev`
 
 ### ⚙️ Operations
+
 1. Plan deployment: [Deployment Guide](operations/deployment.md)
 2. Configure monitoring: [Monitoring](operations/monitoring.md)
 3. Harden security: [Security Configuration](operations/security-configuration.md)
@@ -244,6 +247,6 @@ LDAP Manager is licensed under the MIT license. See [LICENSE](../LICENSE) for de
 
 ---
 
-*This index is maintained automatically and manually. Last comprehensive update: 2025-09-30*
+_This index is maintained automatically and manually. Last comprehensive update: 2025-09-30_
 
 **📌 Bookmark this page** - it's your hub for all LDAP Manager documentation.

@@ -4,7 +4,7 @@
 
 This file explains repo-wide conventions and where to find scoped rules.
 
-**Precedence:** the *closest* `AGENTS.md` to your changes wins. Root holds global defaults only.
+**Precedence:** the _closest_ `AGENTS.md` to your changes wins. Root holds global defaults only.
 
 ## Project Overview
 
