@@ -29,9 +29,9 @@ RUN apk add --no-cache nodejs=22.16.0-r2 npm=11.3.0-r1 && \
 
 # Install Go development tools
 RUN go install github.com/a-h/templ/cmd/templ@v0.3.943 && \
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-    go install golang.org/x/tools/cmd/goimports@latest && \
-    go install mvdan.cc/gofumpt@latest
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0 && \
+    go install golang.org/x/tools/cmd/goimports@v0.37.0 && \
+    go install mvdan.cc/gofumpt@v0.9.1
 
 # Copy dependency files first for better caching
 COPY go.mod go.sum ./
