@@ -96,12 +96,12 @@ jobs:
       openldap:
         image: osixia/openldap:1.5.0
         env:
-          LDAP_ADMIN_USERNAME: admin
+          LDAP_ORGANISATION: Test Org
+          LDAP_DOMAIN: test.local
           LDAP_ADMIN_PASSWORD: admin
-          LDAP_ROOT: dc=test,dc=local
         ports:
-          - 1389:1389
-        options: --health-cmd="ldapsearch -x -H ldap://localhost:1389 -b dc=test,dc=local" --health-interval=10s --health-timeout=5s --health-retries=5
+          - 1389:389
+        options: --health-cmd="ldapsearch -x -H ldap://localhost -b dc=test,dc=local -D 'cn=admin,dc=test,dc=local' -w admin" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
       - name: Checkout code
@@ -269,7 +269,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: "ldap-manager:test"
           format: "sarif"
