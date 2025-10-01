@@ -90,8 +90,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Copy compiled CSS from frontend builder
-COPY --from=frontend-builder /build/internal/web/static/styles.css /build/internal/web/static/styles.css
+# Copy compiled CSS files and manifest from frontend builder (including hashed versions for cache busting)
+COPY --from=frontend-builder /build/internal/web/static/*.css /build/internal/web/static/
+COPY --from=frontend-builder /build/internal/web/static/manifest.json /build/internal/web/static/manifest.json
 
 # Generate Go templates from .templ files
 RUN templ generate

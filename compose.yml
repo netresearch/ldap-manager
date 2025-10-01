@@ -81,15 +81,13 @@ services:
       - "3000:3000"
     environment:
       # LDAP connection settings
-      LDAP_HOST: "ldap-server"
-      LDAP_PORT: "389"
+      LDAP_SERVER: "ldap://ldap-server:389"
       LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_BIND_DN: "cn=admin,dc=netresearch,dc=local"
-      LDAP_BIND_PASSWORD: "admin"
-      LDAP_USE_TLS: "false"
+      LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
+      LDAP_READONLY_PASSWORD: "admin"
+      PERSIST_SESSIONS: "false"
 
-      # Session settings (BBolt-based as per requirement)
-      SESSION_PATH: "/data/session.bbolt"
+      # Session settings
       SESSION_SECRET: "dev-secret-change-in-production"
 
       # Application settings
