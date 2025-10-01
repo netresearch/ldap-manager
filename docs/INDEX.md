@@ -91,44 +91,49 @@ New! AI coding assistant guidelines with scoped context:
 Comprehensive technical analysis and session documentation (21 reports):
 
 ### Architecture & Design
-| Report | Focus | Last Updated |
-|--------|-------|--------------|
-| [**Project Context**](../claudedocs/project-context-2025-09-30.md) | Complete project overview with architecture, metrics, quality | 2025-09-30 |
-| [**Comprehensive Analysis**](../claudedocs/comprehensive-project-analysis.md) | Deep-dive technical analysis across all components | 2025-09-30 |
-| [**Architecture Detailed**](../claudedocs/comprehensive-analysis-final-report.md) | Final architecture report with recommendations | 2025-09-30 |
-| [**LDAP Connection Pooling**](../claudedocs/ldap-connection-pooling.md) | Connection pool design and optimization | 2025-09-30 |
+
+| Report                                                                            | Focus                                                         | Last Updated |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------ |
+| [**Project Context**](../claudedocs/project-context-2025-09-30.md)                | Complete project overview with architecture, metrics, quality | 2025-09-30   |
+| [**Comprehensive Analysis**](../claudedocs/comprehensive-project-analysis.md)     | Deep-dive technical analysis across all components            | 2025-09-30   |
+| [**Architecture Detailed**](../claudedocs/comprehensive-analysis-final-report.md) | Final architecture report with recommendations                | 2025-09-30   |
+| [**LDAP Connection Pooling**](../claudedocs/ldap-connection-pooling.md)           | Connection pool design and optimization                       | 2025-09-30   |
 
 ### Security & Quality
-| Report | Focus | Last Updated |
-|--------|-------|--------------|
-| [**Security Analysis**](../claudedocs/security-analysis-report.md) | Comprehensive security audit and recommendations | 2025-09-30 |
-| [**Security Implementation**](../claudedocs/security-implementation.md) | Security features and best practices applied | 2025-09-30 |
-| [**Code Quality Analysis**](../claudedocs/code-quality-analysis.md) | Quality metrics, linting, technical debt assessment | 2025-09-30 |
-| [**Test Coverage Report**](../claudedocs/test-coverage-improvement-report.md) | Coverage analysis and improvement strategies | 2025-09-30 |
+
+| Report                                                                        | Focus                                               | Last Updated |
+| ----------------------------------------------------------------------------- | --------------------------------------------------- | ------------ |
+| [**Security Analysis**](../claudedocs/security-analysis-report.md)            | Comprehensive security audit and recommendations    | 2025-09-30   |
+| [**Security Implementation**](../claudedocs/security-implementation.md)       | Security features and best practices applied        | 2025-09-30   |
+| [**Code Quality Analysis**](../claudedocs/code-quality-analysis.md)           | Quality metrics, linting, technical debt assessment | 2025-09-30   |
+| [**Test Coverage Report**](../claudedocs/test-coverage-improvement-report.md) | Coverage analysis and improvement strategies        | 2025-09-30   |
 
 ### Performance & Optimization
-| Report | Focus | Last Updated |
-|--------|-------|--------------|
-| [**Template Caching**](../claudedocs/template-caching-performance-optimization.md) | Multi-level template cache optimization | 2025-09-30 |
-| [**Cache Optimization**](../claudedocs/cache-optimization-summary.md) | LDAP cache performance improvements | 2025-09-30 |
-| [**Frontend Optimization**](../claudedocs/frontend-optimization-results.md) | CSS, assets, and frontend performance | 2025-09-30 |
-| [**CSS Build Guide**](../claudedocs/css-build-optimization-guide.md) | TailwindCSS optimization and build process | 2025-09-30 |
+
+| Report                                                                             | Focus                                      | Last Updated |
+| ---------------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
+| [**Template Caching**](../claudedocs/template-caching-performance-optimization.md) | Multi-level template cache optimization    | 2025-09-30   |
+| [**Cache Optimization**](../claudedocs/cache-optimization-summary.md)              | LDAP cache performance improvements        | 2025-09-30   |
+| [**Frontend Optimization**](../claudedocs/frontend-optimization-results.md)        | CSS, assets, and frontend performance      | 2025-09-30   |
+| [**CSS Build Guide**](../claudedocs/css-build-optimization-guide.md)               | TailwindCSS optimization and build process | 2025-09-30   |
 
 ### Documentation & Implementation
-| Report | Focus | Last Updated |
-|--------|-------|--------------|
-| [**Documentation Index**](../claudedocs/documentation-index-report-2025-09-30.md) | Complete documentation structure and coverage | 2025-09-30 |
-| [**Inline Documentation**](../claudedocs/inline-documentation-report-2025-09-30.md) | Code documentation quality and standards | 2025-09-30 |
-| [**Implementation Summary**](../claudedocs/implementation-summary.md) | Feature implementation details and decisions | 2025-09-30 |
-| [**Frontend Fixes**](../claudedocs/frontend-fixes-implementation-summary.md) | Frontend bug fixes and improvements | 2025-09-30 |
+
+| Report                                                                              | Focus                                         | Last Updated |
+| ----------------------------------------------------------------------------------- | --------------------------------------------- | ------------ |
+| [**Documentation Index**](../claudedocs/documentation-index-report-2025-09-30.md)   | Complete documentation structure and coverage | 2025-09-30   |
+| [**Inline Documentation**](../claudedocs/inline-documentation-report-2025-09-30.md) | Code documentation quality and standards      | 2025-09-30   |
+| [**Implementation Summary**](../claudedocs/implementation-summary.md)               | Feature implementation details and decisions  | 2025-09-30   |
+| [**Frontend Fixes**](../claudedocs/frontend-fixes-implementation-summary.md)        | Frontend bug fixes and improvements           | 2025-09-30   |
 
 ### Project Maintenance
-| Report | Focus | Last Updated |
-|--------|-------|--------------|
-| [**Cleanup Analysis**](../claudedocs/cleanup_analysis.md) | Code cleanup and refactoring opportunities | 2025-09-30 |
-| [**Cleanup Report**](../claudedocs/cleanup_report.md) | Completed cleanup tasks | 2025-09-30 |
-| [**Frontend Analysis**](../claudedocs/comprehensive-frontend-analysis.md) | Complete frontend architecture review | 2025-09-30 |
-| [**CSS Analysis**](../claudedocs/css-analysis.md) | CSS structure and optimization opportunities | 2025-09-30 |
+
+| Report                                                                    | Focus                                        | Last Updated |
+| ------------------------------------------------------------------------- | -------------------------------------------- | ------------ |
+| [**Cleanup Analysis**](../claudedocs/cleanup_analysis.md)                 | Code cleanup and refactoring opportunities   | 2025-09-30   |
+| [**Cleanup Report**](../claudedocs/cleanup_report.md)                     | Completed cleanup tasks                      | 2025-09-30   |
+| [**Frontend Analysis**](../claudedocs/comprehensive-frontend-analysis.md) | Complete frontend architecture review        | 2025-09-30   |
+| [**CSS Analysis**](../claudedocs/css-analysis.md)                         | CSS structure and optimization opportunities | 2025-09-30   |
 
 **Purpose:** These reports provide deep technical insights for developers, architects, and operations teams. Generated during development sessions for knowledge preservation and decision documentation.
 
@@ -139,51 +144,57 @@ Comprehensive technical analysis and session documentation (21 reports):
 ### Core Packages
 
 #### internal/ldap_cache - LDAP Entity Caching (90% coverage)
-| File | Purpose | Key Functions |
-|------|---------|---------------|
-| `cache.go` | Generic indexed cache with O(1) lookups | `FindByDN()`, `FindBySAMAccountName()`, `buildIndexes()` |
-| `manager.go` | Cache manager with auto-refresh | `New()`, `Refresh()`, `WarmupCache()` |
-| `metrics.go` | Performance metrics and health tracking | `RecordCacheHit()`, `GetSummaryStats()` |
+
+| File         | Purpose                                 | Key Functions                                            |
+| ------------ | --------------------------------------- | -------------------------------------------------------- |
+| `cache.go`   | Generic indexed cache with O(1) lookups | `FindByDN()`, `FindBySAMAccountName()`, `buildIndexes()` |
+| `manager.go` | Cache manager with auto-refresh         | `New()`, `Refresh()`, `WarmupCache()`                    |
+| `metrics.go` | Performance metrics and health tracking | `RecordCacheHit()`, `GetSummaryStats()`                  |
 
 #### internal/ldap - LDAP Operations (Deprecated Pool Removed in PR #267)
-| File | Purpose | Key Functions |
-|------|---------|---------------|
-| `manager.go` | LDAP manager (deprecated, use simple-ldap-go) | Migrated to upstream |
-| `pool.go` | Connection pool (deprecated) | Replaced by upstream pooling |
+
+| File         | Purpose                                       | Key Functions                |
+| ------------ | --------------------------------------------- | ---------------------------- |
+| `manager.go` | LDAP manager (deprecated, use simple-ldap-go) | Migrated to upstream         |
+| `pool.go`    | Connection pool (deprecated)                  | Replaced by upstream pooling |
 
 #### internal/options - Configuration Management
-| File | Purpose | Key Functions |
-|------|---------|---------------|
+
+| File     | Purpose                       | Key Functions                                           |
+| -------- | ----------------------------- | ------------------------------------------------------- |
 | `app.go` | CLI flags and env var parsing | `Parse()`, `envDurationOrDefault()`, `panicWhenEmpty()` |
 
 #### internal/version - Build Version Info
-| File | Purpose | Key Functions |
-|------|---------|---------------|
+
+| File         | Purpose                 | Key Functions      |
+| ------------ | ----------------------- | ------------------ |
 | `version.go` | Build version injection | `GetVersionInfo()` |
 
 #### internal/web - HTTP Server & Handlers
-| File | Purpose | Key Functions |
-|------|---------|---------------|
-| `server.go` | Fiber app initialization and routing | `NewApp()`, `Listen()`, `createPoolConfig()` |
-| `auth.go` | Authentication and session management | `loginHandler()`, `RequireAuth()` |
-| `users.go` | User CRUD operations | `usersHandler()`, `userHandler()`, `userModifyHandler()` |
-| `groups.go` | Group CRUD operations | `groupsHandler()`, `groupHandler()`, `groupModifyHandler()` |
-| `computers.go` | Computer listing and details | `computersHandler()`, `computerHandler()` |
-| `health.go` | Health check endpoints | `healthHandler()`, `readinessHandler()`, `livenessHandler()` |
-| `middleware.go` | HTTP middleware | `RequireAuth()`, `templateCacheMiddleware()` |
-| `template_cache.go` | Template caching layer | `RenderWithCache()`, `InvalidateByPath()` |
-| `assets.go` | Static asset embedding | Asset serving via Fiber |
+
+| File                | Purpose                               | Key Functions                                                |
+| ------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| `server.go`         | Fiber app initialization and routing  | `NewApp()`, `Listen()`, `createPoolConfig()`                 |
+| `auth.go`           | Authentication and session management | `loginHandler()`, `RequireAuth()`                            |
+| `users.go`          | User CRUD operations                  | `usersHandler()`, `userHandler()`, `userModifyHandler()`     |
+| `groups.go`         | Group CRUD operations                 | `groupsHandler()`, `groupHandler()`, `groupModifyHandler()`  |
+| `computers.go`      | Computer listing and details          | `computersHandler()`, `computerHandler()`                    |
+| `health.go`         | Health check endpoints                | `healthHandler()`, `readinessHandler()`, `livenessHandler()` |
+| `middleware.go`     | HTTP middleware                       | `RequireAuth()`, `templateCacheMiddleware()`                 |
+| `template_cache.go` | Template caching layer                | `RenderWithCache()`, `InvalidateByPath()`                    |
+| `assets.go`         | Static asset embedding                | Asset serving via Fiber                                      |
 
 #### internal/web/templates - Templ Templates (Generated)
-| File | Purpose | Templates |
-|------|---------|-----------|
-| `base_templ.go` | Base HTML layout | `BaseLayout()` |
-| `login_templ.go` | Login page | `Login()` |
-| `users_templ.go` | User listing | `Users()` |
-| `groups_templ.go` | Group listing | `Groups()` |
-| `computer_templ.go` | Computer details | `Computer()` |
-| `errors_templ.go` | Error pages | `FourOhFour()`, `FiveHundred()` |
-| `flash.go` | Flash message utilities | `Flash()`, `GetFlashMessage()` |
+
+| File                | Purpose                 | Templates                       |
+| ------------------- | ----------------------- | ------------------------------- |
+| `base_templ.go`     | Base HTML layout        | `BaseLayout()`                  |
+| `login_templ.go`    | Login page              | `Login()`                       |
+| `users_templ.go`    | User listing            | `Users()`                       |
+| `groups_templ.go`   | Group listing           | `Groups()`                      |
+| `computer_templ.go` | Computer details        | `Computer()`                    |
+| `errors_templ.go`   | Error pages             | `FourOhFour()`, `FiveHundred()` |
+| `flash.go`          | Flash message utilities | `Flash()`, `GetFlashMessage()`  |
 
 📖 **Full API:** Run `make godoc` or see [Go Documentation](development/go-doc-reference.md)
 
@@ -216,15 +227,16 @@ Comprehensive technical analysis and session documentation (21 reports):
 
 ### Configuration Locations
 
-| File            | Purpose                | Environment   | Key Variables |
-| --------------- | ---------------------- | ------------- | ------------- |
+| File            | Purpose                | Environment   | Key Variables                    |
+| --------------- | ---------------------- | ------------- | -------------------------------- |
 | `.env`          | Development secrets    | Local dev     | LDAP credentials, session config |
-| `.env.example`  | Configuration template | All           | **NEW:** Pool timeout settings |
+| `.env.example`  | Configuration template | All           | **NEW:** Pool timeout settings   |
 | `compose.yml`   | Docker services        | Dev/Test/Prod | Service profiles (dev/test/prod) |
-| `.golangci.yml` | Linter configuration   | CI/CD         | 20+ linters enabled |
-| `Makefile`      | Build commands         | All           | 15+ targets available |
+| `.golangci.yml` | Linter configuration   | CI/CD         | 20+ linters enabled              |
+| `Makefile`      | Build commands         | All           | 15+ targets available            |
 
 **New in PR #267:** LDAP Pool Configuration
+
 ```bash
 LDAP_POOL_CONNECTION_TIMEOUT=30s    # TCP + TLS handshake timeout
 LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Pool acquisition timeout
@@ -293,29 +305,29 @@ Current project health indicators:
 
 ### Cache Performance (PR #267 Improvements)
 
-| Operation | Before (v1.0.3) | After (v1.5.0) | Improvement |
-|-----------|-----------------|----------------|-------------|
-| **DN Lookup** | O(n) linear search | O(1) hash index | **287x faster** |
-| **SAMAccountName Lookup** | O(n) linear search | O(1) hash index | **287x faster** |
-| **Cache Warmup** | Sequential | Parallel goroutines | 3x faster |
-| **Memory Overhead** | Slice only | Slice + indexes | +32 KB per 1000 users |
+| Operation                 | Before (v1.0.3)    | After (v1.5.0)      | Improvement           |
+| ------------------------- | ------------------ | ------------------- | --------------------- |
+| **DN Lookup**             | O(n) linear search | O(1) hash index     | **287x faster**       |
+| **SAMAccountName Lookup** | O(n) linear search | O(1) hash index     | **287x faster**       |
+| **Cache Warmup**          | Sequential         | Parallel goroutines | 3x faster             |
+| **Memory Overhead**       | Slice only         | Slice + indexes     | +32 KB per 1000 users |
 
 ### Connection Pool Performance
 
-| Metric | Value | Configuration |
-|--------|-------|---------------|
-| **Connection Reuse** | 95%+ hit rate | Credential-aware pooling |
-| **Avg Pool Acquisition** | <5ms | GetTimeout: 10s |
-| **TCP Handshake** | <100ms | ConnectionTimeout: 30s |
-| **Health Check Frequency** | 30s | Configurable |
+| Metric                     | Value         | Configuration            |
+| -------------------------- | ------------- | ------------------------ |
+| **Connection Reuse**       | 95%+ hit rate | Credential-aware pooling |
+| **Avg Pool Acquisition**   | <5ms          | GetTimeout: 10s          |
+| **TCP Handshake**          | <100ms        | ConnectionTimeout: 30s   |
+| **Health Check Frequency** | 30s           | Configurable             |
 
 ### Template Cache Performance
 
-| Metric | Value | Improvement |
-|--------|-------|-------------|
-| **Cache Hit Rate** | 85-95% | 10x faster rendering |
-| **Invalidation Speed** | <1ms | Path-based selective |
-| **Memory Usage** | ~50 MB for 1000 pages | LRU eviction |
+| Metric                 | Value                 | Improvement          |
+| ---------------------- | --------------------- | -------------------- |
+| **Cache Hit Rate**     | 85-95%                | 10x faster rendering |
+| **Invalidation Speed** | <1ms                  | Path-based selective |
+| **Memory Usage**       | ~50 MB for 1000 pages | LRU eviction         |
 
 📖 **Benchmarks:** Run `make bench` or see [Performance Optimization](operations/performance-optimization.md)
 
@@ -417,13 +429,13 @@ LDAP Manager is licensed under the MIT license. See [LICENSE](../LICENSE) for de
 
 ### Version History
 
-| Version | Date | Highlights |
-|---------|------|------------|
+| Version    | Date       | Highlights                                                                 |
+| ---------- | ---------- | -------------------------------------------------------------------------- |
 | **v1.0.8** | 2025-09-30 | PR #267: simple-ldap-go v1.5.0, Go modernization, performance improvements |
-| v1.0.7 | 2025-09-29 | Security hardening, CI/CD improvements |
-| v1.0.6 | 2025-09-28 | AGENTS.md agentization, documentation enhancements |
-| v1.0.5 | 2025-09-27 | Template caching optimization |
-| v1.0.0 | 2025-09-01 | Initial production release |
+| v1.0.7     | 2025-09-29 | Security hardening, CI/CD improvements                                     |
+| v1.0.6     | 2025-09-28 | AGENTS.md agentization, documentation enhancements                         |
+| v1.0.5     | 2025-09-27 | Template caching optimization                                              |
+| v1.0.0     | 2025-09-01 | Initial production release                                                 |
 
 ### Upcoming Roadmap
 
