@@ -1,12 +1,38 @@
-.github
+# Dependencies (rebuilt in container)
 node_modules
-docs
 
-internal/web/static/styles.css
-internal/web/static/js/*.js
-Dockerfile
-README.md
-LICENSE
+# Environment and secrets
 .env*
-.prettier*
-.gitignore
+*.env
+
+# Editor configurations
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Claude-specific documentation
+claudedocs
+
+# Logs and temporary files
+*.log
+tmp
+temp
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Test coverage and reports
+coverage
+*.coverprofile
+
+# Build artifacts (rebuilt in container)
+dist
+build
+*.test
+
+# Git hooks and local configs
+.git/hooks
+.husky
