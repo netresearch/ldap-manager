@@ -40,7 +40,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'ldapsearch -x -H ldap://localhost -b "$$LDAP_BASE_DN" -D "cn=admin,$$LDAP_BASE_DN" -w "$$LDAP_ADMIN_PASSWORD" -LLL || exit 1'
+          'ldapsearch -x -H ldap://localhost -b "$$LDAP_BASE_DN" -D "cn=admin,$$LDAP_BASE_DN" -w "$$LDAP_ADMIN_PASSWORD" -LLL'
         ]
       interval: 10s
       timeout: 5s
