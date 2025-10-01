@@ -151,12 +151,12 @@ Comprehensive technical analysis and session documentation (21 reports):
 | `manager.go` | Cache manager with auto-refresh         | `New()`, `Refresh()`, `WarmupCache()`                    |
 | `metrics.go` | Performance metrics and health tracking | `RecordCacheHit()`, `GetSummaryStats()`                  |
 
-#### internal/ldap - LDAP Operations (Deprecated Pool Removed in PR #267)
+#### internal/ldap - LDAP Connection Pool Management
 
-| File         | Purpose                                       | Key Functions                |
-| ------------ | --------------------------------------------- | ---------------------------- |
-| `manager.go` | LDAP manager (deprecated, use simple-ldap-go) | Migrated to upstream         |
-| `pool.go`    | Connection pool (deprecated)                  | Replaced by upstream pooling |
+| File         | Purpose                                          | Key Functions                                           |
+| ------------ | ------------------------------------------------ | ------------------------------------------------------- |
+| `pool.go`    | Credential-aware connection pool implementation  | `NewConnectionPool()`, `AcquireConnection()`, `Close()` |
+| `manager.go` | High-level pool manager with convenience methods | `NewPoolManager()`, `WithCredentials()`, `GetStats()`   |
 
 #### internal/options - Configuration Management
 
