@@ -36,10 +36,16 @@ services:
     networks:
       - ldap-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -b dc=netresearch,dc=local -D 'cn=admin,dc=netresearch,dc=local' -w admin -LLL || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # phpLDAPadmin for LDAP management (optional)
   phpldapadmin:
-    image: osixia/phpldapadmin:latest
+    image: osixia/phpldapadmin:0.9.0
     container_name: phpldapadmin
     hostname: phpldapadmin
     ports:
@@ -54,11 +60,16 @@ services:
     restart: unless-stopped
 
   # LDAP Manager application (production build)
+  # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
   ldap-manager:
     build:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        # Build metadata - set via environment or use defaults
+        BUILD_DATE: ${BUILD_DATE:-dev-build}
+        VCS_REF: ${VCS_REF:-local}
     container_name: ldap-manager
     hostname: ldap-manager
     ports:
@@ -86,7 +97,8 @@ services:
       # Persistent storage for BBolt session database
       - ldap_sessions:/data
     depends_on:
-      - openldap
+      openldap:
+        condition: service_healthy
     networks:
       - ldap-network
     restart: unless-stopped
@@ -100,11 +112,16 @@ services:
       - prod
 
   # LDAP Manager development container
+  # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
   ldap-manager-dev:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
+      args:
+        # Build metadata - optional for dev builds
+        BUILD_DATE: ${BUILD_DATE:-dev-build}
+        VCS_REF: ${VCS_REF:-local}
     container_name: ldap-manager-dev
     hostname: ldap-manager-dev
     ports:
@@ -138,7 +155,8 @@ services:
       - go_modules:/go/pkg/mod
       - go_cache:/root/.cache/go-build
     depends_on:
-      - openldap
+      openldap:
+        condition: service_healthy
     networks:
       - ldap-network
     working_dir: /app
@@ -147,11 +165,16 @@ services:
       - dev
 
   # Test runner container
+  # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
   ldap-manager-test:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
+      args:
+        # Build metadata - optional for test builds
+        BUILD_DATE: ${BUILD_DATE:-test-build}
+        VCS_REF: ${VCS_REF:-local}
     container_name: ldap-manager-test
     hostname: ldap-manager-test
     environment:
@@ -174,7 +197,8 @@ services:
       - go_modules:/go/pkg/mod
       - go_cache:/root/.cache/go-build
     depends_on:
-      - openldap
+      openldap:
+        condition: service_healthy
     networks:
       - ldap-network
     working_dir: /app
