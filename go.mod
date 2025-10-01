@@ -82,3 +82,6 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Temporary: Use fork with pool warmup fix until PR #46 is merged upstream
+replace github.com/netresearch/simple-ldap-go => github.com/CybotTM/simple-ldap-go v1.5.1-0.20251001211708-56794b98a3cb
