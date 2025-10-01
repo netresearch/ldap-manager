@@ -30,15 +30,14 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /app
 
 # Install system dependencies for development
+# and install pnpm globally (corepack not available in Alpine nodejs package)
 RUN apk add --no-cache \
     git=2.49.1-r0 \
     make=4.4.1-r3 \
     curl=8.14.1-r1 \
     nodejs=22.16.0-r2 \
-    npm=11.3.0-r1
-
-# Install pnpm globally (corepack not available in Alpine nodejs package)
-RUN npm install -g pnpm@10.17.1
+    npm=11.3.0-r1 && \
+    npm install -g pnpm@10.17.1
 
 # Install Go development tools with cache mount
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -49,12 +48,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go install mvdan.cc/gofumpt@v0.9.1
 
 # Copy dependency files first for better caching
-COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+COPY go.mod go.sum package.json pnpm-lock.yaml ./
 
-COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+# Download Go modules and install Node dependencies with cache mounts
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.local/share/pnpm/store \
+    go mod download && \
     pnpm install --frozen-lockfile
 
 # Note: Source code is mounted at runtime via compose.yml, not copied here
