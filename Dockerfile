@@ -103,7 +103,8 @@ RUN templ generate
 # - Cache mount for faster builds
 RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     PACKAGE="github.com/netresearch/ldap-manager/internal/version" && \
-    VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null | sed 's/^.//')" && \
+    VERSION_RAW="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null)" && \
+    VERSION="${VERSION_RAW#v}" && \
     COMMIT_HASH="$(git rev-parse --short HEAD)" && \
     BUILD_TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ') && \
     CGO_ENABLED=0 go build \
