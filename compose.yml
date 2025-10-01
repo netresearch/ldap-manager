@@ -37,11 +37,11 @@ services:
       - ldap-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -b dc=netresearch,dc=local -D 'cn=admin,dc=netresearch,dc=local' -w admin -LLL || exit 1"]
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -b \"$$LDAP_BASE_DN\" -D \"cn=admin,$$LDAP_BASE_DN\" -w \"$$LDAP_ADMIN_PASSWORD\" -LLL || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   # phpLDAPadmin for LDAP management (optional)
   phpldapadmin:
@@ -67,9 +67,10 @@ services:
       dockerfile: Dockerfile
       target: runner
       args:
-        # Build metadata - set via environment or use defaults
-        BUILD_DATE: ${BUILD_DATE:-dev-build}
-        VCS_REF: ${VCS_REF:-local}
+        # Build metadata - set via environment or leave empty for dev builds
+        # Use proper ISO 8601 timestamp if set: BUILD_DATE=2024-01-01T00:00:00Z
+        BUILD_DATE: ${BUILD_DATE}
+        VCS_REF: ${VCS_REF}
     container_name: ldap-manager
     hostname: ldap-manager
     ports:
@@ -120,8 +121,8 @@ services:
       target: dev
       args:
         # Build metadata - optional for dev builds
-        BUILD_DATE: ${BUILD_DATE:-dev-build}
-        VCS_REF: ${VCS_REF:-local}
+        BUILD_DATE: ${BUILD_DATE}
+        VCS_REF: ${VCS_REF}
     container_name: ldap-manager-dev
     hostname: ldap-manager-dev
     ports:
@@ -173,8 +174,8 @@ services:
       target: dev
       args:
         # Build metadata - optional for test builds
-        BUILD_DATE: ${BUILD_DATE:-test-build}
-        VCS_REF: ${VCS_REF:-local}
+        BUILD_DATE: ${BUILD_DATE}
+        VCS_REF: ${VCS_REF}
     container_name: ldap-manager-test
     hostname: ldap-manager-test
     environment:

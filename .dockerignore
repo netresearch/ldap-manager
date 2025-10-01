@@ -36,3 +36,6 @@ build
 # Git hooks and local configs
 .git/hooks
 .husky
+
+# CI/CD workflows (not needed in builds)
+.github
