@@ -40,6 +40,7 @@ docker compose --profile prod up
 ```
 
 **Development Features:**
+
 - 🔄 Live reload - source code mounted at runtime
 - 📦 Cache optimization - BuildKit cache mounts for 60% faster builds
 - 🏥 Health checks - automatic dependency ordering (LDAP ready before app starts)
@@ -74,6 +75,7 @@ pnpm build
 We publish optimized production images to [GitHub Container Registry](https://github.com/netresearch/ldap-manager/pkgs/container/ldap-manager):
 
 **Image Features:**
+
 - 📦 **13.1MB** - Minimal distroless runtime (70% smaller than Alpine)
 - 🛡️ **Security hardened** - Nonroot user (UID 65532), read-only filesystem, no shell
 - ⚡ **Fast builds** - BuildKit cache mounts reduce rebuild time by 60%
