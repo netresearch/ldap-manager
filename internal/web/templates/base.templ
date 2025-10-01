@@ -1,7 +1,9 @@
 package templates
 
 templ base(title string) {
-	@baseWithAssets(title, "styles.css")
+	@baseWithAssets(title, "styles.css") {
+		{ children... }
+	}
 }
 
 templ baseWithAssets(title, stylesPath string) {
