@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.19
 # Enable BuildKit for advanced features like cache mounts
 
 # Frontend builder - builds Tailwind CSS
