@@ -14,7 +14,8 @@ COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies with cache mount for faster rebuilds
 # Cache persists between builds, avoiding re-downloads
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+# sharing=locked prevents race conditions in parallel builds
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
     pnpm install --frozen-lockfile
 
 # Copy source and build CSS
@@ -51,8 +52,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY go.mod go.sum package.json pnpm-lock.yaml ./
 
 # Download Go modules and install Node dependencies with cache mounts
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.local/share/pnpm/store \
+# sharing=locked prevents race conditions in parallel builds
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
     go mod download && \
     pnpm install --frozen-lockfile
 
@@ -103,7 +105,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     PACKAGE="github.com/netresearch/ldap-manager/internal/version" && \
     VERSION="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null | sed 's/^.//')" && \
     COMMIT_HASH="$(git rev-parse --short HEAD)" && \
-    BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S') && \
+    BUILD_TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ') && \
     CGO_ENABLED=0 go build \
       -o /build/ldap-passwd \
       -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'" \
