@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -65,12 +66,15 @@ func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
 
 // createSessionStore creates session store with configuration from options
 func createSessionStore(opts *options.Opts) *session.Store {
+	// Only use secure cookies in production (requires HTTPS)
+	isProduction := os.Getenv("ENVIRONMENT") != "development"
+
 	return session.New(session.Config{
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
 		CookieSameSite: "Strict",
-		CookieSecure:   true, // Enable secure flag for HTTPS
+		CookieSecure:   isProduction, // Only secure in production with HTTPS
 	})
 }
 
@@ -160,14 +164,19 @@ func setupMiddleware(f *fiber.App) {
 
 // createCSRFConfig creates and returns CSRF middleware configuration
 func createCSRFConfig() *fiber.Handler {
+	// Only use secure cookies in production (requires HTTPS)
+	// In development over HTTP, secure cookies won't work
+	isProduction := os.Getenv("ENVIRONMENT") != "development"
+
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
 		CookieSameSite: "Strict",
-		CookieSecure:   true,
+		CookieSecure:   isProduction, // Only secure in production with HTTPS
 		CookieHTTPOnly: true,
 		Expiration:     3600, // 1 hour
 		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
+		ContextKey:     "token", // Store token in c.Locals("token") for template access
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			log.Warn().Err(err).Msg("CSRF validation failed")
 			c.Status(fiber.StatusForbidden)
