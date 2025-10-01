@@ -1,9 +1,6 @@
 # Dependencies (rebuilt in container)
 node_modules
 
-# Git repository (reduces build context size)
-.git
-
 # Environment and secrets
 .env*
 *.env
