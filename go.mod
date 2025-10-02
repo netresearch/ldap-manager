@@ -82,3 +82,6 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Temporary: use main branch with complete pool fix (PR #48 + PR #50)
+replace github.com/netresearch/simple-ldap-go => github.com/netresearch/simple-ldap-go v0.0.0-20251002143417-144ab11e7c67
