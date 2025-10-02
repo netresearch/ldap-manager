@@ -27,6 +27,9 @@ type Opts struct {
 	SessionPath     string
 	SessionDuration time.Duration
 
+	// Cookie security settings
+	CookieSecure bool
+
 	// LDAP Connection Pool settings
 	PoolMaxConnections      int
 	PoolMinConnections      int
@@ -123,6 +126,10 @@ func Parse() *Opts {
 		fSessionDuration = flag.Duration("session-duration", envDurationOrDefault("SESSION_DURATION", 30*time.Minute),
 			"Duration of the session. (Only required when --persist-sessions is set)")
 
+		// Cookie security configuration
+		fCookieSecure = flag.Bool("cookie-secure", envBoolOrDefault("COOKIE_SECURE", true),
+			"Require HTTPS for session and CSRF cookies. Set to false only for HTTP-only environments. Defaults to true for security.")
+
 		// LDAP Connection Pool configuration
 		fPoolMaxConnections = flag.Int("pool-max-connections", envIntOrDefault("LDAP_POOL_MAX_CONNECTIONS", 10),
 			"Maximum number of connections in the LDAP connection pool.")
@@ -178,6 +185,8 @@ func Parse() *Opts {
 		PersistSessions: *fPersistSessions,
 		SessionPath:     *fSessionPath,
 		SessionDuration: *fSessionDuration,
+
+		CookieSecure: *fCookieSecure,
 
 		PoolMaxConnections:      *fPoolMaxConnections,
 		PoolMinConnections:      *fPoolMinConnections,

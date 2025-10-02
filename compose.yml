@@ -85,9 +85,12 @@ services:
       LDAP_BASE_DN: "dc=netresearch,dc=local"
       LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
       LDAP_READONLY_PASSWORD: "admin"
-      PERSIST_SESSIONS: "false"
+
+      # Cookie security (false for HTTP-only environments, true for HTTPS)
+      COOKIE_SECURE: "false"
 
       # Session settings
+      PERSIST_SESSIONS: "false"
       SESSION_SECRET: "dev-secret-change-in-production"
 
       # Application settings
