@@ -69,7 +69,7 @@ func createSessionStore(opts *options.Opts) *session.Store {
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
-		CookieSameSite: "Strict",
+		CookieSameSite: "Lax", // Lax allows cookies on redirects, Strict blocks them
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 	})
 }
@@ -166,7 +166,7 @@ func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
-		CookieSameSite: "Strict",
+		CookieSameSite: "Lax", // Lax allows cookies on redirects, Strict blocks them
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
 		Expiration:     3600, // 1 hour
