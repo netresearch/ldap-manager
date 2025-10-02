@@ -245,26 +245,58 @@ func (m *Manager) RefreshComputers() error {
 // Individual failures are logged as errors but don't stop other cache updates.
 // This method is called automatically by the background refresh loop.
 // Records comprehensive metrics for monitoring and observability.
+// Runs refresh operations in parallel to work around connection pool lifecycle issue
+// in simple-ldap-go where connections are closed instead of returned to pool.
 func (m *Manager) Refresh() {
 	startTime := m.metrics.RecordRefreshStart()
+
+	// Parallel refresh to work around simple-ldap-go connection pool bug
+	// where Find methods close connections instead of returning them to pool.
+	// Running in parallel ensures all operations get connections before any are closed.
+	type refreshResult struct {
+		name  string
+		count int
+		err   error
+	}
+
+	results := make(chan refreshResult, 3)
+
+	// Refresh users cache
+	go func() {
+		if err := m.RefreshUsers(); err != nil {
+			results <- refreshResult{"users", 0, err}
+		} else {
+			results <- refreshResult{"users", m.Users.Count(), nil}
+		}
+	}()
+
+	// Refresh groups cache
+	go func() {
+		if err := m.RefreshGroups(); err != nil {
+			results <- refreshResult{"groups", 0, err}
+		} else {
+			results <- refreshResult{"groups", m.Groups.Count(), nil}
+		}
+	}()
+
+	// Refresh computers cache
+	go func() {
+		if err := m.RefreshComputers(); err != nil {
+			results <- refreshResult{"computers", 0, err}
+		} else {
+			results <- refreshResult{"computers", m.Computers.Count(), nil}
+		}
+	}()
+
+	// Collect results
 	hasErrors := false
-
-	if err := m.RefreshUsers(); err != nil {
-		log.Error().Err(err).Msg("Failed to refresh users cache")
-		m.metrics.RecordRefreshError()
-		hasErrors = true
-	}
-
-	if err := m.RefreshGroups(); err != nil {
-		log.Error().Err(err).Msg("Failed to refresh groups cache")
-		m.metrics.RecordRefreshError()
-		hasErrors = true
-	}
-
-	if err := m.RefreshComputers(); err != nil {
-		log.Error().Err(err).Msg("Failed to refresh computers cache")
-		m.metrics.RecordRefreshError()
-		hasErrors = true
+	for i := 0; i < 3; i++ {
+		result := <-results
+		if result.err != nil {
+			log.Error().Err(result.err).Str("cache", result.name).Msg("Failed to refresh cache")
+			m.metrics.RecordRefreshError()
+			hasErrors = true
+		}
 	}
 
 	// Record successful completion metrics
