@@ -1,6 +1,6 @@
 # AGENTS.md — internal/web/
 
-<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2025-09-30 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2025-10-02 -->
 
 ## Overview
 
@@ -29,21 +29,24 @@ HTTP layer for LDAP Manager using Fiber v2 framework and Templ templates.
 ```bash
 # Install Go + Node dependencies
 make setup
+make setup-hooks  # Install pre-commit hooks
 
-# Install templ CLI
+# Install templ CLI (if not already installed)
 go install github.com/a-h/templ/cmd/templ@latest
 
 # Build frontend assets
 pnpm build:assets
 
 # Development mode (hot reload)
-make dev  # Watches: CSS, templates, Go files
+make dev    # Watches: CSS, templates, Go files
+make watch  # Alternative: watch and rebuild assets
 ```
 
-Environment variables:
+Environment variables (see `.envrc` or `.env`):
 
 - `PORT` — HTTP listen port (default: 3000)
-- `SESSION_KEY` — Secret key for session encryption
+- `SESSION_KEY` — Secret key for session encryption (auto-generated if not set)
+- `COOKIE_SECURE` — Set to `true` for HTTPS, `false` for HTTP-only
 - `LOG_LEVEL` — Logging level (debug/info/warn/error)
 
 ## Build & Tests (File-scoped)
@@ -293,7 +296,45 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 - Served at `/static/*` route
 - Cache busting: `scripts/cache-bust.mjs` adds hashes to filenames
 
-## PR/Commit Checklist
+## Code Style
+
+### Web Layer Standards
+- Run `make format-all` before commit (Go + JS/CSS)
+- Handlers must be thin - business logic belongs in `internal/ldap/`
+- All inputs must be validated and sanitized
+- Use `zerolog` for logging, never `console.log` or `fmt.Println()`
+- Templates use Templ syntax (`.templ` files compile to `*_templ.go`)
+- TailwindCSS v4 for styling - no custom CSS unless necessary
+
+### Security Requirements
+- **CSRF protection**: Enabled on all state-changing operations
+- **Cookie security**: `COOKIE_SECURE=true` for HTTPS environments
+- **Session handling**: HTTPOnly, SameSite=Strict, regenerate after login
+- **Input validation**: All user input validated before processing
+- **Error responses**: Never leak sensitive data in error messages
+
+## Security
+
+### Critical Web Security Rules
+- **CSRF**: All POST/PUT/DELETE endpoints require CSRF token validation
+- **Sessions**: Regenerate session ID after authentication
+- **Cookies**: Configure `COOKIE_SECURE=true` for HTTPS (see server.go:45-52)
+- **Headers**: Set security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+- **Input validation**: Validate all request data before processing
+- **Error handling**: Sanitize error messages to avoid leaking sensitive information
+
+### Session Configuration
+```go
+// Secure session configuration (see createSessionStore in server.go)
+session.Config{
+    CookieSecure:   opts.CookieSecure,  // true for HTTPS
+    CookieHTTPOnly: true,                // No JS access
+    CookieSameSite: "Strict",            // CSRF protection
+    Expiration:     opts.SessionDuration,
+}
+```
+
+## PR & Commit Checklist
 
 - [ ] Handlers are thin (business logic in `internal/ldap`)
 - [ ] All inputs validated and sanitized
@@ -304,10 +345,13 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 - [ ] Templates compiled (`pnpm templ:build`)
 - [ ] CSS built and minified (`pnpm css:build:prod`)
 - [ ] No console.log or debug prints in production code
+- [ ] `make format-all` - all code formatted
+- [ ] `make lint` - passes linters
+- [ ] `make test` - tests pass with coverage
 
-## Good vs. Bad Examples
+## Examples: Good vs Bad
 
-### Good: Clean handler internal/web/users.go:85
+### ✅ Good: Clean handler
 
 ```go
 func (s *Server) handleListUsers(c *fiber.Ctx) error {
@@ -325,7 +369,7 @@ func (s *Server) handleListUsers(c *fiber.Ctx) error {
 }
 ```
 
-### Bad: Mixed concerns
+### ❌ Bad: Mixed concerns
 
 ```go
 // BAD: LDAP logic + HTML rendering in handler
@@ -343,11 +387,41 @@ func BadHandler(c *fiber.Ctx) error {
 }
 ```
 
-## When Stuck
+### ✅ Good: Secure session handling
+
+```go
+// After successful login - regenerate session ID
+sess, _ := store.Get(c)
+sess.Regenerate()           // Prevent session fixation
+sess.Set("user_id", user.ID)
+sess.Save()
+```
+
+### ❌ Bad: Insecure session
+
+```go
+// Missing session regeneration - vulnerable to session fixation
+sess.Set("user_id", user.ID)
+sess.Save()
+```
+
+## When You're Stuck
 
 1. **Routing**: Check `server.go` for route setup patterns
-2. **Handlers**: Review existing handlers in `users.go`, `groups.go`
+2. **Handlers**: Review existing handlers in `users.go`, `groups.go`, `auth.go`
 3. **Templates**: See `templates/` for Templ component examples
 4. **Middleware**: Look at `middleware.go` for auth/logging patterns
-5. **Testing**: Check `handlers_test.go` for HTTP testing patterns
+5. **Testing**: Check `handlers_test.go` and `cookie_security_test.go` for patterns
 6. **Frontend**: Review `tailwind.config.js` and `package.json` scripts
+7. **Assets not building**: Run `make clean && pnpm install && pnpm build:assets`
+8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration
+
+## House Rules
+
+- **Thin handlers**: All business logic belongs in `internal/ldap/`, not in handlers
+- **Security first**: CSRF on POST/PUT/DELETE, session regeneration after auth
+- **Templ templates**: Never manually construct HTML - use `.templ` components
+- **TailwindCSS only**: No custom CSS unless absolutely necessary
+- **Structured logging**: Use `zerolog`, never `fmt.Println()` or `console.log`
+- **Asset pipeline**: `pnpm build:assets` required before deployment
+- **Cookie security**: Always configure `COOKIE_SECURE` based on HTTPS availability
