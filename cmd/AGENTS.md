@@ -1,6 +1,6 @@
 # AGENTS.md — cmd/
 
-<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2025-09-30 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2025-10-02 -->
 
 ## Overview
 
@@ -16,9 +16,13 @@ No special setup needed beyond root-level dependencies:
 
 ```bash
 make setup        # Install all dependencies
+make setup-hooks  # Install pre-commit hooks
 ```
 
-Environment variables are loaded from `.env` file (see `.env.example`).
+Environment variables are loaded from:
+1. `.envrc` (direnv - committed with help text)
+2. `.env` (local overrides - gitignored)
+3. CLI flags override all environment variables
 
 ## Build & Tests
 
@@ -96,17 +100,20 @@ fmt.Println("Starting server...") // Use logger instead
 - **Validation**: Validate all configuration before server start
 - **Graceful shutdown**: Always register signal handlers (SIGTERM, SIGINT)
 
-## PR/Commit Checklist
+## PR & Commit Checklist
 
-- [ ] Configuration changes documented in `.env.example`
+- [ ] Configuration changes documented in `.envrc` or `.env.example`
 - [ ] New CLI flags have help text (`-h` output)
 - [ ] Version info still builds correctly (`make build`)
 - [ ] No secrets in code or logs
 - [ ] Graceful shutdown tested manually
+- [ ] `make format-go` - code formatted
+- [ ] `make lint` - passes linters
+- [ ] `make test` - tests pass
 
-## Good vs. Bad Examples
+## Examples: Good vs Bad
 
-### Good: Minimal main.go
+### ✅ Good: Minimal main.go
 
 ```go
 // cmd/ldap-manager/main.go
@@ -121,7 +128,7 @@ func main() {
 }
 ```
 
-### Bad: Business logic in main
+### ❌ Bad: Business logic in main
 
 ```go
 // cmd/ldap-manager/main.go
@@ -136,9 +143,34 @@ func main() {
 }
 ```
 
-## When Stuck
+### ✅ Good: Error handling in main
+
+```go
+if err := loadConfig(); err != nil {
+    log.Fatal().Err(err).Msg("Failed to load configuration")
+    os.Exit(1)
+}
+```
+
+### ❌ Bad: Panic in main
+
+```go
+panic("config error") // Never do this - use log.Fatal() instead
+```
+
+## When You're Stuck
 
 1. Check existing patterns in `cmd/ldap-manager/main.go`
 2. Review `internal/options/` for configuration handling
 3. Look at `internal/web/server.go` for server initialization
 4. See root `README.md` for CLI usage examples
+5. Run `make help` for all available commands
+
+## House Rules
+
+- **Keep main() thin**: Only setup, start, shutdown - no business logic
+- **Configuration precedence**: CLI flags > env vars > .envrc > defaults
+- **Exit codes**: Use `os.Exit(1)` for errors, `os.Exit(0)` for clean shutdown
+- **No panic**: Use `log.Fatal()` instead of `panic()` in main
+- **Structured logging**: Always use `zerolog`, never `fmt.Println()`
+- **Graceful shutdown**: Always handle SIGTERM/SIGINT for clean shutdown

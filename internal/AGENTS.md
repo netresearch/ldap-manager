@@ -1,6 +1,6 @@
 # AGENTS.md — internal/
 
-<!-- Managed by agent: keep sections and order; edit content, not structure. Last updated: 2025-09-30 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2025-10-02 -->
 
 ## Overview
 
@@ -26,15 +26,17 @@ No special setup beyond root-level:
 
 ```bash
 make setup       # Installs Go tools and deps
+make setup-hooks # Install pre-commit hooks
 go mod download  # Just Go deps
 ```
 
-Required environment variables (see `.env.example`):
+Required environment variables (see `.envrc` or `.env`):
 
 - `LDAP_SERVER` — LDAP(S) server URL
 - `LDAP_BASE_DN` — Search base DN
-- `LDAP_READONLY_USER` — Bind user
+- `LDAP_READONLY_USER` — Bind user DN for initial connection
 - `LDAP_READONLY_PASSWORD` — Bind password
+- `COOKIE_SECURE` — Set to `true` for HTTPS, `false` for HTTP-only
 
 ## Build & Tests (File-scoped)
 
@@ -216,20 +218,47 @@ if err := ValidateUsername(input); err != nil {
 }
 ```
 
-## PR/Commit Checklist
+## Code Style
+
+### Go Code Standards
+- Run `make format-go` (gofumpt + goimports) before commit
+- All exported functions require godoc comments
+- No `panic()` in production code - handle all errors explicitly
+- Use `zerolog` for structured logging with appropriate levels
+- Follow SOLID, KISS, DRY, YAGNI principles
+- Configured in `.golangci.yml` and `.editorconfig`
+
+### Package Organization
+```
+internal/
+├── ldap/          # Domain: LDAP operations
+├── ldap_cache/    # Domain: Caching layer
+├── web/           # Domain: HTTP layer (see web/AGENTS.md)
+├── options/       # Domain: Configuration
+└── version/       # Domain: Build metadata
+```
+
+### Security Best Practices
+- **LDAP injection prevention**: Always use `ldap.EscapeFilter()` for user input
+- **Input validation**: Validate early, fail fast
+- **Secrets handling**: Never log passwords, tokens, or session IDs
+- **Error messages**: Redact sensitive data before returning
+
+## PR & Commit Checklist
 
 - [ ] All public functions have godoc comments
 - [ ] Errors include context (use `fmt.Errorf` with `%w`)
-- [ ] Tests cover new code (aim for 80%+ coverage)
+- [ ] Tests cover new code (≥80% coverage required)
 - [ ] No LDAP injection vulnerabilities (use escaping)
 - [ ] No sensitive data in logs
 - [ ] `go mod tidy` run after dependency changes
-- [ ] `make lint` passes
-- [ ] `make test` passes with coverage threshold met
+- [ ] `make format-go` - code formatted
+- [ ] `make lint` - passes all linters
+- [ ] `make test` - passes with coverage threshold
 
-## Good vs. Bad Examples
+## Examples: Good vs Bad
 
-### Good: Clean LDAP client internal/ldap/client.go:45
+### ✅ Good: Clean LDAP client
 
 ```go
 // Search performs an LDAP search with the given filter.
@@ -254,7 +283,7 @@ func (c *Client) Search(filter string) ([]User, error) {
 }
 ```
 
-### Bad: Unsafe query building
+### ❌ Bad: Unsafe query building
 
 ```go
 // BAD: LDAP injection vulnerability
@@ -264,10 +293,36 @@ func (c *Client) UnsafeSearch(username string) error {
 }
 ```
 
-## When Stuck
+### ✅ Good: Error wrapping with context
+
+```go
+if err := client.Search(filter); err != nil {
+    return fmt.Errorf("failed to search users with filter %q: %w", filter, err)
+}
+```
+
+### ❌ Bad: Generic errors without context
+
+```go
+return errors.New("search failed") // No context - where? why?
+```
+
+## When You're Stuck
 
 1. **LDAP operations**: Check `internal/ldap/` for existing patterns
-2. **Configuration**: See `internal/options/options.go` for struct tags
+2. **Configuration**: See `internal/options/options.go` for struct tags and flag definitions
 3. **Web handlers**: Review `internal/web/AGENTS.md` for HTTP patterns
 4. **Testing**: Look at existing `*_test.go` files for table-driven examples
 5. **Dependencies**: Use `internal/` packages for shared code, avoid circular deps
+6. **Build issues**: Run `make clean && make setup && make build`
+7. **Test failures**: Run `make test` for coverage, `make test-race` for race conditions
+
+## House Rules
+
+- **No panics**: Production code must handle all errors gracefully
+- **Test coverage**: Minimum 80% enforced by `.testcoverage.yml`
+- **LDAP safety**: Always escape user input with `ldap.EscapeFilter()`
+- **Error context**: Use `fmt.Errorf` with `%w` for error wrapping
+- **Logging**: Use `zerolog` for structured logging, never `fmt.Println()`
+- **Godoc**: All exported functions must have godoc comments
+- **Table-driven tests**: Use for multiple test cases, prefer `testify/assert`
