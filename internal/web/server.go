@@ -146,6 +146,9 @@ func setupMiddleware(f *fiber.App) {
 		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+		CrossOriginOpenerPolicy:   "same-origin-allow-popups", // Less strict for HTTP
+		CrossOriginEmbedderPolicy: "",                         // Disabled for HTTP compatibility
+		OriginAgentCluster:        "?0",                       // Disable origin-keyed agent cluster for HTTP
 	}))
 
 	f.Use(compress.New(compress.Config{
