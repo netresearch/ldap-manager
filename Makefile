@@ -325,7 +325,247 @@ serve: build
 	@echo "$(BLUE)Starting LDAP Manager...$(RESET)"
 	@./bin/ldap-manager
 
+# ============================================================================
+# Application Control Commands
+# ============================================================================
+
+## Up: Start all services (LDAP server + app)
+up:
+	@echo "$(BLUE)Starting all services...$(RESET)"
+	@docker compose --profile dev up -d
+	@echo "$(GREEN)✓ Services started$(RESET)"
+	@echo "$(YELLOW)App: http://localhost:3000$(RESET)"
+	@echo "$(YELLOW)phpLDAPadmin: http://localhost:8080$(RESET)"
+
+## Down: Stop all services
+down:
+	@echo "$(BLUE)Stopping all services...$(RESET)"
+	@docker compose down
+	@echo "$(GREEN)✓ Services stopped$(RESET)"
+
+## Restart: Restart all services
+restart: down up
+	@echo "$(GREEN)✓ Services restarted$(RESET)"
+
+## Start: Start services without rebuilding
+start:
+	@echo "$(BLUE)Starting services...$(RESET)"
+	@docker compose --profile dev start
+	@echo "$(GREEN)✓ Services started$(RESET)"
+
+## Stop: Stop services without removing containers
+stop:
+	@echo "$(BLUE)Stopping services...$(RESET)"
+	@docker compose stop
+	@echo "$(GREEN)✓ Services stopped$(RESET)"
+
+## Logs: Show logs from all services
+logs:
+	@docker compose logs -f
+
+## Logs App: Show logs from app only
+logs-app:
+	@docker compose logs -f ldap-manager-dev
+
+## Logs LDAP: Show logs from LDAP server
+logs-ldap:
+	@docker compose logs -f openldap
+
+## PS: Show running services
+ps:
+	@docker compose ps
+
+## Shell App: Open shell in app container
+shell-app:
+	@echo "$(BLUE)Opening shell in app container...$(RESET)"
+	@docker compose exec ldap-manager-dev sh || docker compose run --rm ldap-manager-dev sh
+
+## Shell LDAP: Open shell in LDAP container
+shell-ldap:
+	@echo "$(BLUE)Opening shell in LDAP container...$(RESET)"
+	@docker compose exec openldap bash
+
+## Rebuild: Rebuild and restart services
+rebuild:
+	@echo "$(BLUE)Rebuilding services...$(RESET)"
+	@docker compose build ldap-manager-dev
+	@docker compose --profile dev up -d --force-recreate ldap-manager-dev
+	@echo "$(GREEN)✓ Services rebuilt and restarted$(RESET)"
+
+## Fresh: Clean everything and start fresh
+fresh: docker-clean
+	@echo "$(BLUE)Starting fresh environment...$(RESET)"
+	@docker compose build ldap-manager-dev
+	@docker compose --profile dev up -d
+	@echo "$(GREEN)✓ Fresh environment ready$(RESET)"
+
+# ============================================================================
+# Development Workflow Commands
+# ============================================================================
+
+## Watch: Watch and rebuild assets on change
+watch:
+	@echo "$(BLUE)Watching for changes...$(RESET)"
+	@pnpm dev
+
+## CSS Build: Build CSS only
+css:
+	@echo "$(BLUE)Building CSS...$(RESET)"
+	@pnpm css:build:prod
+	@echo "$(GREEN)✓ CSS built$(RESET)"
+
+## CSS Watch: Watch and rebuild CSS
+css-watch:
+	@echo "$(BLUE)Watching CSS...$(RESET)"
+	@pnpm css:dev
+
+## Templates: Generate Go templates from .templ files
+templates:
+	@echo "$(BLUE)Generating templates...$(RESET)"
+	@pnpm templ:build
+	@echo "$(GREEN)✓ Templates generated$(RESET)"
+
+## Templates Watch: Watch and regenerate templates
+templates-watch:
+	@echo "$(BLUE)Watching templates...$(RESET)"
+	@pnpm templ:dev
+
+## Format Go: Format Go code
+format-go:
+	@echo "$(BLUE)Formatting Go code...$(RESET)"
+	@gofumpt -w .
+	@goimports -w .
+	@echo "$(GREEN)✓ Go code formatted$(RESET)"
+
+## Format JS: Format JavaScript/JSON/CSS
+format-js:
+	@echo "$(BLUE)Formatting JS/JSON/CSS...$(RESET)"
+	@pnpm prettier --write .
+	@echo "$(GREEN)✓ JS/JSON/CSS formatted$(RESET)"
+
+## Format All: Format all code
+format-all: format-go format-js
+	@echo "$(GREEN)✓ All code formatted$(RESET)"
+
+# ============================================================================
+# Database/LDAP Management
+# ============================================================================
+
+## LDAP Reset: Reset LDAP database
+ldap-reset:
+	@echo "$(YELLOW)⚠️ This will delete all LDAP data. Continue? [y/N]$(RESET)"
+	@read -r response; \
+	if [ "$$response" = "y" ] || [ "$$response" = "Y" ]; then \
+		echo "$(BLUE)Resetting LDAP database...$(RESET)"; \
+		docker compose down openldap; \
+		docker volume rm ldap-manager_ldap_data ldap-manager_ldap_config || true; \
+		docker compose up -d openldap; \
+		echo "$(GREEN)✓ LDAP database reset$(RESET)"; \
+	else \
+		echo "$(YELLOW)LDAP reset cancelled$(RESET)"; \
+	fi
+
+## LDAP Admin: Open phpLDAPadmin in browser
+ldap-admin:
+	@echo "$(BLUE)Opening phpLDAPadmin...$(RESET)"
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:8080 || \
+	 command -v open >/dev/null 2>&1 && open http://localhost:8080 || \
+	 echo "$(YELLOW)Open manually: http://localhost:8080$(RESET)"
+
+## Sessions Clean: Clean session database
+sessions-clean:
+	@echo "$(BLUE)Cleaning session database...$(RESET)"
+	@rm -f session.bbolt db.bbolt
+	@docker compose exec ldap-manager-dev rm -f /app/session.bbolt /app/db.bbolt 2>/dev/null || true
+	@echo "$(GREEN)✓ Session database cleaned$(RESET)"
+
+# ============================================================================
+# Monitoring & Debugging
+# ============================================================================
+
+## Health: Check service health
+health:
+	@echo "$(BLUE)Checking service health...$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)LDAP Server:$(RESET)"
+	@docker compose exec openldap ldapsearch -x -H ldap://localhost -b "dc=netresearch,dc=local" -D "cn=admin,dc=netresearch,dc=local" -w admin -LLL "(objectClass=*)" dn 2>/dev/null | head -5 && echo "$(GREEN)✓ LDAP healthy$(RESET)" || echo "$(RED)✗ LDAP unhealthy$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)App Health:$(RESET)"
+	@curl -sf http://localhost:3000/health >/dev/null && echo "$(GREEN)✓ App healthy$(RESET)" || echo "$(RED)✗ App unhealthy$(RESET)"
+	@echo ""
+
+## Stats: Show resource usage
+stats:
+	@echo "$(BLUE)Container resource usage:$(RESET)"
+	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $$(docker compose ps -q)
+
+## Inspect: Inspect app container
+inspect:
+	@docker compose exec ldap-manager-dev sh -c 'echo "=== Environment ===" && env | sort && echo "" && echo "=== Processes ===" && ps aux'
+
+## Debug: Start app in debug mode
+debug:
+	@echo "$(BLUE)Starting app in debug mode...$(RESET)"
+	@docker compose exec ldap-manager-dev go run -ldflags="-X main.debug=true" .
+
+# ============================================================================
+# Quick Access URLs
+# ============================================================================
+
+## Open: Open app in browser
+open:
+	@echo "$(BLUE)Opening app...$(RESET)"
+	@command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:3000 || \
+	 command -v open >/dev/null 2>&1 && open http://localhost:3000 || \
+	 echo "$(YELLOW)Open manually: http://localhost:3000$(RESET)"
+
+## URLs: Show all service URLs
+urls:
+	@echo "$(BLUE)Service URLs:$(RESET)"
+	@echo "  $(YELLOW)App:$(RESET)              http://localhost:3000"
+	@echo "  $(YELLOW)phpLDAPadmin:$(RESET)     http://localhost:8080"
+	@echo "  $(YELLOW)LDAP Server:$(RESET)      ldap://localhost:389"
+	@echo "  $(YELLOW)LDAPS Server:$(RESET)     ldaps://localhost:636"
+
+# ============================================================================
+# Git Workflow
+# ============================================================================
+
+## Git Status: Show git status with branch info
+git-status:
+	@git status
+	@echo ""
+	@echo "$(BLUE)Branch:$(RESET) $$(git branch --show-current)"
+	@echo "$(BLUE)Commits ahead of main:$(RESET) $$(git rev-list --count main..HEAD)"
+
+## Commit: Stage all and commit with message
+commit:
+	@echo "$(BLUE)Staging changes...$(RESET)"
+	@git add -A
+	@git status --short
+	@echo ""
+	@echo "$(YELLOW)Enter commit message:$(RESET)"
+	@read -r msg; \
+	if [ -n "$$msg" ]; then \
+		git commit -m "$$msg"; \
+		echo "$(GREEN)✓ Committed$(RESET)"; \
+	else \
+		echo "$(RED)✗ No commit message provided$(RESET)"; \
+	fi
+
+## Push: Push current branch
+push:
+	@echo "$(BLUE)Pushing to remote...$(RESET)"
+	@git push origin $$(git branch --show-current)
+	@echo "$(GREEN)✓ Pushed$(RESET)"
+
+# ============================================================================
 # Aliases for common commands
+# ============================================================================
 install: setup
 fmt: fix
 check-all: check
+run: up
+dev-start: up
+dev-stop: down
+app-logs: logs-app
