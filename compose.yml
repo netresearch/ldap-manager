@@ -46,6 +46,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    profiles:
+      - dev
 
   # phpLDAPadmin for LDAP management (optional)
   phpldapadmin:
@@ -62,6 +64,8 @@ services:
     networks:
       - ldap-network
     restart: unless-stopped
+    profiles:
+      - dev
 
   # LDAP Manager application (production build)
   # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
@@ -77,36 +81,30 @@ services:
         VCS_REF: ${VCS_REF}
     container_name: ldap-manager
     hostname: ldap-manager
-    ports:
-      - "3000:3000"
+    network_mode: host
+    # Load environment variables from .env file
+    env_file:
+      - .env
     environment:
-      # LDAP connection settings
-      LDAP_SERVER: "ldap://ldap-server:389"
-      LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "admin"
-
       # Cookie security (false for HTTP-only environments, true for HTTPS)
-      COOKIE_SECURE: "false"
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
 
       # Session settings
-      PERSIST_SESSIONS: "false"
-      SESSION_SECRET: "dev-secret-change-in-production"
+      PERSIST_SESSIONS: ${PERSIST_SESSIONS:-false}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-in-production}
 
       # Application settings
-      LOG_LEVEL: "debug"
-      PORT: "3000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${PORT:-3000}
 
-      # Development settings
-      ENVIRONMENT: "development"
+      # Environment type
+      ENVIRONMENT: ${ENVIRONMENT:-production}
     volumes:
       # Persistent storage for BBolt session database
       - ldap_sessions:/data
-    depends_on:
-      openldap:
-        condition: service_healthy
-    networks:
-      - ldap-network
+      # Mount local CA certificates for LDAPS connections
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - /usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/ldap-manager", "--health-check"]
