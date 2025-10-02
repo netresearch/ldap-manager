@@ -17,6 +17,7 @@ templ Login(flashes []Flash, version string, csrfToken string) {
 					type="text"
 					name="username"
 					placeholder="Username"
+					autocomplete="username"
 					class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0"
 				/>
 			</div>
@@ -25,6 +26,7 @@ templ Login(flashes []Flash, version string, csrfToken string) {
 					type="password"
 					name="password"
 					placeholder="Password"
+					autocomplete="current-password"
 					class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0"
 				/>
 			</div>
