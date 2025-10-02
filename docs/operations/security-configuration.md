@@ -436,9 +436,13 @@ PERSIST_SESSIONS=true                    # Use persistent sessions for load bala
 SESSION_PATH=/secure/sessions.db        # Secure storage location
 SESSION_DURATION=30m                    # Session timeout (30 minutes recommended)
 
-# Session cookie security (automatically configured)
+# Cookie security configuration
+COOKIE_SECURE=true                       # Require HTTPS for cookies (recommended for production)
+                                         # Set to false ONLY for HTTP-only environments
+
+# Session and CSRF cookie security flags (applied automatically):
 # - HttpOnly: true (prevents JavaScript access)
-# - Secure: true (HTTPS only)
+# - Secure: COOKIE_SECURE value (true = HTTPS required, false = HTTP allowed)
 # - SameSite: Strict (CSRF protection)
 ```
 
@@ -493,6 +497,55 @@ SESSION_DURATION=4h
 3. **Session Rotation**: New session ID after authentication
 4. **Logout Cleanup**: Sessions properly destroyed on logout
 5. **Storage Security**: Session data encrypted at rest (BoltDB)
+
+### Cookie Security Configuration
+
+#### COOKIE_SECURE Setting
+
+The `COOKIE_SECURE` environment variable controls whether session and CSRF cookies require HTTPS transport.
+
+**Important**: This setting is about HTTPS availability, NOT about environment type (development vs production).
+
+##### When to Use COOKIE_SECURE=true (Recommended)
+
+Use `COOKIE_SECURE=true` when:
+- ✅ Application is served over HTTPS directly
+- ✅ Users access the application via https:// URLs
+- ✅ Valid SSL/TLS certificates are configured
+- ✅ Production deployments with proper certificates
+
+```bash
+# Production with HTTPS
+COOKIE_SECURE=true
+```
+
+##### When to Use COOKIE_SECURE=false
+
+Use `COOKIE_SECURE=false` ONLY when:
+- ⚠️ Application runs behind SSL terminating reverse proxy (Traefik, nginx)
+- ⚠️ Development/testing over HTTP without HTTPS setup
+- ⚠️ Internal network HTTP-only deployments
+
+```bash
+# Behind SSL-terminating reverse proxy
+COOKIE_SECURE=false
+
+# Development over HTTP (not recommended for production)
+COOKIE_SECURE=false
+```
+
+##### Valid Deployment Scenarios
+
+| Scenario | COOKIE_SECURE | Notes |
+|----------|---------------|-------|
+| Production with HTTPS | `true` | ✅ Recommended - Most secure |
+| Production behind SSL proxy | `false` | ⚠️ Acceptable - Proxy handles TLS |
+| Development with HTTPS | `true` | ✅ Secure development |
+| Development over HTTP | `false` | ⚠️ Development only - Never production |
+
+**Default Value**: `true` (secure by default)
+
+**Security Warning**: Setting `COOKIE_SECURE=false` in production over HTTP exposes session tokens to network sniffing. Only use in trusted networks or behind SSL-terminating proxies.
 
 ---
 

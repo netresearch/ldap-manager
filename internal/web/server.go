@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -66,15 +65,12 @@ func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
 
 // createSessionStore creates session store with configuration from options
 func createSessionStore(opts *options.Opts) *session.Store {
-	// Only use secure cookies in production (requires HTTPS)
-	isProduction := os.Getenv("ENVIRONMENT") != "development"
-
 	return session.New(session.Config{
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
 		CookieSameSite: "Strict",
-		CookieSecure:   isProduction, // Only secure in production with HTTPS
+		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 	})
 }
 
@@ -117,7 +113,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 	sessionStore := createSessionStore(opts)
 	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
 	f := createFiberApp()
-	csrfHandler := *createCSRFConfig()
+	csrfHandler := *createCSRFConfig(opts)
 
 	a := &App{
 		ldapConfig:    opts.LDAP,
@@ -163,16 +159,12 @@ func setupMiddleware(f *fiber.App) {
 }
 
 // createCSRFConfig creates and returns CSRF middleware configuration
-func createCSRFConfig() *fiber.Handler {
-	// Only use secure cookies in production (requires HTTPS)
-	// In development over HTTP, secure cookies won't work
-	isProduction := os.Getenv("ENVIRONMENT") != "development"
-
+func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
 		CookieSameSite: "Strict",
-		CookieSecure:   isProduction, // Only secure in production with HTTPS
+		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
 		Expiration:     3600, // 1 hour
 		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
