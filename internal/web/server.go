@@ -137,19 +137,32 @@ func NewApp(opts *options.Opts) (*App, error) {
 func setupMiddleware(f *fiber.App) {
 	// Security Headers Middleware
 	f.Use(helmet.New(helmet.Config{
-		XSSProtection:         "1; mode=block",
-		ContentTypeNosniff:    "nosniff",
-		XFrameOptions:         "DENY",
-		HSTSMaxAge:            31536000, // 1 year
-		HSTSExcludeSubdomains: false,    // Include subdomains
-		HSTSPreloadEnabled:    true,
+		XSSProtection:      "1; mode=block",
+		ContentTypeNosniff: "nosniff",
+		XFrameOptions:      "DENY",
+		// HSTS disabled for HTTP deployments
+		HSTSMaxAge:            0,
+		HSTSExcludeSubdomains: true,
+		HSTSPreloadEnabled:    false,
 		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
-		CrossOriginOpenerPolicy:   "same-origin-allow-popups", // Less strict for HTTP
-		CrossOriginEmbedderPolicy: "",                         // Disabled for HTTP compatibility
-		OriginAgentCluster:        "?0",                       // Disable origin-keyed agent cluster for HTTP
+		// Disable COOP/COEP/CORP for HTTP cookie compatibility
+		CrossOriginOpenerPolicy:   "",
+		CrossOriginEmbedderPolicy: "",
+		CrossOriginResourcePolicy: "",
+		OriginAgentCluster:        "",
 	}))
+
+	// Remove COOP/COEP/CORP headers that helmet sets by default
+	// These prevent cookies from working on HTTP deployments
+	f.Use(func(c *fiber.Ctx) error {
+		err := c.Next()
+		c.Response().Header.Del("Cross-Origin-Embedder-Policy")
+		c.Response().Header.Del("Cross-Origin-Resource-Policy")
+		c.Response().Header.Del("Cross-Origin-Opener-Policy")
+		return err
+	})
 
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
