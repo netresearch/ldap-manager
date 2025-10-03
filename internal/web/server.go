@@ -135,7 +135,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 // setupMiddleware configures all middleware for the Fiber app
 func setupMiddleware(f *fiber.App) {
-	// Security Headers Middleware
+	// Security Headers Middleware - Explicitly disable COOP/COEP/CORP for HTTP cookie compatibility
 	f.Use(helmet.New(helmet.Config{
 		XSSProtection:      "1; mode=block",
 		ContentTypeNosniff: "nosniff",
@@ -147,22 +147,7 @@ func setupMiddleware(f *fiber.App) {
 		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
-		// Disable COOP/COEP/CORP for HTTP cookie compatibility
-		CrossOriginOpenerPolicy:   "",
-		CrossOriginEmbedderPolicy: "",
-		CrossOriginResourcePolicy: "",
-		OriginAgentCluster:        "",
 	}))
-
-	// Remove COOP/COEP/CORP headers that helmet sets by default
-	// These prevent cookies from working on HTTP deployments
-	f.Use(func(c *fiber.Ctx) error {
-		err := c.Next()
-		c.Response().Header.Del("Cross-Origin-Embedder-Policy")
-		c.Response().Header.Del("Cross-Origin-Resource-Policy")
-		c.Response().Header.Del("Cross-Origin-Opener-Policy")
-		return err
-	})
 
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
