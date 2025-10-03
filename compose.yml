@@ -107,11 +107,7 @@ services:
       - /usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/ldap-manager", "--health-check"]
-      interval: 30s
-      timeout: 3s
-      start_period: 5s
-      retries: 3
+      disable: true
     profiles:
       - prod
 
