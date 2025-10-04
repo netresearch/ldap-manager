@@ -36,6 +36,10 @@ async function generateCacheBustedAssets() {
     // Copy CSS with hash
     await fs.copyFile(cssPath, hashedCssPath);
 
+    // TEMPORARY: Also keep unhashed version until templates are updated
+    // The templates currently reference /static/styles.css directly
+    console.log(`📋 Keeping unhashed version: styles.css (for template compatibility)`);
+
     // Create/update manifest
     const manifest = {
       "styles.css": hashedCssName,
