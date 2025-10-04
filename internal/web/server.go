@@ -37,6 +37,7 @@ type App struct {
 	fiber         *fiber.App
 	poolConfig    *ldap.PoolConfig
 	logger        *slog.Logger
+	assetManifest *AssetManifest // Asset manifest for cache-busted files
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -69,7 +70,7 @@ func createSessionStore(opts *options.Opts) *session.Store {
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
-		CookieSameSite: "Strict", // Strict for maximum security with proxy trust enabled
+		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 	})
 }
@@ -119,6 +120,17 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f := createFiberApp()
 	csrfHandler := *createCSRFConfig(opts)
 
+	// Load asset manifest for cache-busted files
+	manifestPath := "internal/web/static/manifest.json"
+	manifest, err := LoadAssetManifest(manifestPath)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to load asset manifest, using defaults")
+		manifest = &AssetManifest{
+			Assets:    map[string]string{"styles.css": "styles.css"},
+			StylesCSS: "styles.css",
+		}
+	}
+
 	a := &App{
 		ldapConfig:    opts.LDAP,
 		ldapReadonly:  ldapReadonly,
@@ -129,6 +141,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 		fiber:         f,
 		poolConfig:    poolConfig,
 		logger:        logger,
+		assetManifest: manifest,
 	}
 
 	// Setup all routes
@@ -171,7 +184,7 @@ func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
-		CookieSameSite: "Strict", // Strict for maximum security with proxy trust enabled
+		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
 		Expiration:     3600, // 1 hour
@@ -372,4 +385,13 @@ func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 	}
 
 	return ""
+}
+
+// GetStylesPath returns the cache-busted CSS file path from the asset manifest
+func (a *App) GetStylesPath() string {
+	if a.assetManifest != nil {
+		return a.assetManifest.GetStylesPath()
+	}
+
+	return "styles.css"
 }
