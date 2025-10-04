@@ -47,6 +47,44 @@ docker compose --profile prod up
 - 🔒 Built-in OpenLDAP - pre-configured test server on port 389
 - 🌐 phpLDAPadmin - web-based LDAP browser on port 8080
 
+### Traefik Integration (Optional)
+
+For production deployments with Traefik reverse proxy, the project includes automatic Traefik configuration via Docker Compose override.
+
+**Prerequisites:**
+
+1. Create external Traefik network:
+   ```bash
+   docker network create traefik
+   ```
+
+2. Configure environment variables in `.env`:
+   ```bash
+   TRAEFIK_ENABLE=true                    # Enable Traefik integration
+   TRAEFIK_NETWORK=traefik                # External network name (default: traefik)
+   TRAEFIK_HOST=localhost                 # Domain suffix (e.g., localhost, sobol.nr)
+   ```
+
+**Usage Examples:**
+
+```bash
+# Local development with Traefik
+TRAEFIK_ENABLE=true
+TRAEFIK_HOST=localhost
+# Access: https://ldap-manager.localhost
+
+# Production with global Traefik
+TRAEFIK_ENABLE=true
+TRAEFIK_HOST=sobol.nr
+# Access: https://ldap-manager.sobol.nr
+
+# Without Traefik (default)
+TRAEFIK_ENABLE=false
+# Access: http://localhost:3000
+```
+
+The `.envrc` file automatically configures the correct Docker Compose file chain based on `TRAEFIK_ENABLE`. When enabled, the application switches from host networking to bridge mode with Traefik labels.
+
 ### Natively
 
 If you want to run this service without a Docker container, you have to build it yourself.
