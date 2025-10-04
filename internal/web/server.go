@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/bbolt/v2"
 	"github.com/gofiber/storage/memory/v2"
@@ -68,7 +69,7 @@ func createSessionStore(opts *options.Opts) *session.Store {
 		Storage:        getSessionStorage(opts),
 		Expiration:     opts.SessionDuration,
 		CookieHTTPOnly: true,
-		CookieSameSite: "Lax", // Lax allows cookies on redirects, Strict blocks them
+		CookieSameSite: "Strict", // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 	})
 }
@@ -138,23 +139,22 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 // setupMiddleware configures all middleware for the Fiber app
 func setupMiddleware(f *fiber.App) {
-	// Security Headers Middleware - Manual implementation without helmet to avoid Cross-Origin headers
-	// that break cookie persistence in HTTP deployments
-	f.Use(func(c *fiber.Ctx) error {
-		// Set security headers manually
-		c.Set("X-XSS-Protection", "1; mode=block")
-		c.Set("X-Content-Type-Options", "nosniff")
-		c.Set("X-Frame-Options", "DENY")
-		c.Set("Referrer-Policy", "no-referrer")
-		c.Set("X-DNS-Prefetch-Control", "off")
-		c.Set("X-Download-Options", "noopen")
-		c.Set("X-Permitted-Cross-Domain-Policies", "none")
-		c.Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; "+
-			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; "+
-			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';")
-		// Explicitly DO NOT set Cross-Origin-* headers that break cookies in HTTP
-		return c.Next()
-	})
+	// Security Headers Middleware with full protection
+	// Proxy trust configuration ensures cookies work correctly with HTTPS termination
+	f.Use(helmet.New(helmet.Config{
+		XSSProtection:         "1; mode=block",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		HSTSMaxAge:            31536000, // 1 year
+		HSTSExcludeSubdomains: false,
+		HSTSPreloadEnabled:    true,
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
+			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+		CrossOriginOpenerPolicy:   "same-origin",
+		CrossOriginEmbedderPolicy: "require-corp",
+		CrossOriginResourcePolicy: "same-origin",
+	}))
 
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
@@ -171,7 +171,7 @@ func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
-		CookieSameSite: "Lax", // Lax allows cookies on redirects, Strict blocks them
+		CookieSameSite: "Strict", // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
 		Expiration:     3600, // 1 hour
