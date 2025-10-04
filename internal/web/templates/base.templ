@@ -1,7 +1,16 @@
 package templates
 
+// base wraps baseWithAssets with styles.css for backwards compatibility
+// Use baseWithManifest() with App.GetStylesPath() for cache-busted CSS
 templ base(title string) {
 	@baseWithAssets(title, "styles.css") {
+		{ children... }
+	}
+}
+
+// baseWithManifest creates base template with cache-busted CSS from manifest
+templ baseWithManifest(title, stylesPath string) {
+	@baseWithAssets(title, stylesPath) {
 		{ children... }
 	}
 }

@@ -9,10 +9,10 @@
 //
 // Configuration sources are processed in priority order:
 //
-//	1. Command-line flags (highest priority)
-//	2. Environment variables
-//	3. .env files (.env.local, .env)
-//	4. Default values (lowest priority)
+//  1. Command-line flags (highest priority)
+//  2. Environment variables
+//  3. .env files (.env.local, .env)
+//  4. Default values (lowest priority)
 //
 // # Usage
 //

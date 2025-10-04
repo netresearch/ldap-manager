@@ -1,7 +1,11 @@
 package templates
 
 templ Login(flashes []Flash, version string, csrfToken string) {
-	@base("Login") {
+	@LoginWithStyles(flashes, version, csrfToken, "styles.css")
+}
+
+templ LoginWithStyles(flashes []Flash, version string, csrfToken string, stylesPath string) {
+	@baseWithManifest("Login", stylesPath) {
 		<form class="w-fit m-auto space-y-4 rounded-md border border-gray-600 p-8" action="/login" method="post">
 			<input type="hidden" name="csrf_token" value={ csrfToken }/>
 			<img src="/static/logo.webp" class="w-full max-w-[256px]"/>
