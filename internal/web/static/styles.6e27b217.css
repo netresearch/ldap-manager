@@ -339,11 +339,8 @@
 }
 @layer components;
 @layer utilities {
-  .collapse {
-    visibility: collapse;
-  }
-  .visible {
-    visibility: visible;
+  .fixed {
+    position: fixed;
   }
   .relative {
     position: relative;
@@ -470,9 +467,6 @@
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
   }
-  .resize {
-    resize: both;
-  }
   .flex-col {
     flex-direction: column;
   }
@@ -509,12 +503,7 @@
   :where(.divide-gray-600 > :not(:last-child)) {
     border-color: var(--color-gray-600);
   }
-  .truncate {
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .overflow-hidden,
-  .truncate {
+  .overflow-hidden {
     overflow: hidden;
   }
   .overflow-y-scroll {
@@ -569,9 +558,6 @@
   }
   .bg-gray-100 {
     background-color: var(--color-gray-100);
-  }
-  .bg-gray-700 {
-    background-color: var(--color-gray-700);
   }
   .bg-gray-700\/80 {
     background-color: #364153cc;
@@ -706,6 +692,12 @@
   }
   .text-white {
     color: var(--color-white);
+  }
+  .lowercase {
+    text-transform: lowercase;
+  }
+  .uppercase {
+    text-transform: uppercase;
   }
   .shadow {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, #0000001a), 0 1px 2px -1px var(--tw-shadow-color, #0000001a);
