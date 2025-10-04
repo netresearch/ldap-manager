@@ -81,7 +81,6 @@ services:
         VCS_REF: ${VCS_REF}
     container_name: ldap-manager
     hostname: ldap-manager
-    network_mode: host
     # Load environment variables from .env file
     env_file:
       - .env
@@ -110,6 +109,10 @@ services:
       disable: true
     profiles:
       - prod
+    ports:
+      - "3000:3000"
+    networks:
+      - ldap-network
 
   # LDAP Manager development container
   # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
@@ -213,10 +216,4 @@ volumes:
     driver: local
 
 networks:
-  # Dedicated network for LDAP services
   ldap-network:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.25.0.0/16
