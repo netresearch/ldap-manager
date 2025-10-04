@@ -1,0 +1,30 @@
+# Traefik override for ldap-manager
+# This file is automatically loaded when TRAEFIK_ENABLE=true in .env
+# Usage: Set TRAEFIK_ENABLE=true in .env, then run: docker compose --profile prod up
+
+services:
+  ldap-manager:
+    # Traefik-specific configuration
+    # Remove port mapping (Traefik handles routing)
+    ports: !reset []
+
+    networks:
+      - ldap-network
+      - traefik
+
+    # Enable secure cookies for HTTPS access via Traefik
+    environment:
+      COOKIE_SECURE: "true"
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME:-ldap-manager}.rule=Host(`${PROJECT_NAME:-ldap-manager}.${TRAEFIK_HOST:-localhost}`)"
+      - "traefik.http.routers.${PROJECT_NAME:-ldap-manager}.entrypoints=web-secure"
+      - "traefik.http.services.${PROJECT_NAME:-ldap-manager}.loadbalancer.server.port=3000"
+
+networks:
+  # External Traefik network (must be created separately)
+  # Create with: docker network create traefik
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}
