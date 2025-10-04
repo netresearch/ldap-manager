@@ -89,6 +89,10 @@ make format-all    # Format all code (Go + JS/CSS)
 - Mocks: `internal/mocks/` directory
 - Templates: `internal/web/templates/`
 - Static assets: `internal/web/static/`
+- **Claude Code Files**: ALL investigation, analysis, and temporary reports go in `claudedocs/` (gitignored)
+  - Bug reports, pool analysis, agent changelogs → `claudedocs/`
+  - Use descriptive names with dates: `claudedocs/pool-investigation-2025-10-04.md`
+  - NEVER create investigation files in project root
 
 ## Security
 
