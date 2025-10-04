@@ -4,8 +4,6 @@ node_modules
 
 # Build artifacts
 bin/
-coverage.out
-coverage-reports/
 *.bbolt
 ldap-manager
 
@@ -19,9 +17,10 @@ internal/web/static/styles.css
 # Renovate config (managed by CI)
 renovate.json
 
-# Temporary investigation/analysis files
+# Test coverage artifacts
+coverage.out
+coverage-reports/
+
+# Claude Code analysis and investigation files
+# Put all temporary analysis, reports, and investigation files in claudedocs/
 claudedocs/
-AGENTS_CHANGELOG.md
-POOL_BUG_REPORT.md
-*_ANALYSIS.md
-*_INVESTIGATION.md
