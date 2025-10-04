@@ -19,7 +19,7 @@ func TestLoadAssetManifest(t *testing.T) {
 			"generated": "2025-01-01T00:00:00Z",
 			"hash": "abc123"
 		}`
-		err := os.WriteFile(manifestPath, []byte(manifestContent), 0o644)
+		err := os.WriteFile(manifestPath, []byte(manifestContent), 0o600)
 		require.NoError(t, err)
 
 		// Load manifest
@@ -40,7 +40,7 @@ func TestLoadAssetManifest(t *testing.T) {
 	t.Run("handles invalid JSON gracefully", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		manifestPath := filepath.Join(tmpDir, "manifest.json")
-		err := os.WriteFile(manifestPath, []byte("invalid json"), 0o644)
+		err := os.WriteFile(manifestPath, []byte("invalid json"), 0o600)
 		require.NoError(t, err)
 
 		_, err = LoadAssetManifest(manifestPath)
@@ -60,7 +60,7 @@ func TestGetCachedManifest(t *testing.T) {
 			"generated": "2025-01-01T00:00:00Z",
 			"hash": "def456"
 		}`
-		err := os.WriteFile(manifestPath, []byte(manifestContent), 0o644)
+		err := os.WriteFile(manifestPath, []byte(manifestContent), 0o600)
 		require.NoError(t, err)
 
 		// First call should load and cache
@@ -79,7 +79,7 @@ func TestGetCachedManifest(t *testing.T) {
 		tmpDir := t.TempDir()
 		manifestPath := filepath.Join(tmpDir, "manifest.json")
 		// Write invalid JSON
-		err := os.WriteFile(manifestPath, []byte("not json"), 0o644)
+		err := os.WriteFile(manifestPath, []byte("not json"), 0o600)
 		require.NoError(t, err)
 
 		manifest := GetCachedManifest(manifestPath)

@@ -57,6 +57,10 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.LoginWithStyles(templates.Flashes(), version.FormatVersion(), a.GetCSRFToken(c), a.GetStylesPath()).Render(
-		c.UserContext(), c.Response().BodyWriter())
+	return templates.LoginWithStyles(
+		templates.Flashes(),
+		version.FormatVersion(),
+		a.GetCSRFToken(c),
+		a.GetStylesPath(),
+	).Render(c.UserContext(), c.Response().BodyWriter())
 }
