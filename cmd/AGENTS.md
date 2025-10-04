@@ -20,6 +20,7 @@ make setup-hooks  # Install pre-commit hooks
 ```
 
 Environment variables are loaded from:
+
 1. `.envrc` (direnv - committed with help text)
 2. `.env` (local overrides - gitignored)
 3. CLI flags override all environment variables

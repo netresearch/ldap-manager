@@ -509,6 +509,7 @@ The `COOKIE_SECURE` environment variable controls whether session and CSRF cooki
 ##### When to Use COOKIE_SECURE=true (Recommended)
 
 Use `COOKIE_SECURE=true` when:
+
 - ✅ Application is served over HTTPS directly
 - ✅ Users access the application via https:// URLs
 - ✅ Valid SSL/TLS certificates are configured
@@ -522,6 +523,7 @@ COOKIE_SECURE=true
 ##### When to Use COOKIE_SECURE=false
 
 Use `COOKIE_SECURE=false` ONLY when:
+
 - ⚠️ Application runs behind SSL terminating reverse proxy (Traefik, nginx)
 - ⚠️ Development/testing over HTTP without HTTPS setup
 - ⚠️ Internal network HTTP-only deployments
@@ -536,12 +538,12 @@ COOKIE_SECURE=false
 
 ##### Valid Deployment Scenarios
 
-| Scenario | COOKIE_SECURE | Notes |
-|----------|---------------|-------|
-| Production with HTTPS | `true` | ✅ Recommended - Most secure |
-| Production behind SSL proxy | `false` | ⚠️ Acceptable - Proxy handles TLS |
-| Development with HTTPS | `true` | ✅ Secure development |
-| Development over HTTP | `false` | ⚠️ Development only - Never production |
+| Scenario                    | COOKIE_SECURE | Notes                                  |
+| --------------------------- | ------------- | -------------------------------------- |
+| Production with HTTPS       | `true`        | ✅ Recommended - Most secure           |
+| Production behind SSL proxy | `false`       | ⚠️ Acceptable - Proxy handles TLS      |
+| Development with HTTPS      | `true`        | ✅ Secure development                  |
+| Development over HTTP       | `false`       | ⚠️ Development only - Never production |
 
 **Default Value**: `true` (secure by default)
 

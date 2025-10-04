@@ -54,6 +54,7 @@ For production deployments with Traefik reverse proxy, the project includes auto
 **Prerequisites:**
 
 1. Create external Traefik network:
+
    ```bash
    docker network create traefik
    ```

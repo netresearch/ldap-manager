@@ -128,7 +128,8 @@ func Parse() *Opts {
 
 		// Cookie security configuration
 		fCookieSecure = flag.Bool("cookie-secure", envBoolOrDefault("COOKIE_SECURE", true),
-			"Require HTTPS for session and CSRF cookies. Set to false only for HTTP-only environments. Defaults to true for security.")
+			"Require HTTPS for session and CSRF cookies. "+
+				"Set to false only for HTTP-only environments. Defaults to true for security.")
 
 		// LDAP Connection Pool configuration
 		fPoolMaxConnections = flag.Int("pool-max-connections", envIntOrDefault("LDAP_POOL_MAX_CONNECTIONS", 10),

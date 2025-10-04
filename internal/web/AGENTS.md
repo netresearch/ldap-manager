@@ -299,6 +299,7 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 ## Code Style
 
 ### Web Layer Standards
+
 - Run `make format-all` before commit (Go + JS/CSS)
 - Handlers must be thin - business logic belongs in `internal/ldap/`
 - All inputs must be validated and sanitized
@@ -307,6 +308,7 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 - TailwindCSS v4 for styling - no custom CSS unless necessary
 
 ### Security Requirements
+
 - **CSRF protection**: Enabled on all state-changing operations
 - **Cookie security**: `COOKIE_SECURE=true` for HTTPS environments
 - **Session handling**: HTTPOnly, SameSite=Strict, regenerate after login
@@ -316,6 +318,7 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 ## Security
 
 ### Critical Web Security Rules
+
 - **CSRF**: All POST/PUT/DELETE endpoints require CSRF token validation
 - **Sessions**: Regenerate session ID after authentication
 - **Cookies**: Configure `COOKIE_SECURE=true` for HTTPS (see server.go:45-52)
@@ -324,6 +327,7 @@ Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 - **Error handling**: Sanitize error messages to avoid leaking sensitive information
 
 ### Session Configuration
+
 ```go
 // Secure session configuration (see createSessionStore in server.go)
 session.Config{
