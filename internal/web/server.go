@@ -79,6 +79,10 @@ func createFiberApp() *fiber.App {
 		AppName:      "netresearch/ldap-manager",
 		BodyLimit:    4 * 1024,
 		ErrorHandler: handle500,
+		// Trust proxy headers from Traefik (Docker bridge network)
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}, // Loopback and Docker internal networks
+		ProxyHeader:             fiber.HeaderXForwardedFor,
 	})
 	setupMiddleware(f)
 
