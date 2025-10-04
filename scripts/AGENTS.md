@@ -60,6 +60,7 @@ cat claudedocs/css-analysis.md           # Should show analysis report
 ## Code Style
 
 ### Node.js Script Standards
+
 - Run `make format-js` (prettier) before commit
 - Use ESM syntax (`import/export`), not CommonJS
 - Always include shebang: `#!/usr/bin/env node`
@@ -67,6 +68,7 @@ cat claudedocs/css-analysis.md           # Should show analysis report
 - Proper error handling with exit codes (`process.exit(1)` on error)
 
 ### Script Structure
+
 ```javascript
 #!/usr/bin/env node
 
@@ -94,6 +96,7 @@ main();
 ## Security
 
 ### Script Security Rules
+
 - **Path validation**: Always use `path.join()` to prevent path traversal
 - **Input sanitization**: Validate any external input or environment variables
 - **No secrets**: Never hardcode credentials or tokens in scripts
@@ -101,6 +104,7 @@ main();
 - **Exit codes**: Return non-zero exit code on errors for CI/CD detection
 
 ### File Operations Safety
+
 ```javascript
 // ✅ Good: Safe path construction
 const cssPath = path.join(__dirname, "../internal/web/static/styles.css");

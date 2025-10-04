@@ -221,6 +221,7 @@ if err := ValidateUsername(input); err != nil {
 ## Code Style
 
 ### Go Code Standards
+
 - Run `make format-go` (gofumpt + goimports) before commit
 - All exported functions require godoc comments
 - No `panic()` in production code - handle all errors explicitly
@@ -229,6 +230,7 @@ if err := ValidateUsername(input); err != nil {
 - Configured in `.golangci.yml` and `.editorconfig`
 
 ### Package Organization
+
 ```
 internal/
 ├── ldap/          # Domain: LDAP operations
@@ -239,6 +241,7 @@ internal/
 ```
 
 ### Security Best Practices
+
 - **LDAP injection prevention**: Always use `ldap.EscapeFilter()` for user input
 - **Input validation**: Validate early, fail fast
 - **Secrets handling**: Never log passwords, tokens, or session IDs

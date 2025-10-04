@@ -17,6 +17,7 @@ make down          # Stop all services
 ## 🚀 Application Control
 
 ### Service Management
+
 ```bash
 make up            # Start all services (LDAP + app)
 make down          # Stop all services
@@ -27,6 +28,7 @@ make ps            # Show running services
 ```
 
 ### Container Access
+
 ```bash
 make shell-app     # Open shell in app container
 make shell-ldap    # Open shell in LDAP container
@@ -36,6 +38,7 @@ make logs-ldap     # Show logs from LDAP server
 ```
 
 ### Rebuild & Reset
+
 ```bash
 make rebuild       # Rebuild and restart services
 make fresh         # Clean everything and start fresh
@@ -46,6 +49,7 @@ make fresh         # Clean everything and start fresh
 ## 🛠️ Development Workflow
 
 ### Asset Building
+
 ```bash
 make watch         # Watch and rebuild assets on change
 make css           # Build CSS only
@@ -56,6 +60,7 @@ make build-assets  # Build all assets (CSS + templates)
 ```
 
 ### Code Formatting
+
 ```bash
 make format-go     # Format Go code (gofumpt + goimports)
 make format-js     # Format JavaScript/JSON/CSS (prettier)
@@ -64,6 +69,7 @@ make fix           # Alias for format-all
 ```
 
 ### Development Server
+
 ```bash
 make dev           # Start dev server with hot reload (pnpm)
 make serve         # Start built binary
@@ -74,12 +80,14 @@ make serve         # Start built binary
 ## 🏗️ Building
 
 ### Local Build
+
 ```bash
 make build         # Build application binary
 make build-assets  # Build CSS and templates only
 ```
 
 ### Release Build
+
 ```bash
 make build-release # Build optimized binaries for:
                    # - Linux (amd64)
@@ -88,6 +96,7 @@ make build-release # Build optimized binaries for:
 ```
 
 ### Docker Build
+
 ```bash
 make docker        # Build production Docker image
 make docker-run    # Build and run Docker container
@@ -100,6 +109,7 @@ make docker-dev    # Start development environment
 ## ✅ Testing & Quality
 
 ### Testing
+
 ```bash
 make test          # Run comprehensive test suite with coverage
 make test-quick    # Run tests without coverage
@@ -109,6 +119,7 @@ make benchmark     # Run performance benchmarks
 ```
 
 ### Docker Testing
+
 ```bash
 make docker-test   # Run tests in container
 make docker-lint   # Run linter in container
@@ -116,6 +127,7 @@ make docker-check  # Run all quality checks in container
 ```
 
 ### Linting
+
 ```bash
 make lint          # Run all linting and static analysis
 make lint-go       # Run Go linting (golangci-lint)
@@ -125,6 +137,7 @@ make lint-complexity  # Check code complexity
 ```
 
 ### Quality Gates
+
 ```bash
 make check         # Run all quality checks (lint + test)
 make check-all     # Alias for check
@@ -136,12 +149,14 @@ make release       # Prepare release (check + build-release)
 ## 💾 Database & LDAP Management
 
 ### LDAP Operations
+
 ```bash
 make ldap-reset    # Reset LDAP database (with confirmation)
 make ldap-admin    # Open phpLDAPadmin in browser
 ```
 
 ### Session Management
+
 ```bash
 make sessions-clean  # Clean session database files
 ```
@@ -151,6 +166,7 @@ make sessions-clean  # Clean session database files
 ## 🔍 Monitoring & Debugging
 
 ### Health Checks
+
 ```bash
 make health        # Check LDAP and app health
 make stats         # Show container resource usage
@@ -158,6 +174,7 @@ make inspect       # View container environment
 ```
 
 ### Debugging
+
 ```bash
 make debug         # Start app in debug mode
 make docker-shell  # Open shell in development container
@@ -168,6 +185,7 @@ make docker-shell  # Open shell in development container
 ## 🌐 Quick Access
 
 ### Browser Access
+
 ```bash
 make open          # Open app in browser
 make ldap-admin    # Open phpLDAPadmin in browser
@@ -175,6 +193,7 @@ make urls          # Show all service URLs
 ```
 
 ### Service URLs
+
 - **App**: http://localhost:3000
 - **phpLDAPadmin**: http://localhost:8080
 - **LDAP Server**: ldap://localhost:389
@@ -185,6 +204,7 @@ make urls          # Show all service URLs
 ## 📦 Dependencies & Setup
 
 ### Initial Setup
+
 ```bash
 make setup         # Install all dependencies and tools
 make setup-go      # Download Go dependencies
@@ -194,6 +214,7 @@ make setup-hooks   # Install pre-commit hooks
 ```
 
 ### Dependency Updates
+
 ```bash
 make deps          # Update all dependencies (Go + npm)
 ```
@@ -203,11 +224,13 @@ make deps          # Update all dependencies (Go + npm)
 ## 🗑️ Cleanup
 
 ### Local Cleanup
+
 ```bash
 make clean         # Remove build artifacts and caches
 ```
 
 ### Docker Cleanup
+
 ```bash
 make docker-clean  # Clean up containers and volumes (with confirmation)
 ```
@@ -217,6 +240,7 @@ make docker-clean  # Clean up containers and volumes (with confirmation)
 ## 🔧 Git Workflow
 
 ### Git Operations
+
 ```bash
 make git-status    # Show git status with branch info
 make commit        # Interactive commit (stage all + message)
@@ -228,6 +252,7 @@ make push          # Push current branch to remote
 ## ℹ️ Information
 
 ### Build Info
+
 ```bash
 make info          # Display build information
 make help          # Show all available commands
@@ -238,6 +263,7 @@ make help          # Show all available commands
 ## 📝 Command Aliases
 
 ### Common Shortcuts
+
 ```bash
 make install       # Alias for: setup
 make fmt           # Alias for: fix
@@ -252,6 +278,7 @@ make app-logs      # Alias for: logs-app
 ## 🔄 Typical Workflows
 
 ### First Time Setup
+
 ```bash
 make setup         # Install dependencies
 make up            # Start services
@@ -259,6 +286,7 @@ make open          # Open in browser
 ```
 
 ### Daily Development
+
 ```bash
 make up            # Start services
 make logs-app      # Watch logs
@@ -270,6 +298,7 @@ make down          # Stop when done
 ```
 
 ### Before Committing
+
 ```bash
 make format-all    # Format all code
 make check         # Run lint + tests
@@ -278,6 +307,7 @@ make push          # Push to remote
 ```
 
 ### Debugging Issues
+
 ```bash
 make health        # Check service health
 make logs-app      # View app logs
@@ -287,6 +317,7 @@ make debug         # Start in debug mode
 ```
 
 ### Clean Start
+
 ```bash
 make fresh         # Clean everything and start fresh
 # or
@@ -313,6 +344,7 @@ make up            # Start fresh
 ## 🐛 Troubleshooting
 
 ### Services won't start
+
 ```bash
 make down
 make docker-clean  # Confirm with 'y'
@@ -320,12 +352,14 @@ make fresh
 ```
 
 ### Tests failing
+
 ```bash
 make ldap-reset    # Reset test LDAP
 make test
 ```
 
 ### Build errors
+
 ```bash
 make clean
 make setup
@@ -333,6 +367,7 @@ make build
 ```
 
 ### Can't access app
+
 ```bash
 make health        # Check if services healthy
 make urls          # Verify URLs
