@@ -18,3 +18,10 @@ internal/web/static/styles.css
 
 # Renovate config (managed by CI)
 renovate.json
+
+# Temporary investigation/analysis files
+claudedocs/
+AGENTS_CHANGELOG.md
+POOL_BUG_REPORT.md
+*_ANALYSIS.md
+*_INVESTIGATION.md
