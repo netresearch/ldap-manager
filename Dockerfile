@@ -23,7 +23,7 @@ COPY . .
 RUN pnpm css:build
 
 # Development stage with all tools for linting, testing, and development
-FROM golang:1.25.2-alpine AS dev
+FROM golang:1.25.3-alpine AS dev
 
 # Set shell with pipefail for safe pipe operations in Alpine
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
@@ -65,7 +65,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
 CMD ["sh"]
 
 # Production builder stage
-FROM golang:1.25.2-alpine AS backend-builder
+FROM golang:1.25.3-alpine AS backend-builder
 
 # Set shell with pipefail for safe pipe operations in Alpine
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
