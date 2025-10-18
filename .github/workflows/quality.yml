@@ -73,7 +73,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload gosec results
-        uses: github/codeql-action/upload-sarif@f443b600d91635bebf5b0d9ebc620189c0d6fba5 # v4.30.8
+        uses: github/codeql-action/upload-sarif@16140ae1a102900babc80a33c44059580f687047 # v4.30.9
         if: always() && hashFiles('gosec-results.sarif') != ''
         with:
           sarif_file: gosec-results.sarif
@@ -254,7 +254,7 @@ jobs:
           output-file: hadolint-results.sarif
 
       - name: Upload Dockerfile lint results
-        uses: github/codeql-action/upload-sarif@f443b600d91635bebf5b0d9ebc620189c0d6fba5 # v4.30.8
+        uses: github/codeql-action/upload-sarif@16140ae1a102900babc80a33c44059580f687047 # v4.30.9
         if: always()
         with:
           sarif_file: hadolint-results.sarif
@@ -287,7 +287,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@f443b600d91635bebf5b0d9ebc620189c0d6fba5 # v4.30.8
+        uses: github/codeql-action/upload-sarif@16140ae1a102900babc80a33c44059580f687047 # v4.30.9
         if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: "trivy-results.sarif"
