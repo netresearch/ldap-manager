@@ -3,7 +3,7 @@
 
 # Frontend builder - builds Tailwind CSS
 # Uses Alpine for 80% smaller image size (~200MB vs ~1GB)
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-builder
 WORKDIR /build
 
 # Enable pnpm via corepack (built into Node 22, no install needed)
