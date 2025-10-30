@@ -1,0 +1,10 @@
+# Hadolint configuration for Dockerfile linting
+# https://github.com/hadolint/hadolint
+
+# Ignore specific rules
+ignored:
+  # DL3018: Pin versions in apk add
+  # We intentionally avoid version pinning for Alpine packages to improve Docker layer caching
+  # This is a deliberate trade-off: better build performance vs strict reproducibility
+  # Mitigation: Renovate/Dependabot keeps base images and dependencies current
+  - DL3018
