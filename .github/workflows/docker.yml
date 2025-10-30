@@ -82,6 +82,9 @@ jobs:
           # Use GitHub Actions cache for BuildKit cache mounts
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Disable attestation features to speed up multi-platform builds
+          provenance: false
+          sbom: false
           # Pass build metadata for OCI labels
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}

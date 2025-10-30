@@ -18,8 +18,13 @@ COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
     pnpm install --frozen-lockfile
 
-# Copy source and build CSS
-COPY . .
+# Copy only files needed for CSS build to maximize cache efficiency
+COPY postcss.config.mjs tailwind.config.js ./
+COPY scripts/cache-bust.mjs ./scripts/
+COPY internal/web/tailwind.css ./internal/web/
+COPY internal/web/templates ./internal/web/templates
+
+# Build CSS
 RUN pnpm css:build
 
 # Development stage with all tools for linting, testing, and development
@@ -32,12 +37,13 @@ WORKDIR /app
 
 # Install system dependencies for development
 # and install pnpm globally (corepack not available in Alpine nodejs package)
+# Note: Using latest stable versions instead of pinned versions for faster builds
 RUN apk add --no-cache \
-    git=2.49.1-r0 \
-    make=4.4.1-r3 \
-    curl=8.14.1-r1 \
-    nodejs=22.16.0-r2 \
-    npm=11.3.0-r1 && \
+    git \
+    make \
+    curl \
+    nodejs \
+    npm && \
     npm install -g pnpm@10.17.1
 
 # Install Go development tools with cache mount
@@ -73,26 +79,24 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /build
 
 # Install git for version detection during build
-RUN apk add --no-cache git=2.49.1-r0
+RUN apk add --no-cache git
 
 # Copy dependency files first for better layer caching
 COPY go.mod go.sum ./
 
-# Download dependencies with cache mount for faster rebuilds
+# Download dependencies and install templ with cache mount for faster rebuilds
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
-    go mod download
-
-# Install templ for template generation
-RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
+    go mod download && \
     go install github.com/a-h/templ/cmd/templ@v0.3.943
+
+# Copy compiled CSS files and manifest from frontend builder (including hashed versions for cache busting)
+# Copy these BEFORE source code to maximize cache hits when only Go code changes
+COPY --from=frontend-builder /build/internal/web/static/*.css /build/internal/web/static/
+COPY --from=frontend-builder /build/internal/web/static/manifest.json /build/internal/web/static/manifest.json
 
 # Copy source code
 COPY . .
-
-# Copy compiled CSS files and manifest from frontend builder (including hashed versions for cache busting)
-COPY --from=frontend-builder /build/internal/web/static/*.css /build/internal/web/static/
-COPY --from=frontend-builder /build/internal/web/static/manifest.json /build/internal/web/static/manifest.json
 
 # Generate Go templates from .templ files
 RUN templ generate
@@ -102,13 +106,14 @@ RUN templ generate
 # - Optimizations: -s -w (strip debug info, reduce size)
 # - CGO_ENABLED=0 for static linking (required for distroless)
 # - Cache mount for faster builds
+# - Parallel compilation with GOMAXPROCS
 RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     PACKAGE="github.com/netresearch/ldap-manager/internal/version" && \
     VERSION_RAW="$(git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null)" && \
     VERSION="${VERSION_RAW#v}" && \
     COMMIT_HASH="$(git rev-parse --short HEAD)" && \
     BUILD_TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ') && \
-    CGO_ENABLED=0 go build \
+    CGO_ENABLED=0 go build -p 4 \
       -o /build/ldap-passwd \
       -ldflags="-s -w -X '${PACKAGE}.Version=${VERSION}' -X '${PACKAGE}.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}.BuildTimestamp=${BUILD_TIMESTAMP}'" \
       ./cmd/ldap-manager
