@@ -6,7 +6,7 @@ require (
 	github.com/a-h/templ v0.3.960
 	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/gofiber/storage/bbolt/v2 v2.1.1
-	github.com/gofiber/storage/memory/v2 v2.1.0
+	github.com/gofiber/storage/memory/v2 v2.1.1
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v1.6.0
 	github.com/rs/zerolog v1.34.0
