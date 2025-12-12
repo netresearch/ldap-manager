@@ -6,6 +6,7 @@ on:
   schedule:
     - cron: "38 4 * * 0"
   pull_request:
+  merge_group:
   push:
     branches:
       - main
