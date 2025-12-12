@@ -65,8 +65,8 @@ github.com/gofiber/storage/bbolt/v2 v2.1.2 h1:qqaxeFV0uawWqN7itupujTWuF65nj1e1Te
 github.com/gofiber/storage/bbolt/v2 v2.1.2/go.mod h1:P8MFESd6mkazVvi1S31Mvj446vPH7RiDQ7/Augcrdak=
 github.com/gofiber/storage/memory/v2 v2.1.1 h1:q0ZsCyUtdVh6dCPRhIHEIC5YCK8zKL2pKTBfPWJz71A=
 github.com/gofiber/storage/memory/v2 v2.1.1/go.mod h1:+KBbnA91Vb+zWlkw668Fcg23UAzds3Z6fxV82jlq3SU=
-github.com/gofiber/utils/v2 v2.0.0-rc.2 h1:NvJTf7yMafTq16lUOJv70nr+HIOLNQcvGme/X+ftbW8=
-github.com/gofiber/utils/v2 v2.0.0-rc.2/go.mod h1:gXins5o7up+BQFiubmO8aUJc/+Mhd7EKXIiAK5GBomI=
+github.com/gofiber/utils/v2 v2.0.0-rc.4 h1:CDjwPwtwwj1OTIf6v3iRk+D2wcdjUzwk91Ghu2TMNbE=
+github.com/gofiber/utils/v2 v2.0.0-rc.4/go.mod h1:gXins5o7up+BQFiubmO8aUJc/+Mhd7EKXIiAK5GBomI=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
