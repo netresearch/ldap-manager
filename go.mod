@@ -1,6 +1,6 @@
 module github.com/netresearch/ldap-manager
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.6
 
@@ -19,7 +19,7 @@ require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.10 // indirect
-	github.com/gofiber/utils/v2 v2.0.0-beta.7 // indirect
+	github.com/gofiber/utils/v2 v2.0.0-rc.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
