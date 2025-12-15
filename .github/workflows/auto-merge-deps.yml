@@ -20,9 +20,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr review --approve "$PR_URL"
 
-      - name: Enable auto-merge
+      - name: Add to merge queue
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # --auto waits for required status checks before merging
-        run: gh pr merge --auto --squash "$PR_URL"
+          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
+        run: |
+          gh api graphql -f query='
+            mutation($pullRequestId: ID!) {
+              enqueuePullRequest(input: {pullRequestId: $pullRequestId}) {
+                mergeQueueEntry { id }
+              }
+            }' -f pullRequestId="$PR_NODE_ID"
