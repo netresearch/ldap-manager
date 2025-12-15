@@ -27,7 +27,7 @@ jobs:
         run: |
           gh api graphql -f query='
             mutation($pullRequestId: ID!) {
-              enqueuePullRequest(input: {pullRequestId: $pullRequestId, mergeMethod: SQUASH}) {
+              enqueuePullRequest(input: {pullRequestId: $pullRequestId}) {
                 mergeQueueEntry { id }
               }
             }' -f pullRequestId="$PR_NODE_ID" || { echo "Failed to enqueue PR in merge queue"; exit 1; }
