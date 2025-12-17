@@ -1,3 +1,5 @@
+# Auto-merge dependency updates for repositories with MERGE QUEUE enabled
+# Waits for all required status checks before enqueueing to merge queue
 name: Auto-merge dependency PRs
 
 on:
@@ -10,15 +12,41 @@ permissions:
 
 jobs:
   auto-merge:
+    name: Auto-merge dependency PRs
     runs-on: ubuntu-latest
-    # Only run for bot accounts
     if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
+
     steps:
-      - name: Approve PR
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Dependabot metadata
+        id: metadata
+        if: github.actor == 'dependabot[bot]'
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Auto-approve PR
+        run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr review --approve "$PR_URL"
+
+      - name: Wait for required status checks
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Waiting for all required status checks to pass..."
+          # Wait up to 30 minutes for checks to complete
+          timeout 1800 gh pr checks "$PR_URL" --watch --fail-fast || {
+            echo "Status checks did not pass within timeout"
+            exit 1
+          }
+          echo "All status checks passed!"
 
       - name: Add to merge queue
         env:
@@ -30,4 +58,8 @@ jobs:
               enqueuePullRequest(input: {pullRequestId: $pullRequestId}) {
                 mergeQueueEntry { id }
               }
-            }' -f pullRequestId="$PR_NODE_ID" || { echo "Failed to enqueue PR in merge queue"; exit 1; }
+            }' -f pullRequestId="$PR_NODE_ID" || {
+              echo "Failed to enqueue PR in merge queue"
+              exit 1
+            }
+          echo "PR successfully added to merge queue!"
