@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+# Default read-only permissions for security hardening
+permissions:
+  contents: read
+
 jobs:
   go-test:
     name: Run Go tests

@@ -18,14 +18,14 @@ jobs:
 
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
         with:
           egress-policy: audit
 
       - name: Dependabot metadata
         id: metadata
         if: github.actor == 'dependabot[bot]'
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
