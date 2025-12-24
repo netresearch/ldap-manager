@@ -159,6 +159,48 @@ benchmark:
 	@go test -bench=. -benchmem -run=^$ ./... > $(COVERAGE_DIR)/benchmarks.txt
 	@echo "$(GREEN)✅ Benchmarks completed$(RESET)"
 
+## Test Integration: Run integration tests with testcontainers
+test-integration:
+	@echo "$(BLUE)Running integration tests...$(RESET)"
+	@if go test -v -tags=integration ./internal/integration/...; then \
+		echo "$(GREEN)✅ Integration tests passed$(RESET)"; \
+	else \
+		echo "$(RED)❌ Integration tests failed$(RESET)"; \
+		exit 1; \
+	fi
+
+## Test E2E: Run end-to-end browser tests
+test-e2e:
+	@echo "$(BLUE)Running E2E tests...$(RESET)"
+	@echo "$(YELLOW)Note: Requires running app and Playwright browsers installed$(RESET)"
+	@if go test -v -tags=e2e ./internal/e2e/...; then \
+		echo "$(GREEN)✅ E2E tests passed$(RESET)"; \
+	else \
+		echo "$(RED)❌ E2E tests failed$(RESET)"; \
+		exit 1; \
+	fi
+
+## Test Fuzz: Run fuzz tests (60 seconds per target)
+test-fuzz:
+	@echo "$(BLUE)Running fuzz tests...$(RESET)"
+	@mkdir -p $(COVERAGE_DIR)/fuzz
+	@echo "$(YELLOW)Fuzzing ldap_cache package...$(RESET)"
+	@go test -fuzz=FuzzCacheGetByDN -fuzztime=15s ./internal/ldap_cache/... || true
+	@go test -fuzz=FuzzCacheGetBySAMAccountName -fuzztime=15s ./internal/ldap_cache/... || true
+	@echo "$(YELLOW)Fuzzing web package...$(RESET)"
+	@go test -fuzz=FuzzURLPathUnescape -fuzztime=15s ./internal/web/... || true
+	@go test -fuzz=FuzzQueryParams -fuzztime=15s ./internal/web/... || true
+	@echo "$(GREEN)✅ Fuzz testing completed$(RESET)"
+
+## Test Mutation: Run mutation testing
+test-mutation:
+	@echo "$(BLUE)Running mutation testing...$(RESET)"
+	@./scripts/mutation-test.sh
+
+## Test All: Run all test types
+test-all: test test-integration
+	@echo "$(GREEN)✅ All tests completed$(RESET)"
+
 ## Lint: Run all linting and static analysis
 lint: lint-go lint-security lint-format lint-complexity
 	@echo "$(GREEN)✓ All linting checks passed$(RESET)"
