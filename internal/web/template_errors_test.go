@@ -259,9 +259,9 @@ func TestTemplateCacheStopSingleCallSafe(t *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 
 	// Stop should not panic on the first (and only) call
-	cache.Stop()
-
-	// Note: Stop is expected to be called only once; additional calls may panic
+	require.NotPanics(t, func() {
+		cache.Stop()
+	}, "Stop should not panic on first call")
 }
 
 // TestTemplateCacheGenerateKey tests cache key generation
