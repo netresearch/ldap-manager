@@ -156,7 +156,7 @@ func TestCache_LargeBatchOperations(t *testing.T) {
 		items := make([]mockCacheable, 10000)
 		for i := range 10000 {
 			items[i] = mockCacheable{
-				dn:   "cn=user" + string(rune(i)) + ",dc=example,dc=com",
+				dn:   "cn=user" + strconv.Itoa(i) + ",dc=example,dc=com",
 				data: "data",
 			}
 		}
@@ -175,8 +175,8 @@ func TestCache_LargeBatchOperations(t *testing.T) {
 			items := make([]mockCacheable, 100)
 			for j := range 100 {
 				items[j] = mockCacheable{
-					dn:   "cn=rapid" + string(rune(j)) + ",dc=example,dc=com",
-					data: "iteration-" + string(rune(i)),
+					dn:   "cn=rapid" + strconv.Itoa(j) + ",dc=example,dc=com",
+					data: "iteration-" + strconv.Itoa(i),
 				}
 			}
 			cache.setAll(items)
@@ -481,7 +481,6 @@ func TestCache_FilterNoMatches(t *testing.T) {
 
 	// Filter returns nil when no matches (not an empty slice)
 	assert.Nil(t, result)
-	assert.Len(t, result, 0)
 }
 
 // TestCache_EmptySetAll tests setAll with empty slice

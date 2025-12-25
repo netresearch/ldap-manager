@@ -150,7 +150,7 @@ func TestEnvIntOrDefault_EdgeCases(t *testing.T) {
 		assert.Equal(t, math.MinInt, result)
 	})
 
-	t.Run("zero with leading zeros", func(t *testing.T) {
+	t.Run("zero value", func(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_INT_ZERO", "0")
 		defer cleanup()
 

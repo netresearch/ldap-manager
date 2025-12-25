@@ -255,7 +255,7 @@ func TestTemplateCacheInvalidateByPath(t *testing.T) {
 }
 
 // TestTemplateCacheStopSingleCallSafe tests that Stop can be called once safely
-func TestTemplateCacheStopSingleCallSafe(_ *testing.T) {
+func TestTemplateCacheStopSingleCallSafe(t *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 
 	// Stop should not panic on the first (and only) call
@@ -304,11 +304,13 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 		})
 
 		req1 := httptest.NewRequest(http.MethodGet, "/path1", http.NoBody)
-		resp1, _ := app.Test(req1)
+		resp1, err := app.Test(req1)
+		require.NoError(t, err)
 		_ = resp1.Body.Close()
 
 		req2 := httptest.NewRequest(http.MethodGet, "/path2", http.NoBody)
-		resp2, _ := app.Test(req2)
+		resp2, err := app.Test(req2)
+		require.NoError(t, err)
 		_ = resp2.Body.Close()
 
 		assert.NotEqual(t, key1, key2, "Different paths should generate different cache keys")
@@ -325,7 +327,8 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/additional", http.NoBody)
-		resp, _ := app.Test(req)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
 		_ = resp.Body.Close()
 
 		assert.NotEqual(t, key1, key2, "Different additional data should generate different keys")
