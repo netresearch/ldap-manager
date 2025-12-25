@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -31,7 +32,7 @@ func TestTemplateCacheConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := range 50 {
-				key := "key" + string(rune('A'+id%26)) + string(rune('0'+j%10))
+				key := "key" + strconv.Itoa(id) + "_" + strconv.Itoa(j)
 				content := []byte("content-" + key)
 				cache.Set(key, content, 0)
 			}
@@ -44,7 +45,7 @@ func TestTemplateCacheConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := range 50 {
-				key := "key" + string(rune('A'+id%26)) + string(rune('0'+j%10))
+				key := "key" + strconv.Itoa(id) + "_" + strconv.Itoa(j)
 				_, _ = cache.Get(key)
 			}
 		}(i)
@@ -87,7 +88,7 @@ func TestTemplateCacheMemoryPressure(t *testing.T) {
 
 	// Add more entries than max size
 	for i := range 20 {
-		key := "key" + string(rune('0'+i%10))
+		key := "key" + strconv.Itoa(i)
 		content := []byte(strings.Repeat("x", 1000)) // 1KB content
 		cache.Set(key, content, 0)
 	}
@@ -184,7 +185,7 @@ func TestTemplateCacheStatsAccuracy(t *testing.T) {
 
 	// Add entries
 	for i := range 10 {
-		key := "key" + string(rune('0'+i))
+		key := "key" + strconv.Itoa(i)
 		cache.Set(key, []byte("content"), 0)
 	}
 
@@ -254,15 +255,14 @@ func TestTemplateCacheInvalidateByPath(t *testing.T) {
 	assert.Equal(t, 0, stats.Entries)
 }
 
-// TestTemplateCacheStopIdempotent tests that Stop can be called safely
-func TestTemplateCacheStopIdempotent(t *testing.T) {
+// TestTemplateCacheStopSingleCallSafe tests that Stop can be called once safely
+func TestTemplateCacheStopSingleCallSafe(t *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 
-	// Stop should not panic on first call
+	// Stop should not panic on the first (and only) call
 	cache.Stop()
 
-	// Note: Second Stop() would panic due to closed channel
-	// This is expected behavior - Stop should only be called once
+	// Note: Stop is expected to be called only once; additional calls may panic
 }
 
 // TestTemplateCacheGenerateKey tests cache key generation

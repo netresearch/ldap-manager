@@ -27,7 +27,7 @@ func TestEnvStringOrDefault_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("very long string value", func(t *testing.T) {
-		// Create a long string of 'x' characters (null bytes not allowed in env vars)
+		// Create a long string (10000 'x' characters)
 		longValue := ""
 		for range 1000 {
 			longValue += "xxxxxxxxxx"
