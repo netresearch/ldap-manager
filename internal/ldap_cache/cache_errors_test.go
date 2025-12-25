@@ -5,6 +5,7 @@ package ldap_cache
 
 import (
 	"math"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -90,7 +91,7 @@ func TestCache_ConcurrentWriteDuringRead(t *testing.T) {
 	initial := make([]mockCacheable, 1000)
 	for i := range 1000 {
 		initial[i] = mockCacheable{
-			dn:   "cn=user" + string(rune('0'+i%10)) + ",dc=example,dc=com",
+			dn:   "cn=user" + strconv.Itoa(i) + ",dc=example,dc=com",
 			data: "initial",
 		}
 	}
@@ -123,8 +124,8 @@ func TestCache_ConcurrentWriteDuringRead(t *testing.T) {
 				newItems := make([]mockCacheable, 100)
 				for k := range 100 {
 					newItems[k] = mockCacheable{
-						dn:   "cn=new" + string(rune('0'+k%10)) + ",dc=example,dc=com",
-						data: "updated-" + string(rune('0'+j%10)),
+						dn:   "cn=new" + strconv.Itoa(k) + ",dc=example,dc=com",
+						data: "updated-" + strconv.Itoa(j),
 					}
 				}
 				cache.setAll(newItems)
@@ -476,7 +477,7 @@ func TestCache_FilterNoMatches(t *testing.T) {
 	})
 
 	// Filter returns nil when no matches (not an empty slice)
-	assert.Empty(t, result)
+	assert.Nil(t, result)
 	assert.Len(t, result, 0)
 }
 
@@ -536,7 +537,7 @@ func TestCache_ConcurrentIndexAccess(t *testing.T) {
 	items := make([]mockCacheable, 100)
 	for i := range 100 {
 		items[i] = mockCacheable{
-			dn:   "cn=user" + string(rune('A'+i%26)) + string(rune('0'+i/26)) + ",dc=example,dc=com",
+			dn:   "cn=user" + strconv.Itoa(i) + ",dc=example,dc=com",
 			data: "data",
 		}
 	}
@@ -550,7 +551,7 @@ func TestCache_ConcurrentIndexAccess(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := range 100 {
-				dn := "cn=user" + string(rune('A'+j%26)) + string(rune('0'+j/26)) + ",dc=example,dc=com"
+				dn := "cn=user" + strconv.Itoa(j) + ",dc=example,dc=com"
 				cache.FindByDN(dn)
 			}
 		}()
@@ -565,7 +566,7 @@ func TestCache_ConcurrentIndexAccess(t *testing.T) {
 				newItems := make([]mockCacheable, 50)
 				for k := range 50 {
 					newItems[k] = mockCacheable{
-						dn:   "cn=new" + string(rune('0'+k%10)) + ",dc=example,dc=com",
+						dn:   "cn=new" + strconv.Itoa(k) + ",dc=example,dc=com",
 						data: "new",
 					}
 				}
