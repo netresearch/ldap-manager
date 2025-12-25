@@ -34,8 +34,8 @@ func FuzzTemplateCacheSet(f *testing.F) {
 		if ttlMs < 0 {
 			ttlMs = 0
 		}
-		if ttlMs > int64(time.Hour.Milliseconds()) {
-			ttlMs = int64(time.Hour.Milliseconds())
+		if ttlMs > time.Hour.Milliseconds() {
+			ttlMs = time.Hour.Milliseconds()
 		}
 		ttl := time.Duration(ttlMs) * time.Millisecond
 
