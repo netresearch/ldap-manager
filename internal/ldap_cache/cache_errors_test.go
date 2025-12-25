@@ -15,6 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nonexistentData is a constant for test data that doesn't exist in the cache
+const nonexistentData = "nonexistent"
+
 // mockCacheableWithSAM is a test implementation with SAMAccountName support
 type mockCacheableWithSAM struct {
 	dn             string
@@ -449,7 +452,7 @@ func TestCache_SAMAccountNameIndex(t *testing.T) {
 	})
 
 	t.Run("find by non-existent SAM", func(t *testing.T) {
-		item, found := cache.FindBySAMAccountName("nonexistent")
+		item, found := cache.FindBySAMAccountName(nonexistentData)
 		assert.False(t, found)
 		assert.Nil(t, item)
 	})
@@ -473,7 +476,7 @@ func TestCache_FilterNoMatches(t *testing.T) {
 
 	// Filter that matches nothing
 	result := cache.Filter(func(m mockCacheable) bool {
-		return m.data == "nonexistent"
+		return m.data == nonexistentData
 	})
 
 	// Filter returns nil when no matches (not an empty slice)
@@ -632,7 +635,7 @@ func TestCacheWithMetrics_HitMissTracking(t *testing.T) {
 
 	// Miss via Find
 	_, found = cache.Find(func(m mockCacheable) bool {
-		return m.data == "nonexistent"
+		return m.data == nonexistentData
 	})
 	assert.False(t, found)
 

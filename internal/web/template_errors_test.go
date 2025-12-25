@@ -195,7 +195,6 @@ func TestTemplateCacheStatsAccuracy(t *testing.T) {
 	// Wait for expiration
 	time.Sleep(150 * time.Millisecond)
 
-	stats = cache.Stats()
 	// Stats might still show entries but they're expired
 	// After cleanup, entries should be 0
 	time.Sleep(60 * time.Millisecond) // Wait for cleanup
@@ -256,7 +255,7 @@ func TestTemplateCacheInvalidateByPath(t *testing.T) {
 }
 
 // TestTemplateCacheStopSingleCallSafe tests that Stop can be called once safely
-func TestTemplateCacheStopSingleCallSafe(t *testing.T) {
+func TestTemplateCacheStopSingleCallSafe(_ *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 
 	// Stop should not panic on the first (and only) call
@@ -278,13 +277,14 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 		app.Get("/test", func(c *fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c)
 			key2 = cache.generateCacheKey(c)
+
 			return c.SendString("ok")
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 		resp, err := app.Test(req)
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		assert.Equal(t, key1, key2, "Same request should generate same cache key")
 	})
@@ -294,20 +294,22 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 
 		app.Get("/path1", func(c *fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c)
+
 			return c.SendString("ok")
 		})
 		app.Get("/path2", func(c *fiber.Ctx) error {
 			key2 = cache.generateCacheKey(c)
+
 			return c.SendString("ok")
 		})
 
 		req1 := httptest.NewRequest(http.MethodGet, "/path1", http.NoBody)
 		resp1, _ := app.Test(req1)
-		resp1.Body.Close()
+		_ = resp1.Body.Close()
 
 		req2 := httptest.NewRequest(http.MethodGet, "/path2", http.NoBody)
 		resp2, _ := app.Test(req2)
-		resp2.Body.Close()
+		_ = resp2.Body.Close()
 
 		assert.NotEqual(t, key1, key2, "Different paths should generate different cache keys")
 	})
@@ -318,12 +320,13 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 		app.Get("/additional", func(c *fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c, "data1")
 			key2 = cache.generateCacheKey(c, "data2")
+
 			return c.SendString("ok")
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/additional", http.NoBody)
 		resp, _ := app.Test(req)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		assert.NotEqual(t, key1, key2, "Different additional data should generate different keys")
 	})
@@ -342,11 +345,13 @@ func TestTemplateCacheMiddleware(t *testing.T) {
 	callCount := 0
 	app.Get("/cached", func(c *fiber.Ctx) error {
 		callCount++
+
 		return c.SendString("content")
 	})
 
 	app.Get("/not-cached", func(c *fiber.Ctx) error {
 		callCount++
+
 		return c.SendString("content")
 	})
 
@@ -354,7 +359,7 @@ func TestTemplateCacheMiddleware(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/cached", http.NoBody)
 		resp, err := app.Test(req)
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		// POST should not be cached
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
@@ -365,14 +370,14 @@ func TestTemplateCacheMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/not-cached", http.NoBody)
 		resp, _ := app.Test(req)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		assert.Equal(t, 1, callCount)
 
 		// Second request should still call handler
 		req = httptest.NewRequest(http.MethodGet, "/not-cached", http.NoBody)
 		resp, _ = app.Test(req)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		assert.Equal(t, 2, callCount)
 	})
