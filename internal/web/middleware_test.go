@@ -21,7 +21,7 @@ type errorSessionStorage struct {
 	mu          sync.Mutex
 }
 
-func (e *errorSessionStorage) Get(key string) ([]byte, error) {
+func (e *errorSessionStorage) Get(_ string) ([]byte, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.shouldError {
@@ -31,7 +31,7 @@ func (e *errorSessionStorage) Get(key string) ([]byte, error) {
 	return nil, nil
 }
 
-func (e *errorSessionStorage) Set(key string, val []byte, exp time.Duration) error {
+func (e *errorSessionStorage) Set(_ string, _ []byte, _ time.Duration) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.shouldError {
@@ -41,7 +41,7 @@ func (e *errorSessionStorage) Set(key string, val []byte, exp time.Duration) err
 	return nil
 }
 
-func (e *errorSessionStorage) Delete(key string) error {
+func (e *errorSessionStorage) Delete(_ string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.shouldError {
@@ -117,7 +117,7 @@ func TestRequireAuth_SessionGetError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should redirect to login on session error
 	assert.Equal(t, http.StatusFound, resp.StatusCode)
@@ -137,7 +137,7 @@ func TestRequireAuth_FreshSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Fresh session should redirect to login
 	assert.Equal(t, http.StatusFound, resp.StatusCode)
@@ -167,7 +167,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodGet, "/set-empty-session", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	// Get the session cookie
 	cookies := resp1.Cookies()
@@ -180,7 +180,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	}
 	resp2, err := app.fiber.Test(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	// Empty DN should redirect to login
 	assert.Equal(t, http.StatusFound, resp2.StatusCode)
@@ -213,7 +213,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodGet, "/login-test", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	cookies := resp1.Cookies()
 	require.NotEmpty(t, cookies)
@@ -225,7 +225,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	}
 	resp2, err := app.fiber.Test(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	// Should get 200 OK and have userDN in context
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
@@ -255,7 +255,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodGet, "/corrupt-session", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	cookies := resp1.Cookies()
 	require.NotEmpty(t, cookies)
@@ -267,7 +267,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	}
 	resp2, err := app.fiber.Test(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	// Corrupted (non-string) DN should redirect to login
 	assert.Equal(t, http.StatusFound, resp2.StatusCode)
@@ -288,7 +288,7 @@ func TestOptionalAuth_NoSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/optional", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should succeed but with empty userDN
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -321,7 +321,7 @@ func TestOptionalAuth_WithValidSession(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodGet, "/login-test", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	cookies := resp1.Cookies()
 
@@ -332,7 +332,7 @@ func TestOptionalAuth_WithValidSession(t *testing.T) {
 	}
 	resp2, err := app.fiber.Test(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
 	assert.Equal(t, "cn=testuser,ou=users,dc=example,dc=com", capturedDN)
@@ -354,7 +354,7 @@ func TestOptionalAuth_SessionError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/optional", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// OptionalAuth should continue without auth context on error
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -386,7 +386,7 @@ func TestOptionalAuth_EmptyDN(t *testing.T) {
 	req1 := httptest.NewRequest(http.MethodGet, "/set-empty", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	cookies := resp1.Cookies()
 
@@ -397,7 +397,7 @@ func TestOptionalAuth_EmptyDN(t *testing.T) {
 	}
 	resp2, err := app.fiber.Test(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	// Should continue but without setting userDN
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
@@ -418,7 +418,7 @@ func TestGetUserDN_NoContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Empty(t, result)
 }
@@ -438,7 +438,7 @@ func TestGetUserDN_WithValidContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, "cn=test,dc=example,dc=com", result)
 }
@@ -458,7 +458,7 @@ func TestGetUserDN_WrongType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Empty(t, result)
 }
@@ -479,7 +479,7 @@ func TestRequireUserDN_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.NoError(t, resultErr)
 	assert.Equal(t, "cn=test,dc=example,dc=com", resultDN)
@@ -503,7 +503,7 @@ func TestRequireUserDN_NoContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Error(t, resultErr)
 	assert.Empty(t, resultDN)
@@ -529,7 +529,7 @@ func TestRequireUserDN_EmptyDN(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Error(t, resultErr)
 	assert.Empty(t, resultDN)
@@ -560,7 +560,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
 	cookies := resp.Cookies()
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Concurrent access
 	var wg sync.WaitGroup
@@ -581,7 +581,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 
 				return
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				errors <- fiber.NewError(resp.StatusCode, "unexpected status")
