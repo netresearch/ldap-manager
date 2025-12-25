@@ -90,8 +90,8 @@ func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string
 
 // Get retrieves cached template content if available and not expired
 func (tc *TemplateCache) Get(key string) ([]byte, bool) {
-	tc.mu.RLock()
-	defer tc.mu.RUnlock()
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
 
 	entry, exists := tc.entries[key]
 	if !exists {
@@ -100,11 +100,11 @@ func (tc *TemplateCache) Get(key string) ([]byte, bool) {
 
 	// Check if entry is expired
 	if time.Since(entry.createdAt) > entry.ttl {
-		// Entry expired, but don't remove it here to avoid holding write lock
+		// Entry expired, but don't remove it here to avoid complex logic
 		return nil, false
 	}
 
-	// Update access time
+	// Update access time for LRU tracking
 	entry.accessedAt = time.Now()
 
 	return entry.content, true
