@@ -60,10 +60,7 @@ func TestCacheWarmupIntegration(t *testing.T) {
 		IsActiveDirectory: false,
 	}
 
-	client, err := ldap.New(ldapConfig)
-	require.NoError(t, err)
-
-	client, err = client.WithCredentials(container.AdminDN, container.AdminPass)
+	client, err := ldap.New(ldapConfig, container.AdminDN, container.AdminPass)
 	require.NoError(t, err)
 
 	// Create cache manager with wrapped client
@@ -121,10 +118,7 @@ func TestCacheLargeDatasetIntegration(t *testing.T) {
 		IsActiveDirectory: false,
 	}
 
-	client, err := ldap.New(ldapConfig)
-	require.NoError(t, err)
-
-	client, err = client.WithCredentials(container.AdminDN, container.AdminPass)
+	client, err := ldap.New(ldapConfig, container.AdminDN, container.AdminPass)
 	require.NoError(t, err)
 
 	wrappedClient := &mockLDAPClientForIntegration{client: client}
