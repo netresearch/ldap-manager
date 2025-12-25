@@ -354,7 +354,7 @@ jobs:
           LDAP_ADMIN_PASSWORD: adminpassword
         ports:
           - 389:389
-        options: --health-cmd="ldapsearch -x -H ldap://localhost -b dc=example,dc=com" --health-interval=10s --health-timeout=5s --health-retries=5
+        options: --health-cmd="ldapsearch -x -H ldap://localhost -b dc=example,dc=com -D 'cn=admin,dc=example,dc=com' -w adminpassword" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
       - name: Checkout code
