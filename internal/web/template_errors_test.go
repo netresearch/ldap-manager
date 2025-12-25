@@ -193,7 +193,7 @@ func TestTemplateCacheStatsAccuracy(t *testing.T) {
 	stats := cache.Stats()
 	assert.Equal(t, 10, stats.Entries)
 
-	// Wait for expiration
+	// Wait for expiration and cleanup
 	time.Sleep(150 * time.Millisecond)
 
 	// Stats might still show entries but they're expired

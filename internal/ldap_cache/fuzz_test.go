@@ -108,7 +108,7 @@ func FuzzCacheFindBySAMAccountName(f *testing.F) {
 		}
 		cache.setAll([]fuzzCacheable{item})
 
-		result, found = cache.FindBySAMAccountName(sam)
+		_, found = cache.FindBySAMAccountName(sam)
 		if sam != "" {
 			if !found {
 				t.Errorf("Should find item with SAMAccountName: %s", sam)
@@ -147,6 +147,7 @@ func FuzzCacheFilter(f *testing.F) {
 			if matchIfContains {
 				return strings.Contains(item.data, pattern)
 			}
+
 			return item.data == pattern
 		}
 
