@@ -40,31 +40,33 @@ func TestAuthIntegration(t *testing.T) {
 		IsActiveDirectory: false,
 	}
 
-	client, err := ldap.New(ldapConfig)
-	require.NoError(t, err, "Failed to create LDAP client")
-
 	t.Run("valid admin credentials", func(t *testing.T) {
-		_, err := client.WithCredentials(container.AdminDN, container.AdminPass)
+		client, err := ldap.New(ldapConfig, container.AdminDN, container.AdminPass)
 		assert.NoError(t, err, "Should authenticate with valid admin credentials")
+		if client != nil {
+			// Verify connection works
+			_, err = client.FindUsers()
+			assert.NoError(t, err, "Should be able to query LDAP")
+		}
 	})
 
 	t.Run("invalid password", func(t *testing.T) {
-		_, err := client.WithCredentials(container.AdminDN, "wrongpassword")
+		_, err := ldap.New(ldapConfig, container.AdminDN, "wrongpassword")
 		assert.Error(t, err, "Should fail with invalid password")
 	})
 
 	t.Run("invalid DN", func(t *testing.T) {
-		_, err := client.WithCredentials("cn=nonexistent,"+container.BaseDN, "anypassword")
+		_, err := ldap.New(ldapConfig, "cn=nonexistent,"+container.BaseDN, "anypassword")
 		assert.Error(t, err, "Should fail with invalid DN")
 	})
 
 	t.Run("empty password", func(t *testing.T) {
-		_, err := client.WithCredentials(container.AdminDN, "")
+		_, err := ldap.New(ldapConfig, container.AdminDN, "")
 		assert.Error(t, err, "Should fail with empty password")
 	})
 
 	t.Run("empty DN", func(t *testing.T) {
-		_, err := client.WithCredentials("", container.AdminPass)
+		_, err := ldap.New(ldapConfig, "", container.AdminPass)
 		assert.Error(t, err, "Should fail with empty DN")
 	})
 }
@@ -91,11 +93,7 @@ func TestUserLookupIntegration(t *testing.T) {
 		IsActiveDirectory: false,
 	}
 
-	client, err := ldap.New(ldapConfig)
-	require.NoError(t, err)
-
-	// Bind as admin for searches
-	client, err = client.WithCredentials(container.AdminDN, container.AdminPass)
+	client, err := ldap.New(ldapConfig, container.AdminDN, container.AdminPass)
 	require.NoError(t, err)
 
 	t.Run("find all users", func(t *testing.T) {
