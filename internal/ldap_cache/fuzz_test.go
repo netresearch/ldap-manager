@@ -1,3 +1,6 @@
+// Package ldap_cache provides thread-safe generic caching for LDAP entities.
+// This file contains fuzz tests for the cache implementation.
+// nolint:revive
 package ldap_cache
 
 import (
