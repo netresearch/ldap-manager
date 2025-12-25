@@ -185,8 +185,8 @@ test-fuzz:
 	@echo "$(BLUE)Running fuzz tests...$(RESET)"
 	@mkdir -p $(COVERAGE_DIR)/fuzz
 	@echo "$(YELLOW)Fuzzing ldap_cache package...$(RESET)"
-	@go test -fuzz=FuzzCacheGetByDN -fuzztime=15s ./internal/ldap_cache/... || true
-	@go test -fuzz=FuzzCacheGetBySAMAccountName -fuzztime=15s ./internal/ldap_cache/... || true
+	@go test -fuzz=FuzzCacheFindByDN -fuzztime=15s ./internal/ldap_cache/... || true
+	@go test -fuzz=FuzzCacheFindBySAMAccountName -fuzztime=15s ./internal/ldap_cache/... || true
 	@echo "$(YELLOW)Fuzzing web package...$(RESET)"
 	@go test -fuzz=FuzzURLPathUnescape -fuzztime=15s ./internal/web/... || true
 	@go test -fuzz=FuzzQueryParams -fuzztime=15s ./internal/web/... || true
