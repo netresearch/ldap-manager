@@ -97,16 +97,17 @@ func TestTemplateCacheMemoryPressure(t *testing.T) {
 	assert.LessOrEqual(t, stats.Entries, 5, "Cache should not exceed max size")
 }
 
-// TestTemplateCacheZeroTTL tests behavior with zero TTL
-func TestTemplateCacheZeroTTL(t *testing.T) {
+// TestTemplateCacheZeroDefaultTTL tests behavior with zero default TTL configuration.
+// When both DefaultTTL and the explicit TTL parameter are 0, entries expire immediately.
+func TestTemplateCacheZeroDefaultTTL(t *testing.T) {
 	cache := NewTemplateCache(TemplateCacheConfig{
-		DefaultTTL:      0, // Zero default TTL
+		DefaultTTL:      0, // Zero default TTL means entries expire immediately
 		MaxSize:         10,
 		CleanupInterval: 10 * time.Millisecond,
 	})
 	defer cache.Stop()
 
-	// With zero default TTL, entry should use 0 as TTL
+	// Set with 0 TTL uses the default (which is 0), so entry expires immediately
 	cache.Set("zero-ttl", []byte("content"), 0)
 
 	// Entry might expire immediately with 0 TTL

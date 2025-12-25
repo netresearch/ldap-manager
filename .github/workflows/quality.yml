@@ -417,8 +417,8 @@ jobs:
       - name: Run fuzz tests
         run: |
           echo "Running fuzz tests for 60 seconds per target..."
-          go test -fuzz=FuzzCacheGetByDN -fuzztime=60s ./internal/ldap_cache/... || true
-          go test -fuzz=FuzzCacheGetBySAMAccountName -fuzztime=60s ./internal/ldap_cache/... || true
+          go test -fuzz=FuzzCacheFindByDN -fuzztime=60s ./internal/ldap_cache/... || true
+          go test -fuzz=FuzzCacheFindBySAMAccountName -fuzztime=60s ./internal/ldap_cache/... || true
           go test -fuzz=FuzzURLPathUnescape -fuzztime=60s ./internal/web/... || true
           go test -fuzz=FuzzQueryParams -fuzztime=60s ./internal/web/... || true
           echo "Fuzz testing completed"

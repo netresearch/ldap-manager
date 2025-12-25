@@ -16,7 +16,7 @@ echo "========================================"
 # Check if go-mutesting is installed
 if ! command -v go-mutesting &> /dev/null; then
     echo -e "${YELLOW}Installing go-mutesting...${NC}"
-    go install github.com/zimmski/go-mutesting/cmd/go-mutesting@latest
+    go install github.com/zimmski/go-mutesting/cmd/go-mutesting@v1.2
 fi
 
 # Packages to test
