@@ -140,10 +140,13 @@ docker run \
 
 **Note:** You can ignore the warning that the service could not load a `.env` file when running in production.
 
-## Screenshot
+## Screenshots
 
-<img src="./docs/assets/ldap_manager_form.png" height="256" align="left" alt="">
-<img src="./docs/assets/ldap_manager_form_errors.png" height="256" align="left" alt="">
+<img src="./docs/assets/ldap_manager_users.png" height="256" align="left" alt="LDAP Manager - Users List">
+<img src="./docs/assets/ldap_manager_user_detail.png" height="256" align="left" alt="LDAP Manager - User Detail">
+<br clear="all">
+<img src="./docs/assets/ldap_manager_groups.png" height="256" align="left" alt="LDAP Manager - Groups List">
+<img src="./docs/assets/ldap_manager_group_detail.png" height="256" align="left" alt="LDAP Manager - Group Detail">
 <br clear="all">
 
 ## Documentation

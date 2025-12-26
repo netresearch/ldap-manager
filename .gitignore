@@ -24,3 +24,4 @@ coverage-reports/
 # Claude Code analysis and investigation files
 # Put all temporary analysis, reports, and investigation files in claudedocs/
 claudedocs/
+.playwright-mcp/
