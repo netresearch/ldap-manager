@@ -6,21 +6,23 @@
   "packageManager": "pnpm@10.26.2",
   "scripts": {
     "start": "pnpm build:assets && pnpm go:start",
-    "dev": "pnpm build:assets:dev && concurrently -n css,templ,go \"pnpm css:dev\" \"pnpm templ:dev\" \"pnpm go:dev\"",
+    "dev": "pnpm build:assets:dev && concurrently -n css,js,templ,go \"pnpm css:dev\" \"pnpm js:dev\" \"pnpm templ:dev\" \"pnpm go:dev\"",
     "build": "pnpm build:assets:prod && pnpm go:build",
     "build:assets": "pnpm build:assets:prod",
-    "build:assets:dev": "concurrently -n css,templ \"pnpm css:build:dev\" \"pnpm templ:build\"",
-    "build:assets:prod": "concurrently -n css,templ \"pnpm css:build:prod\" \"pnpm templ:build\"",
+    "build:assets:dev": "concurrently -n css,js,templ \"pnpm css:build:dev\" \"pnpm js:build\" \"pnpm templ:build\"",
+    "build:assets:prod": "concurrently -n css,js,templ \"pnpm css:build:prod\" \"pnpm js:build\" \"pnpm templ:build\"",
     "css:build": "pnpm css:build:prod",
     "css:build:dev": "NODE_ENV=development postcss ./internal/web/tailwind.css -o ./internal/web/static/styles.css --verbose",
     "css:build:prod": "NODE_ENV=production postcss ./internal/web/tailwind.css -o ./internal/web/static/styles.css --verbose && node scripts/cache-bust.mjs",
     "css:dev": "pnpm css:build:dev -w",
     "css:analyze": "pnpm css:build:prod && node scripts/analyze-css.mjs",
+    "js:build": "tsc",
+    "js:dev": "tsc -w --preserveWatchOutput",
     "templ:build": "templ generate",
     "templ:dev": "nodemon --signal SIGTERM -e templ -w \"./**\" -x pnpm templ:build",
     "go:start": "go run .",
     "go:build": "go build",
-    "go:dev": "nodemon --signal SIGTERM -e go,css -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
+    "go:dev": "nodemon --signal SIGTERM -e go,css,js -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
@@ -38,6 +40,7 @@
     "prettier-plugin-go-template": "^0.0.15",
     "prettier-plugin-tailwindcss": "^0.7.0",
     "purgecss": "^7.0.0",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3"
   }
 }

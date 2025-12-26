@@ -161,7 +161,7 @@ func setupMiddleware(f *fiber.App) {
 		HSTSMaxAge:            31536000, // 1 year
 		HSTSExcludeSubdomains: false,
 		HSTSPreloadEnabled:    true,
-		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self'; " +
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
 		CrossOriginOpenerPolicy:   "same-origin",

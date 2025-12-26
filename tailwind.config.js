@@ -49,7 +49,18 @@ const config = {
       "border-blue-500",
       "text-red-500",
       "text-green-500",
-      "text-blue-500"
+      "text-blue-500",
+      // Theme classes
+      "dark",
+      // Density-related classes (ensure they're preserved)
+      "comfortable:p-6",
+      "comfortable:p-8",
+      "comfortable:space-y-4",
+      "comfortable:h-10",
+      "compact:p-4",
+      "compact:p-6",
+      "compact:space-y-3",
+      "compact:h-9"
     ]
   },
   plugins: [

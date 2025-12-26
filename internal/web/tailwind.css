@@ -1,2 +1,82 @@
 /* This file is an entrypoint for the TailwindCSS compiler */
 @import "tailwindcss";
+
+/* Dark mode variant - applied via .dark class on html element */
+@variant dark (&:where(.dark, .dark *));
+
+/* Density variants - applied via data-density attribute */
+@custom-variant comfortable (&:is([data-density="comfortable"], [data-density="comfortable"] *));
+@custom-variant compact (&:is([data-density="compact"], [data-density="compact"] *));
+
+/* Input focus within container - for styling input wrappers */
+@custom-variant input-focus (&:has(input:focus, textarea:focus, select:focus));
+
+/* Error state input focus */
+@custom-variant error-input-focus (&:has(input[aria-invalid="true"]:focus));
+
+/* Theme colors with enhanced contrast for accessibility */
+@theme {
+  /* Light mode colors (default) */
+  --color-surface: oklch(98% 0.003 264.542);
+  --color-surface-elevated: oklch(100% 0 0);
+  --color-text-primary: oklch(20% 0.034 264.665);
+  --color-text-secondary: oklch(40% 0.034 264.665);
+  --color-border: oklch(80% 0.01 264.665);
+  --color-border-focus: oklch(50% 0.034 264.665);
+}
+
+/* Base page styles */
+@layer components {
+  .page-html {
+    @apply h-full bg-surface text-text-primary transition-colors duration-200;
+  }
+
+  .page-html.dark {
+    --color-surface: oklch(12% 0.034 264.665);
+    --color-surface-elevated: oklch(18% 0.034 264.665);
+    --color-text-primary: oklch(95% 0.003 264.542);
+    --color-text-secondary: oklch(70% 0.01 264.665);
+    --color-border: oklch(35% 0.02 264.665);
+    --color-border-focus: oklch(70% 0.01 264.665);
+  }
+
+  .page-body {
+    @apply flex min-h-full flex-col bg-surface;
+  }
+
+  .page-card {
+    @apply relative rounded-lg border border-border bg-surface-elevated shadow-sm;
+    @apply comfortable:p-6 comfortable:space-y-4;
+    @apply compact:p-4 compact:space-y-3;
+  }
+
+  .page-container {
+    @apply mx-auto w-full max-w-4xl flex-1;
+    @apply comfortable:p-6 compact:p-4;
+  }
+}
+
+/* Reduced motion support (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast support (WCAG 1.4.6) */
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: oklch(50% 0.034 264.665);
+    --color-text-secondary: oklch(30% 0.034 264.665);
+  }
+
+  .dark {
+    --color-border: oklch(60% 0.02 264.665);
+    --color-text-secondary: oklch(80% 0.01 264.665);
+  }
+}
