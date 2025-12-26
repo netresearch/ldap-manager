@@ -77,7 +77,7 @@ func FuzzQueryParams(f *testing.F) {
 	f.Add("obj.field=value") // Dot notation
 	f.Add("a=b&c=d&e=f&g=h&i=j") // Multiple
 
-	f.Fuzz(func(t *testing.T, query string) {
+	f.Fuzz(func(_ *testing.T, query string) {
 		// Parse query shouldn't panic
 		values, err := url.ParseQuery(query)
 
