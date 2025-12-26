@@ -1,0 +1,205 @@
+# AI Agent Instructions
+
+This document provides instructions for AI agents working with this codebase.
+
+## Creating and Updating Screenshots
+
+Screenshots are stored in `docs/assets/` and referenced in `README.md`. Follow these steps to create or update screenshots.
+
+### Prerequisites
+
+1. **Start the development environment:**
+
+   ```bash
+   docker compose --profile dev up -d
+   ```
+
+2. **Wait for services to be healthy:**
+
+   ```bash
+   docker compose --profile dev ps  # Check that ldap-server is healthy
+   ```
+
+3. **Note the application port:** The app runs on port 3000 internally, mapped to the host. Check `compose.yml` for the current port mapping (default: `3000:3000`).
+
+### Setting Up Realistic Test Data
+
+The OpenLDAP container starts with minimal data. Create realistic test data for better screenshots:
+
+#### 1. Create Users OU and Users
+
+```bash
+cat << 'LDIF' | docker exec -i ldap-server ldapadd -x -H ldap://localhost \
+  -D "cn=admin,dc=netresearch,dc=local" -w admin
+dn: ou=Users,dc=netresearch,dc=local
+objectClass: organizationalUnit
+ou: Users
+
+dn: uid=jsmith,ou=Users,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: John Smith
+sn: Smith
+givenName: John
+uid: jsmith
+mail: john.smith@netresearch.de
+userPassword: password123
+
+dn: uid=mmueller,ou=Users,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Maria Mueller
+sn: Mueller
+givenName: Maria
+uid: mmueller
+mail: maria.mueller@netresearch.de
+userPassword: password123
+
+dn: uid=tschneider,ou=Users,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Thomas Schneider
+sn: Schneider
+givenName: Thomas
+uid: tschneider
+mail: thomas.schneider@netresearch.de
+userPassword: password123
+
+dn: uid=aweber,ou=Users,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Anna Weber
+sn: Weber
+givenName: Anna
+uid: aweber
+mail: anna.weber@netresearch.de
+userPassword: password123
+
+dn: uid=pfischer,ou=Users,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: Peter Fischer
+sn: Fischer
+givenName: Peter
+uid: pfischer
+mail: peter.fischer@netresearch.de
+userPassword: password123
+LDIF
+```
+
+#### 2. Create Groups OU and Groups
+
+**Important:** Use `groupOfNames` objectClass (not `posixGroup`) - the `simple-ldap-go` library filters on `(|(objectClass=group)(objectClass=groupOfNames))`.
+
+```bash
+cat << 'LDIF' | docker exec -i ldap-server ldapadd -x -H ldap://localhost \
+  -D "cn=admin,dc=netresearch,dc=local" -w admin
+dn: ou=Groups,dc=netresearch,dc=local
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=developers,ou=Groups,dc=netresearch,dc=local
+objectClass: groupOfNames
+cn: developers
+description: Development Team
+member: uid=jsmith,ou=Users,dc=netresearch,dc=local
+member: uid=mmueller,ou=Users,dc=netresearch,dc=local
+member: uid=tschneider,ou=Users,dc=netresearch,dc=local
+
+dn: cn=operations,ou=Groups,dc=netresearch,dc=local
+objectClass: groupOfNames
+cn: operations
+description: Operations Team
+member: uid=pfischer,ou=Users,dc=netresearch,dc=local
+member: uid=aweber,ou=Users,dc=netresearch,dc=local
+
+dn: cn=administrators,ou=Groups,dc=netresearch,dc=local
+objectClass: groupOfNames
+cn: administrators
+description: System Administrators
+member: uid=jsmith,ou=Users,dc=netresearch,dc=local
+member: uid=aweber,ou=Users,dc=netresearch,dc=local
+LDIF
+```
+
+#### 3. Wait for Cache Refresh
+
+The LDAP Manager caches data with a 30-second refresh interval:
+
+```bash
+sleep 35
+```
+
+### Taking Screenshots
+
+Use Playwright MCP or browser automation to capture screenshots:
+
+1. **Navigate to the application** (typically `http://localhost:3000`)
+
+2. **Login** with admin credentials:
+   - Username: `admin`
+   - Password: `admin`
+
+3. **Capture required screenshots:**
+
+| Screenshot                      | URL Path                                                  | Description                    |
+| ------------------------------- | --------------------------------------------------------- | ------------------------------ |
+| `ldap_manager_users.png`        | `/users`                                                  | Users list showing all users   |
+| `ldap_manager_user_detail.png`  | `/users/uid=jsmith,ou=Users,dc=netresearch,dc=local`      | User detail page               |
+| `ldap_manager_groups.png`       | `/groups`                                                 | Groups list showing all groups |
+| `ldap_manager_group_detail.png` | `/groups/cn=developers,ou=Groups,dc=netresearch,dc=local` | Group detail with members      |
+
+4. **Save screenshots to** `docs/assets/`
+
+### Updating README.md
+
+After capturing screenshots, ensure `README.md` references them correctly:
+
+```markdown
+## Screenshots
+
+<img src="./docs/assets/ldap_manager_users.png" height="256" align="left" alt="LDAP Manager - Users List">
+<img src="./docs/assets/ldap_manager_user_detail.png" height="256" align="left" alt="LDAP Manager - User Detail">
+<br clear="all">
+<img src="./docs/assets/ldap_manager_groups.png" height="256" align="left" alt="LDAP Manager - Groups List">
+<img src="./docs/assets/ldap_manager_group_detail.png" height="256" align="left" alt="LDAP Manager - Group Detail">
+<br clear="all">
+```
+
+### Troubleshooting
+
+#### Groups not showing in UI
+
+- Verify groups use `objectClass: groupOfNames` (not `posixGroup`)
+- Wait for cache refresh (30 seconds)
+- Check LDAP directly: `docker exec ldap-server ldapsearch -x -H ldap://localhost -D "cn=admin,dc=netresearch,dc=local" -w admin -b "ou=Groups,dc=netresearch,dc=local" "(objectClass=groupOfNames)"`
+
+#### User group memberships not showing
+
+- OpenLDAP requires the `memberOf` overlay for reverse lookups
+- Groups show members correctly; user pages may show "No groups" without this overlay
+- This is a known limitation of the development OpenLDAP setup
+
+#### Port conflicts
+
+- If port 3000 is in use, modify `compose.yml` temporarily (e.g., `3001:3000`)
+- Remember to revert before committing
+
+### Cleanup
+
+After taking screenshots:
+
+```bash
+docker compose --profile dev down
+```
+
+## Code Style and Conventions
+
+- Follow existing patterns in the codebase
+- Use conventional commits for commit messages
+- Run `make check` before committing to ensure tests pass
