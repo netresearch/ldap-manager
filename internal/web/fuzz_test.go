@@ -13,20 +13,20 @@ func FuzzURLPathUnescape(f *testing.F) {
 	f.Add("/users")
 	f.Add("/users/john%20doe")
 	f.Add("/groups/admin%2Busers")
-	f.Add("/%2e%2e/etc/passwd") // Path traversal attempt
-	f.Add("/%00null")           // Null byte injection
-	f.Add("/<script>alert(1)</script>") // XSS attempt
-	f.Add("/users/../../../etc/passwd") // Directory traversal
+	f.Add("/%2e%2e/etc/passwd")          // Path traversal attempt
+	f.Add("/%00null")                    // Null byte injection
+	f.Add("/<script>alert(1)</script>")  // XSS attempt
+	f.Add("/users/../../../etc/passwd")  // Directory traversal
 	f.Add("/users?id=1%27%20OR%201=1--") // SQL injection attempt
-	f.Add("/%252e%252e/") // Double encoding
-	f.Add(strings.Repeat("/%2e", 100)) // Long path
-	f.Add("/路径/用户") // Unicode paths
+	f.Add("/%252e%252e/")                // Double encoding
+	f.Add(strings.Repeat("/%2e", 100))   // Long path
+	f.Add("/路径/用户")                      // Unicode paths
 	f.Add("/🎉/emoji")
-	f.Add("") // Empty
+	f.Add("")  // Empty
 	f.Add("/") // Root
 	f.Add("//double//slashes//")
-	f.Add("/users/;id") // Command injection attempt
-	f.Add("/users|ls") // Pipe injection
+	f.Add("/users/;id")     // Command injection attempt
+	f.Add("/users|ls")      // Pipe injection
 	f.Add("/users`whoami`") // Backtick injection
 
 	f.Fuzz(func(t *testing.T, path string) {
@@ -63,18 +63,18 @@ func FuzzQueryParams(f *testing.F) {
 	f.Add("")
 	f.Add("key=value&key=value2") // Duplicate keys
 	f.Add("key=a%20b")
-	f.Add("key=%00") // Null byte
-	f.Add("key=<script>") // XSS
-	f.Add("key=' OR 1=1--") // SQL injection
-	f.Add(strings.Repeat("key=value&", 100)) // Many params
+	f.Add("key=%00")                           // Null byte
+	f.Add("key=<script>")                      // XSS
+	f.Add("key=' OR 1=1--")                    // SQL injection
+	f.Add(strings.Repeat("key=value&", 100))   // Many params
 	f.Add("key=" + strings.Repeat("x", 10000)) // Long value
-	f.Add(strings.Repeat("k", 1000) + "=v") // Long key
-	f.Add("key=中文") // Unicode value
-	f.Add("键=value") // Unicode key
-	f.Add("key[]=value1&key[]=value2") // Array syntax
-	f.Add("key[0]=a&key[1]=b") // Indexed array
-	f.Add("obj.field=value") // Dot notation
-	f.Add("a=b&c=d&e=f&g=h&i=j") // Multiple
+	f.Add(strings.Repeat("k", 1000) + "=v")    // Long key
+	f.Add("key=中文")                            // Unicode value
+	f.Add("键=value")                           // Unicode key
+	f.Add("key[]=value1&key[]=value2")         // Array syntax
+	f.Add("key[0]=a&key[1]=b")                 // Indexed array
+	f.Add("obj.field=value")                   // Dot notation
+	f.Add("a=b&c=d&e=f&g=h&i=j")               // Multiple
 
 	f.Fuzz(func(t *testing.T, query string) {
 		// Parse query shouldn't panic
@@ -180,10 +180,10 @@ func FuzzHTMLEscaping(f *testing.F) {
 	f.Add("'><script>alert(1)</script>")
 	f.Add("\"><script>alert(1)</script>")
 	f.Add("<body onload=alert(1)>")
-	f.Add("{{.}}")             // Template injection
-	f.Add("${7*7}")            // Expression injection
-	f.Add("#{7*7}")            // Expression injection
-	f.Add("<%= 7*7 %>")        // ERB-style
+	f.Add("{{.}}")                                     // Template injection
+	f.Add("${7*7}")                                    // Expression injection
+	f.Add("#{7*7}")                                    // Expression injection
+	f.Add("<%= 7*7 %>")                                // ERB-style
 	f.Add("{{constructor.constructor('alert(1)')()}}") // Prototype pollution
 	f.Add("<img src=\"\" onerror=\"alert('XSS')\">")
 	f.Add("<a href=\"javascript:alert('XSS')\">click</a>")

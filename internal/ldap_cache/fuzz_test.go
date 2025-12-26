@@ -26,13 +26,13 @@ func FuzzCacheFindByDN(f *testing.F) {
 	f.Add("cn=user\\,with\\,commas,dc=example,dc=com")
 	f.Add("cn=user+uid=123,dc=example,dc=com")
 	f.Add("cn=\"quoted user\",dc=example,dc=com")
-	f.Add("cn=,dc=example,dc=com") // Empty CN
-	f.Add("")                       // Empty string
-	f.Add("cn=user,")               // Trailing comma
-	f.Add(",cn=user")               // Leading comma
-	f.Add("cn=user;;dc=example")    // Invalid separator
+	f.Add("cn=,dc=example,dc=com")   // Empty CN
+	f.Add("")                        // Empty string
+	f.Add("cn=user,")                // Trailing comma
+	f.Add(",cn=user")                // Leading comma
+	f.Add("cn=user;;dc=example")     // Invalid separator
 	f.Add(strings.Repeat("a", 1000)) // Long string
-	f.Add("cn=用户,dc=example,dc=com")           // Unicode
+	f.Add("cn=用户,dc=example,dc=com") // Unicode
 
 	f.Fuzz(func(t *testing.T, dn string) {
 		if !utf8.ValidString(dn) {

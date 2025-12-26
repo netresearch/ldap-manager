@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

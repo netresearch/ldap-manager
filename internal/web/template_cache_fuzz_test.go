@@ -19,7 +19,7 @@ func FuzzTemplateCacheSet(f *testing.F) {
 	f.Add("key?with=query", "content", int64(1000))
 	f.Add("key\twith\ttabs", "content", int64(1000))
 	f.Add("key\nwith\nnewlines", "content", int64(1000))
-	f.Add("键", "内容", int64(1000)) // Unicode
+	f.Add("键", "内容", int64(1000))          // Unicode
 	f.Add("key🎉", "content🎊", int64(1000)) // Emoji
 
 	f.Fuzz(func(t *testing.T, key, content string, ttlMs int64) {
@@ -60,8 +60,8 @@ func FuzzTemplateCacheGet(f *testing.F) {
 	f.Add("")
 	f.Add(strings.Repeat("x", 10000))
 	f.Add("key with spaces")
-	f.Add("键") // Unicode
-	f.Add("key🎉") // Emoji
+	f.Add("键")           // Unicode
+	f.Add("key🎉")        // Emoji
 	f.Add("key\x00null") // Null byte
 
 	f.Fuzz(func(t *testing.T, key string) {
