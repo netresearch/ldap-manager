@@ -45,10 +45,10 @@ func FuzzURLPathUnescape(f *testing.F) {
 				t.Logf("Path traversal pattern detected: %s", path)
 			}
 
-			// Verify UTF-8 validity
-			if !utf8.ValidString(unescaped) {
-				t.Errorf("Invalid UTF-8 after unescape: %s", path)
-			}
+			// Note: url.PathUnescape can produce invalid UTF-8 from malformed
+			// percent-encoded input (e.g., %80). This is expected behavior.
+			// Applications should validate UTF-8 after unescaping if needed.
+			_ = utf8.ValidString(unescaped)
 		}
 	})
 }
