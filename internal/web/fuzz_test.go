@@ -45,10 +45,9 @@ func FuzzURLPathUnescape(f *testing.F) {
 				t.Logf("Path traversal pattern detected: %s", path)
 			}
 
-			// Verify UTF-8 validity
-			if !utf8.ValidString(unescaped) {
-				t.Errorf("Invalid UTF-8 after unescape: %s", path)
-			}
+			// Note: url.PathUnescape can produce invalid UTF-8 from malformed
+			// percent-encoded input (e.g., %80). This is expected behavior.
+			// Applications should validate UTF-8 after unescaping if needed.
 		}
 	})
 }
@@ -82,22 +81,14 @@ func FuzzQueryParams(f *testing.F) {
 		values, err := url.ParseQuery(query)
 
 		if err == nil {
-			// Verify all keys and values are valid strings
-			for key, vals := range values {
-				if !utf8.ValidString(key) {
-					t.Errorf("Invalid UTF-8 key: %v", []byte(key))
-				}
-				for _, val := range vals {
-					if !utf8.ValidString(val) {
-						t.Errorf("Invalid UTF-8 value: %v", []byte(val))
-					}
-				}
-			}
+			// Note: url.ParseQuery can produce invalid UTF-8 from malformed
+			// percent-encoded input. This is expected behavior.
+			// Applications should validate UTF-8 after parsing if needed.
 
-			// Encoding should produce valid output
+			// Encoding should produce valid output (re-encodes invalid bytes)
 			encoded := values.Encode()
 			if !utf8.ValidString(encoded) {
-				t.Errorf("Invalid UTF-8 in encoded query")
+				t.Errorf("encoded query is not valid UTF-8: %q", encoded)
 			}
 		}
 	})
