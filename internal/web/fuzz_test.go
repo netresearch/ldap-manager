@@ -48,7 +48,6 @@ func FuzzURLPathUnescape(f *testing.F) {
 			// Note: url.PathUnescape can produce invalid UTF-8 from malformed
 			// percent-encoded input (e.g., %80). This is expected behavior.
 			// Applications should validate UTF-8 after unescaping if needed.
-			_ = utf8.ValidString(unescaped)
 		}
 	})
 }
@@ -77,7 +76,7 @@ func FuzzQueryParams(f *testing.F) {
 	f.Add("obj.field=value") // Dot notation
 	f.Add("a=b&c=d&e=f&g=h&i=j") // Multiple
 
-	f.Fuzz(func(_ *testing.T, query string) {
+	f.Fuzz(func(t *testing.T, query string) {
 		// Parse query shouldn't panic
 		values, err := url.ParseQuery(query)
 
@@ -85,16 +84,12 @@ func FuzzQueryParams(f *testing.F) {
 			// Note: url.ParseQuery can produce invalid UTF-8 from malformed
 			// percent-encoded input. This is expected behavior.
 			// Applications should validate UTF-8 after parsing if needed.
-			for key, vals := range values {
-				_ = utf8.ValidString(key)
-				for _, val := range vals {
-					_ = utf8.ValidString(val)
-				}
-			}
 
 			// Encoding should produce valid output (re-encodes invalid bytes)
 			encoded := values.Encode()
-			_ = utf8.ValidString(encoded)
+			if !utf8.ValidString(encoded) {
+				t.Errorf("encoded query is not valid UTF-8: %q", encoded)
+			}
 		}
 	})
 }
