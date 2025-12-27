@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": false,
+    "outDir": "./internal/web/static/js",
+    "rootDir": "./internal/web/static/ts",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["internal/web/static/ts/**/*.ts"],
+  "exclude": ["node_modules", "internal/web/static/js"]
+}

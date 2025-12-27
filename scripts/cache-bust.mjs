@@ -48,26 +48,36 @@ async function generateCacheBustedAssets() {
     console.log(`✅ Created hashed CSS: ${hashedCssName}`);
     console.log(`📝 Updated manifest: ${MANIFEST_PATH}`);
 
-    // Optional: Clean up old hashed files
-    await cleanupOldHashedFiles();
+    // Optional: Clean up old hashed files (but never delete current)
+    await cleanupOldHashedFiles(hashedCssName);
   } catch (error) {
     console.error("❌ Cache-busting failed:", error.message);
     process.exit(1);
   }
 }
 
-async function cleanupOldHashedFiles() {
+async function cleanupOldHashedFiles(currentHashedName) {
   try {
     const files = await fs.readdir(STATIC_DIR);
     const cssHashPattern = /^styles\.[a-f0-9]{8}\.css$/;
 
-    // Keep only the most recent 3 hashed CSS files
+    // Get all hashed files except the current one
     const hashedFiles = files
-      .filter((file) => cssHashPattern.test(file))
+      .filter((file) => cssHashPattern.test(file) && file !== currentHashedName)
       .map((file) => ({ name: file, path: path.join(STATIC_DIR, file) }));
 
-    if (hashedFiles.length > 3) {
-      const filesToDelete = hashedFiles.slice(0, -3); // Keep last 3
+    // Keep only the 2 most recent older files (plus current = 3 total)
+    if (hashedFiles.length > 2) {
+      // Sort by file modification time (newest first)
+      const filesWithStats = await Promise.all(
+        hashedFiles.map(async (file) => {
+          const stats = await fs.stat(file.path);
+          return { ...file, mtime: stats.mtime };
+        })
+      );
+      filesWithStats.sort((a, b) => b.mtime - a.mtime);
+
+      const filesToDelete = filesWithStats.slice(2);
 
       for (const file of filesToDelete) {
         try {

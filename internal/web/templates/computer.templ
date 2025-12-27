@@ -29,7 +29,7 @@ func specializeComputers(computers []ldap.Computer) []Displayer {
 templ Computer(computer *ldap_cache.FullLDAPComputer) {
 	@loggedIn(string(computerUrl(computer.Computer)), computer.CN(), []Flash{}) {
 		<h1 class="text-3xl">{ computer.CN() } ({ computer.SAMAccountName })</h1>
-		<p class="text-sm text-gray-500">
+		<p class="text-sm text-text-secondary">
 			{ computer.DN() }
 			if !computer.Enabled {
 				@lockIcon()
@@ -41,7 +41,7 @@ templ Computer(computer *ldap_cache.FullLDAPComputer) {
 		<h2 class="mt-4 text-xl">Groups:</h2>
 		@list(specializeGroups(computer.Groups))
 		if len(computer.Groups) == 0 {
-			<p class="text-gray-500">No groups</p>
+			<p class="text-text-secondary">No groups</p>
 		}
 	}
 }

@@ -1,17 +1,17 @@
 package templates
 
 templ list(list []Displayer) {
-	<div class="flex flex-col justify-between divide-y divide-gray-600">
+	<div class="list-container">
 		for _, c := range list {
-			<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+			<div class="list-row">
 				<a
 					href={ c.URL() }
-					class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
-					title={ c.ID() }
+					class="list-link"
+					title={ "View details: " + c.Name() }
 				>
 					<span>{ c.Name() }</span>
 					if !c.Enabled() {
-						@lockIcon("text-gray-500")
+						@lockIcon("text-text-secondary")
 					}
 					@rightArrowIcon()
 				</a>

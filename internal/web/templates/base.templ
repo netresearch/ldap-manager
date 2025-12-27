@@ -17,12 +17,11 @@ templ baseWithManifest(title, stylesPath string) {
 
 templ baseWithAssets(title, stylesPath string) {
 	<!DOCTYPE html>
-	<html lang="en" class="h-full bg-black text-white">
+	<html lang="en" class="page-html" data-density="compact">
 		<head>
 			<title>{ title } - LDAP Manager</title>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<meta name="darkreader-lock"/>
 			<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
 			<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
 			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
@@ -33,9 +32,14 @@ templ baseWithAssets(title, stylesPath string) {
 			<meta name="msapplication-TileColor" content="#b8e9f4"/>
 			<link rel="preload" href={ "/static/" + stylesPath } as="style"/>
 			<link rel="stylesheet" href={ "/static/" + stylesPath }/>
+			// Theme and density initialization scripts (run immediately to prevent flash)
+			<script src="/static/js/theme-init.js"></script>
+			<script src="/static/js/density-init.js"></script>
 		</head>
-		<body class="flex h-full flex-col overflow-y-scroll">
+		<body class="page-body">
 			{ children... }
+			// Main application script (load after content)
+			<script type="module" src="/static/js/app.js" defer></script>
 		</body>
 	</html>
 }

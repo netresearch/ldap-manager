@@ -30,30 +30,32 @@ func specializeUsers(users []ldap.User) []Displayer {
 templ User(user *ldap_cache.FullLDAPUser, unassignedGroups []ldap.Group, flashes []Flash, csrfToken string) {
 	@loggedIn(string(userUrl(user.User)), user.CN(), flashes) {
 		<h1 class="text-3xl">{ user.CN() } ({ user.SAMAccountName })</h1>
-		<p class="text-sm text-gray-500">
+		<p class="text-sm text-text-secondary">
 			{ user.DN() }
 			if !user.Enabled {
 				@lockIcon()
 			}
 		</p>
 		<h2 class="mt-4 text-xl">Groups:</h2>
-		<div class="flex flex-col justify-between divide-y divide-gray-600">
+		<div class="list-container">
 			for _, group := range user.Groups {
-				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+				<div class="list-row">
 					<a
 						href={ groupUrl(group) }
-						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+						class="list-link"
+						title={ "View group details: " + group.CN() }
 					>
-						<span title={ group.DN() }>{ group.CN() }</span>
+						<span>{ group.CN() }</span>
 						@rightArrowIcon()
 					</a>
-					<form action={ userUrl(user.User) } method="POST" class="flex-end pr-3">
+					<form action={ userUrl(user.User) } method="POST" class="flex shrink-0 pr-3">
 						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="removegroup" value={ group.DN() }/>
-						<input type="password" name="password_confirm" placeholder="Confirm password" class="form-input w-32 rounded-md border border-gray-600 bg-black px-2 py-1 text-xs outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
 						<button
-							class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+							class="btn-icon-remove"
 							type="submit"
+							aria-label="Remove from group"
+							title={ "Remove " + user.CN() + " from " + group.CN() }
 						>
 							@xIcon()
 						</button>
@@ -62,30 +64,50 @@ templ User(user *ldap_cache.FullLDAPUser, unassignedGroups []ldap.Group, flashes
 			}
 		</div>
 		if len(user.Groups) == 0 {
-			<p class="text-gray-500">No groups</p>
+			<p class="text-text-secondary">No groups</p>
 		}
 		<h2 class="mt-4 text-xl">Add to group</h2>
-		<form action={ userUrl(user.User) } method="POST">
+		<form action={ userUrl(user.User) } method="POST" class="flex items-center gap-2">
 			<input type="hidden" name="csrf_token" value={ csrfToken }/>
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center gap-2">
-					<select
-						class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
-						name="addgroup"
-					>
-						for _, group := range unassignedGroups {
-							<option value={ group.DN() }>{ group.CN() }</option>
-						}
-					</select>
-					<button
-						type="submit"
-						class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
-					>
-						@plusIcon()
-					</button>
-				</div>
-				<input type="password" name="password_confirm" placeholder="Confirm password to add to group" class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
+			<div class="combobox-container" data-combobox>
+				<input
+					type="text"
+					class="combobox-input"
+					data-combobox-input
+					placeholder="Search groups..."
+					title="Type to search for a group to add this user to"
+					autocomplete="off"
+				/>
+				<input type="hidden" name="addgroup" data-combobox-value/>
+				<ul
+					id={ "addgroup-listbox-" + user.DN() }
+					class="combobox-listbox hidden"
+					data-combobox-listbox
+				>
+					for i, group := range unassignedGroups {
+						<li
+							id={ fmt.Sprintf("addgroup-option-%d", i) }
+							class="combobox-option"
+							data-combobox-option
+							data-value={ group.DN() }
+							role="option"
+						>
+							{ group.CN() }
+						</li>
+					}
+					if len(unassignedGroups) == 0 {
+						<li class="combobox-empty">No groups available</li>
+					}
+				</ul>
 			</div>
+			<button
+				type="submit"
+				class="btn-icon-add"
+				aria-label="Add to group"
+				title="Add user to selected group"
+			>
+				@plusIcon()
+			</button>
 		</form>
 	}
 }
@@ -108,16 +130,17 @@ templ Users(users []ldap.User, showDisabled bool, flashes []Flash) {
 				</a>
 			</div>
 		</div>
-		<div class="flex flex-col justify-between divide-y divide-gray-600">
+		<div class="list-container">
 			for _, user := range users {
-				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+				<div class="list-row">
 					<a
 						href={ userUrl(user) }
-						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>.goto]:text-gray-500 [&>.goto]:hocus:text-white"
+						class="list-link"
+						title={ "View user details: " + user.CN() }
 					>
-						<span title={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</span>
+						<span>{ user.CN() } ({ user.SAMAccountName })</span>
 						if !user.Enabled {
-							@lockIcon("text-gray-500")
+							@lockIcon("text-text-secondary")
 						}
 						@rightArrowIcon()
 					</a>
@@ -147,9 +170,9 @@ func disabledUsersTooltip(showDisabled bool) string {
 	return "Show disabled users"
 }
 
-const disabledUsersBaseClasses = "flex items-center rounded-md border px-2 py-2 transition-colors"
-const disabledUsersEnabledClasses = "border-white text-black bg-white hocus:bg-black hocus:text-white hocus:border-gray-600"
-const disabledUsersDisabledClasses = "border-gray-600 hocus:bg-white hocus:text-black hocus:border-white"
+const disabledUsersBaseClasses = "btn-icon"
+const disabledUsersEnabledClasses = "border-accent bg-accent text-accent-text"
+const disabledUsersDisabledClasses = ""
 
 func disabledUsersClass(showDisabled bool) string {
 	if showDisabled {

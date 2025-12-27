@@ -6,7 +6,7 @@ templ FourOhFour(path string) {
 			<h1 class="text-3xl">It appears that this page does not exist.</h1>
 			<a
 				href="/"
-				class="mx-auto block w-fit rounded-md border border-white bg-white px-4 py-2 text-black transition-colors hocus:bg-black hocus:text-white"
+				class="btn-primary"
 			>
 				Back
 			</a>
@@ -18,10 +18,10 @@ templ FourOhThree(message string) {
 	@loggedIn("", "403", []Flash{}) {
 		<div class="flex flex-col items-center gap-8">
 			<h1 class="text-3xl">Access Forbidden</h1>
-			<p class="text-red-400">{ message }</p>
+			<p class="text-red-500">{ message }</p>
 			<a
 				href="/"
-				class="mx-auto block w-fit rounded-md border border-white bg-white px-4 py-2 text-black transition-colors hocus:bg-black hocus:text-white"
+				class="btn-primary"
 			>
 				Back
 			</a>
@@ -30,7 +30,7 @@ templ FourOhThree(message string) {
 }
 
 templ FiveHundred(err error) {
-	<div class="max-w-lg space-y-4 rounded-md border border-gray-600 p-8">
+	<div class="page-card max-w-lg space-y-4 p-8">
 		<p class="text-red-500">An error occurred:</p>
 		<p class="text-red-500">{ err.Error() }</p>
 	</div>

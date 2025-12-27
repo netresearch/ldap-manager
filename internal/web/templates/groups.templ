@@ -1,5 +1,6 @@
 package templates
 
+import "fmt"
 import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "github.com/netresearch/simple-ldap-go"
 
@@ -29,26 +30,27 @@ func specializeGroups(groups []ldap.Group) []Displayer {
 templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashes []Flash, csrfToken string) {
 	@loggedIn(string(groupUrl(group.Group)), group.CN(), flashes) {
 		<h1 class="text-3xl">{ group.CN() }</h1>
-		<p class="text-sm text-gray-500">{ group.DN() }</p>
+		<p class="text-sm text-text-secondary">{ group.DN() }</p>
 		<h2 class="mt-4 text-xl">Members:</h2>
-		<div class="flex flex-col justify-between divide-y divide-gray-600">
+		<div class="list-container">
 			for _, user := range group.Members {
-				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+				<div class="list-row">
 					<a
 						href={ userUrl(user) }
-						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
-						title={ user.DN() }
+						class="list-link"
+						title={ "View user details: " + user.CN() }
 					>
 						<span>{ user.CN() } ({ user.SAMAccountName })</span>
 						@rightArrowIcon()
 					</a>
-					<form action={ groupUrl(group.Group) } method="POST" class="flex-end pr-3">
+					<form action={ groupUrl(group.Group) } method="POST" class="flex shrink-0 pr-3">
 						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="removeuser" value={ user.DN() }/>
-						<input type="password" name="password_confirm" placeholder="Confirm password" class="form-input w-32 rounded-md border border-gray-600 bg-black px-2 py-1 text-xs outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
 						<button
-							class="flex items-center rounded-md p-1 ring-white focus:ring-1 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
+							class="btn-icon-remove"
 							type="submit"
+							aria-label="Remove user from group"
+							title={ "Remove " + user.CN() + " from this group" }
 						>
 							@xIcon()
 						</button>
@@ -57,30 +59,50 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 			}
 		</div>
 		if len(group.Members) ==0 {
-			<p class="text-gray-500">No members</p>
+			<p class="text-text-secondary">No members</p>
 		}
 		<h2 class="mt-4 text-xl">Add user</h2>
-		<form action={ groupUrl(group.Group) } method="POST">
+		<form action={ groupUrl(group.Group) } method="POST" class="flex items-center gap-2">
 			<input type="hidden" name="csrf_token" value={ csrfToken }/>
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center gap-2">
-					<select
-						class="form-select flex-1 rounded-md border border-gray-600 bg-black py-1 pl-3 pr-8 transition-colors focus:border-white focus:ring-0"
-						name="adduser"
-					>
-						for _, user := range unassignedUsers {
-							<option value={ user.DN() }>{ user.CN() } ({ user.SAMAccountName })</option>
-						}
-					</select>
-					<button
-						type="submit"
-						class="flex items-center rounded-md border border-white bg-white p-2 text-black transition-colors focus:outline-none hocus:bg-black hocus:text-white"
-					>
-						@plusIcon()
-					</button>
-				</div>
-				<input type="password" name="password_confirm" placeholder="Confirm password to add user" class="form-input w-full rounded-md border border-gray-600 bg-black px-2 py-1 outline-none transition-colors placeholder:select-none focus:border-white hocus:ring-0" required/>
+			<div class="combobox-container" data-combobox>
+				<input
+					type="text"
+					class="combobox-input"
+					data-combobox-input
+					placeholder="Search users..."
+					title="Type to search for a user to add"
+					autocomplete="off"
+				/>
+				<input type="hidden" name="adduser" data-combobox-value/>
+				<ul
+					id={ "adduser-listbox-" + group.DN() }
+					class="combobox-listbox hidden"
+					data-combobox-listbox
+				>
+					for i, user := range unassignedUsers {
+						<li
+							id={ fmt.Sprintf("adduser-option-%d", i) }
+							class="combobox-option"
+							data-combobox-option
+							data-value={ user.DN() }
+							role="option"
+						>
+							{ user.CN() } ({ user.SAMAccountName })
+						</li>
+					}
+					if len(unassignedUsers) == 0 {
+						<li class="combobox-empty">No users available</li>
+					}
+				</ul>
 			</div>
+			<button
+				type="submit"
+				class="btn-icon-add"
+				aria-label="Add user to group"
+				title="Add selected user to this group"
+			>
+				@plusIcon()
+			</button>
 		</form>
 	}
 }
@@ -88,13 +110,13 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 templ Groups(groups []ldap.Group) {
 	@loggedIn("/groups", "Groups", []Flash{}) {
 		<h1 class="mb-4 text-3xl">All groups</h1>
-		<div class="flex flex-col justify-between divide-y divide-gray-600">
+		<div class="list-container">
 			for _, group := range groups {
-				<div class="flex items-center transition-colors list-outer-hocus:bg-gray-700/50">
+				<div class="list-row">
 					<a
 						href={ groupUrl(group) }
-						class="flex w-full items-center gap-2 py-2 pl-3 transition-transform focus:outline-none hocus:translate-x-2 [&>svg]:text-gray-500 [&>svg]:hocus:text-white"
-						title={ group.DN() }
+						class="list-link"
+						title={ "View group details: " + group.CN() }
 					>
 						<span>{ group.CN() }</span>
 						@rightArrowIcon()

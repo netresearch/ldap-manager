@@ -132,6 +132,10 @@ services:
       LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
       LDAP_READONLY_PASSWORD: "admin"
 
+      # Note: Connection pooling is disabled in the application.
+      # CheckPasswordForSAMAccountName rebinds pooled connections with user
+      # credentials, contaminating the pool. Each operation creates a fresh connection.
+
       # Session settings (BBolt-based as per requirement)
       SESSION_PATH: "/data/session.bbolt"
       SESSION_SECRET: "dev-secret-change-in-production"

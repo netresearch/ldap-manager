@@ -1,8 +1,8 @@
 package templates
 
-const navbarClasses = "px-3 py-1 rounded-md flex items-center gap-2 transition-colors focus:outline-none hocus:text-white max-sm:px-2 max-sm:py-2 "
-const navbarInactiveClasses = "hocus:bg-gray-700/50"
-const navbarActiveClasses = "text-white bg-gray-700/80"
+const navbarClasses = "px-3 py-1 rounded-md flex items-center gap-2 transition-colors focus:outline-none hocus:text-text-primary max-sm:px-2 max-sm:py-2 compact:px-2 compact:py-1 comfortable:px-3 comfortable:py-2 "
+const navbarInactiveClasses = "text-text-secondary hocus:bg-surface-elevated"
+const navbarActiveClasses = "text-text-primary bg-surface-elevated"
 
 func getNavbarClasses(activePage, page string) string {
 	if activePage == page {
@@ -14,43 +14,55 @@ func getNavbarClasses(activePage, page string) string {
 
 templ loggedIn(current, title string, flashes []Flash) {
 	@base(title) {
-		<nav class="flex h-12 min-h-[3rem] w-full border-b border-b-gray-600">
-			<div class="m-auto flex w-full max-w-4xl items-center gap-4 px-4 py-1">
-				<div class="flex flex-1 justify-start gap-2 text-gray-500">
-					<a class={ getNavbarClasses(current, "/") } href="/">
-						@homeIcon()
-						<span class="max-sm:hidden">LDAP Manager</span>
-					</a>
-					<a class={ getNavbarClasses(current, "/users") } href="/users">
-						@usersIcon()
-						<span class="max-sm:hidden">Users</span>
-					</a>
-					<a class={ getNavbarClasses(current, "/groups") } href="/groups">
-						@groupIcon()
-						<span class="max-sm:hidden">Groups</span>
-					</a>
-					<a class={ getNavbarClasses(current, "/computers") } href="/computers">
-						@laptopIcon()
-						<span class="max-sm:hidden">Computers</span>
-					</a>
+		<div class="relative flex min-h-full flex-col">
+			<nav class="flex w-full border-b border-border compact:h-10 comfortable:h-12 compact:min-h-[2.5rem] comfortable:min-h-[3rem]">
+				<div class="m-auto flex w-full max-w-4xl items-center gap-4 px-4 py-1">
+					<div class="flex flex-1 justify-start gap-2">
+						<a class={ getNavbarClasses(current, "/") } href="/" title="Go to home page">
+							@homeIcon()
+							<span class="max-sm:hidden">LDAP Manager</span>
+						</a>
+						<a class={ getNavbarClasses(current, "/users") } href="/users" title="View all users">
+							@usersIcon()
+							<span class="max-sm:hidden">Users</span>
+						</a>
+						<a class={ getNavbarClasses(current, "/groups") } href="/groups" title="View all groups">
+							@groupIcon()
+							<span class="max-sm:hidden">Groups</span>
+						</a>
+						<a class={ getNavbarClasses(current, "/computers") } href="/computers" title="View all computers">
+							@laptopIcon()
+							<span class="max-sm:hidden">Computers</span>
+						</a>
+					</div>
+					<div class="flex items-center gap-2">
+						@ToggleButtons()
+						<a
+							href="/logout"
+							class="btn-icon text-text-secondary hocus:text-text-primary"
+							aria-label="Logout"
+							title="Sign out of LDAP Manager"
+						>
+							@logoutIcon()
+						</a>
+					</div>
 				</div>
-				<a
-					href="/logout"
-					class="flex items-center rounded-md border border-gray-600 p-2 outline-none transition-colors hocus:border-white hocus:bg-white hocus:text-black"
-				>
-					@logoutIcon()
-				</a>
+			</nav>
+			<div class="page-container">
+				if len(flashes) > 0 {
+					<div class="mb-4 space-y-2">
+						for _, flash := range flashes {
+							<div
+								class={ "rounded-md border p-4 py-3", flash.BorderColor() }
+								role="alert"
+							>
+								{ flash.Message }
+							</div>
+						}
+					</div>
+				}
+				{ children... }
 			</div>
-		</nav>
-		<div class="mx-auto w-full max-w-4xl flex-1 p-4">
-			if len(flashes)>0 {
-				<div class="mb-4">
-					for _, flash := range flashes {
-						<div class="{{ .BorderColor }} rounded-md border p-4 py-3">{ flash.Message }</div>
-					}
-				</div>
-			}
-			{ children... }
 		</div>
 	}
 }

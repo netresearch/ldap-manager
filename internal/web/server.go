@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -25,17 +24,17 @@ import (
 
 // App represents the main web application structure.
 // Encapsulates LDAP config, readonly client, cache, session store, template cache, Fiber framework.
-// Provides centralized auth, caching, connection pooling, and HTTP request handling.
-// Uses simple-ldap-go v1.5.0 built-in connection pooling with credential-aware support.
+// Provides centralized auth, caching, and HTTP request handling.
+// Note: Connection pooling is disabled because CheckPasswordForSAMAccountName rebinds
+// pooled connections with user credentials, causing credential contamination issues.
 type App struct {
 	ldapConfig    ldap.Config
-	ldapReadonly  *ldap.LDAP // Read-only client with shared pool
+	ldapReadonly  *ldap.LDAP // Read-only client (no pooling)
 	ldapCache     *ldap_cache.Manager
 	sessionStore  *session.Store
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
-	poolConfig    *ldap.PoolConfig
 	logger        *slog.Logger
 	assetManifest *AssetManifest // Asset manifest for cache-busted files
 }
@@ -52,17 +51,6 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 	return memory.New()
 }
 
-// createPoolConfig creates LDAP connection pool configuration from options
-func createPoolConfig(opts *options.Opts) *ldap.PoolConfig {
-	return &ldap.PoolConfig{
-		MaxConnections:      opts.PoolMaxConnections,
-		MinConnections:      opts.PoolMinConnections,
-		MaxIdleTime:         opts.PoolMaxIdleTime,
-		HealthCheckInterval: opts.PoolHealthCheckInterval,
-		ConnectionTimeout:   opts.PoolConnectionTimeout,
-		GetTimeout:          opts.PoolAcquireTimeout,
-	}
-}
 
 // createSessionStore creates session store with configuration from options
 func createSessionStore(opts *options.Opts) *session.Store {
@@ -92,23 +80,23 @@ func createFiberApp() *fiber.App {
 }
 
 // NewApp creates a new web application instance with the provided configuration options.
-// It initializes the LDAP configuration, readonly client with connection pooling, session management,
+// It initializes the LDAP configuration, readonly client, session management,
 // template cache, Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
 //
-// Uses simple-ldap-go v1.5.0 built-in connection pooling with credential-aware pooling.
-// The readonly client is created with a shared connection pool, and per-user clients
-// are created on-demand using WithCredentials().
+// Note: Connection pooling is intentionally disabled. The CheckPasswordForSAMAccountName
+// method rebinds pooled connections with user credentials, contaminating the pool.
+// Each operation creates a fresh connection like ldap-selfservice-password-changer.
 func NewApp(opts *options.Opts) (*App, error) {
 	logger := slog.Default()
-	poolConfig := createPoolConfig(opts)
 
-	// Create readonly LDAP client with connection pooling enabled
+	// Create readonly LDAP client WITHOUT connection pooling
+	// Pooling is disabled because CheckPasswordForSAMAccountName rebinds connections
+	// with user credentials, which contaminates the pool and causes timeout issues
 	ldapReadonly, err := ldap.New(
 		opts.LDAP,
 		opts.ReadonlyUser,
 		opts.ReadonlyPassword,
-		ldap.WithConnectionPool(poolConfig),
 		ldap.WithLogger(logger),
 	)
 	if err != nil {
@@ -139,7 +127,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
 		fiber:         f,
-		poolConfig:    poolConfig,
 		logger:        logger,
 		assetManifest: manifest,
 	}
@@ -161,7 +148,7 @@ func setupMiddleware(f *fiber.App) {
 		HSTSMaxAge:            31536000, // 1 year
 		HSTSExcludeSubdomains: false,
 		HSTSPreloadEnabled:    true,
-		ContentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'; " +
+		ContentSecurityPolicy: "default-src 'self'; style-src 'self'; " +
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
 		CrossOriginOpenerPolicy:   "same-origin",
@@ -308,12 +295,14 @@ func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
-// poolStatsHandler provides LDAP connection pool statistics for monitoring
+// poolStatsHandler provides LDAP performance statistics for monitoring
+// Note: Connection pooling is disabled, so pool-specific stats will be empty
 func (a *App) poolStatsHandler(c *fiber.Ctx) error {
 	stats := a.ldapReadonly.GetPoolStats()
 
 	response := map[string]interface{}{
-		"stats": stats,
+		"stats":   stats,
+		"message": "Connection pooling is disabled - each operation creates a fresh connection",
 	}
 
 	return c.JSON(response)
@@ -357,23 +346,6 @@ func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
-}
-
-// authenticateLDAPClient creates an LDAP client authenticated with user credentials.
-// Uses simple-ldap-go v1.5.0 WithCredentials() for credential switching with shared connection pooling.
-func (a *App) authenticateLDAPClient(_ context.Context, userDN, password string) (*ldap.LDAP, error) {
-	executor, err := a.ldapCache.FindUserByDN(userDN)
-	if err != nil {
-		return nil, err
-	}
-
-	// Use v1.5.0 WithCredentials() method for credential switching
-	userClient, err := a.ldapReadonly.WithCredentials(executor.DN(), password)
-	if err != nil {
-		return nil, err
-	}
-
-	return userClient, nil
 }
 
 // GetCSRFToken extracts the CSRF token from the context
