@@ -3,12 +3,14 @@
  * Initializes all client-side functionality after DOM is ready.
  */
 import { initThemeToggle, initDensityToggle } from "./toggles.js";
+import { initComboboxes } from "./combobox.js";
 /**
  * Initialize all application functionality.
  */
 function init() {
     initThemeToggle();
     initDensityToggle();
+    initComboboxes();
 }
 // Wait for DOM to be ready
 if (document.readyState === "loading") {
