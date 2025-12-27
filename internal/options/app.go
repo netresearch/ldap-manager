@@ -30,6 +30,9 @@ type Opts struct {
 	// Cookie security settings
 	CookieSecure bool
 
+	// TLS settings
+	TLSSkipVerify bool
+
 	// LDAP Connection Pool settings
 	PoolMaxConnections      int
 	PoolMinConnections      int
@@ -131,6 +134,10 @@ func Parse() *Opts {
 			"Require HTTPS for session and CSRF cookies. "+
 				"Set to false only for HTTP-only environments. Defaults to true for security.")
 
+		// TLS configuration
+		fTLSSkipVerify = flag.Bool("tls-skip-verify", envBoolOrDefault("LDAP_TLS_SKIP_VERIFY", false),
+			"Skip TLS certificate verification. Use only for development with self-signed certificates.")
+
 		// LDAP Connection Pool configuration
 		fPoolMaxConnections = flag.Int("pool-max-connections", envIntOrDefault("LDAP_POOL_MAX_CONNECTIONS", 10),
 			"Maximum number of connections in the LDAP connection pool.")
@@ -187,7 +194,8 @@ func Parse() *Opts {
 		SessionPath:     *fSessionPath,
 		SessionDuration: *fSessionDuration,
 
-		CookieSecure: *fCookieSecure,
+		CookieSecure:  *fCookieSecure,
+		TLSSkipVerify: *fTLSSkipVerify,
 
 		PoolMaxConnections:      *fPoolMaxConnections,
 		PoolMinConnections:      *fPoolMinConnections,
