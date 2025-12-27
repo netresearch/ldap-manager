@@ -131,16 +131,17 @@ func setupTestApp() (*App, *testLDAPClient) {
 	f.Get("/logout", app.logoutHandler)
 
 	// Protected routes with authentication middleware - users
+	// Using wildcard (*) to capture DNs with special characters like forward slashes
 	f.Get("/users", app.RequireAuth(), app.usersHandler)
-	f.Get("/users/:userDN", app.RequireAuth(), app.userHandler)
+	f.Get("/users/*", app.RequireAuth(), app.userHandler)
 
 	// Protected routes with authentication middleware - groups
 	f.Get("/groups", app.RequireAuth(), app.groupsHandler)
-	f.Get("/groups/:groupDN", app.RequireAuth(), app.groupHandler)
+	f.Get("/groups/*", app.RequireAuth(), app.groupHandler)
 
 	// Protected routes with authentication middleware - computers
 	f.Get("/computers", app.RequireAuth(), app.computersHandler)
-	f.Get("/computers/:computerDN", app.RequireAuth(), app.computerHandler)
+	f.Get("/computers/*", app.RequireAuth(), app.computerHandler)
 
 	return app, mockClient
 }
@@ -472,20 +473,18 @@ func TestRouteRegistration(t *testing.T) {
 			{"GET", "/login"},
 			{"GET", "/logout"},
 			{"GET", "/users"},
-			{"GET", "/users/:userDN"},
+			{"GET", "/users/*"},
 			{"GET", "/groups"},
-			{"GET", "/groups/:groupDN"},
+			{"GET", "/groups/*"},
 			{"GET", "/computers"},
-			{"GET", "/computers/:computerDN"},
+			{"GET", "/computers/*"},
 		}
 
 		for _, route := range expectedRoutes {
 			t.Run(route.method+" "+route.path, func(t *testing.T) {
 				// Build test path with dummy parameter if needed
 				testPath := route.path
-				testPath = strings.Replace(testPath, ":userDN", url.PathEscape("cn=test,ou=users,dc=example,dc=com"), 1)
-				testPath = strings.Replace(testPath, ":groupDN", url.PathEscape("cn=test,ou=groups,dc=example,dc=com"), 1)
-				testPath = strings.Replace(testPath, ":computerDN", url.PathEscape("cn=test,ou=computers,dc=example,dc=com"), 1)
+				testPath = strings.Replace(testPath, "*", url.PathEscape("cn=test,ou=users,dc=example,dc=com"), 1)
 
 				req := httptest.NewRequest(route.method, testPath, http.NoBody)
 				resp, err := app.fiber.Test(req)
@@ -656,4 +655,127 @@ func TestHandle500(t *testing.T) {
 	// Error handler testing with Fiber is complex and depends on template rendering
 	// The error handler function exists and is used by other handlers
 	t.Skip("Error handler testing requires complex template mocking")
+}
+
+// =============================================================================
+// Regression tests for LDAP escape sequence handling in URLs
+// Bug: DNs with LDAP escape sequences like \0A (newline) were not properly
+// URL-encoded, causing browsers to convert backslashes to forward slashes,
+// resulting in "not found" errors.
+// =============================================================================
+
+// TestDNWithLDAPEscapeSequences tests that DNs containing LDAP escape sequences
+// are properly handled when URL-encoded. This is a regression test for a bug
+// where computers with special characters in their CN (like newlines represented
+// as \0A in LDAP) could not be accessed.
+func TestDNWithLDAPEscapeSequences(t *testing.T) {
+	// These are examples of DNs with LDAP escape sequences (RFC 4514)
+	// \0A = newline (0x0A), \2C = comma, \5C = backslash
+	testCases := []struct {
+		name        string
+		rawDN       string
+		description string
+	}{
+		{
+			name:        "DN with newline escape",
+			rawDN:       `CN=test\0Acomputer,CN=Computers,DC=example,DC=com`,
+			description: "Newline character in CN (common in AD conflict resolution)",
+		},
+		{
+			name:        "DN with backslash escape",
+			rawDN:       `CN=test\5Ccomputer,CN=Computers,DC=example,DC=com`,
+			description: "Backslash character in CN",
+		},
+		{
+			name:        "DN with multiple escapes",
+			rawDN:       `CN=test\0A\2Ccomputer,CN=Computers,DC=example,DC=com`,
+			description: "Multiple escape sequences in CN",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// URL-encode the DN as the template functions do
+			encoded := url.PathEscape(tc.rawDN)
+
+			// Verify the backslash is properly encoded as %5C
+			if strings.Contains(tc.rawDN, `\`) && !strings.Contains(encoded, "%5C") {
+				t.Errorf("Backslash in DN should be encoded as %%5C\nRaw: %s\nEncoded: %s", tc.rawDN, encoded)
+			}
+
+			// Verify round-trip: encoding then decoding should return original
+			decoded, err := url.PathUnescape(encoded)
+			if err != nil {
+				t.Fatalf("Failed to decode URL: %v", err)
+			}
+
+			if decoded != tc.rawDN {
+				t.Errorf("Round-trip encoding failed\nOriginal: %s\nDecoded:  %s", tc.rawDN, decoded)
+			}
+		})
+	}
+}
+
+// TestURLEncodingPreservesLDAPBackslash specifically tests that the backslash
+// character used in LDAP escape sequences is preserved through URL encoding.
+// This was the root cause of the bug: browsers convert unencoded backslashes
+// to forward slashes in URLs.
+func TestURLEncodingPreservesLDAPBackslash(t *testing.T) {
+	// This DN contains \0A which represents a newline in LDAP
+	// Without proper URL encoding, browsers convert \ to /
+	dnWithNewline := `CN=wd-ex\0ACNF:0a3049e5-44d2-4a9e-930a-ae355eda25f5,CN=Computers,DC=netresearch,DC=nr`
+
+	// URL-encode it
+	encoded := url.PathEscape(dnWithNewline)
+
+	// The encoded URL must contain %5C (encoded backslash), not a literal backslash
+	if strings.Contains(encoded, `\`) {
+		t.Errorf("Encoded URL should not contain literal backslash (browsers convert \\ to /)\nEncoded: %s", encoded)
+	}
+
+	if !strings.Contains(encoded, "%5C") {
+		t.Errorf("Encoded URL should contain %%5C (URL-encoded backslash)\nEncoded: %s", encoded)
+	}
+
+	// Verify the server-side decoding recovers the original DN
+	decoded, err := url.PathUnescape(encoded)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+
+	if decoded != dnWithNewline {
+		t.Errorf("Decoding failed to recover original DN\nOriginal: %s\nDecoded:  %s", dnWithNewline, decoded)
+	}
+}
+
+// TestWildcardRouteWithSpecialCharacters tests that the wildcard route pattern
+// correctly captures DNs containing characters that would break named parameters.
+func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
+	app, _ := setupTestApp()
+
+	// DNs with characters that would break :paramName routing
+	problematicDNs := []string{
+		// Forward slash - would be interpreted as path separator with :param
+		`CN=test/computer,CN=Computers,DC=example,DC=com`,
+		// Encoded LDAP escape sequence that browsers might mangle
+		url.PathEscape(`CN=test\0Acomputer,CN=Computers,DC=example,DC=com`),
+	}
+
+	for _, dn := range problematicDNs {
+		t.Run("computers/"+dn[:20]+"...", func(t *testing.T) {
+			path := "/computers/" + dn
+			req := httptest.NewRequest("GET", path, http.NoBody)
+			resp, err := app.fiber.Test(req)
+			if err != nil {
+				t.Fatalf("Request failed: %v", err)
+			}
+			defer closeHTTPResponse(t, resp)
+
+			// Should NOT be 404 - the route should match
+			// (will be 302 redirect to login since not authenticated)
+			if resp.StatusCode == 404 {
+				t.Errorf("Route should match DN with special characters, got 404 for path: %s", path)
+			}
+		})
+	}
 }
