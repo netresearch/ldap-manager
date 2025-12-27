@@ -1,6 +1,7 @@
 package templates
 
 import "fmt"
+import "net/url"
 import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "github.com/netresearch/simple-ldap-go"
 
@@ -110,23 +111,36 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 templ Groups(groups []ldap.Group) {
 	@loggedIn("/groups", "Groups", []Flash{}) {
 		<h1 class="mb-4 text-3xl">All groups</h1>
-		<div class="list-container">
-			for _, group := range groups {
-				<div class="list-row">
-					<a
-						href={ groupUrl(group) }
-						class="list-link"
-						title={ "View group details: " + group.CN() }
-					>
-						<span>{ group.CN() }</span>
-						@rightArrowIcon()
-					</a>
-				</div>
-			}
+		<div data-search-filter>
+			<div class="mb-3 flex items-center gap-3">
+				<input
+					type="text"
+					class="form-input flex-1"
+					data-search-input
+					placeholder="Filter groups..."
+					aria-label="Filter groups by name"
+				/>
+				<span class="text-text-secondary text-sm" data-search-count>{ fmt.Sprintf("%d items", len(groups)) }</span>
+			</div>
+			<div class="list-container" data-search-list>
+				for _, group := range groups {
+					<div class="list-row" data-search-item>
+						<a
+							href={ groupUrl(group) }
+							class="list-link"
+							title={ "View group details: " + group.CN() }
+						>
+							<span>{ group.CN() }</span>
+							@rightArrowIcon()
+						</a>
+					</div>
+				}
+			</div>
 		</div>
 	}
 }
 
 func groupUrl(group ldap.Group) templ.SafeURL {
-	return templ.SafeURL("/groups/" + group.DN())
+	// URL-encode the DN to preserve special characters like backslash
+	return templ.SafeURL("/groups/" + url.PathEscape(group.DN()))
 }

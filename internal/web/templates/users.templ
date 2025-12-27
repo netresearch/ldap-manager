@@ -3,6 +3,7 @@ package templates
 import "github.com/netresearch/simple-ldap-go"
 import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "fmt"
+import "net/url"
 
 type user struct {
 	ldap.User
@@ -130,28 +131,41 @@ templ Users(users []ldap.User, showDisabled bool, flashes []Flash) {
 				</a>
 			</div>
 		</div>
-		<div class="list-container">
-			for _, user := range users {
-				<div class="list-row">
-					<a
-						href={ userUrl(user) }
-						class="list-link"
-						title={ "View user details: " + user.CN() }
-					>
-						<span>{ user.CN() } ({ user.SAMAccountName })</span>
-						if !user.Enabled {
-							@lockIcon("text-text-secondary")
-						}
-						@rightArrowIcon()
-					</a>
-				</div>
-			}
+		<div data-search-filter>
+			<div class="mb-3 flex items-center gap-3">
+				<input
+					type="text"
+					class="form-input flex-1"
+					data-search-input
+					placeholder="Filter users..."
+					aria-label="Filter users by name"
+				/>
+				<span class="text-text-secondary text-sm" data-search-count>{ fmt.Sprintf("%d items", len(users)) }</span>
+			</div>
+			<div class="list-container" data-search-list>
+				for _, user := range users {
+					<div class="list-row" data-search-item>
+						<a
+							href={ userUrl(user) }
+							class="list-link"
+							title={ "View user details: " + user.CN() }
+						>
+							<span>{ user.CN() } ({ user.SAMAccountName })</span>
+							if !user.Enabled {
+								@lockIcon("text-text-secondary")
+							}
+							@rightArrowIcon()
+						</a>
+					</div>
+				}
+			</div>
 		</div>
 	}
 }
 
 func userUrl(user ldap.User) templ.SafeURL {
-	return templ.SafeURL("/users/" + user.DN())
+	// URL-encode the DN to preserve special characters like backslash
+	return templ.SafeURL("/users/" + url.PathEscape(user.DN()))
 }
 
 func disabledUsersHref(showDisabled bool) templ.SafeURL {
