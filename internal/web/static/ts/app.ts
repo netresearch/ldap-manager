@@ -5,6 +5,7 @@
 
 import { initThemeToggle, initDensityToggle } from "./toggles.js";
 import { initComboboxes } from "./combobox.js";
+import { initSearchFilters } from "./search-filter.js";
 
 /**
  * Initialize all application functionality.
@@ -13,6 +14,7 @@ function init(): void {
   initThemeToggle();
   initDensityToggle();
   initComboboxes();
+  initSearchFilters();
 }
 
 // Wait for DOM to be ready
