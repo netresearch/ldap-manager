@@ -1,0 +1,44 @@
+package templates
+
+// ToggleButtons renders theme and density toggle buttons inline
+// These should be placed in the navbar next to the logout button
+templ ToggleButtons() {
+	// Density toggle: auto -> comfortable -> compact -> auto
+	<button
+		type="button"
+		id="densityToggle"
+		class="btn-icon text-text-secondary hocus:text-text-primary"
+		aria-label="Density: Auto (click to switch to comfortable)"
+		title="Change display density"
+		data-density-mode="auto"
+	>
+		<span id="density-auto">
+			@sparklesIcon()
+		</span>
+		<span id="density-comfortable" class="hidden">
+			@squares2x2Icon()
+		</span>
+		<span id="density-compact" class="hidden">
+			@viewColumnsIcon()
+		</span>
+	</button>
+	// Theme toggle: auto -> light -> dark -> auto
+	<button
+		type="button"
+		id="themeToggle"
+		class="btn-icon text-text-secondary hocus:text-text-primary"
+		aria-label="Theme: Auto (click to switch to light)"
+		title="Change color theme"
+		data-theme="auto"
+	>
+		<span id="theme-auto">
+			@computerDesktopIcon()
+		</span>
+		<span id="theme-light" class="hidden">
+			@sunIcon()
+		</span>
+		<span id="theme-dark" class="hidden">
+			@moonIcon()
+		</span>
+	</button>
+}
