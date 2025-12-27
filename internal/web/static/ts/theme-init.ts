@@ -8,50 +8,41 @@
  * - "dark": Forces dark theme
  */
 
-export type ThemeMode = "auto" | "light" | "dark";
+(function () {
+  type ThemeMode = "auto" | "light" | "dark";
 
-const STORAGE_KEY = "theme";
+  const STORAGE_KEY = "theme";
 
-/**
- * Determines if dark mode should be active based on stored preference and system settings.
- */
-function shouldUseDarkMode(storedTheme: ThemeMode | null): boolean {
-  if (storedTheme === "dark") return true;
-  if (storedTheme === "light") return false;
-
-  // Auto mode: follow system preference
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-/**
- * Applies the theme to the document.
- */
-function applyTheme(isDark: boolean): void {
-  if (isDark) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
+  function shouldUseDarkMode(storedTheme: ThemeMode | null): boolean {
+    if (storedTheme === "dark") return true;
+    if (storedTheme === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
-}
 
-/**
- * Initialize theme immediately to prevent flash of wrong theme.
- */
-function initTheme(): void {
-  const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-  const isDark = shouldUseDarkMode(storedTheme);
-  applyTheme(isDark);
-}
-
-// Run immediately (not in DOMContentLoaded)
-initTheme();
-
-// Listen for system preference changes when in auto mode
-window
-  .matchMedia("(prefers-color-scheme: dark)")
-  .addEventListener("change", (e) => {
-    const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    if (!storedTheme || storedTheme === "auto") {
-      applyTheme(e.matches);
+  function applyTheme(isDark: boolean): void {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
     }
-  });
+  }
+
+  function initTheme(): void {
+    const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    const isDark = shouldUseDarkMode(storedTheme);
+    applyTheme(isDark);
+  }
+
+  // Run immediately
+  initTheme();
+
+  // Listen for system preference changes when in auto mode
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", (e) => {
+      const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+      if (!storedTheme || storedTheme === "auto") {
+        applyTheme(e.matches);
+      }
+    });
+})();

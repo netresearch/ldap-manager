@@ -3,8 +3,9 @@
  * These functions should be called after DOMContentLoaded.
  */
 
-import type { ThemeMode } from "./theme-init.js";
-import type { DensityMode, ActualDensity } from "./density-init.js";
+type ThemeMode = "auto" | "light" | "dark";
+type DensityMode = "auto" | "comfortable" | "compact";
+type ActualDensity = "comfortable" | "compact";
 
 const THEME_STORAGE_KEY = "theme";
 const DENSITY_STORAGE_KEY = "densityMode";
