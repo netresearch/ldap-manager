@@ -1,6 +1,12 @@
 /* This file is an entrypoint for the TailwindCSS compiler */
 @import "tailwindcss";
 
+/* Hover + focus combined variant */
+@custom-variant hocus (&:hover, &:focus);
+
+/* List item parent hover/focus - used for list row highlighting */
+@custom-variant list-outer-hocus (&:has(:hover, :focus));
+
 /* Dark mode variant - applied via .dark class on html element */
 @variant dark (&:where(.dark, .dark *));
 
@@ -19,10 +25,15 @@
   /* Light mode colors (default) */
   --color-surface: oklch(98% 0.003 264.542);
   --color-surface-elevated: oklch(100% 0 0);
+  --color-surface-hover: oklch(95% 0.005 264.542);
   --color-text-primary: oklch(20% 0.034 264.665);
   --color-text-secondary: oklch(40% 0.034 264.665);
   --color-border: oklch(80% 0.01 264.665);
   --color-border-focus: oklch(50% 0.034 264.665);
+
+  /* Accent colors for buttons */
+  --color-accent: oklch(25% 0.034 264.665);
+  --color-accent-text: oklch(98% 0.003 264.542);
 }
 
 /* Base page styles */
@@ -34,10 +45,13 @@
   .page-html.dark {
     --color-surface: oklch(12% 0.034 264.665);
     --color-surface-elevated: oklch(18% 0.034 264.665);
+    --color-surface-hover: oklch(25% 0.034 264.665);
     --color-text-primary: oklch(95% 0.003 264.542);
     --color-text-secondary: oklch(70% 0.01 264.665);
     --color-border: oklch(35% 0.02 264.665);
     --color-border-focus: oklch(70% 0.01 264.665);
+    --color-accent: oklch(95% 0.003 264.542);
+    --color-accent-text: oklch(12% 0.034 264.665);
   }
 
   .page-body {
@@ -53,6 +67,106 @@
   .page-container {
     @apply mx-auto w-full max-w-4xl flex-1;
     @apply comfortable:p-6 compact:p-4;
+  }
+
+  /* Form input base styles */
+  .form-input {
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-text-primary outline-none transition-colors;
+    @apply placeholder:text-text-secondary placeholder:select-none;
+    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply compact:px-2 compact:py-1 compact:text-sm;
+    @apply comfortable:px-3 comfortable:py-2;
+  }
+
+  .form-select {
+    @apply rounded-md border border-border bg-surface py-2 pl-3 pr-8 text-text-primary transition-colors;
+    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply compact:py-1 compact:text-sm;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply rounded-md border border-accent bg-accent px-4 py-2 font-medium text-accent-text transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply hocus:bg-surface hocus:text-text-primary hocus:border-border;
+    @apply compact:px-3 compact:py-1 compact:text-sm;
+  }
+
+  .btn-secondary {
+    @apply rounded-md border border-border bg-surface px-4 py-2 text-text-primary transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply hocus:bg-surface-elevated hocus:border-border-focus;
+    @apply compact:px-3 compact:py-1 compact:text-sm;
+  }
+
+  .btn-icon {
+    @apply flex items-center rounded-md border border-border p-2 transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply hocus:bg-surface-elevated hocus:border-border-focus;
+    @apply compact:p-1.5;
+  }
+
+  .btn-icon-add {
+    @apply flex items-center rounded-md border border-green-500 p-2 text-green-500 transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+    @apply hocus:bg-green-500 hocus:text-white;
+    @apply compact:p-1.5;
+  }
+
+  .btn-icon-remove {
+    @apply flex items-center rounded-md border border-red-500 p-2 text-red-500 transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply hocus:bg-red-500 hocus:text-white;
+    @apply compact:p-1.5;
+  }
+
+  /* List item styles */
+  .list-container {
+    @apply flex list-none flex-col justify-between divide-y divide-border;
+  }
+
+  /* Named list-row to avoid conflict with Tailwind's built-in .list-item utility */
+  .list-row {
+    @apply flex items-center transition-colors list-outer-hocus:bg-surface-hover;
+  }
+
+  .list-link {
+    @apply flex flex-1 items-center gap-2 py-2 pl-3 transition-transform;
+    @apply focus:outline-none hocus:translate-x-2;
+    @apply [&>svg]:text-text-secondary [&>svg]:hocus:text-text-primary;
+  }
+
+  /* Combobox styles */
+  .combobox-container {
+    @apply relative flex-1;
+  }
+
+  .combobox-input {
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-text-primary outline-none transition-colors;
+    @apply placeholder:text-text-secondary placeholder:select-none;
+    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply compact:px-2 compact:py-1 compact:text-sm;
+    @apply comfortable:px-3 comfortable:py-2;
+  }
+
+  .combobox-listbox {
+    @apply absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-surface-elevated shadow-lg;
+    @apply focus:outline-none;
+  }
+
+  .combobox-option {
+    @apply cursor-pointer px-3 py-2 text-text-primary transition-colors;
+    @apply hocus:bg-surface-hover;
+    @apply compact:px-2 compact:py-1 compact:text-sm;
+  }
+
+  .combobox-option[aria-selected="true"] {
+    @apply bg-surface-hover;
+  }
+
+  .combobox-empty {
+    @apply px-3 py-2 text-text-secondary italic;
+    @apply compact:px-2 compact:py-1 compact:text-sm;
   }
 }
 
