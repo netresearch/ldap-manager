@@ -1,5 +1,7 @@
 package templates
 
+import "fmt"
+import "net/url"
 import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "github.com/netresearch/simple-ldap-go"
 
@@ -49,10 +51,40 @@ templ Computer(computer *ldap_cache.FullLDAPComputer) {
 templ Computers(computers []ldap.Computer) {
 	@loggedIn("/computers", "All Computers", []Flash{}) {
 		<h1 class="mb-4 text-3xl">All computers</h1>
-		@list(specializeComputers(computers))
+		<div data-search-filter>
+			<div class="mb-3 flex items-center gap-3">
+				<input
+					type="text"
+					class="form-input flex-1"
+					data-search-input
+					placeholder="Filter computers..."
+					aria-label="Filter computers by name"
+				/>
+				<span class="text-text-secondary text-sm" data-search-count>{ fmt.Sprintf("%d items", len(computers)) }</span>
+			</div>
+			<div class="list-container" data-search-list>
+				for _, c := range computers {
+					<div class="list-row" data-search-item>
+						<a
+							href={ computerUrl(c) }
+							class="list-link"
+							title={ "View details: " + c.CN() }
+						>
+							<span>{ c.CN() }</span>
+							if !c.Enabled {
+								@lockIcon("text-text-secondary")
+							}
+							@rightArrowIcon()
+						</a>
+					</div>
+				}
+			</div>
+		</div>
 	}
 }
 
 func computerUrl(computer ldap.Computer) templ.SafeURL {
-	return templ.SafeURL("/computers/" + computer.DN())
+	// URL-encode the DN to preserve special characters like backslash
+	// Browsers convert backslashes to forward slashes in URLs, so we need encoding
+	return templ.SafeURL("/computers/" + url.PathEscape(computer.DN()))
 }

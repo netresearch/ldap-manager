@@ -20,8 +20,8 @@
     "js:dev": "tsc -w --preserveWatchOutput",
     "templ:build": "templ generate",
     "templ:dev": "nodemon --signal SIGTERM -e templ -w \"./**\" -x pnpm templ:build",
-    "go:start": "go run .",
-    "go:build": "go build",
+    "go:start": "go run ./cmd/ldap-manager",
+    "go:build": "go build ./cmd/ldap-manager",
     "go:dev": "nodemon --signal SIGTERM -e go,css,js -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
   },
   "devDependencies": {

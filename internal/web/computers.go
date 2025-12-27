@@ -50,7 +50,7 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 //	GET /computers/CN%3DWORKSTATION01%2COU%3DComputers%2CDC%3Dexample%2CDC%3Dcom
 func (a *App) computerHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
-	computerDN, err := url.PathUnescape(c.Params("computerDN"))
+	computerDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}

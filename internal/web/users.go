@@ -55,7 +55,7 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 //	GET /users/CN%3DJohn%20Doe%2COU%3DUsers%2CDC%3Dexample%2CDC%3Dcom
 func (a *App) userHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
-	userDN, err := url.PathUnescape(c.Params("userDN"))
+	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}
@@ -81,7 +81,7 @@ type userModifyForm struct {
 // nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
 func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	// Authentication handled by middleware, no need to check session
-	userDN, err := url.PathUnescape(c.Params("userDN"))
+	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}

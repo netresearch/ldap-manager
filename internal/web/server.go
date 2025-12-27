@@ -1,6 +1,7 @@
 package web
 
 import (
+	"crypto/tls"
 	"log/slog"
 	"net/http"
 	"time"
@@ -90,6 +91,17 @@ func createFiberApp() *fiber.App {
 func NewApp(opts *options.Opts) (*App, error) {
 	logger := slog.Default()
 
+	// Build LDAP client options
+	ldapOpts := []ldap.Option{ldap.WithLogger(logger)}
+
+	// Add TLS skip verify option if configured (for development with self-signed certs)
+	if opts.TLSSkipVerify {
+		logger.Warn("TLS certificate verification is disabled - use only for development!")
+		ldapOpts = append(ldapOpts, ldap.WithTLS(&tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // Intentional for development
+		}))
+	}
+
 	// Create readonly LDAP client WITHOUT connection pooling
 	// Pooling is disabled because CheckPasswordForSAMAccountName rebinds connections
 	// with user credentials, which contaminates the pool and causes timeout issues
@@ -97,7 +109,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 		opts.LDAP,
 		opts.ReadonlyUser,
 		opts.ReadonlyPassword,
-		ldap.WithLogger(logger),
+		ldapOpts...,
 	)
 	if err != nil {
 		return nil, err
@@ -214,15 +226,15 @@ func (a *App) setupRoutes() {
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
 	cacheable.Get("/", a.indexHandler)
 	cacheable.Get("/users", a.usersHandler)
-	cacheable.Get("/users/:userDN", a.userHandler)
+	cacheable.Get("/users/*", a.userHandler)
 	cacheable.Get("/groups", a.groupsHandler)
-	cacheable.Get("/groups/:groupDN", a.groupHandler)
+	cacheable.Get("/groups/*", a.groupHandler)
 	cacheable.Get("/computers", a.computersHandler)
-	cacheable.Get("/computers/:computerDN", a.computerHandler)
+	cacheable.Get("/computers/*", a.computerHandler)
 
 	// POST routes without caching (these invalidate cache)
-	protected.Post("/users/:userDN", a.userModifyHandler)
-	protected.Post("/groups/:groupDN", a.groupModifyHandler)
+	protected.Post("/users/*", a.userModifyHandler)
+	protected.Post("/groups/*", a.groupModifyHandler)
 
 	protected.Get("/logout", a.logoutHandler)
 
