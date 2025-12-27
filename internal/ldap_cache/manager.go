@@ -373,7 +373,9 @@ func (m *Manager) FindComputerBySAMAccountName(samAccountName string) (*ldap.Com
 }
 
 // PopulateGroupsForUser creates a FullLDAPUser with populated group memberships.
-// Takes a user and resolves all group DNs to full group objects from the cache.
+// Takes a user and finds all groups where the user is a member.
+// This implementation iterates through all cached groups to find membership,
+// which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete user object with expanded group information.
 func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 	full := &FullLDAPUser{
@@ -381,10 +383,17 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 		Groups: make([]ldap.Group, 0),
 	}
 
-	for _, groupDN := range user.Groups {
-		group, err := m.FindGroupByDN(groupDN)
-		if err == nil {
-			full.Groups = append(full.Groups, *group)
+	userDN := user.DN()
+
+	// Iterate through all groups and check if user is a member
+	// This approach works regardless of whether memberOf overlay is enabled
+	for _, group := range m.Groups.Get() {
+		for _, memberDN := range group.Members {
+			if memberDN == userDN {
+				full.Groups = append(full.Groups, group)
+
+				break
+			}
 		}
 	}
 
@@ -416,7 +425,9 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *F
 }
 
 // PopulateGroupsForComputer creates a FullLDAPComputer with populated group memberships.
-// Takes a computer and resolves all group DNs to full group objects from the cache.
+// Takes a computer and finds all groups where the computer is a member.
+// This implementation iterates through all cached groups to find membership,
+// which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete computer object with expanded group information.
 func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPComputer {
 	full := &FullLDAPComputer{
@@ -424,10 +435,17 @@ func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPCo
 		Groups:   make([]ldap.Group, 0),
 	}
 
-	for _, groupDN := range computer.Groups {
-		group, err := m.FindGroupByDN(groupDN)
-		if err == nil {
-			full.Groups = append(full.Groups, *group)
+	computerDN := computer.DN()
+
+	// Iterate through all groups and check if computer is a member
+	// This approach works regardless of whether memberOf overlay is enabled
+	for _, group := range m.Groups.Get() {
+		for _, memberDN := range group.Members {
+			if memberDN == computerDN {
+				full.Groups = append(full.Groups, group)
+
+				break
+			}
 		}
 	}
 
