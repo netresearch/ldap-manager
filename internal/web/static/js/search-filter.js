@@ -12,21 +12,22 @@ class SearchFilter {
         this.items = [];
         const input = container.querySelector("[data-search-input]");
         const listContainer = container.querySelector("[data-search-list]");
-        this.countDisplay = container.querySelector("[data-search-count]");
         if (!input || !listContainer) {
+            // Required elements not found - skip initialization
             this.input = null;
             this.listContainer = null;
+            this.countDisplay = null;
             return;
         }
         this.input = input;
         this.listContainer = listContainer;
+        this.countDisplay = container.querySelector("[data-search-count]");
         this.items = Array.from(this.listContainer.querySelectorAll("[data-search-item]"));
         this.init();
     }
     init() {
-        // Set up ARIA attributes
+        // Set up ARIA role (preserve template-defined aria-label for specificity)
         this.input.setAttribute("role", "searchbox");
-        this.input.setAttribute("aria-label", "Filter list");
         // Event listener with debounce for performance
         let debounceTimer;
         this.input.addEventListener("input", () => {

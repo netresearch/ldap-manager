@@ -18,25 +18,26 @@ class SearchFilter {
   constructor(container: HTMLElement) {
     const input = container.querySelector("[data-search-input]") as HTMLInputElement | null;
     const listContainer = container.querySelector("[data-search-list]") as HTMLElement | null;
-    this.countDisplay = container.querySelector("[data-search-count]");
 
     if (!input || !listContainer) {
-      this.input = null as unknown as HTMLInputElement;
-      this.listContainer = null as unknown as HTMLElement;
+      // Required elements not found - skip initialization
+      this.input = null!;
+      this.listContainer = null!;
+      this.countDisplay = null;
       return;
     }
 
     this.input = input;
     this.listContainer = listContainer;
+    this.countDisplay = container.querySelector("[data-search-count]");
     this.items = Array.from(this.listContainer.querySelectorAll<HTMLElement>("[data-search-item]"));
 
     this.init();
   }
 
   private init(): void {
-    // Set up ARIA attributes
+    // Set up ARIA role (preserve template-defined aria-label for specificity)
     this.input.setAttribute("role", "searchbox");
-    this.input.setAttribute("aria-label", "Filter list");
 
     // Event listener with debounce for performance
     let debounceTimer: ReturnType<typeof setTimeout>;

@@ -96,7 +96,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	// Add TLS skip verify option if configured (for development with self-signed certs)
 	if opts.TLSSkipVerify {
-		log.Warn().Msg("TLS certificate verification is disabled - use only for development!")
+		logger.Warn("TLS certificate verification is disabled - use only for development!")
 		ldapOpts = append(ldapOpts, ldap.WithTLS(&tls.Config{
 			InsecureSkipVerify: true, //nolint:gosec // Intentional for development
 		}))

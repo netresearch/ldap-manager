@@ -754,14 +754,14 @@ func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
 	app, _ := setupTestApp()
 
 	// DNs with characters that would break :paramName routing
-	problematicDNs := []string{
+	problematicDNS := []string{
 		// Forward slash - would be interpreted as path separator with :param
 		`CN=test/computer,CN=Computers,DC=example,DC=com`,
 		// Encoded LDAP escape sequence that browsers might mangle
 		url.PathEscape(`CN=test\0Acomputer,CN=Computers,DC=example,DC=com`),
 	}
 
-	for _, dn := range problematicDNs {
+	for _, dn := range problematicDNS {
 		t.Run("computers/"+dn[:20]+"...", func(t *testing.T) {
 			path := "/computers/" + dn
 			req := httptest.NewRequest("GET", path, http.NoBody)

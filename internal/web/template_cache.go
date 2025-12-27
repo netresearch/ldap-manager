@@ -66,9 +66,10 @@ func NewTemplateCache(config TemplateCacheConfig) *TemplateCache {
 func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string) string {
 	h := sha256.New()
 
-	// Include actual request path (not route pattern)
-	// c.Path() returns the route pattern like "/groups/:groupDN"
-	// We need the actual URL path for proper cache key differentiation
+	// Include the actual request path as seen by the server.
+	// We use the raw request URI path here to ensure correct cache key
+	// differentiation, especially for wildcard or parameterized routes
+	// where c.Path() returns the route pattern instead of the actual URL.
 	h.Write(c.Request().URI().Path())
 
 	// Include query parameters (sorted for consistency)

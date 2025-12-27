@@ -4,8 +4,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	ldap "github.com/netresearch/simple-ldap-go"
 )
 
 // =============================================================================
@@ -45,10 +43,8 @@ func TestComputerUrlEncoding(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create a mock computer with the test DN
-			computer := ldap.Computer{}
-			// We need to set the DN - using reflection or the Object's internal field
-			// For this test, we'll test the URL encoding logic directly
+			// Test the URL encoding logic directly since we can't easily
+			// set the DN on an ldap.Computer (it's derived from the Object)
 			encoded := url.PathEscape(tc.dn)
 
 			if tc.wantEnc != "" && !strings.Contains(encoded, tc.wantEnc) {
@@ -76,8 +72,6 @@ func TestComputerUrlEncoding(t *testing.T) {
 				t.Errorf("Generated URL contains unsafe character %q: %s",
 					tc.notWant, generatedURL)
 			}
-
-			_ = computer // Acknowledge the variable
 		})
 	}
 }
