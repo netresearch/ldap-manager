@@ -39,7 +39,7 @@
 /* Base page styles */
 @layer components {
   .page-html {
-    @apply h-full bg-surface text-text-primary transition-colors duration-200;
+    @apply bg-surface text-text-primary h-full transition-colors duration-200;
   }
 
   .page-html.dark {
@@ -55,11 +55,11 @@
   }
 
   .page-body {
-    @apply flex min-h-full flex-col bg-surface;
+    @apply bg-surface flex min-h-full flex-col;
   }
 
   .page-card {
-    @apply relative rounded-lg border border-border bg-surface-elevated shadow-sm;
+    @apply border-border bg-surface-elevated relative rounded-lg border shadow-sm;
     @apply comfortable:p-6 comfortable:space-y-4;
     @apply compact:p-4 compact:space-y-3;
   }
@@ -71,68 +71,68 @@
 
   /* Form input base styles */
   .form-input {
-    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-text-primary outline-none transition-colors;
+    @apply border-border bg-surface text-text-primary w-full rounded-md border px-3 py-2 transition-colors outline-none;
     @apply placeholder:text-text-secondary placeholder:select-none;
-    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply focus:border-border-focus focus:ring-border-focus focus:ring-1;
     @apply compact:px-2 compact:py-1 compact:text-sm;
     @apply comfortable:px-3 comfortable:py-2;
   }
 
   .form-select {
-    @apply rounded-md border border-border bg-surface py-2 pl-3 pr-8 text-text-primary transition-colors;
-    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply border-border bg-surface text-text-primary rounded-md border py-2 pr-8 pl-3 transition-colors;
+    @apply focus:border-border-focus focus:ring-border-focus focus:ring-1;
     @apply compact:py-1 compact:text-sm;
   }
 
   /* Button styles */
   .btn-primary {
-    @apply rounded-md border border-accent bg-accent px-4 py-2 font-medium text-accent-text transition-colors;
-    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply border-accent bg-accent text-accent-text rounded-md border px-4 py-2 font-medium transition-colors;
+    @apply focus:ring-border-focus focus:ring-2 focus:ring-offset-2 focus:outline-none;
     @apply hocus:bg-surface hocus:text-text-primary hocus:border-border;
     @apply compact:px-3 compact:py-1 compact:text-sm;
   }
 
   .btn-secondary {
-    @apply rounded-md border border-border bg-surface px-4 py-2 text-text-primary transition-colors;
-    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply border-border bg-surface text-text-primary rounded-md border px-4 py-2 transition-colors;
+    @apply focus:ring-border-focus focus:ring-2 focus:ring-offset-2 focus:outline-none;
     @apply hocus:bg-surface-elevated hocus:border-border-focus;
     @apply compact:px-3 compact:py-1 compact:text-sm;
   }
 
   .btn-icon {
-    @apply flex items-center rounded-md border border-border p-2 transition-colors;
-    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+    @apply border-border flex items-center rounded-md border p-2 transition-colors;
+    @apply focus:ring-border-focus focus:ring-2 focus:ring-offset-2 focus:outline-none;
     @apply hocus:bg-surface-elevated hocus:border-border-focus;
     @apply compact:p-1.5;
   }
 
   .btn-icon-add {
     @apply flex items-center rounded-md border border-green-500 p-2 text-green-500 transition-colors;
-    @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2;
+    @apply focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none;
     @apply hocus:bg-green-500 hocus:text-white;
     @apply compact:p-1.5;
   }
 
   .btn-icon-remove {
     @apply flex items-center rounded-md border border-red-500 p-2 text-red-500 transition-colors;
-    @apply focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none;
     @apply hocus:bg-red-500 hocus:text-white;
     @apply compact:p-1.5;
   }
 
   /* List item styles */
   .list-container {
-    @apply flex list-none flex-col justify-between divide-y divide-border;
+    @apply divide-border flex list-none flex-col justify-between divide-y;
   }
 
   /* Named list-row to avoid conflict with Tailwind's built-in .list-item utility */
   .list-row {
-    @apply flex items-center transition-colors list-outer-hocus:bg-surface-hover;
+    @apply list-outer-hocus:bg-surface-hover flex items-center transition-colors;
   }
 
   .list-link {
     @apply flex flex-1 items-center gap-2 py-2 pl-3 transition-transform;
-    @apply focus:outline-none hocus:translate-x-2;
+    @apply hocus:translate-x-2 focus:outline-none;
     @apply [&>svg]:text-text-secondary [&>svg]:hocus:text-text-primary;
   }
 
@@ -142,20 +142,20 @@
   }
 
   .combobox-input {
-    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-text-primary outline-none transition-colors;
+    @apply border-border bg-surface text-text-primary w-full rounded-md border px-3 py-2 transition-colors outline-none;
     @apply placeholder:text-text-secondary placeholder:select-none;
-    @apply focus:border-border-focus focus:ring-1 focus:ring-border-focus;
+    @apply focus:border-border-focus focus:ring-border-focus focus:ring-1;
     @apply compact:px-2 compact:py-1 compact:text-sm;
     @apply comfortable:px-3 comfortable:py-2;
   }
 
   .combobox-listbox {
-    @apply absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-surface-elevated shadow-lg;
+    @apply border-border bg-surface-elevated absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border shadow-lg;
     @apply focus:outline-none;
   }
 
   .combobox-option {
-    @apply cursor-pointer px-3 py-2 text-text-primary transition-colors;
+    @apply text-text-primary cursor-pointer px-3 py-2 transition-colors;
     @apply hocus:bg-surface-hover;
     @apply compact:px-2 compact:py-1 compact:text-sm;
   }
@@ -165,7 +165,7 @@
   }
 
   .combobox-empty {
-    @apply px-3 py-2 text-text-secondary italic;
+    @apply text-text-secondary px-3 py-2 italic;
     @apply compact:px-2 compact:py-1 compact:text-sm;
   }
 }

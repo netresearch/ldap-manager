@@ -18,13 +18,11 @@ export function initThemeToggle(): void {
   if (!button) return;
 
   // Set initial state from storage
-  const currentMode =
-    (localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode) || "auto";
+  const currentMode = (localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode) || "auto";
   updateThemeButtonState(button, currentMode);
 
   button.addEventListener("click", () => {
-    const current =
-      (localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode) || "auto";
+    const current = (localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode) || "auto";
     const next = getNextThemeMode(current);
 
     localStorage.setItem(THEME_STORAGE_KEY, next);
@@ -62,16 +60,13 @@ function updateThemeButtonState(button: HTMLElement, mode: ThemeMode): void {
   const labels: Record<ThemeMode, string> = {
     auto: "Theme: Auto (click to switch to light)",
     light: "Theme: Light (click to switch to dark)",
-    dark: "Theme: Dark (click to switch to auto)",
+    dark: "Theme: Dark (click to switch to auto)"
   };
   button.setAttribute("aria-label", labels[mode]);
 }
 
 function applyTheme(mode: ThemeMode): void {
-  const isDark =
-    mode === "dark" ||
-    (mode === "auto" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = mode === "dark" || (mode === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   if (isDark) {
     document.documentElement.classList.add("dark");
@@ -88,13 +83,11 @@ export function initDensityToggle(): void {
   if (!button) return;
 
   // Set initial state from storage
-  const currentMode =
-    (localStorage.getItem(DENSITY_STORAGE_KEY) as DensityMode) || "auto";
+  const currentMode = (localStorage.getItem(DENSITY_STORAGE_KEY) as DensityMode) || "auto";
   updateDensityButtonState(button, currentMode);
 
   button.addEventListener("click", () => {
-    const current =
-      (localStorage.getItem(DENSITY_STORAGE_KEY) as DensityMode) || "auto";
+    const current = (localStorage.getItem(DENSITY_STORAGE_KEY) as DensityMode) || "auto";
     const next = getNextDensityMode(current);
 
     localStorage.setItem(DENSITY_STORAGE_KEY, next);
@@ -116,10 +109,7 @@ function getNextDensityMode(current: DensityMode): DensityMode {
   }
 }
 
-function updateDensityButtonState(
-  button: HTMLElement,
-  mode: DensityMode
-): void {
+function updateDensityButtonState(button: HTMLElement, mode: DensityMode): void {
   button.dataset["densityMode"] = mode;
 
   // Update icon visibility
@@ -135,7 +125,7 @@ function updateDensityButtonState(
   const labels: Record<DensityMode, string> = {
     auto: "Density: Auto (click to switch to comfortable)",
     comfortable: "Density: Comfortable (click to switch to compact)",
-    compact: "Density: Compact (click to switch to auto)",
+    compact: "Density: Compact (click to switch to auto)"
   };
   button.setAttribute("aria-label", labels[mode]);
 }
@@ -146,9 +136,7 @@ function determineActualDensity(mode: DensityMode): ActualDensity {
 
   // Auto mode
   const isTouch = window.matchMedia("(pointer: coarse)").matches;
-  const prefersMoreContrast = window.matchMedia(
-    "(prefers-contrast: more)"
-  ).matches;
+  const prefersMoreContrast = window.matchMedia("(prefers-contrast: more)").matches;
 
   return isTouch || prefersMoreContrast ? "comfortable" : "compact";
 }

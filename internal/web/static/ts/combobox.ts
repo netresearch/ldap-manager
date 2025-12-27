@@ -46,7 +46,7 @@ class Combobox {
       element: opt,
       value: opt.dataset["value"] || "",
       label: opt.textContent?.trim() || "",
-      searchText: (opt.textContent?.trim() || "").toLowerCase(),
+      searchText: (opt.textContent?.trim() || "").toLowerCase()
     }));
 
     this.init();

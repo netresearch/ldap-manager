@@ -47,14 +47,12 @@ function updateThemeButtonState(button, mode) {
     const labels = {
         auto: "Theme: Auto (click to switch to light)",
         light: "Theme: Light (click to switch to dark)",
-        dark: "Theme: Dark (click to switch to auto)",
+        dark: "Theme: Dark (click to switch to auto)"
     };
     button.setAttribute("aria-label", labels[mode]);
 }
 function applyTheme(mode) {
-    const isDark = mode === "dark" ||
-        (mode === "auto" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const isDark = mode === "dark" || (mode === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     if (isDark) {
         document.documentElement.classList.add("dark");
     }
@@ -105,7 +103,7 @@ function updateDensityButtonState(button, mode) {
     const labels = {
         auto: "Density: Auto (click to switch to comfortable)",
         comfortable: "Density: Comfortable (click to switch to compact)",
-        compact: "Density: Compact (click to switch to auto)",
+        compact: "Density: Compact (click to switch to auto)"
     };
     button.setAttribute("aria-label", labels[mode]);
 }

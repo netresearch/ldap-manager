@@ -37,12 +37,10 @@
   initTheme();
 
   // Listen for system preference changes when in auto mode
-  window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", (e) => {
-      const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-      if (!storedTheme || storedTheme === "auto") {
-        applyTheme(e.matches);
-      }
-    });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+    const storedTheme = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    if (!storedTheme || storedTheme === "auto") {
+      applyTheme(e.matches);
+    }
+  });
 })();
