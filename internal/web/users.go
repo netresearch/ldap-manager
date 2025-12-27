@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
-	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -75,9 +74,8 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 }
 
 type userModifyForm struct {
-	AddGroup        *string `form:"addgroup"`
-	RemoveGroup     *string `form:"removegroup"`
-	PasswordConfirm string  `form:"password_confirm"`
+	AddGroup    *string `form:"addgroup"`
+	RemoveGroup *string `form:"removegroup"`
 }
 
 // nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
@@ -97,28 +95,9 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 		return c.Redirect("/users/" + userDN)
 	}
 
-	// Require password confirmation for sensitive operations
-	if form.PasswordConfirm == "" {
-		return a.renderUserWithError(c, userDN, "Password confirmation required for modifications")
-	}
-
-	executorDN, err := RequireUserDN(c)
-	if err != nil {
-		return err
-	}
-
-	ldapClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
-	if err != nil {
-		return a.renderUserWithError(c, userDN, "Invalid password")
-	}
-	defer func() {
-		if closeErr := ldapClient.Close(); closeErr != nil {
-			log.Error().Err(closeErr).Msg("Failed to close LDAP client")
-		}
-	}()
-
-	// Perform the user modification
-	if err := a.performUserModification(ldapClient, &form, userDN); err != nil {
+	// Perform the user modification using the readonly LDAP client
+	// User is already authenticated via session middleware
+	if err := a.performUserModification(a.ldapReadonly, &form, userDN); err != nil {
 		return a.renderUserWithError(c, userDN, "Failed to modify: "+err.Error())
 	}
 

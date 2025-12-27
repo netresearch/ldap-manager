@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
-	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -44,9 +43,8 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 }
 
 type groupModifyForm struct {
-	AddUser         *string `form:"adduser"`
-	RemoveUser      *string `form:"removeuser"`
-	PasswordConfirm string  `form:"password_confirm"`
+	AddUser    *string `form:"adduser"`
+	RemoveUser *string `form:"removeuser"`
 }
 
 // nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
@@ -66,28 +64,9 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return c.Redirect("/groups/" + groupDN)
 	}
 
-	// Require password confirmation for sensitive operations
-	if form.PasswordConfirm == "" {
-		return a.renderGroupWithError(c, groupDN, "Password confirmation required for modifications")
-	}
-
-	executorDN, err := RequireUserDN(c)
-	if err != nil {
-		return err
-	}
-
-	ldapClient, err := a.authenticateLDAPClient(c.UserContext(), executorDN, form.PasswordConfirm)
-	if err != nil {
-		return a.renderGroupWithError(c, groupDN, "Invalid password")
-	}
-	defer func() {
-		if closeErr := ldapClient.Close(); closeErr != nil {
-			log.Error().Err(closeErr).Msg("Failed to close LDAP client")
-		}
-	}()
-
-	// Perform the group modification
-	if err := a.performGroupModification(ldapClient, &form, groupDN); err != nil {
+	// Perform the group modification using the readonly LDAP client
+	// User is already authenticated via session middleware
+	if err := a.performGroupModification(a.ldapReadonly, &form, groupDN); err != nil {
 		return a.renderGroupWithError(c, groupDN, "Failed to modify: "+err.Error())
 	}
 
@@ -100,8 +79,9 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {
 	return a.ldapCache.Users.Filter(func(u ldap.User) bool {
-		for _, g := range u.Groups {
-			if g == group.DN() {
+		// Check if user is already a member of this group
+		for _, member := range group.Members {
+			if member.DN() == u.DN() {
 				return false
 			}
 		}
