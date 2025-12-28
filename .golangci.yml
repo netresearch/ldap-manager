@@ -115,6 +115,9 @@ linters:
     - asciicheck # Check for non-ASCII identifiers
     - bodyclose # Check HTTP response body closes
     - dupl # Check code duplication
+    - durationcheck # Check for duration multiplication issues
+    - fatcontext # Detect nested context in loops
+    - forcetypeassert # Find forced type assertions
     - errname # Check error naming conventions
     - errorlint # Find error handling issues
     - exhaustive # Check switch statements
