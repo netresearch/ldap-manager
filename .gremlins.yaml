@@ -10,20 +10,20 @@ test-packages:
 
 # Mutator types to enable
 mutators:
-  - CONDITIONALS_BOUNDARY    # Change < to <=, > to >=
-  - CONDITIONALS_NEGATION    # Negate conditions (== to !=)
-  - INCREMENT_DECREMENT      # Change ++ to --
-  - INVERT_LOGICAL           # Invert && to ||
-  - INVERT_NEGATIVES         # Remove negation operators
-  - INVERT_LOOPCTRL          # Change break to continue
+  - CONDITIONALS_BOUNDARY # Change < to <=, > to >=
+  - CONDITIONALS_NEGATION # Negate conditions (== to !=)
+  - INCREMENT_DECREMENT # Change ++ to --
+  - INVERT_LOGICAL # Invert && to ||
+  - INVERT_NEGATIVES # Remove negation operators
+  - INVERT_LOOPCTRL # Change break to continue
 
 # Files/patterns to exclude
 exclude:
-  - "**/*_test.go"           # Test files
-  - "**/test/**"             # Test helpers
-  - "**/mock/**"             # Mock implementations
-  - "**/generated/**"        # Generated code
-  - "**/*_templ.go"          # Generated templ files
+  - "**/*_test.go" # Test files
+  - "**/test/**" # Test helpers
+  - "**/mock/**" # Mock implementations
+  - "**/generated/**" # Generated code
+  - "**/*_templ.go" # Generated templ files
 
 # Only mutate code covered by tests
 coverage: true
