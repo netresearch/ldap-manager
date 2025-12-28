@@ -38,8 +38,8 @@ type App struct {
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
 	logger        *slog.Logger
-	assetManifest *AssetManifest  // Asset manifest for cache-busted files
-	rateLimiter   *RateLimiter    // Rate limiter for authentication endpoints
+	assetManifest *AssetManifest // Asset manifest for cache-busted files
+	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -53,7 +53,6 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 
 	return memory.New()
 }
-
 
 // createSessionStore creates session store with configuration from options
 func createSessionStore(opts *options.Opts) *session.Store {

@@ -16,10 +16,10 @@ import (
 // containing LDAP escape sequences.
 func TestComputerUrlEncoding(t *testing.T) {
 	testCases := []struct {
-		name     string
-		dn       string
-		wantEnc  string // Expected substring in encoded URL
-		notWant  string // Should NOT be present in encoded URL
+		name    string
+		dn      string
+		wantEnc string // Expected substring in encoded URL
+		notWant string // Should NOT be present in encoded URL
 	}{
 		{
 			name:    "DN with newline escape sequence",

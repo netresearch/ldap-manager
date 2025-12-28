@@ -14,7 +14,6 @@ func TestDoWithConfig_Success(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -40,7 +39,6 @@ func TestDoWithConfig_RetryThenSuccess(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -116,7 +114,6 @@ func TestDoWithConfig_ZeroMaxAttempts(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -130,7 +127,6 @@ func TestDoWithResult_Success(t *testing.T) {
 	result, err := DoWithResult(context.Background(), func() (string, error) {
 		return expected, nil
 	})
-
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -156,7 +152,6 @@ func TestDoWithResult_RetryThenSuccess(t *testing.T) {
 
 		return 42, nil
 	})
-
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
