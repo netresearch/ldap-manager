@@ -135,6 +135,8 @@ func (rl *RateLimiter) RecordAttempt(ip string) bool {
 }
 
 // IsBlocked checks if an IP is currently blocked.
+// Note: Expired entries are not cleaned up here to avoid lock upgrades;
+// cleanup happens periodically via startCleanup goroutine.
 func (rl *RateLimiter) IsBlocked(ip string) bool {
 	rl.mu.RLock()
 	defer rl.mu.RUnlock()
