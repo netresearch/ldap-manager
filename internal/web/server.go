@@ -368,8 +368,11 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
+	// Populate groups for the home screen
+	fullUser := a.ldapCache.PopulateGroupsForUser(user)
+
 	// Use template caching
-	return a.templateCache.RenderWithCache(c, templates.Index(user))
+	return a.templateCache.RenderWithCache(c, templates.Index(fullUser))
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {

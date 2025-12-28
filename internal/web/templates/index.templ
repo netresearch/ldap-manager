@@ -1,9 +1,9 @@
 package templates
 
-import "github.com/netresearch/simple-ldap-go"
+import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "fmt"
 
-templ Index(user *ldap.User) {
+templ Index(user *ldap_cache.FullLDAPUser) {
 	@loggedIn("/", "Home", []Flash{}) {
 		<h1 class="mb-4 text-3xl">Hi { user.CN() }!</h1>
 		if user.Description != "" {
@@ -28,11 +28,25 @@ templ Index(user *ldap.User) {
 					</a>
 				</p>
 			}
-			<p>
-				<span class="text-text-secondary">Groups: </span>
-				<span>{ fmt.Sprintf("%d", len(user.Groups)) } memberships</span>
-			</p>
 		</div>
+		<h2 class="mt-4 text-xl">{ fmt.Sprintf("%d Direct Groups:", len(user.Groups)) }</h2>
+		<div class="list-container">
+			for _, group := range user.Groups {
+				<div class="list-row">
+					<a
+						href={ groupUrl(group) }
+						class="list-link"
+						title={ "View group details: " + group.CN() }
+					>
+						<span>{ group.CN() }</span>
+						@rightArrowIcon()
+					</a>
+				</div>
+			}
+		</div>
+		if len(user.Groups) == 0 {
+			<p class="text-text-secondary">No group memberships</p>
+		}
 	}
 }
 

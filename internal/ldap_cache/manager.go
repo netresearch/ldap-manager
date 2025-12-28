@@ -59,7 +59,8 @@ type FullLDAPUser struct {
 // This provides a complete view of group data including all member users.
 type FullLDAPGroup struct {
 	ldap.Group
-	Members []ldap.User // All users that belong to this group
+	Members      []ldap.User  // All users that belong to this group
+	ParentGroups []ldap.Group // All groups this group belongs to (from MemberOf)
 }
 
 // FullLDAPComputer represents a computer with populated group memberships.
@@ -436,12 +437,14 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 
 // PopulateUsersForGroup creates a FullLDAPGroup with populated member list.
 // Takes a group and resolves all member DNs to full user objects from the cache.
+// Also resolves parent groups from the MemberOf field.
 // When showDisabled is false, filters out disabled users from membership.
-// Returns a complete group object with expanded member information.
+// Returns a complete group object with expanded member and parent group information.
 func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *FullLDAPGroup {
 	full := &FullLDAPGroup{
-		Group:   *group,
-		Members: make([]ldap.User, 0),
+		Group:        *group,
+		Members:      make([]ldap.User, 0),
+		ParentGroups: make([]ldap.Group, 0),
 	}
 
 	for _, userDN := range group.Members {
@@ -452,6 +455,14 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *F
 			}
 
 			full.Members = append(full.Members, *user)
+		}
+	}
+
+	// Resolve parent groups from MemberOf
+	for _, parentDN := range group.MemberOf {
+		parentGroup, err := m.FindGroupByDN(parentDN)
+		if err == nil {
+			full.ParentGroups = append(full.ParentGroups, *parentGroup)
 		}
 	}
 

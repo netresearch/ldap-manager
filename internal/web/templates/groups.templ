@@ -32,29 +32,30 @@ templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashe
 	@loggedIn(string(groupUrl(group.Group)), group.CN(), flashes) {
 		<h1 class="text-3xl">{ group.CN() }</h1>
 		<p class="text-sm text-text-secondary">@Copyable(group.DN())</p>
-		<div class="mt-4 grid gap-2 sm:grid-cols-2">
-			if group.Description != "" {
-				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
-					<span class="text-sm text-text-secondary">Description</span>
-					<p class="font-medium">{ group.Description }</p>
-				</div>
-			}
-			<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
-				<span class="text-sm text-text-secondary">Member count</span>
-				<p class="font-medium">{ fmt.Sprintf("%d", len(group.Members)) }</p>
+		if group.Description != "" {
+			<div class="mt-4 rounded-md border border-border bg-surface-elevated px-3 py-2">
+				<span class="text-sm text-text-secondary">Description</span>
+				<p class="font-medium">{ group.Description }</p>
 			</div>
-		</div>
+		}
 		if len(group.MemberOf) > 0 {
-			<h2 class="mt-4 text-xl">Parent groups:</h2>
+			<h2 class="mt-4 text-xl">{ fmt.Sprintf("%d Parent Groups:", len(group.MemberOf)) }</h2>
 			<div class="list-container">
-				for _, parentDN := range group.MemberOf {
+				for _, parentGroup := range group.ParentGroups {
 					<div class="list-row">
-						<span class="px-3 py-2 text-sm text-text-secondary">{ parentDN }</span>
+						<a
+							href={ groupUrl(parentGroup) }
+							class="list-link"
+							title={ "View group details: " + parentGroup.CN() }
+						>
+							<span>{ parentGroup.CN() }</span>
+							@rightArrowIcon()
+						</a>
 					</div>
 				}
 			</div>
 		}
-		<h2 class="mt-4 text-xl">Members:</h2>
+		<h2 class="mt-4 text-xl">{ fmt.Sprintf("%d Direct Members:", len(group.Members)) }</h2>
 		<div class="list-container">
 			for _, user := range group.Members {
 				<div class="list-row">
