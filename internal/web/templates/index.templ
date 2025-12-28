@@ -1,20 +1,36 @@
 package templates
 
 import "github.com/netresearch/simple-ldap-go"
+import "fmt"
 
 templ Index(user *ldap.User) {
 	@loggedIn("/", "Home", []Flash{}) {
 		<h1 class="mb-4 text-3xl">Hi { user.CN() }!</h1>
+		if user.Description != "" {
+			<p class="mb-4 text-text-secondary">{ user.Description }</p>
+		}
 		<h2 class="mb-2 text-xl">Your user information</h2>
-		<div class="rounded-md border border-border bg-surface-elevated px-4 py-3">
+		<div class="rounded-md border border-border bg-surface-elevated px-4 py-3 space-y-1">
 			<p>
-				<span>CN: </span> @Code(user.CN())
+				<span class="text-text-secondary">CN: </span> @Code(user.CN())
 			</p>
 			<p>
-				<span>DN: </span> @Code(user.DN())
+				<span class="text-text-secondary">DN: </span> @Code(user.DN())
 			</p>
 			<p>
-				<span>sAMAccountName: </span> @Code(user.SAMAccountName)
+				<span class="text-text-secondary">sAMAccountName: </span> @Code(user.SAMAccountName)
+			</p>
+			if user.Mail != nil && *user.Mail != "" {
+				<p>
+					<span class="text-text-secondary">Email: </span>
+					<a href={ templ.SafeURL("mailto:" + *user.Mail) } class="text-accent hover:underline">
+						{ *user.Mail }
+					</a>
+				</p>
+			}
+			<p>
+				<span class="text-text-secondary">Groups: </span>
+				<span>{ fmt.Sprintf("%d", len(user.Groups)) } memberships</span>
 			</p>
 		</div>
 	}

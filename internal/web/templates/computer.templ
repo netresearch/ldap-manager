@@ -32,7 +32,7 @@ templ Computer(computer *ldap_cache.FullLDAPComputer) {
 	@loggedIn(string(computerUrl(computer.Computer)), computer.CN(), []Flash{}) {
 		<h1 class="text-3xl">{ computer.CN() } ({ computer.SAMAccountName })</h1>
 		<p class="text-sm text-text-secondary">
-			{ computer.DN() }
+			@Copyable(computer.DN())
 			if !computer.Enabled {
 				@lockIcon()
 			}

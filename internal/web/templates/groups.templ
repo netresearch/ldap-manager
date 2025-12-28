@@ -31,7 +31,7 @@ func specializeGroups(groups []ldap.Group) []Displayer {
 templ Group(group *ldap_cache.FullLDAPGroup, unassignedUsers []ldap.User, flashes []Flash, csrfToken string) {
 	@loggedIn(string(groupUrl(group.Group)), group.CN(), flashes) {
 		<h1 class="text-3xl">{ group.CN() }</h1>
-		<p class="text-sm text-text-secondary">{ group.DN() }</p>
+		<p class="text-sm text-text-secondary">@Copyable(group.DN())</p>
 		<h2 class="mt-4 text-xl">Members:</h2>
 		<div class="list-container">
 			for _, user := range group.Members {
