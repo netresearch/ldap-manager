@@ -7,6 +7,7 @@ package ldap_cache
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -32,8 +33,9 @@ type LDAPClient interface {
 // Supports cache warming for faster startup and configurable refresh strategies.
 // LDAP operations are automatically retried with exponential backoff for resilience.
 type Manager struct {
-	stop chan struct{} // Channel for graceful shutdown signaling
-	ctx  context.Context
+	stop     chan struct{} // Channel for graceful shutdown signaling
+	stopOnce sync.Once     // Ensures Stop() is idempotent
+	ctx      context.Context
 
 	client          LDAPClient    // LDAP client for directory operations
 	metrics         *Metrics      // Performance metrics and health monitoring
@@ -134,15 +136,12 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 // Stop gracefully shuts down the background refresh loop.
-// It sends a signal to the Run() method to terminate the refresh cycle.
-// Safe to call multiple times; subsequent calls are no-ops.
+// It closes the stop channel to signal Run() to terminate the refresh cycle.
+// Safe to call multiple times; subsequent calls are no-ops due to sync.Once.
 func (m *Manager) Stop() {
-	select {
-	case m.stop <- struct{}{}:
-		// Signal sent successfully
-	default:
-		// Channel already has a pending stop signal or is closed
-	}
+	m.stopOnce.Do(func() {
+		close(m.stop)
+	})
 }
 
 // WarmupCache performs initial cache population with enhanced logging and error handling.

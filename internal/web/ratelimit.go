@@ -18,6 +18,7 @@ type RateLimiter struct {
 	blockPeriod  time.Duration // How long to block after exceeding limit
 	cleanupEvery time.Duration // Cleanup interval for expired entries
 	stopCleanup  chan struct{}
+	stopOnce     sync.Once // Ensures Stop() is idempotent
 }
 
 type rateLimitEntry struct {
@@ -200,8 +201,11 @@ func (rl *RateLimiter) cleanup() {
 }
 
 // Stop gracefully stops the rate limiter cleanup goroutine.
+// Safe to call multiple times.
 func (rl *RateLimiter) Stop() {
-	close(rl.stopCleanup)
+	rl.stopOnce.Do(func() {
+		close(rl.stopCleanup)
+	})
 }
 
 // Middleware creates a Fiber middleware for rate limiting.

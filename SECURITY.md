@@ -11,7 +11,7 @@
 If you discover a security vulnerability in ldap-manager, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue for security vulnerabilities
-2. **Email** security concerns to the maintainers privately
+2. **Use** [GitHub's private vulnerability reporting](https://github.com/netresearch/ldap-manager/security/advisories/new)
 3. **Include** a detailed description of the vulnerability and steps to reproduce
 
 ### What to Expect
@@ -38,4 +38,5 @@ See the [README](README.md) for security-related configuration options:
 
 - `--cookie-secure`: Require HTTPS for cookies (recommended for production)
 - `--tls-skip-verify`: Disable TLS verification (development only)
-- `--rate-limit`: Configure rate limiting thresholds
+
+Rate limiting is enabled by default (5 failed attempts per 15 minutes triggers a 15-minute block).

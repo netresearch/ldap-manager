@@ -68,8 +68,8 @@ func main() {
 
 	if err := app.Shutdown(shutdownCtx); err != nil {
 		log.Error().Err(err).Msg("Error during shutdown")
-		shutdownCancel()
-		os.Exit(1) //nolint:gocritic // Exit is intentional after shutdown error
+		shutdownCancel() // Required: os.Exit does not run deferred functions
+		os.Exit(1)       //nolint:gocritic // Exit is intentional after shutdown error
 	}
 
 	log.Info().Msg("Graceful shutdown complete")
