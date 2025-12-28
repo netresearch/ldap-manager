@@ -142,12 +142,17 @@ docker run \
 
 ## Screenshots
 
-<img src="./docs/assets/ldap_manager_users.png" height="256" align="left" alt="LDAP Manager - Users List">
-<img src="./docs/assets/ldap_manager_user_detail.png" height="256" align="left" alt="LDAP Manager - User Detail">
-<br clear="all">
-<img src="./docs/assets/ldap_manager_groups.png" height="256" align="left" alt="LDAP Manager - Groups List">
-<img src="./docs/assets/ldap_manager_group_detail.png" height="256" align="left" alt="LDAP Manager - Group Detail">
-<br clear="all">
+**Users List** - Browse, search, and filter all LDAP users
+![Users List](./docs/assets/ldap_manager_users.png)
+
+**User Detail** - View email, description, group memberships, and last logon
+![User Detail](./docs/assets/ldap_manager_user_detail.png)
+
+**Groups List** - Browse and search all groups
+![Groups List](./docs/assets/ldap_manager_groups.png)
+
+**Group Detail** - Manage members, view parent groups, add/remove users
+![Group Detail](./docs/assets/ldap_manager_group_detail.png)
 
 ## Documentation
 
