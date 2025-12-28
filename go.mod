@@ -8,7 +8,7 @@ require (
 	github.com/gofiber/storage/bbolt/v2 v2.1.2
 	github.com/gofiber/storage/memory/v2 v2.1.1
 	github.com/joho/godotenv v1.5.1
-	github.com/netresearch/simple-ldap-go v1.6.0
+	github.com/netresearch/simple-ldap-go v1.7.0
 	github.com/playwright-community/playwright-go v0.5200.1
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
@@ -67,7 +67,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.8 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/testcontainers/testcontainers-go/modules/openldap v0.39.0 // indirect
+	github.com/testcontainers/testcontainers-go/modules/openldap v0.40.0 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
@@ -82,6 +82,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
