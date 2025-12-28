@@ -1,6 +1,7 @@
 package options
 
 import (
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -62,7 +63,10 @@ func TestEnvDurationOrDefault(t *testing.T) {
 	t.Run("returns environment duration when valid", func(t *testing.T) {
 		defer setEnvVar(t, "TEST_DURATION", "5m")()
 
-		result := envDurationOrDefault("TEST_DURATION", 1*time.Minute)
+		result, err := envDurationOrDefault("TEST_DURATION", 1*time.Minute)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		expected := 5 * time.Minute
 		if result != expected {
 			t.Errorf("Expected %v, got %v", expected, result)
@@ -72,10 +76,30 @@ func TestEnvDurationOrDefault(t *testing.T) {
 	t.Run("returns default when environment variable not set", func(t *testing.T) {
 		unsetEnvVar(t, "TEST_DURATION")
 
-		result := envDurationOrDefault("TEST_DURATION", 2*time.Hour)
+		result, err := envDurationOrDefault("TEST_DURATION", 2*time.Hour)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		expected := 2 * time.Hour
 		if result != expected {
 			t.Errorf("Expected %v, got %v", expected, result)
+		}
+	})
+
+	t.Run("returns error for invalid duration", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_DURATION", "invalid")()
+
+		_, err := envDurationOrDefault("TEST_DURATION", 1*time.Minute)
+		if err == nil {
+			t.Error("Expected error for invalid duration, got nil")
+		}
+
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Errorf("Expected ValidationError, got %T", err)
+		}
+		if validationErr.Field != "TEST_DURATION" {
+			t.Errorf("Expected field 'TEST_DURATION', got '%s'", validationErr.Field)
 		}
 	})
 }
@@ -84,7 +108,10 @@ func TestEnvLogLevelOrDefault(t *testing.T) {
 	t.Run("returns environment log level when valid", func(t *testing.T) {
 		defer setEnvVar(t, "TEST_LOG_LEVEL", "debug")()
 
-		result := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.InfoLevel)
+		result, err := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.InfoLevel)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != "debug" {
 			t.Errorf("Expected 'debug', got '%s'", result)
 		}
@@ -93,9 +120,29 @@ func TestEnvLogLevelOrDefault(t *testing.T) {
 	t.Run("returns default when environment variable not set", func(t *testing.T) {
 		unsetEnvVar(t, "TEST_LOG_LEVEL")
 
-		result := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.WarnLevel)
+		result, err := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.WarnLevel)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != "warn" {
 			t.Errorf("Expected 'warn', got '%s'", result)
+		}
+	})
+
+	t.Run("returns error for invalid log level", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_LOG_LEVEL", "invalid_level")()
+
+		_, err := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.InfoLevel)
+		if err == nil {
+			t.Error("Expected error for invalid log level, got nil")
+		}
+
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Errorf("Expected ValidationError, got %T", err)
+		}
+		if validationErr.Field != "TEST_LOG_LEVEL" {
+			t.Errorf("Expected field 'TEST_LOG_LEVEL', got '%s'", validationErr.Field)
 		}
 	})
 }
@@ -121,7 +168,10 @@ func TestEnvBoolOrDefault(t *testing.T) {
 				cleanup := setEnvVar(t, "TEST_BOOL", tc.envValue)
 				defer cleanup()
 
-				result := envBoolOrDefault("TEST_BOOL", false)
+				result, err := envBoolOrDefault("TEST_BOOL", false)
+				if err != nil {
+					t.Fatalf("Unexpected error for %s: %v", tc.envValue, err)
+				}
 				if result != tc.expected {
 					t.Errorf("For envValue '%s', expected %v, got %v", tc.envValue, tc.expected, result)
 				}
@@ -134,9 +184,29 @@ func TestEnvBoolOrDefault(t *testing.T) {
 	t.Run("returns default when environment variable not set", func(t *testing.T) {
 		unsetEnvVar(t, "TEST_BOOL")
 
-		result := envBoolOrDefault("TEST_BOOL", true)
+		result, err := envBoolOrDefault("TEST_BOOL", true)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != true {
 			t.Errorf("Expected true, got %v", result)
+		}
+	})
+
+	t.Run("returns error for invalid bool", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_BOOL", "not_a_bool")()
+
+		_, err := envBoolOrDefault("TEST_BOOL", false)
+		if err == nil {
+			t.Error("Expected error for invalid bool, got nil")
+		}
+
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Errorf("Expected ValidationError, got %T", err)
+		}
+		if validationErr.Field != "TEST_BOOL" {
+			t.Errorf("Expected field 'TEST_BOOL', got '%s'", validationErr.Field)
 		}
 	})
 }
@@ -145,7 +215,10 @@ func TestEnvIntOrDefault(t *testing.T) {
 	t.Run("returns environment int when valid", func(t *testing.T) {
 		defer setEnvVar(t, "TEST_INT", "42")()
 
-		result := envIntOrDefault("TEST_INT", 10)
+		result, err := envIntOrDefault("TEST_INT", 10)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != 42 {
 			t.Errorf("Expected 42, got %d", result)
 		}
@@ -154,7 +227,10 @@ func TestEnvIntOrDefault(t *testing.T) {
 	t.Run("returns default when environment variable not set", func(t *testing.T) {
 		unsetEnvVar(t, "TEST_INT")
 
-		result := envIntOrDefault("TEST_INT", 100)
+		result, err := envIntOrDefault("TEST_INT", 100)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != 100 {
 			t.Errorf("Expected 100, got %d", result)
 		}
@@ -163,7 +239,10 @@ func TestEnvIntOrDefault(t *testing.T) {
 	t.Run("returns default value of zero when env var not set", func(t *testing.T) {
 		unsetEnvVar(t, "TEST_INT")
 
-		result := envIntOrDefault("TEST_INT", 0)
+		result, err := envIntOrDefault("TEST_INT", 0)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != 0 {
 			t.Errorf("Expected 0, got %d", result)
 		}
@@ -172,11 +251,65 @@ func TestEnvIntOrDefault(t *testing.T) {
 	t.Run("handles negative int values", func(t *testing.T) {
 		defer setEnvVar(t, "TEST_INT", "-123")()
 
-		result := envIntOrDefault("TEST_INT", 10)
+		result, err := envIntOrDefault("TEST_INT", 10)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
 		if result != -123 {
 			t.Errorf("Expected -123, got %d", result)
 		}
 	})
+
+	t.Run("returns error for invalid int", func(t *testing.T) {
+		defer setEnvVar(t, "TEST_INT", "not_an_int")()
+
+		_, err := envIntOrDefault("TEST_INT", 10)
+		if err == nil {
+			t.Error("Expected error for invalid int, got nil")
+		}
+
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Errorf("Expected ValidationError, got %T", err)
+		}
+		if validationErr.Field != "TEST_INT" {
+			t.Errorf("Expected field 'TEST_INT', got '%s'", validationErr.Field)
+		}
+	})
+}
+
+func TestValidateRequired(t *testing.T) {
+	t.Run("returns nil for non-empty value", func(t *testing.T) {
+		value := "some_value"
+		err := validateRequired("test-field", &value)
+		if err != nil {
+			t.Errorf("Expected nil error, got %v", err)
+		}
+	})
+
+	t.Run("returns error for empty value", func(t *testing.T) {
+		value := ""
+		err := validateRequired("test-field", &value)
+		if err == nil {
+			t.Error("Expected error for empty value, got nil")
+		}
+
+		var validationErr ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Errorf("Expected ValidationError, got %T", err)
+		}
+		if validationErr.Field != "test-field" {
+			t.Errorf("Expected field 'test-field', got '%s'", validationErr.Field)
+		}
+	})
+}
+
+func TestValidationError(t *testing.T) {
+	err := ValidationError{Field: "test-field", Message: "test message"}
+	expected := "configuration error for test-field: test message"
+	if err.Error() != expected {
+		t.Errorf("Expected %q, got %q", expected, err.Error())
+	}
 }
 
 func TestOptsStructure(t *testing.T) {
@@ -209,6 +342,3 @@ func TestOptsStructure(t *testing.T) {
 		t.Errorf("Expected 10 max connections, got %d", opts.PoolMaxConnections)
 	}
 }
-
-// Note: Integration tests for Parse() are complex to test due to fatal logging calls
-// The helper functions are thoroughly tested above and provide good coverage of the parsing logic

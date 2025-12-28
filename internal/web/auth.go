@@ -35,7 +35,23 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 	if username != "" && password != "" {
 		user, err := a.ldapReadonly.CheckPasswordForSAMAccountName(username, password)
 		if err != nil {
-			log.Error().Err(err).Msg("could not check password")
+			// Record failed attempt for rate limiting
+			ip := c.IP()
+			blocked := a.rateLimiter.RecordAttempt(ip)
+
+			// Log username for security audit trail - intentional per OWASP logging guidelines
+			log.Warn().
+				Err(err).
+				Str("username", username).
+				Str("ip", ip).
+				Int("remaining_attempts", a.rateLimiter.GetRemainingAttempts(ip)).
+				Msg("failed login attempt")
+
+			// If blocked after this attempt, return rate limit error
+			if blocked {
+				return c.Status(fiber.StatusTooManyRequests).
+					SendString("Too many failed login attempts. Please try again later.")
+			}
 
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
@@ -47,10 +63,18 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
+		// Successful login - reset rate limit counter
+		a.rateLimiter.ResetAttempts(c.IP())
+
 		sess.Set("dn", user.DN())
 		if err := sess.Save(); err != nil {
 			return handle500(c, err)
 		}
+
+		log.Info().
+			Str("username", username).
+			Str("dn", user.DN()).
+			Msg("successful login")
 
 		return c.Redirect("/")
 	}

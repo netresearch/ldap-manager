@@ -29,7 +29,7 @@ COVERAGE_DIR := coverage-reports
 COVERAGE_FILE := coverage.out
 HTML_COVERAGE_FILE := $(COVERAGE_DIR)/coverage.html
 
-.PHONY: help setup build test lint clean dev docker docker-dev docker-test docker-lint docker-check docker-shell docker-clean
+.PHONY: help setup build test lint clean dev docker docker-dev docker-test docker-lint docker-check docker-shell docker-clean vet vuln-check
 
 # Default target
 all: setup lint test build
@@ -104,11 +104,11 @@ build-release: build-assets
 	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(BUILDFLAGS) -o bin/ldap-manager-windows-amd64.exe ./cmd/ldap-manager
 	@echo "$(GREEN)✓ Release binaries built$(RESET)"
 
-## Test: Run comprehensive test suite with coverage
+## Test: Run comprehensive test suite with coverage (requires CGO_ENABLED=1 for race detector)
 test:
 	@echo "$(BLUE)Running comprehensive test suite...$(RESET)"
 	@mkdir -p $(COVERAGE_DIR)
-	@if go test -v -race -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...; then \
+	@if CGO_ENABLED=1 go test -v -race -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...; then \
 		echo "$(GREEN)✅ All tests passed$(RESET)"; \
 	else \
 		echo "$(RED)❌ Some tests failed$(RESET)"; \
@@ -142,10 +142,11 @@ test-short:
 	@echo "$(BLUE)Running short tests...$(RESET)"
 	@go test -short ./...
 
-## Test Race: Run race detection tests
+## Test Race: Run race detection tests (requires CGO_ENABLED=1)
 test-race:
 	@echo "$(BLUE)Running race detection tests...$(RESET)"
-	@if go test -race -short ./...; then \
+	@echo "$(YELLOW)Note: Race detector requires CGO_ENABLED=1$(RESET)"
+	@if CGO_ENABLED=1 go test -race -short ./...; then \
 		echo "$(GREEN)✅ No race conditions detected$(RESET)"; \
 	else \
 		echo "$(RED)❌ Race conditions detected$(RESET)"; \
@@ -192,10 +193,17 @@ test-fuzz:
 	@go test -fuzz=FuzzQueryParams -fuzztime=15s ./internal/web || true
 	@echo "$(GREEN)✅ Fuzz testing completed$(RESET)"
 
-## Test Mutation: Run mutation testing
+## Test Mutation: Run mutation testing with go-mutesting
 test-mutation:
-	@echo "$(BLUE)Running mutation testing...$(RESET)"
+	@echo "$(BLUE)Running mutation testing (go-mutesting)...$(RESET)"
 	@./scripts/mutation-test.sh
+
+## Test Mutation Gremlins: Run mutation testing with gremlins (recommended)
+test-mutation-gremlins:
+	@echo "$(BLUE)Running mutation testing (gremlins)...$(RESET)"
+	@command -v gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+	@mkdir -p mutation-reports
+	@gremlins unleash --config=.gremlins.yaml
 
 ## Test All: Run all test types
 test-all: test test-integration
@@ -210,10 +218,21 @@ lint-go:
 	@echo "$(BLUE)Running golangci-lint...$(RESET)"
 	@golangci-lint run --config .golangci.yml ./...
 
-## Lint Security: Run security vulnerability checks  
-lint-security:
-	@echo "$(BLUE)Running security checks...$(RESET)"
+## Vet: Run go vet static analysis
+vet:
+	@echo "$(BLUE)Running go vet...$(RESET)"
+	@go vet ./...
+	@echo "$(GREEN)✓ go vet passed$(RESET)"
+
+## Vuln Check: Run vulnerability scanning
+vuln-check:
+	@echo "$(BLUE)Running govulncheck...$(RESET)"
 	@govulncheck ./...
+	@echo "$(GREEN)✓ No vulnerabilities found$(RESET)"
+
+## Lint Security: Run security vulnerability checks
+lint-security: vuln-check
+	@echo "$(GREEN)✓ Security checks passed$(RESET)"
 
 ## Lint Format: Check code formatting
 lint-format:

@@ -3,6 +3,7 @@
 package ldap_cache
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -424,7 +425,7 @@ func TestManagerStop(t *testing.T) {
 	manager := New(mockClient)
 
 	// Start the manager in a goroutine so it can receive the stop signal
-	go manager.Run()
+	go manager.Run(context.Background())
 
 	// Give it a moment to start
 	time.Sleep(10 * time.Millisecond)

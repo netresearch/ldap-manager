@@ -70,7 +70,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_NS", "100ns")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_NS", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_NS", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, 100*time.Nanosecond, result)
 	})
 
@@ -78,7 +79,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_US", "500us")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_US", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_US", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, 500*time.Microsecond, result)
 	})
 
@@ -86,7 +88,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_MS", "250ms")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_MS", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_MS", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, 250*time.Millisecond, result)
 	})
 
@@ -94,7 +97,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_H", "24h")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_H", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_H", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, 24*time.Hour, result)
 	})
 
@@ -102,7 +106,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_COMBINED", "1h30m45s")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_COMBINED", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_COMBINED", time.Second)
+		require.NoError(t, err)
 		expected := time.Hour + 30*time.Minute + 45*time.Second
 		assert.Equal(t, expected, result)
 	})
@@ -111,7 +116,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_ZERO", "0s")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_ZERO", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_ZERO", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, time.Duration(0), result)
 	})
 
@@ -119,7 +125,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_NEG", "-5m")
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_NEG", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_NEG", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, -5*time.Minute, result)
 	})
 
@@ -127,7 +134,8 @@ func TestEnvDurationOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_DURATION_LARGE", "8760h") // 1 year
 		defer cleanup()
 
-		result := envDurationOrDefault("TEST_DURATION_LARGE", time.Second)
+		result, err := envDurationOrDefault("TEST_DURATION_LARGE", time.Second)
+		require.NoError(t, err)
 		assert.Equal(t, 8760*time.Hour, result)
 	})
 }
@@ -138,7 +146,8 @@ func TestEnvIntOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_INT_MAX", strconv.Itoa(math.MaxInt))
 		defer cleanup()
 
-		result := envIntOrDefault("TEST_INT_MAX", 0)
+		result, err := envIntOrDefault("TEST_INT_MAX", 0)
+		require.NoError(t, err)
 		assert.Equal(t, math.MaxInt, result)
 	})
 
@@ -146,7 +155,8 @@ func TestEnvIntOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_INT_MIN", strconv.Itoa(math.MinInt))
 		defer cleanup()
 
-		result := envIntOrDefault("TEST_INT_MIN", 0)
+		result, err := envIntOrDefault("TEST_INT_MIN", 0)
+		require.NoError(t, err)
 		assert.Equal(t, math.MinInt, result)
 	})
 
@@ -154,7 +164,8 @@ func TestEnvIntOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_INT_ZERO", "0")
 		defer cleanup()
 
-		result := envIntOrDefault("TEST_INT_ZERO", 999)
+		result, err := envIntOrDefault("TEST_INT_ZERO", 999)
+		require.NoError(t, err)
 		assert.Equal(t, 0, result)
 	})
 
@@ -162,7 +173,8 @@ func TestEnvIntOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_INT_PLUS", "+42")
 		defer cleanup()
 
-		result := envIntOrDefault("TEST_INT_PLUS", 0)
+		result, err := envIntOrDefault("TEST_INT_PLUS", 0)
+		require.NoError(t, err)
 		assert.Equal(t, 42, result)
 	})
 }
@@ -173,7 +185,8 @@ func TestEnvBoolOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_BOOL", "TRUE")
 		defer cleanup()
 
-		result := envBoolOrDefault("TEST_BOOL", false)
+		result, err := envBoolOrDefault("TEST_BOOL", false)
+		require.NoError(t, err)
 		assert.True(t, result)
 	})
 
@@ -181,7 +194,8 @@ func TestEnvBoolOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_BOOL", "FALSE")
 		defer cleanup()
 
-		result := envBoolOrDefault("TEST_BOOL", true)
+		result, err := envBoolOrDefault("TEST_BOOL", true)
+		require.NoError(t, err)
 		assert.False(t, result)
 	})
 
@@ -189,7 +203,8 @@ func TestEnvBoolOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_BOOL", "True")
 		defer cleanup()
 
-		result := envBoolOrDefault("TEST_BOOL", false)
+		result, err := envBoolOrDefault("TEST_BOOL", false)
+		require.NoError(t, err)
 		assert.True(t, result)
 	})
 
@@ -197,7 +212,8 @@ func TestEnvBoolOrDefault_EdgeCases(t *testing.T) {
 		cleanup := setEnvVar(t, "TEST_BOOL", "False")
 		defer cleanup()
 
-		result := envBoolOrDefault("TEST_BOOL", true)
+		result, err := envBoolOrDefault("TEST_BOOL", true)
+		require.NoError(t, err)
 		assert.False(t, result)
 	})
 }
@@ -223,7 +239,8 @@ func TestEnvLogLevelOrDefault_EdgeCases(t *testing.T) {
 			cleanup := setEnvVar(t, "TEST_LOG_LEVEL", tc.input)
 			defer cleanup()
 
-			result := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.InfoLevel)
+			result, err := envLogLevelOrDefault("TEST_LOG_LEVEL", zerolog.InfoLevel)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

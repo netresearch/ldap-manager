@@ -1,0 +1,43 @@
+# Gremlins Mutation Testing Configuration
+# https://github.com/go-gremlins/gremlins
+
+# Packages to test
+test-packages:
+  - ./internal/ldap_cache/...
+  - ./internal/options/...
+  - ./internal/retry/...
+  - ./internal/web/...
+
+# Mutator types to enable
+mutators:
+  - CONDITIONALS_BOUNDARY # Change < to <=, > to >=
+  - CONDITIONALS_NEGATION # Negate conditions (== to !=)
+  - INCREMENT_DECREMENT # Change ++ to --
+  - INVERT_LOGICAL # Invert && to ||
+  - INVERT_NEGATIVES # Remove negation operators
+  - INVERT_LOOPCTRL # Change break to continue
+
+# Files/patterns to exclude
+exclude:
+  - "**/*_test.go" # Test files
+  - "**/test/**" # Test helpers
+  - "**/mock/**" # Mock implementations
+  - "**/generated/**" # Generated code
+  - "**/*_templ.go" # Generated templ files
+
+# Only mutate code covered by tests
+coverage: true
+
+# Minimum acceptable mutation score (%)
+threshold: 60
+
+# Timeout multiplier for test runs
+timeout-coefficient: 5
+
+# Output reports
+output:
+  json: mutation-reports/gremlins-report.json
+  html: mutation-reports/gremlins-report.html
+
+# Test timeout
+test-timeout: 120s
