@@ -6,10 +6,13 @@
 package ldap_cache
 
 import (
+	"context"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
+
+	"github.com/netresearch/ldap-manager/internal/retry"
 )
 
 // LDAPClient interface defines the LDAP operations needed by the cache manager.
@@ -27,13 +30,16 @@ type LDAPClient interface {
 // All operations are concurrent-safe and provide immediate access to cached data.
 // Includes comprehensive metrics tracking for performance monitoring and observability.
 // Supports cache warming for faster startup and configurable refresh strategies.
+// LDAP operations are automatically retried with exponential backoff for resilience.
 type Manager struct {
 	stop chan struct{} // Channel for graceful shutdown signaling
+	ctx  context.Context
 
 	client          LDAPClient    // LDAP client for directory operations
 	metrics         *Metrics      // Performance metrics and health monitoring
 	refreshInterval time.Duration // Configurable refresh interval (default 30s)
 	warmupComplete  bool          // Tracks if initial cache warming is complete
+	retryConfig     retry.Config  // Retry configuration for LDAP operations
 
 	Users     Cache[ldap.User]     // Cached user entries with O(1) indexed lookups
 	Groups    Cache[ldap.Group]    // Cached group entries with O(1) indexed lookups
@@ -73,16 +79,19 @@ func New(client LDAPClient) *Manager {
 // NewWithConfig creates a new LDAP cache manager with configurable refresh interval.
 // The manager is initialized with empty caches and custom refresh timing.
 // Includes comprehensive metrics tracking for performance monitoring.
+// LDAP operations are automatically retried with exponential backoff for resilience.
 // Call Run() to start the background refresh goroutine.
 func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 	metrics := NewMetrics()
 
 	return &Manager{
 		stop:            make(chan struct{}),
+		ctx:             context.Background(),
 		client:          client,
 		metrics:         metrics,
 		refreshInterval: refreshInterval,
 		warmupComplete:  false,
+		retryConfig:     retry.LDAPConfig(),
 		Users:           NewCachedWithMetrics[ldap.User](metrics),
 		Groups:          NewCachedWithMetrics[ldap.Group](metrics),
 		Computers:       NewCachedWithMetrics[ldap.Computer](metrics),
@@ -91,8 +100,13 @@ func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 
 // Run starts the background cache refresh loop.
 // It performs initial cache warming, then continues refreshing at the configured interval.
-// This method blocks until Stop() is called. Should be run in a separate goroutine.
-func (m *Manager) Run() {
+// The context is used for graceful shutdown - when canceled, the loop terminates.
+// This method blocks until the context is canceled or Stop() is called.
+// Should be run in a separate goroutine.
+func (m *Manager) Run(ctx context.Context) {
+	// Store context for use in refresh operations
+	m.ctx = ctx
+
 	// Use configurable refresh interval
 	t := time.NewTicker(m.refreshInterval)
 	defer t.Stop()
@@ -105,6 +119,10 @@ func (m *Manager) Run() {
 
 	for {
 		select {
+		case <-ctx.Done():
+			log.Info().Msg("LDAP cache stopping (context canceled)")
+
+			return
 		case <-m.stop:
 			log.Info().Msg("LDAP cache stopped")
 
@@ -117,8 +135,14 @@ func (m *Manager) Run() {
 
 // Stop gracefully shuts down the background refresh loop.
 // It sends a signal to the Run() method to terminate the refresh cycle.
+// Safe to call multiple times; subsequent calls are no-ops.
 func (m *Manager) Stop() {
-	m.stop <- struct{}{}
+	select {
+	case m.stop <- struct{}{}:
+		// Signal sent successfully
+	default:
+		// Channel already has a pending stop signal or is closed
+	}
 }
 
 // WarmupCache performs initial cache population with enhanced logging and error handling.
@@ -203,9 +227,12 @@ func (m *Manager) IsWarmedUp() bool {
 }
 
 // RefreshUsers fetches all users from LDAP and updates the user cache.
-// Returns an error if the LDAP query fails, otherwise replaces the entire user cache.
+// Uses retry logic with exponential backoff for resilience against transient failures.
+// Returns an error if all retry attempts fail, otherwise replaces the entire user cache.
 func (m *Manager) RefreshUsers() error {
-	users, err := m.client.FindUsers()
+	users, err := retry.DoWithResultConfig(m.ctx, m.retryConfig, func() ([]ldap.User, error) {
+		return m.client.FindUsers()
+	})
 	if err != nil {
 		return err
 	}
@@ -216,9 +243,12 @@ func (m *Manager) RefreshUsers() error {
 }
 
 // RefreshGroups fetches all groups from LDAP and updates the group cache.
-// Returns an error if the LDAP query fails, otherwise replaces the entire group cache.
+// Uses retry logic with exponential backoff for resilience against transient failures.
+// Returns an error if all retry attempts fail, otherwise replaces the entire group cache.
 func (m *Manager) RefreshGroups() error {
-	groups, err := m.client.FindGroups()
+	groups, err := retry.DoWithResultConfig(m.ctx, m.retryConfig, func() ([]ldap.Group, error) {
+		return m.client.FindGroups()
+	})
 	if err != nil {
 		return err
 	}
@@ -229,9 +259,12 @@ func (m *Manager) RefreshGroups() error {
 }
 
 // RefreshComputers fetches all computers from LDAP and updates the computer cache.
-// Returns an error if the LDAP query fails, otherwise replaces the entire computer cache.
+// Uses retry logic with exponential backoff for resilience against transient failures.
+// Returns an error if all retry attempts fail, otherwise replaces the entire computer cache.
 func (m *Manager) RefreshComputers() error {
-	computers, err := m.client.FindComputers()
+	computers, err := retry.DoWithResultConfig(m.ctx, m.retryConfig, func() ([]ldap.Computer, error) {
+		return m.client.FindComputers()
+	})
 	if err != nil {
 		return err
 	}
