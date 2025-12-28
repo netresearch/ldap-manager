@@ -87,7 +87,8 @@ func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 	metrics := NewMetrics()
 
 	return &Manager{
-		stop:            make(chan struct{}),
+		stop: make(chan struct{}),
+		// ctx is initialized with Background and replaced in Run() before any operations
 		ctx:             context.Background(),
 		client:          client,
 		metrics:         metrics,
@@ -106,7 +107,8 @@ func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 // This method blocks until the context is canceled or Stop() is called.
 // Should be run in a separate goroutine.
 func (m *Manager) Run(ctx context.Context) {
-	// Store context for use in refresh operations
+	// Store context for use in refresh operations.
+	// Safe: Run() is called once from Listen() before any cache operations.
 	m.ctx = ctx
 
 	// Use configurable refresh interval

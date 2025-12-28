@@ -39,6 +39,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			ip := c.IP()
 			blocked := a.rateLimiter.RecordAttempt(ip)
 
+			// Log username for security audit trail - intentional per OWASP logging guidelines
 			log.Warn().
 				Err(err).
 				Str("username", username).
