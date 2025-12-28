@@ -29,7 +29,7 @@ COVERAGE_DIR := coverage-reports
 COVERAGE_FILE := coverage.out
 HTML_COVERAGE_FILE := $(COVERAGE_DIR)/coverage.html
 
-.PHONY: help setup build test lint clean dev docker docker-dev docker-test docker-lint docker-check docker-shell docker-clean
+.PHONY: help setup build test lint clean dev docker docker-dev docker-test docker-lint docker-check docker-shell docker-clean vet vuln-check
 
 # Default target
 all: setup lint test build
@@ -218,10 +218,21 @@ lint-go:
 	@echo "$(BLUE)Running golangci-lint...$(RESET)"
 	@golangci-lint run --config .golangci.yml ./...
 
-## Lint Security: Run security vulnerability checks  
-lint-security:
-	@echo "$(BLUE)Running security checks...$(RESET)"
+## Vet: Run go vet static analysis
+vet:
+	@echo "$(BLUE)Running go vet...$(RESET)"
+	@go vet ./...
+	@echo "$(GREEN)✓ go vet passed$(RESET)"
+
+## Vuln Check: Run vulnerability scanning
+vuln-check:
+	@echo "$(BLUE)Running govulncheck...$(RESET)"
 	@govulncheck ./...
+	@echo "$(GREEN)✓ No vulnerabilities found$(RESET)"
+
+## Lint Security: Run security vulnerability checks
+lint-security: vuln-check
+	@echo "$(GREEN)✓ Security checks passed$(RESET)"
 
 ## Lint Format: Check code formatting
 lint-format:
