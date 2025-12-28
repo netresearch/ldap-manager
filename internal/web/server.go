@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"crypto/tls"
 	"log/slog"
 	"net/http"
@@ -37,7 +38,8 @@ type App struct {
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
 	logger        *slog.Logger
-	assetManifest *AssetManifest // Asset manifest for cache-busted files
+	assetManifest *AssetManifest  // Asset manifest for cache-busted files
+	rateLimiter   *RateLimiter    // Rate limiter for authentication endpoints
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -141,6 +143,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 		fiber:         f,
 		logger:        logger,
 		assetManifest: manifest,
+		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 	}
 
 	// Setup all routes
@@ -206,7 +209,8 @@ func (a *App) setupRoutes() {
 	f := a.fiber
 
 	// Public routes (no authentication required)
-	f.All("/login", a.csrfHandler, a.loginHandler)
+	// Rate limiting applied to login to prevent brute force attacks
+	f.All("/login", a.rateLimiter.Middleware(), a.csrfHandler, a.loginHandler)
 
 	// Health check endpoints (no authentication required, no CSRF needed)
 	f.Get("/health", a.healthHandler)
@@ -246,17 +250,32 @@ func (a *App) setupRoutes() {
 
 // Listen starts the web application server on the specified address.
 // It launches the LDAP cache manager in a background goroutine and begins serving HTTP requests.
+// The context is used for graceful shutdown signaling to background goroutines.
 // This method blocks until the server is shutdown or encounters an error.
-func (a *App) Listen(addr string) error {
-	go a.ldapCache.Run()
+func (a *App) Listen(ctx context.Context, addr string) error {
+	go a.ldapCache.Run(ctx)
 
 	return a.fiber.Listen(addr)
 }
 
-// Shutdown gracefully shuts down the application
-func (a *App) Shutdown() error {
+// Shutdown gracefully shuts down the application within the given context timeout.
+// It stops all background goroutines, closes connections, and releases resources.
+func (a *App) Shutdown(ctx context.Context) error {
+	log.Info().Msg("Stopping template cache...")
 	a.templateCache.Stop()
 
+	log.Info().Msg("Stopping LDAP cache manager...")
+	a.ldapCache.Stop()
+
+	log.Info().Msg("Stopping rate limiter...")
+	a.rateLimiter.Stop()
+
+	log.Info().Msg("Shutting down Fiber server...")
+	if err := a.fiber.ShutdownWithContext(ctx); err != nil {
+		log.Error().Err(err).Msg("Error shutting down Fiber server")
+	}
+
+	log.Info().Msg("Closing LDAP connections...")
 	if a.ldapReadonly != nil {
 		if err := a.ldapReadonly.Close(); err != nil {
 			log.Warn().Err(err).Msg("Failed to close LDAP readonly client")
