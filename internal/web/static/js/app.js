@@ -5,6 +5,7 @@
 import { initThemeToggle, initDensityToggle } from "./toggles.js";
 import { initComboboxes } from "./combobox.js";
 import { initSearchFilters } from "./search-filter.js";
+import { initCopyButtons } from "./copy-clipboard.js";
 /**
  * Initialize all application functionality.
  */
@@ -13,6 +14,7 @@ function init() {
     initDensityToggle();
     initComboboxes();
     initSearchFilters();
+    initCopyButtons();
 }
 // Wait for DOM to be ready
 if (document.readyState === "loading") {

@@ -2,6 +2,7 @@ package templates
 
 import "fmt"
 import "net/url"
+import "time"
 import "github.com/netresearch/ldap-manager/internal/ldap_cache"
 import "github.com/netresearch/simple-ldap-go"
 
@@ -32,14 +33,49 @@ templ Computer(computer *ldap_cache.FullLDAPComputer) {
 	@loggedIn(string(computerUrl(computer.Computer)), computer.CN(), []Flash{}) {
 		<h1 class="text-3xl">{ computer.CN() } ({ computer.SAMAccountName })</h1>
 		<p class="text-sm text-text-secondary">
-			{ computer.DN() }
+			@Copyable(computer.DN())
 			if !computer.Enabled {
 				@lockIcon()
 			}
 		</p>
-		<h2 class="mt-4 text-xl">Details:</h2>
-		<p>Operating system: { computer.OS }</p>
-		<p>Operating system version: { computer.OSVersion }</p>
+		<div class="mt-4 grid gap-2 sm:grid-cols-2">
+			if computer.Description != "" {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">Description</span>
+					<p class="font-medium">{ computer.Description }</p>
+				</div>
+			}
+			if computer.DNSHostName != "" {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">DNS Hostname</span>
+					<p class="font-medium">{ computer.DNSHostName }</p>
+				</div>
+			}
+			if computer.OS != "" {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">Operating System</span>
+					<p class="font-medium">{ computer.OS }</p>
+				</div>
+			}
+			if computer.OSVersion != "" {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">OS Version</span>
+					<p class="font-medium">{ computer.OSVersion }</p>
+				</div>
+			}
+			if computer.ServicePack != "" {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">Service Pack</span>
+					<p class="font-medium">{ computer.ServicePack }</p>
+				</div>
+			}
+			if computer.LastLogon > 0 {
+				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
+					<span class="text-sm text-text-secondary">Last Logon</span>
+					<p class="font-medium">{ formatLastLogon(computer.LastLogon) }</p>
+				</div>
+			}
+		</div>
 		<h2 class="mt-4 text-xl">Groups:</h2>
 		@list(specializeGroups(computer.Groups))
 		if len(computer.Groups) == 0 {
@@ -87,4 +123,12 @@ func computerUrl(computer ldap.Computer) templ.SafeURL {
 	// URL-encode the DN to preserve special characters like backslash
 	// Browsers convert backslashes to forward slashes in URLs, so we need encoding
 	return templ.SafeURL("/computers/" + url.PathEscape(computer.DN()))
+}
+
+func formatLastLogon(timestamp int64) string {
+	if timestamp <= 0 {
+		return "Never"
+	}
+	t := time.Unix(timestamp, 0)
+	return t.Format("2006-01-02 15:04:05")
 }
