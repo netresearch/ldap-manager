@@ -42,7 +42,7 @@ templ User(user *ldap_cache.FullLDAPUser, unassignedGroups []ldap.Group, flashes
 				<div class="rounded-md border border-border bg-surface-elevated px-3 py-2">
 					<span class="text-sm text-text-secondary">Email</span>
 					<p class="font-medium">
-						<a href={ templ.SafeURL("mailto:" + *user.Mail) } class="text-accent hover:underline">
+						<a href={ templ.URL("mailto:" + *user.Mail) } class="text-accent hover:underline">
 							{ *user.Mail }
 						</a>
 					</p>

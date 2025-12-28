@@ -15,7 +15,7 @@ templ Index(user *ldap_cache.FullLDAPUser) {
 				<span class="text-text-secondary">CN: </span> @Code(user.CN())
 			</p>
 			<p>
-				<span class="text-text-secondary">DN: </span> @Code(user.DN())
+				<span class="text-text-secondary">DN: </span> @Copyable(user.DN())
 			</p>
 			<p>
 				<span class="text-text-secondary">sAMAccountName: </span> @Code(user.SAMAccountName)
@@ -23,7 +23,7 @@ templ Index(user *ldap_cache.FullLDAPUser) {
 			if user.Mail != nil && *user.Mail != "" {
 				<p>
 					<span class="text-text-secondary">Email: </span>
-					<a href={ templ.SafeURL("mailto:" + *user.Mail) } class="text-accent hover:underline">
+					<a href={ templ.URL("mailto:" + *user.Mail) } class="text-accent hover:underline">
 						{ *user.Mail }
 					</a>
 				</p>
