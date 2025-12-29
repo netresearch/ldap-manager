@@ -142,12 +142,27 @@ docker run \
 
 ## Screenshots
 
-<img src="./docs/assets/ldap_manager_users.png" height="256" align="left" alt="LDAP Manager - Users List">
-<img src="./docs/assets/ldap_manager_user_detail.png" height="256" align="left" alt="LDAP Manager - User Detail">
-<br clear="all">
-<img src="./docs/assets/ldap_manager_groups.png" height="256" align="left" alt="LDAP Manager - Groups List">
-<img src="./docs/assets/ldap_manager_group_detail.png" height="256" align="left" alt="LDAP Manager - Group Detail">
-<br clear="all">
+**Users List** - Browse, search, and filter all LDAP users
+
+<img src="./docs/assets/ldap_manager_users.png" width="425" alt="Users List" style="border: 1px solid #ccc; border-radius: 4px;">
+
+<br>
+
+**User Detail** - View email, description, group memberships, and last logon
+
+<img src="./docs/assets/ldap_manager_user_detail.png" width="425" alt="User Detail" style="border: 1px solid #ccc; border-radius: 4px;">
+
+<br>
+
+**Groups List** - Browse and search all groups
+
+<img src="./docs/assets/ldap_manager_groups.png" width="425" alt="Groups List" style="border: 1px solid #ccc; border-radius: 4px;">
+
+<br>
+
+**Group Detail** - Manage members, view parent groups, add/remove users
+
+<img src="./docs/assets/ldap_manager_group_detail.png" width="425" alt="Group Detail" style="border: 1px solid #ccc; border-radius: 4px;">
 
 ## Documentation
 

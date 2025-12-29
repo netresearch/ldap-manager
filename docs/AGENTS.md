@@ -24,7 +24,17 @@ Screenshots are stored in `docs/assets/` and referenced in `README.md`. Follow t
 
 ### Setting Up Realistic Test Data
 
-The OpenLDAP container starts with minimal data. Create realistic test data for better screenshots:
+**Note:** The development LDAP server may already have pre-seeded test data with users (jsmith, mmueller, etc.) and groups. Check if data exists before creating:
+
+```bash
+docker exec ldap-server ldapsearch -x -H ldap://localhost \
+  -D "cn=admin,dc=netresearch,dc=local" -w admin \
+  -b "dc=netresearch,dc=local" "(uid=*)" dn
+```
+
+If users exist, you can skip the data creation steps. The pre-seeded password for all users is `password`.
+
+If the container starts fresh, create realistic test data for better screenshots:
 
 #### 1. Create Users OU and Users
 
@@ -44,7 +54,7 @@ sn: Smith
 givenName: John
 uid: jsmith
 mail: john.smith@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=mmueller,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -55,7 +65,7 @@ sn: Mueller
 givenName: Maria
 uid: mmueller
 mail: maria.mueller@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=tschneider,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -66,7 +76,7 @@ sn: Schneider
 givenName: Thomas
 uid: tschneider
 mail: thomas.schneider@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=aweber,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -77,7 +87,7 @@ sn: Weber
 givenName: Anna
 uid: aweber
 mail: anna.weber@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=pfischer,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -88,7 +98,7 @@ sn: Fischer
 givenName: Peter
 uid: pfischer
 mail: peter.fischer@netresearch.de
-userPassword: password123
+userPassword: password
 LDIF
 ```
 
@@ -141,9 +151,9 @@ Use Playwright MCP or browser automation to capture screenshots:
 
 1. **Navigate to the application** (typically `http://localhost:3000`)
 
-2. **Login** with admin credentials:
-   - Username: `admin`
-   - Password: `admin`
+2. **Login** with test user credentials:
+   - Username: `jsmith`
+   - Password: `password`
 
 3. **Capture required screenshots:**
 
