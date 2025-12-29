@@ -54,7 +54,7 @@ sn: Smith
 givenName: John
 uid: jsmith
 mail: john.smith@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=mmueller,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -65,7 +65,7 @@ sn: Mueller
 givenName: Maria
 uid: mmueller
 mail: maria.mueller@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=tschneider,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -76,7 +76,7 @@ sn: Schneider
 givenName: Thomas
 uid: tschneider
 mail: thomas.schneider@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=aweber,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -87,7 +87,7 @@ sn: Weber
 givenName: Anna
 uid: aweber
 mail: anna.weber@netresearch.de
-userPassword: password123
+userPassword: password
 
 dn: uid=pfischer,ou=Users,dc=netresearch,dc=local
 objectClass: inetOrgPerson
@@ -98,7 +98,7 @@ sn: Fischer
 givenName: Peter
 uid: pfischer
 mail: peter.fischer@netresearch.de
-userPassword: password123
+userPassword: password
 LDIF
 ```
 
