@@ -440,17 +440,17 @@ jobs:
           go-version: "1.25.5"
           cache: true
 
-      - name: Install go-mutesting
-        run: go install github.com/zimmski/go-mutesting/cmd/go-mutesting@latest
+      - name: Install gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
       - name: Install dependencies
         run: go mod download
 
       - name: Run mutation tests
         run: |
-          echo "Running mutation testing..."
-          go-mutesting ./internal/ldap_cache/... || true
-          go-mutesting ./internal/options/... || true
+          echo "Running mutation testing with gremlins..."
+          mkdir -p mutation-reports
+          gremlins unleash --config=.gremlins.yaml || true
           echo "Mutation testing completed"
         continue-on-error: true
 
