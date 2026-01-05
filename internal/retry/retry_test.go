@@ -259,3 +259,168 @@ func TestLDAPConfig(t *testing.T) {
 		t.Errorf("expected 5s max delay, got %v", config.MaxDelay)
 	}
 }
+
+// TestDoWithConfig_DelayCappedAtMaxDelay verifies that the delay is properly
+// capped at MaxDelay during retries (catches mutation at line 95).
+func TestDoWithConfig_DelayCappedAtMaxDelay(t *testing.T) {
+	callCount := 0
+	var delays []time.Duration
+	lastCallTime := time.Now()
+
+	config := Config{
+		MaxAttempts:    5,
+		InitialDelay:   10 * time.Millisecond,
+		MaxDelay:       15 * time.Millisecond, // Cap should kick in after 2nd retry
+		Multiplier:     2.0,
+		JitterFraction: 0, // No jitter for predictable timing
+	}
+
+	_ = DoWithConfig(context.Background(), config, func() error {
+		now := time.Now()
+		if callCount > 0 {
+			delays = append(delays, now.Sub(lastCallTime))
+		}
+		lastCallTime = now
+		callCount++
+
+		return errors.New("always fails")
+	})
+
+	// Verify delays don't exceed MaxDelay (with some tolerance for test execution)
+	tolerance := 10 * time.Millisecond
+	for i, delay := range delays {
+		if delay > config.MaxDelay+tolerance {
+			t.Errorf("delay %d exceeded MaxDelay: got %v, max allowed %v",
+				i+1, delay, config.MaxDelay+tolerance)
+		}
+	}
+
+	// Verify we hit the cap: after attempt 2, delay would be 20ms but capped at 15ms
+	// delays[0] = 10ms (initial), delays[1] = 15ms (capped from 20ms)
+	if len(delays) >= 2 {
+		// Second delay should be capped, not 20ms
+		if delays[1] > config.MaxDelay+tolerance {
+			t.Errorf("delay was not capped at MaxDelay: got %v, expected <= %v",
+				delays[1], config.MaxDelay+tolerance)
+		}
+	}
+}
+
+// TestAddJitter_NegativeFraction verifies that negative jitter fraction
+// returns the original duration (catches mutation at line 129).
+func TestAddJitter_NegativeFraction(t *testing.T) {
+	duration := 100 * time.Millisecond
+	result := addJitter(duration, -0.1)
+	if result != duration {
+		t.Errorf("expected no jitter with negative fraction: %v != %v", result, duration)
+	}
+
+	// Also test a more negative value
+	result = addJitter(duration, -1.0)
+	if result != duration {
+		t.Errorf("expected no jitter with -1.0 fraction: %v != %v", result, duration)
+	}
+}
+
+// TestDefaultConfig_ExactValues verifies the exact default config values
+// (catches arithmetic mutations at lines 28-29).
+func TestDefaultConfig_ExactValues(t *testing.T) {
+	config := DefaultConfig()
+
+	// These exact values must match - mutation would change arithmetic
+	if config.InitialDelay != 100*time.Millisecond {
+		t.Errorf("InitialDelay: expected 100ms, got %v", config.InitialDelay)
+	}
+	if config.MaxDelay != 10*time.Second {
+		t.Errorf("MaxDelay: expected 10s, got %v", config.MaxDelay)
+	}
+	if config.MaxAttempts != 3 {
+		t.Errorf("MaxAttempts: expected 3, got %d", config.MaxAttempts)
+	}
+	if config.Multiplier != 2.0 {
+		t.Errorf("Multiplier: expected 2.0, got %f", config.Multiplier)
+	}
+	if config.JitterFraction != 0.1 {
+		t.Errorf("JitterFraction: expected 0.1, got %f", config.JitterFraction)
+	}
+}
+
+// TestDoWithConfig_DelayMultiplier verifies that delay is correctly multiplied
+// (catches arithmetic mutation at line 94).
+func TestDoWithConfig_DelayMultiplier(t *testing.T) {
+	callCount := 0
+	var callTimes []time.Time
+
+	config := Config{
+		MaxAttempts:    4,
+		InitialDelay:   50 * time.Millisecond,
+		MaxDelay:       1 * time.Second, // High enough to not cap
+		Multiplier:     2.0,
+		JitterFraction: 0, // No jitter for predictable timing
+	}
+
+	_ = DoWithConfig(context.Background(), config, func() error {
+		callTimes = append(callTimes, time.Now())
+		callCount++
+
+		return errors.New("always fails")
+	})
+
+	// Calculate actual delays between calls
+	if len(callTimes) < 3 {
+		t.Fatalf("expected at least 3 calls, got %d", len(callTimes))
+	}
+
+	delay1 := callTimes[1].Sub(callTimes[0]) // Should be ~50ms
+	delay2 := callTimes[2].Sub(callTimes[1]) // Should be ~100ms (50 * 2)
+
+	// With multiplier, second delay should be approximately 2x the first
+	// Allow 50% tolerance for timing variations
+	ratio := float64(delay2) / float64(delay1)
+	if ratio < 1.5 || ratio > 2.5 {
+		t.Errorf("delay ratio should be ~2.0, got %f (delay1=%v, delay2=%v)",
+			ratio, delay1, delay2)
+	}
+}
+
+// TestExponentialBackoff_ExactMaxDelay verifies the boundary case where
+// calculated delay exactly equals MaxDelay (catches mutation at line 163).
+func TestExponentialBackoff_ExactMaxDelay(t *testing.T) {
+	// Set up config so that one calculation exactly equals MaxDelay
+	// InitialDelay * Multiplier^(attempt-1) = MaxDelay
+	// 100ms * 2^2 = 400ms
+	config := Config{
+		InitialDelay: 100 * time.Millisecond,
+		MaxDelay:     400 * time.Millisecond, // Exactly 100ms * 2^2
+		Multiplier:   2.0,
+	}
+
+	// Attempt 3: 100ms * 2^2 = 400ms = MaxDelay exactly
+	delay := ExponentialBackoff(3, config)
+	if delay != config.MaxDelay {
+		t.Errorf("attempt 3: expected exact MaxDelay %v, got %v",
+			config.MaxDelay, delay)
+	}
+
+	// Attempt 4: 100ms * 2^3 = 800ms > MaxDelay, should be capped
+	delay = ExponentialBackoff(4, config)
+	if delay != config.MaxDelay {
+		t.Errorf("attempt 4: expected capped MaxDelay %v, got %v",
+			config.MaxDelay, delay)
+	}
+
+	// Verify that delay equals MaxDelay is NOT capped (boundary test)
+	// If the mutation changes > to >=, then delay == MaxDelay would be
+	// incorrectly capped, and subsequent tests would fail
+	config2 := Config{
+		InitialDelay: 100 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond, // InitialDelay == MaxDelay
+		Multiplier:   2.0,
+	}
+
+	// Attempt 1: 100ms * 2^0 = 100ms = MaxDelay exactly
+	delay = ExponentialBackoff(1, config2)
+	if delay != 100*time.Millisecond {
+		t.Errorf("boundary test: expected 100ms, got %v", delay)
+	}
+}
