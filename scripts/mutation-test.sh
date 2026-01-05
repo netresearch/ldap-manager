@@ -16,7 +16,7 @@ echo "========================================"
 # Check if go-mutesting is installed
 if ! command -v go-mutesting &> /dev/null; then
     echo -e "${YELLOW}Installing go-mutesting...${NC}"
-    go install github.com/zimmski/go-mutesting/cmd/go-mutesting@v1.2
+    go install github.com/zimmski/go-mutesting/cmd/go-mutesting@latest
 fi
 
 # Packages to test
@@ -41,14 +41,15 @@ for pkg in "${PACKAGES[@]}"; do
     OUTPUT_FILE="./mutation-reports/$(echo "$pkg" | tr '/' '_').txt"
 
     go-mutesting \
-        --do-not-remove-tmp-folder=false \
         --verbose \
         "$pkg" 2>&1 | tee "$OUTPUT_FILE" || true
 
     # Parse results
     if [ -f "$OUTPUT_FILE" ]; then
-        KILLED=$(grep -c "PASS" "$OUTPUT_FILE" || echo "0")
-        SURVIVED=$(grep -c "FAIL" "$OUTPUT_FILE" || echo "0")
+        KILLED=$(grep -c "PASS" "$OUTPUT_FILE" 2>/dev/null || true)
+        SURVIVED=$(grep -c "FAIL" "$OUTPUT_FILE" 2>/dev/null || true)
+        KILLED=${KILLED:-0}
+        SURVIVED=${SURVIVED:-0}
         MUTANTS=$((KILLED + SURVIVED))
 
         TOTAL_MUTANTS=$((TOTAL_MUTANTS + MUTANTS))
