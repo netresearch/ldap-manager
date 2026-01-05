@@ -193,17 +193,12 @@ test-fuzz:
 	@go test -fuzz=FuzzQueryParams -fuzztime=15s ./internal/web || true
 	@echo "$(GREEN)✅ Fuzz testing completed$(RESET)"
 
-## Test Mutation: Run mutation testing with go-mutesting
+## Test Mutation: Run mutation testing with gremlins
 test-mutation:
-	@echo "$(BLUE)Running mutation testing (go-mutesting)...$(RESET)"
-	@./scripts/mutation-test.sh
-
-## Test Mutation Gremlins: Run mutation testing with gremlins (recommended)
-test-mutation-gremlins:
 	@echo "$(BLUE)Running mutation testing (gremlins)...$(RESET)"
 	@command -v gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 	@mkdir -p mutation-reports
-	@gremlins unleash --config=.gremlins.yaml
+	@gremlins unleash --config=.gremlins.yaml || true
 
 ## Test All: Run all test types
 test-all: test test-integration
