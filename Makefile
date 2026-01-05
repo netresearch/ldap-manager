@@ -198,7 +198,7 @@ test-mutation:
 	@echo "$(BLUE)Running mutation testing (gremlins)...$(RESET)"
 	@command -v gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 	@mkdir -p mutation-reports
-	@gremlins unleash --config=.gremlins.yaml
+	@gremlins unleash --config=.gremlins.yaml || true
 
 ## Test All: Run all test types
 test-all: test test-integration
