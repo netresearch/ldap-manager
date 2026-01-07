@@ -177,19 +177,59 @@ func TestParse_Success(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	// Verify all parsed options
 	if opts.LogLevel != zerolog.DebugLevel {
-		t.Errorf("Expected DebugLevel, got %v", opts.LogLevel)
+		t.Errorf("LogLevel: expected DebugLevel, got %v", opts.LogLevel)
 	}
 	if opts.LDAP.Server != "ldap://localhost:389" {
-		t.Errorf("Expected ldap://localhost:389, got %s", opts.LDAP.Server)
+		t.Errorf("LDAP.Server: expected ldap://localhost:389, got %s", opts.LDAP.Server)
+	}
+	if opts.LDAP.BaseDN != "dc=example,dc=com" {
+		t.Errorf("LDAP.BaseDN: expected dc=example,dc=com, got %s", opts.LDAP.BaseDN)
 	}
 	if !opts.LDAP.IsActiveDirectory {
-		t.Error("Expected IsActiveDirectory to be true")
+		t.Error("LDAP.IsActiveDirectory: expected true")
+	}
+	if opts.ReadonlyUser != "cn=readonly,dc=example,dc=com" {
+		t.Errorf("ReadonlyUser: expected cn=readonly,dc=example,dc=com, got %s", opts.ReadonlyUser)
+	}
+	if opts.ReadonlyPassword != "secret" {
+		t.Errorf("ReadonlyPassword: expected secret, got %s", opts.ReadonlyPassword)
 	}
 	if !opts.PersistSessions {
-		t.Error("Expected PersistSessions to be true")
+		t.Error("PersistSessions: expected true")
+	}
+	if opts.SessionPath != "/tmp/sessions.db" {
+		t.Errorf("SessionPath: expected /tmp/sessions.db, got %s", opts.SessionPath)
+	}
+	if opts.SessionDuration.String() != "1h0m0s" {
+		t.Errorf("SessionDuration: expected 1h0m0s, got %s", opts.SessionDuration)
+	}
+	if opts.CookieSecure {
+		t.Error("CookieSecure: expected false")
+	}
+	if !opts.TLSSkipVerify {
+		t.Error("TLSSkipVerify: expected true")
 	}
 	if opts.PoolMaxConnections != 20 {
-		t.Errorf("Expected 20, got %d", opts.PoolMaxConnections)
+		t.Errorf("PoolMaxConnections: expected 20, got %d", opts.PoolMaxConnections)
+	}
+	if opts.PoolMinConnections != 5 {
+		t.Errorf("PoolMinConnections: expected 5, got %d", opts.PoolMinConnections)
+	}
+	if opts.PoolMaxIdleTime.String() != "10m0s" {
+		t.Errorf("PoolMaxIdleTime: expected 10m0s, got %s", opts.PoolMaxIdleTime)
+	}
+	if opts.PoolMaxLifetime.String() != "2h0m0s" {
+		t.Errorf("PoolMaxLifetime: expected 2h0m0s, got %s", opts.PoolMaxLifetime)
+	}
+	if opts.PoolHealthCheckInterval.String() != "1m0s" {
+		t.Errorf("PoolHealthCheckInterval: expected 1m0s, got %s", opts.PoolHealthCheckInterval)
+	}
+	if opts.PoolConnectionTimeout.String() != "45s" {
+		t.Errorf("PoolConnectionTimeout: expected 45s, got %s", opts.PoolConnectionTimeout)
+	}
+	if opts.PoolAcquireTimeout.String() != "15s" {
+		t.Errorf("PoolAcquireTimeout: expected 15s, got %s", opts.PoolAcquireTimeout)
 	}
 }
