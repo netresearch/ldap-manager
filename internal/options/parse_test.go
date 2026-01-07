@@ -200,7 +200,7 @@ func TestParse_DefaultValues(t *testing.T) {
 	}
 }
 
-func TestParse_PersistSessionsWithPath(t *testing.T) {
+func TestParse_PersistSessionsWithDefaultPath(t *testing.T) {
 	// Verifies that PERSIST_SESSIONS=true uses the default SessionPath "db.bbolt" when SESSION_PATH is not set.
 	resetFlags()
 	vars := validEnvVarsForParse()
