@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -128,6 +129,74 @@ func TestParse_MissingRequiredFields(t *testing.T) {
 				t.Errorf("Expected error to contain field %q, got: %v", tt.wantField, err)
 			}
 		})
+	}
+}
+
+func TestParse_DefaultValues(t *testing.T) {
+	// Verifies that Parse() uses correct default values when optional env vars are not set.
+	// This catches ARITHMETIC_BASE mutations that change default calculations like 30*time.Minute.
+	resetFlags()
+
+	// Clear all optional env vars that might be set by .env files
+	optionalVars := []string{
+		"LOG_LEVEL", "LDAP_IS_AD", "PERSIST_SESSIONS", "SESSION_PATH", "SESSION_DURATION",
+		"COOKIE_SECURE", "LDAP_TLS_SKIP_VERIFY",
+		"LDAP_POOL_MAX_CONNECTIONS", "LDAP_POOL_MIN_CONNECTIONS",
+		"LDAP_POOL_MAX_IDLE_TIME", "LDAP_POOL_MAX_LIFETIME",
+		"LDAP_POOL_HEALTH_CHECK_INTERVAL", "LDAP_POOL_CONNECTION_TIMEOUT", "LDAP_POOL_ACQUIRE_TIMEOUT",
+	}
+	for _, v := range optionalVars {
+		_ = os.Unsetenv(v)
+	}
+
+	vars := validEnvVarsForParse()
+	// Only set required vars - all others should use defaults
+	defer setEnvVars(t, vars)()
+
+	opts, err := Parse()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Verify default values (catches mutations that change arithmetic operations)
+	if opts.LogLevel != zerolog.InfoLevel {
+		t.Errorf("LogLevel: expected InfoLevel (default), got %v", opts.LogLevel)
+	}
+	if opts.LDAP.IsActiveDirectory {
+		t.Error("LDAP.IsActiveDirectory: expected false (default)")
+	}
+	if opts.PersistSessions {
+		t.Error("PersistSessions: expected false (default)")
+	}
+	if opts.SessionDuration != 30*time.Minute {
+		t.Errorf("SessionDuration: expected 30m (default), got %v", opts.SessionDuration)
+	}
+	if !opts.CookieSecure {
+		t.Error("CookieSecure: expected true (default)")
+	}
+	if opts.TLSSkipVerify {
+		t.Error("TLSSkipVerify: expected false (default)")
+	}
+	if opts.PoolMaxConnections != 10 {
+		t.Errorf("PoolMaxConnections: expected 10 (default), got %d", opts.PoolMaxConnections)
+	}
+	if opts.PoolMinConnections != 2 {
+		t.Errorf("PoolMinConnections: expected 2 (default), got %d", opts.PoolMinConnections)
+	}
+	if opts.PoolMaxIdleTime != 15*time.Minute {
+		t.Errorf("PoolMaxIdleTime: expected 15m (default), got %v", opts.PoolMaxIdleTime)
+	}
+	if opts.PoolMaxLifetime != 1*time.Hour {
+		t.Errorf("PoolMaxLifetime: expected 1h (default), got %v", opts.PoolMaxLifetime)
+	}
+	if opts.PoolHealthCheckInterval != 30*time.Second {
+		t.Errorf("PoolHealthCheckInterval: expected 30s (default), got %v", opts.PoolHealthCheckInterval)
+	}
+	if opts.PoolConnectionTimeout != 30*time.Second {
+		t.Errorf("PoolConnectionTimeout: expected 30s (default), got %v", opts.PoolConnectionTimeout)
+	}
+	if opts.PoolAcquireTimeout != 10*time.Second {
+		t.Errorf("PoolAcquireTimeout: expected 10s (default), got %v", opts.PoolAcquireTimeout)
 	}
 }
 
