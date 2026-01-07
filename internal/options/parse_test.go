@@ -17,8 +17,8 @@ const (
 	trueStr      = "true"
 )
 
-// Helper to set multiple environment variables and return cleanup function
-func setEnvVarsForParse(t *testing.T, vars map[string]string) func() {
+// setEnvVars sets multiple environment variables and returns a cleanup function
+func setEnvVars(t *testing.T, vars map[string]string) func() {
 	t.Helper()
 	for k, v := range vars {
 		if err := os.Setenv(k, v); err != nil {
@@ -88,7 +88,7 @@ func TestParse_InvalidEnvVars(t *testing.T) {
 			resetFlags()
 			vars := validEnvVarsForParse()
 			vars[tt.envKey] = tt.invalidValue
-			defer setEnvVarsForParse(t, vars)()
+			defer setEnvVars(t, vars)()
 
 			_, err := Parse()
 			if err == nil {
@@ -115,7 +115,7 @@ func TestParse_MissingRequiredFields(t *testing.T) {
 			resetFlags()
 			vars := validEnvVarsForParse()
 			delete(vars, tt.removeKey)
-			defer setEnvVarsForParse(t, vars)()
+			defer setEnvVars(t, vars)()
 
 			_, err := Parse()
 			if err == nil {
@@ -132,14 +132,12 @@ func TestParse_MissingRequiredFields(t *testing.T) {
 }
 
 func TestParse_PersistSessionsWithPath(t *testing.T) {
-	// When PERSIST_SESSIONS is true and SESSION_PATH is empty,
-	// the default "db.bbolt" is used, so no error occurs.
-	// This test verifies that PERSIST_SESSIONS=true works with the default path.
+	// Verifies that PERSIST_SESSIONS=true uses the default SessionPath "db.bbolt" when SESSION_PATH is not set.
 	resetFlags()
 	vars := validEnvVarsForParse()
 	vars["PERSIST_SESSIONS"] = trueStr
 	// Not setting SESSION_PATH - uses default "db.bbolt"
-	defer setEnvVarsForParse(t, vars)()
+	defer setEnvVars(t, vars)()
 
 	opts, err := Parse()
 	if err != nil {
@@ -170,7 +168,7 @@ func TestParse_Success(t *testing.T) {
 	vars["LDAP_POOL_HEALTH_CHECK_INTERVAL"] = "1m"
 	vars["LDAP_POOL_CONNECTION_TIMEOUT"] = "45s"
 	vars["LDAP_POOL_ACQUIRE_TIMEOUT"] = "15s"
-	defer setEnvVarsForParse(t, vars)()
+	defer setEnvVars(t, vars)()
 
 	opts, err := Parse()
 	if err != nil {
