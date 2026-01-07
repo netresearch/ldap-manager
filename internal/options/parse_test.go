@@ -3,6 +3,7 @@ package options
 import (
 	"flag"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -37,7 +38,7 @@ func resetFlags() {
 	// Save test framework flags that were already registered
 	testFlags := make(map[string]*flag.Flag)
 	flag.CommandLine.VisitAll(func(f *flag.Flag) {
-		if len(f.Name) >= 5 && f.Name[:5] == "test." {
+		if strings.HasPrefix(f.Name, "test.") {
 			testFlags[f.Name] = f
 		}
 	})
@@ -61,167 +62,47 @@ func validEnvVarsForParse() map[string]string {
 	}
 }
 
-func TestParse_InvalidLogLevel(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LOG_LEVEL"] = "invalid_level"
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LOG_LEVEL")
+func TestParse_InvalidEnvVars(t *testing.T) {
+	tests := []struct {
+		name         string
+		envKey       string
+		invalidValue string
+	}{
+		{"InvalidLogLevel", "LOG_LEVEL", "invalid_level"},
+		{"InvalidLDAPIsAD", "LDAP_IS_AD", notABool},
+		{"InvalidPersistSessions", "PERSIST_SESSIONS", notABool},
+		{"InvalidSessionDuration", "SESSION_DURATION", notADuration},
+		{"InvalidCookieSecure", "COOKIE_SECURE", notABool},
+		{"InvalidTLSSkipVerify", "LDAP_TLS_SKIP_VERIFY", notABool},
+		{"InvalidPoolMaxConnections", "LDAP_POOL_MAX_CONNECTIONS", notAnInt},
+		{"InvalidPoolMinConnections", "LDAP_POOL_MIN_CONNECTIONS", notAnInt},
+		{"InvalidPoolMaxIdleTime", "LDAP_POOL_MAX_IDLE_TIME", notADuration},
+		{"InvalidPoolMaxLifetime", "LDAP_POOL_MAX_LIFETIME", notADuration},
+		{"InvalidPoolHealthCheckInterval", "LDAP_POOL_HEALTH_CHECK_INTERVAL", notADuration},
+		{"InvalidPoolConnectionTimeout", "LDAP_POOL_CONNECTION_TIMEOUT", notADuration},
+		{"InvalidPoolAcquireTimeout", "LDAP_POOL_ACQUIRE_TIMEOUT", notADuration},
 	}
-}
 
-func TestParse_InvalidLDAPIsAD(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_IS_AD"] = notABool
-	defer setEnvVarsForParse(t, vars)()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetFlags()
+			vars := validEnvVarsForParse()
+			vars[tt.envKey] = tt.invalidValue
+			defer setEnvVarsForParse(t, vars)()
 
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_IS_AD")
-	}
-}
-
-func TestParse_InvalidPersistSessions(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["PERSIST_SESSIONS"] = notABool
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid PERSIST_SESSIONS")
-	}
-}
-
-func TestParse_InvalidSessionDuration(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["SESSION_DURATION"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid SESSION_DURATION")
-	}
-}
-
-func TestParse_InvalidCookieSecure(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["COOKIE_SECURE"] = notABool
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid COOKIE_SECURE")
-	}
-}
-
-func TestParse_InvalidTLSSkipVerify(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_TLS_SKIP_VERIFY"] = notABool
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_TLS_SKIP_VERIFY")
-	}
-}
-
-func TestParse_InvalidPoolMaxConnections(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_MAX_CONNECTIONS"] = notAnInt
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_MAX_CONNECTIONS")
-	}
-}
-
-func TestParse_InvalidPoolMinConnections(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_MIN_CONNECTIONS"] = notAnInt
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_MIN_CONNECTIONS")
-	}
-}
-
-func TestParse_InvalidPoolMaxIdleTime(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_MAX_IDLE_TIME"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_MAX_IDLE_TIME")
-	}
-}
-
-func TestParse_InvalidPoolMaxLifetime(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_MAX_LIFETIME"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_MAX_LIFETIME")
-	}
-}
-
-func TestParse_InvalidPoolHealthCheckInterval(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_HEALTH_CHECK_INTERVAL"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_HEALTH_CHECK_INTERVAL")
-	}
-}
-
-func TestParse_InvalidPoolConnectionTimeout(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_CONNECTION_TIMEOUT"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_CONNECTION_TIMEOUT")
-	}
-}
-
-func TestParse_InvalidPoolAcquireTimeout(t *testing.T) {
-	resetFlags()
-	vars := validEnvVarsForParse()
-	vars["LDAP_POOL_ACQUIRE_TIMEOUT"] = notADuration
-	defer setEnvVarsForParse(t, vars)()
-
-	_, err := Parse()
-	if err == nil {
-		t.Error("Expected error for invalid LDAP_POOL_ACQUIRE_TIMEOUT")
+			_, err := Parse()
+			if err == nil {
+				t.Errorf("Expected error for invalid %s", tt.envKey)
+			}
+		})
 	}
 }
 
 func TestParse_MissingRequiredFields(t *testing.T) {
 	tests := []struct {
-		name       string
-		removeKey  string
-		wantField  string
+		name      string
+		removeKey string
+		wantField string
 	}{
 		{"MissingLDAPServer", "LDAP_SERVER", "ldap-server"},
 		{"MissingBaseDN", "LDAP_BASE_DN", "base-dn"},
@@ -239,6 +120,12 @@ func TestParse_MissingRequiredFields(t *testing.T) {
 			_, err := Parse()
 			if err == nil {
 				t.Errorf("Expected error for missing %s", tt.removeKey)
+
+				return
+			}
+			// Verify error message contains expected field name
+			if !strings.Contains(err.Error(), tt.wantField) {
+				t.Errorf("Expected error to contain field %q, got: %v", tt.wantField, err)
 			}
 		})
 	}
