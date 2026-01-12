@@ -105,8 +105,6 @@ services:
       - /etc/ssl/certs:/etc/ssl/certs:ro
       - /usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro
     restart: unless-stopped
-    healthcheck:
-      disable: true
     profiles:
       - prod
     ports:

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,9 +18,18 @@ import (
 	"github.com/netresearch/ldap-manager/internal/web"
 )
 
-const shutdownTimeout = 30 * time.Second
+const (
+	shutdownTimeout     = 30 * time.Second
+	healthCheckTimeout  = 3 * time.Second
+	healthCheckEndpoint = "http://localhost:3000/health/live"
+)
 
 func main() {
+	// Handle --health-check flag early, before any other initialization
+	if len(os.Args) == 2 && os.Args[1] == "--health-check" {
+		os.Exit(runHealthCheck())
+	}
+
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	log.Info().Msgf("LDAP Manager %s starting...", version.FormatVersion())
@@ -73,4 +83,30 @@ func main() {
 	}
 
 	log.Info().Msg("Graceful shutdown complete")
+}
+
+// runHealthCheck performs an HTTP health check against the running application.
+// Returns 0 if healthy (HTTP 200), 1 otherwise.
+// Used by Docker HEALTHCHECK to verify the application is running correctly.
+func runHealthCheck() int {
+	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthCheckEndpoint, nil)
+	if err != nil {
+		return 1
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 1
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusOK {
+		return 0
+	}
+
+	return 1
 }
