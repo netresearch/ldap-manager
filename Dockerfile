@@ -150,5 +150,9 @@ COPY --from=backend-builder \
 # Set user to nonroot for security (UID 65532)
 USER nonroot:nonroot
 
+# Health check using built-in --health-check flag (works in distroless without shell)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/ldap-passwd", "--health-check"]
+
 # Use vector form for ENTRYPOINT as recommended by distroless docs
 ENTRYPOINT ["/ldap-passwd"]
