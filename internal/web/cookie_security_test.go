@@ -50,7 +50,7 @@ func TestCookieSecurityWithHTTPS(t *testing.T) {
 	}
 
 	// Test CSRF handler creation doesn't panic
-	csrfHandler := createCSRFConfig(opts)
+	csrfHandler := createCSRFConfig(opts, sessionStore)
 	if csrfHandler == nil {
 		t.Fatal("Expected CSRF handler, got nil")
 	}
@@ -89,7 +89,7 @@ func TestCookieSecurityWithHTTP(t *testing.T) {
 	}
 
 	// Test CSRF handler creation doesn't panic
-	csrfHandler := createCSRFConfig(opts)
+	csrfHandler := createCSRFConfig(opts, sessionStore)
 	if csrfHandler == nil {
 		t.Fatal("Expected CSRF handler, got nil")
 	}
@@ -147,7 +147,7 @@ func TestCookieSecureConfiguration(t *testing.T) {
 			}
 
 			// Test CSRF handler creation with configuration
-			csrfHandler := createCSRFConfig(opts)
+			csrfHandler := createCSRFConfig(opts, sessionStore)
 			if csrfHandler == nil {
 				t.Fatal("Expected CSRF handler, got nil")
 			}
@@ -155,7 +155,7 @@ func TestCookieSecureConfiguration(t *testing.T) {
 	}
 }
 
-// TestCSRFConfigurationAcceptsOpts verifies CSRF handler accepts options parameter
+// TestCSRFConfigurationAcceptsOpts verifies CSRF handler accepts options and session store parameters
 func TestCSRFConfigurationAcceptsOpts(t *testing.T) {
 	opts := &options.Opts{
 		LDAP: ldap.Config{
@@ -176,14 +176,20 @@ func TestCSRFConfigurationAcceptsOpts(t *testing.T) {
 		PoolAcquireTimeout:      10 * time.Second,
 	}
 
-	// Verify CSRF handler creation accepts opts parameter (fixes the signature change)
-	csrfHandler := createCSRFConfig(opts)
+	// Create session store for CSRF middleware
+	sessionStore := createSessionStore(opts)
+	if sessionStore == nil {
+		t.Fatal("Expected session store, got nil")
+	}
+
+	// Verify CSRF handler creation accepts opts and sessionStore parameters
+	csrfHandler := createCSRFConfig(opts, sessionStore)
 	if csrfHandler == nil {
 		t.Fatal("Expected CSRF handler, got nil")
 	}
 
 	// Handler created successfully - type is fiber.Handler (internal Fiber type)
-	t.Log("CSRF handler created successfully with opts parameter")
+	t.Log("CSRF handler created successfully with opts and sessionStore parameters")
 }
 
 // TestCSRFTokenValidation verifies that CSRF tokens are properly validated on POST requests.
@@ -212,10 +218,10 @@ func TestCSRFTokenValidation(t *testing.T) {
 
 	// Create a test Fiber app with CSRF middleware
 	f := fiber.New()
-	csrfHandler := createCSRFConfig(opts)
 	sessionStore := session.New(session.Config{
 		Storage: memory.New(),
 	})
+	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Test endpoint that returns CSRF token on GET and validates on POST
 	f.All("/test-csrf", *csrfHandler, func(c *fiber.Ctx) error {
@@ -293,7 +299,8 @@ func TestCSRFTokenValidation(t *testing.T) {
 	})
 
 	t.Run("POST with valid CSRF token succeeds", func(t *testing.T) {
-		// Step 1: GET to obtain CSRF token and cookie
+		// Step 1: GET to obtain CSRF token and session cookie
+		// With session-based CSRF, the token is stored in the session
 		getReq := httptest.NewRequest("GET", "/test-csrf", nil)
 		getResp, err := f.Test(getReq)
 		if err != nil {
@@ -313,25 +320,21 @@ func TestCSRFTokenValidation(t *testing.T) {
 		}
 		csrfToken := tokenMatch[1]
 
-		// Extract CSRF cookie
-		var csrfCookie *http.Cookie
-		for _, cookie := range getResp.Cookies() {
-			if strings.HasPrefix(cookie.Name, "csrf_") {
-				csrfCookie = cookie
-
-				break
-			}
+		// Extract all cookies (session cookie contains the CSRF token with session-based CSRF)
+		cookies := getResp.Cookies()
+		if len(cookies) == 0 {
+			t.Fatal("No cookies found in response (session cookie required for session-based CSRF)")
 		}
 
-		if csrfCookie == nil {
-			t.Fatal("CSRF cookie not found in response")
-		}
-
-		// Step 2: POST with valid CSRF token and cookie
+		// Step 2: POST with valid CSRF token and all cookies (including session cookie)
 		postReq := httptest.NewRequest("POST", "/test-csrf",
 			strings.NewReader("csrf_token="+csrfToken+"&data=test"))
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		postReq.AddCookie(csrfCookie)
+
+		// Add all cookies from GET response (session-based CSRF needs the session cookie)
+		for _, cookie := range cookies {
+			postReq.AddCookie(cookie)
+		}
 
 		postResp, err := f.Test(postReq)
 		if err != nil {

@@ -119,7 +119,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 	sessionStore := createSessionStore(opts)
 	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
 	f := createFiberApp()
-	csrfHandler := *createCSRFConfig(opts)
+	csrfHandler := *createCSRFConfig(opts, sessionStore)
 
 	// Load asset manifest for cache-busted files
 	manifestPath := "internal/web/static/manifest.json"
@@ -181,7 +181,9 @@ func setupMiddleware(f *fiber.App) {
 }
 
 // createCSRFConfig creates and returns CSRF middleware configuration
-func createCSRFConfig(opts *options.Opts) *fiber.Handler {
+// Uses session-based storage to ensure CSRF tokens persist across requests
+// and survive container restarts when PersistSessions is enabled.
+func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) *fiber.Handler {
 	csrfHandler := csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
@@ -190,7 +192,9 @@ func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 		CookieHTTPOnly: true,
 		Expiration:     time.Hour,
 		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
-		ContextKey:     "token", // Store token in c.Locals("token") for template access
+		Session:        sessionStore, // Use session-based CSRF storage for persistence
+		SessionKey:     "csrf_token", // Key to store CSRF token in session
+		ContextKey:     "token",      // Store token in c.Locals("token") for template access
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			log.Warn().Err(err).Msg("CSRF validation failed")
 			c.Status(fiber.StatusForbidden)
