@@ -216,11 +216,13 @@ func TestCSRFTokenValidation(t *testing.T) {
 		PoolAcquireTimeout:      10 * time.Second,
 	}
 
-	// Create a test Fiber app with CSRF middleware
-	f := fiber.New()
+	// Create session store first for CSRF middleware
 	sessionStore := session.New(session.Config{
 		Storage: memory.New(),
 	})
+
+	// Create a test Fiber app with CSRF middleware
+	f := fiber.New()
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Test endpoint that returns CSRF token on GET and validates on POST
