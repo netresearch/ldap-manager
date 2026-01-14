@@ -177,6 +177,7 @@ func setupMiddleware(f *fiber.App) {
 	f.Use(func(c *fiber.Ctx) error {
 		err := c.Next()
 		c.Response().Header.Del("Cross-Origin-Embedder-Policy")
+
 		return err
 	})
 
