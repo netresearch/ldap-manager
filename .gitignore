@@ -25,3 +25,9 @@ coverage-reports/
 # Put all temporary analysis, reports, and investigation files in claudedocs/
 claudedocs/
 .playwright-mcp/
+
+# Local HTTPS dev environment
+certs/
+docker-compose.dev.yml
+nginx.dev.conf
+Caddyfile.dev

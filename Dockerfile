@@ -46,15 +46,9 @@ RUN apk add --no-cache \
     npm && \
     npm install -g pnpm@10.17.1
 
-# Install Go development tools with cache mount
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go install github.com/a-h/templ/cmd/templ@v0.3.943 && \
-    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0 && \
-    go install golang.org/x/tools/cmd/goimports@v0.37.0 && \
-    go install mvdan.cc/gofumpt@v0.9.1
-
 # Copy dependency files first for better caching
+# Note: Dev tools (templ, golangci-lint, goimports, gofumpt) are declared in go.mod
+# and available via `go tool <name>` after go mod download
 COPY go.mod go.sum package.json pnpm-lock.yaml ./
 
 # Download Go modules and install Node dependencies with cache mounts
@@ -84,11 +78,10 @@ RUN apk add --no-cache git
 # Copy dependency files first for better layer caching
 COPY go.mod go.sum ./
 
-# Download dependencies and install templ with cache mount for faster rebuilds
+# Download dependencies (templ is declared as a tool in go.mod)
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     --mount=type=cache,target=/root/.cache/go-build \
-    go mod download && \
-    go install github.com/a-h/templ/cmd/templ@v0.3.943
+    go mod download
 
 # Copy compiled CSS files and manifest from frontend builder (including hashed versions for cache busting)
 # Copy these BEFORE source code to maximize cache hits when only Go code changes
@@ -98,8 +91,8 @@ COPY --from=frontend-builder /build/internal/web/static/manifest.json /build/int
 # Copy source code
 COPY . .
 
-# Generate Go templates from .templ files
-RUN templ generate
+# Generate Go templates from .templ files (using go tool for version consistency)
+RUN go tool templ generate
 
 # Build production binary with:
 # - Version info from git tags

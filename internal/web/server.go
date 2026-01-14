@@ -166,9 +166,20 @@ func setupMiddleware(f *fiber.App) {
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
 		CrossOriginOpenerPolicy:   "same-origin",
-		CrossOriginEmbedderPolicy: "require-corp",
 		CrossOriginResourcePolicy: "same-origin",
+		ReferrerPolicy:            "strict-origin-when-cross-origin", // Required for CSRF referer validation
+		// Note: CrossOriginEmbedderPolicy defaults to "require-corp" which breaks browser extensions
+		// We remove it in the middleware below since Fiber's helmet doesn't support disabling it
 	}))
+
+	// Remove Cross-Origin-Embedder-Policy header - "require-corp" breaks browser extensions (Bitwarden)
+	// Fiber's helmet middleware doesn't support disabling COEP (empty string gets overwritten with default)
+	f.Use(func(c *fiber.Ctx) error {
+		err := c.Next()
+		c.Response().Header.Del("Cross-Origin-Embedder-Policy")
+
+		return err
+	})
 
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
