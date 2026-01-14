@@ -188,7 +188,7 @@ func createCSRFConfig(opts *options.Opts) *fiber.Handler {
 		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
-		Expiration:     3600, // 1 hour
+		Expiration:     time.Hour,
 		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
 		ContextKey:     "token", // Store token in c.Locals("token") for template access
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
