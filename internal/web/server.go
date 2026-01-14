@@ -166,8 +166,9 @@ func setupMiddleware(f *fiber.App) {
 			"script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; " +
 			"frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
 		CrossOriginOpenerPolicy:   "same-origin",
-		CrossOriginEmbedderPolicy: "require-corp",
 		CrossOriginResourcePolicy: "same-origin",
+		ReferrerPolicy:            "strict-origin-when-cross-origin", // Required for CSRF referer validation
+		// Note: CrossOriginEmbedderPolicy removed - "require-corp" breaks browser extensions (Bitwarden)
 	}))
 
 	f.Use(compress.New(compress.Config{
