@@ -1,5 +1,5 @@
-# Auto-merge dependency updates for repositories with MERGE QUEUE enabled
-# Waits for all required status checks before enqueueing to merge queue
+# Auto-merge dependency updates
+# Works with both merge queue and standard branch protection
 name: Auto-merge dependency PRs
 
 on:
@@ -35,51 +35,8 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for required status checks
+      - name: Enable auto-merge
+        run: gh pr merge --auto "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Waiting for all status checks to pass..."
-          # Poll checks every 10s for up to 30 minutes, excluding self to avoid circular dependency
-          for i in {1..180}; do
-            # Get check states, excluding this workflow
-            CHECKS=$(gh pr checks "$PR_URL" --json name,state \
-              --jq '[.[] | select(.name != "Auto-merge dependency PRs")]')
-
-            FAILED=$(echo "$CHECKS" | jq '[.[] | select(.state == "FAILURE" or .state == "ERROR")] | length')
-            PENDING=$(echo "$CHECKS" | jq '[.[] | select(.state == "PENDING" or .state == "QUEUED" or .state == "IN_PROGRESS")] | length')
-
-            if [ "$FAILED" != "0" ]; then
-              echo "Some checks failed:"
-              echo "$CHECKS" | jq -r '.[] | select(.state == "FAILURE" or .state == "ERROR") | "  - \(.name): \(.state)"'
-              exit 1
-            fi
-
-            if [ "$PENDING" = "0" ]; then
-              echo "All status checks passed!"
-              exit 0
-            fi
-
-            echo "Waiting for $PENDING check(s) to complete... (attempt $i/180)"
-            sleep 10
-          done
-
-          echo "Timeout waiting for checks to complete"
-          exit 1
-
-      - name: Add to merge queue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
-        run: |
-          gh api graphql -f query='
-            mutation($pullRequestId: ID!) {
-              enqueuePullRequest(input: {pullRequestId: $pullRequestId}) {
-                mergeQueueEntry { id }
-              }
-            }' -f pullRequestId="$PR_NODE_ID" || {
-              echo "Failed to enqueue PR in merge queue"
-              exit 1
-            }
-          echo "PR successfully added to merge queue!"
