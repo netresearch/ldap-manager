@@ -1,6 +1,6 @@
 # AGENTS.md — cmd/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2025-10-02 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
 
 ## Overview
 

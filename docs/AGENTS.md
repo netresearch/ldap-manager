@@ -1,6 +1,10 @@
-# AI Agent Instructions
+# AGENTS.md — docs/
 
-This document provides instructions for AI agents working with this codebase.
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+
+## Overview
+
+Documentation and AI agent instructions for working with this codebase.
 
 ## Creating and Updating Screenshots
 
