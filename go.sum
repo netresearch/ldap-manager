@@ -295,6 +295,8 @@ github.com/godoc-lint/godoc-lint v0.11.1 h1:z9as8Qjiy6miRIa3VRymTa+Gt2RLnGICVikc
 github.com/godoc-lint/godoc-lint v0.11.1/go.mod h1:BAqayheFSuZrEAqCRxgw9MyvsM+S/hZwJbU1s/ejRj8=
 github.com/gofiber/fiber/v2 v2.52.10 h1:jRHROi2BuNti6NYXmZ6gbNSfT3zj/8c0xy94GOU5elY=
 github.com/gofiber/fiber/v2 v2.52.10/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAreiI1oqg8nDw=
+github.com/gofiber/fiber/v2 v2.52.11 h1:5f4yzKLcBcF8ha1GQTWB+mpblWz3Vz6nSAbTL31HkWs=
+github.com/gofiber/fiber/v2 v2.52.11/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAreiI1oqg8nDw=
 github.com/gofiber/storage/bbolt/v2 v2.1.2 h1:qqaxeFV0uawWqN7itupujTWuF65nj1e1TeaUa/VjCQ4=
 github.com/gofiber/storage/bbolt/v2 v2.1.2/go.mod h1:P8MFESd6mkazVvi1S31Mvj446vPH7RiDQ7/Augcrdak=
 github.com/gofiber/storage/memory/v2 v2.1.1 h1:q0ZsCyUtdVh6dCPRhIHEIC5YCK8zKL2pKTBfPWJz71A=
