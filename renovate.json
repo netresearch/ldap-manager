@@ -9,6 +9,12 @@
     {
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
       "automerge": true
+    },
+    {
+      "matchPackagePatterns": ["gofiber"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "description": "Disable gofiber major updates - requires manual code migration"
     }
   ]
 }
