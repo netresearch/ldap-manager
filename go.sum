@@ -300,6 +300,8 @@ github.com/gofiber/fiber/v2 v2.52.11/go.mod h1:YEcBbO/FB+5M1IZNBP9FO3J9281zgPAre
 github.com/gofiber/fiber/v3 v3.0.0/go.mod h1:kVZiO/AwyT5Pq6PgC8qRCJ+j/BHrMy5jNw1O9yH38aY=
 github.com/gofiber/storage/bbolt/v2 v2.1.2 h1:qqaxeFV0uawWqN7itupujTWuF65nj1e1TeaUa/VjCQ4=
 github.com/gofiber/storage/bbolt/v2 v2.1.2/go.mod h1:P8MFESd6mkazVvi1S31Mvj446vPH7RiDQ7/Augcrdak=
+github.com/gofiber/storage/bbolt/v2 v2.1.3 h1:+vdTsw/z8C8mjYrm6gEMZZkcB7sl38pE59aF1hnax5E=
+github.com/gofiber/storage/bbolt/v2 v2.1.3/go.mod h1:6gHjy+GWQrBAFosaRYlGxpxHjW0pcuZ6RlYLOP7o7Gs=
 github.com/gofiber/storage/memory/v2 v2.1.1 h1:q0ZsCyUtdVh6dCPRhIHEIC5YCK8zKL2pKTBfPWJz71A=
 github.com/gofiber/storage/memory/v2 v2.1.1/go.mod h1:+KBbnA91Vb+zWlkw668Fcg23UAzds3Z6fxV82jlq3SU=
 github.com/gofiber/utils/v2 v2.0.0-rc.4 h1:CDjwPwtwwj1OTIf6v3iRk+D2wcdjUzwk91Ghu2TMNbE=
