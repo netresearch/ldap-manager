@@ -413,26 +413,7 @@ func (m *Manager) FindComputerBySAMAccountName(samAccountName string) (*ldap.Com
 // which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete user object with expanded group information.
 func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
-	full := &FullLDAPUser{
-		User:   *user,
-		Groups: make([]ldap.Group, 0),
-	}
-
-	userDN := user.DN()
-
-	// Iterate through all groups and check if user is a member
-	// This approach works regardless of whether memberOf overlay is enabled
-	for _, group := range m.Groups.Get() {
-		for _, memberDN := range group.Members {
-			if memberDN == userDN {
-				full.Groups = append(full.Groups, group)
-
-				break
-			}
-		}
-	}
-
-	return full
+	return PopulateGroupsForUserFromData(user, m.Groups.Get())
 }
 
 // PopulateUsersForGroup creates a FullLDAPGroup with populated member list.
@@ -441,32 +422,7 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 // When showDisabled is false, filters out disabled users from membership.
 // Returns a complete group object with expanded member and parent group information.
 func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *FullLDAPGroup {
-	full := &FullLDAPGroup{
-		Group:        *group,
-		Members:      make([]ldap.User, 0),
-		ParentGroups: make([]ldap.Group, 0),
-	}
-
-	for _, userDN := range group.Members {
-		user, err := m.FindUserByDN(userDN)
-		if err == nil {
-			if !showDisabled && !user.Enabled {
-				continue
-			}
-
-			full.Members = append(full.Members, *user)
-		}
-	}
-
-	// Resolve parent groups from MemberOf
-	for _, parentDN := range group.MemberOf {
-		parentGroup, err := m.FindGroupByDN(parentDN)
-		if err == nil {
-			full.ParentGroups = append(full.ParentGroups, *parentGroup)
-		}
-	}
-
-	return full
+	return PopulateUsersForGroupFromData(group, m.Users.Get(), m.Groups.Get(), showDisabled)
 }
 
 // PopulateGroupsForComputer creates a FullLDAPComputer with populated group memberships.
@@ -475,26 +431,7 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *F
 // which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete computer object with expanded group information.
 func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPComputer {
-	full := &FullLDAPComputer{
-		Computer: *computer,
-		Groups:   make([]ldap.Group, 0),
-	}
-
-	computerDN := computer.DN()
-
-	// Iterate through all groups and check if computer is a member
-	// This approach works regardless of whether memberOf overlay is enabled
-	for _, group := range m.Groups.Get() {
-		for _, memberDN := range group.Members {
-			if memberDN == computerDN {
-				full.Groups = append(full.Groups, group)
-
-				break
-			}
-		}
-	}
-
-	return full
+	return PopulateGroupsForComputerFromData(computer, m.Groups.Get())
 }
 
 // OnAddUserToGroup updates cache when a user is added to a group.
@@ -574,7 +511,9 @@ func PopulateGroupsForUserFromData(user *ldap.User, allGroups []ldap.Group) *Ful
 // PopulateUsersForGroupFromData creates a FullLDAPGroup with populated member list
 // using provided data instead of cache. Works identically to PopulateUsersForGroup
 // but operates on explicit slices rather than the cache.
-func PopulateUsersForGroupFromData(group *ldap.Group, allUsers []ldap.User, allGroups []ldap.Group, showDisabled bool) *FullLDAPGroup {
+func PopulateUsersForGroupFromData(
+	group *ldap.Group, allUsers []ldap.User, allGroups []ldap.Group, showDisabled bool,
+) *FullLDAPGroup {
 	full := &FullLDAPGroup{
 		Group:        *group,
 		Members:      make([]ldap.User, 0),

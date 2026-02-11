@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -429,7 +430,7 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	// Get username from session to look up user
 	sess, err := a.sessionStore.Get(c)
@@ -443,10 +444,14 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 
 	if username != "" {
 		user, err = userLDAP.FindUserBySAMAccountName(username)
+		// Fail fast on real errors (not just "not found")
+		if err != nil && !errors.Is(err, ldap.ErrUserNotFound) {
+			return handle500(c, err)
+		}
 	}
 
-	// Fall back to finding by DN in all users
-	if user == nil || err != nil {
+	// Fall back to finding by DN if lookup by SAMAccountName was not attempted or user not found
+	if user == nil {
 		allUsers, findErr := userLDAP.FindUsers()
 		if findErr != nil {
 			return handle500(c, findErr)

@@ -20,7 +20,7 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	allUsers, err := userLDAP.FindUsers()
 	if err != nil {
@@ -56,7 +56,7 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
 	if err != nil {
@@ -96,7 +96,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	// Perform the user modification using the logged-in user's LDAP connection
 	if err := a.performUserModification(userLDAP, &form, userDN); err != nil {
@@ -158,15 +158,15 @@ func (a *App) renderUserWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, userDN stri
 
 // filterUnassignedGroups returns groups the user is not a member of.
 func filterUnassignedGroups(allGroups []ldap.Group, user *ldap_cache.FullLDAPUser) []ldap.Group {
-	memberGroupDNs := make(map[string]struct{}, len(user.Groups))
+	memberGroupDNS := make(map[string]struct{}, len(user.Groups))
 	for _, g := range user.Groups {
-		memberGroupDNs[g.DN()] = struct{}{}
+		memberGroupDNS[g.DN()] = struct{}{}
 	}
 
 	result := make([]ldap.Group, 0)
 
 	for _, g := range allGroups {
-		if _, isMember := memberGroupDNs[g.DN()]; !isMember {
+		if _, isMember := memberGroupDNS[g.DN()]; !isMember {
 			result = append(result, g)
 		}
 	}
