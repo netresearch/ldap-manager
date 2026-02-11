@@ -16,7 +16,7 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	groups, err := userLDAP.FindGroups()
 	if err != nil {
@@ -41,7 +41,7 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	group, unassignedUsers, err := a.loadGroupDataFromLDAP(c, userLDAP, groupDN)
 	if err != nil {
@@ -81,7 +81,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	// Perform the group modification using the logged-in user's LDAP connection
 	if err := a.performGroupModification(userLDAP, &form, groupDN); err != nil {
@@ -96,7 +96,9 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 }
 
 // loadGroupDataFromLDAP loads group data directly from an LDAP client connection.
-func (a *App) loadGroupDataFromLDAP(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
+func (a *App) loadGroupDataFromLDAP(
+	c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string,
+) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
 	groups, err := userLDAP.FindGroups()
 	if err != nil {
 		return nil, nil, err
@@ -145,15 +147,15 @@ func (a *App) renderGroupWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN st
 
 // filterUnassignedUsers returns users not in the given group.
 func filterUnassignedUsers(allUsers []ldap.User, group *ldap_cache.FullLDAPGroup) []ldap.User {
-	memberDNs := make(map[string]struct{}, len(group.Members))
+	memberDNS := make(map[string]struct{}, len(group.Members))
 	for _, member := range group.Members {
-		memberDNs[member.DN()] = struct{}{}
+		memberDNS[member.DN()] = struct{}{}
 	}
 
 	result := make([]ldap.User, 0)
 
 	for _, u := range allUsers {
-		if _, isMember := memberDNs[u.DN()]; !isMember {
+		if _, isMember := memberDNS[u.DN()]; !isMember {
 			result = append(result, u)
 		}
 	}

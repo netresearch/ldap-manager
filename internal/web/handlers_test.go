@@ -29,7 +29,7 @@ func assertHTTPRedirect(t *testing.T, resp *http.Response) {
 	}
 }
 
-func assertHTTPStatus(t *testing.T, resp *http.Response, expectedStatus int) {
+func assertHTTPStatus(t *testing.T, resp *http.Response, expectedStatus int) { //nolint:unparam // utility function
 	t.Helper()
 	if resp.StatusCode != expectedStatus {
 		t.Errorf("Expected status %d, got %d", expectedStatus, resp.StatusCode)

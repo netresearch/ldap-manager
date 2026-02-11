@@ -232,36 +232,46 @@ func TestLivenessHandler(t *testing.T) {
 	})
 }
 
+// assertNoServiceAccountStatusEndpoint tests a health endpoint returns expected status without service account.
+func assertNoServiceAccountStatusEndpoint(t *testing.T, app *App, endpoint, expectedStatus string) {
+	t.Helper()
+
+	req := httptest.NewRequest("GET", endpoint, http.NoBody)
+
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	assertHTTPStatus(t, resp, fiber.StatusOK)
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read body: %v", err)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		t.Errorf("Response is not valid JSON: %v", err)
+	}
+
+	status, ok := response["status"]
+	if !ok {
+		t.Error("Response should contain 'status' field")
+	}
+
+	if status != expectedStatus {
+		t.Errorf("Expected status %q, got %v", expectedStatus, status)
+	}
+}
+
 func TestLivenessHandlerNoServiceAccount(t *testing.T) {
 	app := setupHealthTestAppNoServiceAccount()
 
 	t.Run("returns alive status without uptime", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/live", http.NoBody)
-		resp, err := app.fiber.Test(req)
-		if err != nil {
-			t.Fatalf("Request failed: %v", err)
-		}
-		defer func() { _ = resp.Body.Close() }()
-
-		assertHTTPStatus(t, resp, fiber.StatusOK)
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("Failed to read body: %v", err)
-		}
-
-		var response map[string]interface{}
-		if err := json.Unmarshal(body, &response); err != nil {
-			t.Errorf("Response is not valid JSON: %v", err)
-		}
-
-		status, ok := response["status"]
-		if !ok {
-			t.Error("Response should contain 'status' field")
-		}
-		if status != "alive" {
-			t.Errorf("Expected status 'alive', got '%v'", status)
-		}
+		assertNoServiceAccountStatusEndpoint(t, app, "/live", "alive")
 	})
 }
 
@@ -302,32 +312,7 @@ func TestReadinessHandlerNoServiceAccount(t *testing.T) {
 	app := setupHealthTestAppNoServiceAccount()
 
 	t.Run("returns ready without service account", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/ready", http.NoBody)
-		resp, err := app.fiber.Test(req)
-		if err != nil {
-			t.Fatalf("Request failed: %v", err)
-		}
-		defer func() { _ = resp.Body.Close() }()
-
-		assertHTTPStatus(t, resp, fiber.StatusOK)
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("Failed to read body: %v", err)
-		}
-
-		var response map[string]interface{}
-		if err := json.Unmarshal(body, &response); err != nil {
-			t.Errorf("Response is not valid JSON: %v", err)
-		}
-
-		status, ok := response["status"]
-		if !ok {
-			t.Error("Response should contain 'status' field")
-		}
-		if status != "ready" {
-			t.Errorf("Expected status 'ready', got %v", status)
-		}
+		assertNoServiceAccountStatusEndpoint(t, app, "/ready", "ready")
 	})
 }
 

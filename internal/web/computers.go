@@ -20,7 +20,7 @@ func (a *App) computersHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	allComputers, err := userLDAP.FindComputers()
 	if err != nil {
@@ -55,7 +55,7 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return handle500(c, err)
 	}
-	defer userLDAP.Close()
+	defer func() { _ = userLDAP.Close() }()
 
 	computers, err := userLDAP.FindComputers()
 	if err != nil {

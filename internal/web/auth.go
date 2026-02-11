@@ -117,7 +117,7 @@ func (a *App) authenticateViaUPNBind(username, password string) (*ldap.User, err
 	if err != nil {
 		return nil, err
 	}
-	defer userClient.Close()
+	defer func() { _ = userClient.Close() }()
 
 	// Look up user details using the user's own connection
 	user, err := userClient.FindUserBySAMAccountName(username)
