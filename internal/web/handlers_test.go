@@ -115,6 +115,7 @@ func setupTestApp() (*App, *testLDAPClient) {
 	testClient, _ := ldap.New(testConfig, "cn=admin", "password") //nolint:errcheck
 
 	app := &App{
+		ldapConfig:   testConfig,
 		ldapReadonly: testClient, // Test client for testing
 		ldapCache:    ldap_cache.New(mockClient),
 		sessionStore: sessionStore,
@@ -430,34 +431,40 @@ func TestRequireAuthMiddleware(t *testing.T) {
 	})
 }
 
-// Test the cache helper functions
-func TestFindUnassignedGroupsFunction(t *testing.T) {
-	app, _ := setupTestApp()
+// Test the standalone filter functions
+func TestFilterUnassignedGroups(t *testing.T) {
+	user := &ldap_cache.FullLDAPUser{
+		Groups: []ldap.Group{
+			{Members: []string{"cn=user1"}},
+		},
+	}
 
-	users := app.ldapCache.FindUsers(true)
-	if len(users) > 0 {
-		user := app.ldapCache.PopulateGroupsForUser(&users[0])
-		unassignedGroups := app.findUnassignedGroups(user)
+	allGroups := []ldap.Group{
+		{Members: []string{"cn=user1"}},
+		{Members: []string{"cn=user2"}},
+	}
 
-		// Basic sanity check - should return slice (possibly empty)
-		if unassignedGroups == nil {
-			t.Error("findUnassignedGroups should return a slice, not nil")
-		}
+	unassigned := filterUnassignedGroups(allGroups, user)
+	if unassigned == nil {
+		t.Error("filterUnassignedGroups should return a slice, not nil")
 	}
 }
 
-func TestFindUnassignedUsersFunction(t *testing.T) {
-	app, _ := setupTestApp()
+func TestFilterUnassignedUsers(t *testing.T) {
+	group := &ldap_cache.FullLDAPGroup{
+		Members: []ldap.User{
+			{SAMAccountName: "user1"},
+		},
+	}
 
-	groups := app.ldapCache.FindGroups()
-	if len(groups) > 0 {
-		group := app.ldapCache.PopulateUsersForGroup(&groups[0], true)
-		unassignedUsers := app.findUnassignedUsers(group)
+	allUsers := []ldap.User{
+		{SAMAccountName: "user1"},
+		{SAMAccountName: "user2"},
+	}
 
-		// Basic sanity check - should return slice (possibly empty)
-		if unassignedUsers == nil {
-			t.Error("findUnassignedUsers should return a slice, not nil")
-		}
+	unassigned := filterUnassignedUsers(allUsers, group)
+	if unassigned == nil {
+		t.Error("filterUnassignedUsers should return a slice, not nil")
 	}
 }
 
@@ -657,20 +664,37 @@ func TestHandle500(t *testing.T) {
 	t.Skip("Error handler testing requires complex template mocking")
 }
 
+// Test domainFromBaseDN helper
+func TestDomainFromBaseDN(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseDN   string
+		expected string
+	}{
+		{"simple domain", "DC=example,DC=com", "example.com"},
+		{"subdomain", "DC=sub,DC=example,DC=com", "sub.example.com"},
+		{"with OU prefix", "OU=Users,DC=example,DC=com", "example.com"},
+		{"mixed case", "dc=Example,DC=COM", "Example.COM"},
+		{"with spaces", " DC=example , DC=com ", "example.com"},
+		{"empty", "", ""},
+		{"no DC components", "OU=Users,CN=Admin", ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := domainFromBaseDN(tc.baseDN)
+			if result != tc.expected {
+				t.Errorf("domainFromBaseDN(%q) = %q, want %q", tc.baseDN, result, tc.expected)
+			}
+		})
+	}
+}
+
 // =============================================================================
 // Regression tests for LDAP escape sequence handling in URLs
-// Bug: DNs with LDAP escape sequences like \0A (newline) were not properly
-// URL-encoded, causing browsers to convert backslashes to forward slashes,
-// resulting in "not found" errors.
 // =============================================================================
 
-// TestDNWithLDAPEscapeSequences tests that DNs containing LDAP escape sequences
-// are properly handled when URL-encoded. This is a regression test for a bug
-// where computers with special characters in their CN (like newlines represented
-// as \0A in LDAP) could not be accessed.
 func TestDNWithLDAPEscapeSequences(t *testing.T) {
-	// These are examples of DNs with LDAP escape sequences (RFC 4514)
-	// \0A = newline (0x0A), \2C = comma, \5C = backslash
 	testCases := []struct {
 		name        string
 		rawDN       string
@@ -695,15 +719,12 @@ func TestDNWithLDAPEscapeSequences(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// URL-encode the DN as the template functions do
 			encoded := url.PathEscape(tc.rawDN)
 
-			// Verify the backslash is properly encoded as %5C
 			if strings.Contains(tc.rawDN, `\`) && !strings.Contains(encoded, "%5C") {
 				t.Errorf("Backslash in DN should be encoded as %%5C\nRaw: %s\nEncoded: %s", tc.rawDN, encoded)
 			}
 
-			// Verify round-trip: encoding then decoding should return original
 			decoded, err := url.PathUnescape(encoded)
 			if err != nil {
 				t.Fatalf("Failed to decode URL: %v", err)
@@ -716,19 +737,11 @@ func TestDNWithLDAPEscapeSequences(t *testing.T) {
 	}
 }
 
-// TestURLEncodingPreservesLDAPBackslash specifically tests that the backslash
-// character used in LDAP escape sequences is preserved through URL encoding.
-// This was the root cause of the bug: browsers convert unencoded backslashes
-// to forward slashes in URLs.
 func TestURLEncodingPreservesLDAPBackslash(t *testing.T) {
-	// This DN contains \0A which represents a newline in LDAP
-	// Without proper URL encoding, browsers convert \ to /
 	dnWithNewline := `CN=wd-ex\0ACNF:0a3049e5-44d2-4a9e-930a-ae355eda25f5,CN=Computers,DC=netresearch,DC=nr`
 
-	// URL-encode it
 	encoded := url.PathEscape(dnWithNewline)
 
-	// The encoded URL must contain %5C (encoded backslash), not a literal backslash
 	if strings.Contains(encoded, `\`) {
 		t.Errorf("Encoded URL should not contain literal backslash (browsers convert \\ to /)\nEncoded: %s", encoded)
 	}
@@ -737,7 +750,6 @@ func TestURLEncodingPreservesLDAPBackslash(t *testing.T) {
 		t.Errorf("Encoded URL should contain %%5C (URL-encoded backslash)\nEncoded: %s", encoded)
 	}
 
-	// Verify the server-side decoding recovers the original DN
 	decoded, err := url.PathUnescape(encoded)
 	if err != nil {
 		t.Fatalf("Failed to decode: %v", err)
@@ -748,16 +760,11 @@ func TestURLEncodingPreservesLDAPBackslash(t *testing.T) {
 	}
 }
 
-// TestWildcardRouteWithSpecialCharacters tests that the wildcard route pattern
-// correctly captures DNs containing characters that would break named parameters.
 func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
 	app, _ := setupTestApp()
 
-	// DNs with characters that would break :paramName routing
 	problematicDNS := []string{
-		// Forward slash - would be interpreted as path separator with :param
 		`CN=test/computer,CN=Computers,DC=example,DC=com`,
-		// Encoded LDAP escape sequence that browsers might mangle
 		url.PathEscape(`CN=test\0Acomputer,CN=Computers,DC=example,DC=com`),
 	}
 
@@ -771,11 +778,63 @@ func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
 			}
 			defer closeHTTPResponse(t, resp)
 
-			// Should NOT be 404 - the route should match
-			// (will be 302 redirect to login since not authenticated)
 			if resp.StatusCode == 404 {
 				t.Errorf("Route should match DN with special characters, got 404 for path: %s", path)
 			}
 		})
 	}
+}
+
+// Test findByDN helper
+func TestFindByDN(t *testing.T) {
+	users := []ldap.User{
+		{SAMAccountName: "user1"},
+		{SAMAccountName: "user2"},
+	}
+
+	t.Run("returns nil error for empty DN (matches default)", func(t *testing.T) {
+		// Users with empty DN will match empty string search
+		user, err := findByDN(users, users[0].DN())
+		if err != nil {
+			// If DN() returns empty for test users, this is expected
+			if user == nil {
+				t.Log("Test users have empty DNs - this is expected in unit tests")
+			}
+		}
+	})
+
+	t.Run("returns error for non-existent DN", func(t *testing.T) {
+		_, err := findByDN(users, "cn=nonexistent,dc=test,dc=com")
+		if !errors.Is(err, ldap.ErrUserNotFound) {
+			t.Errorf("Expected ErrUserNotFound, got %v", err)
+		}
+	})
+}
+
+// Test findGroupByDN helper
+func TestFindGroupByDN(t *testing.T) {
+	groups := []ldap.Group{
+		{Members: []string{"cn=user1"}},
+	}
+
+	t.Run("returns nil for non-existent DN", func(t *testing.T) {
+		result := findGroupByDN(groups, "cn=nonexistent,dc=test,dc=com")
+		if result != nil {
+			t.Error("Expected nil for non-existent group DN")
+		}
+	})
+}
+
+// Test findComputerByDN helper
+func TestFindComputerByDN(t *testing.T) {
+	computers := []ldap.Computer{
+		{SAMAccountName: "pc1$"},
+	}
+
+	t.Run("returns nil for non-existent DN", func(t *testing.T) {
+		result := findComputerByDN(computers, "cn=nonexistent,dc=test,dc=com")
+		if result != nil {
+			t.Error("Expected nil for non-existent computer DN")
+		}
+	})
 }

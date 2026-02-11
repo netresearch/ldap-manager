@@ -107,8 +107,7 @@ func TestParse_MissingRequiredFields(t *testing.T) {
 	}{
 		{"MissingLDAPServer", "LDAP_SERVER", "ldap-server"},
 		{"MissingBaseDN", "LDAP_BASE_DN", "base-dn"},
-		{"MissingReadonlyUser", "LDAP_READONLY_USER", "readonly-user"},
-		{"MissingReadonlyPassword", "LDAP_READONLY_PASSWORD", "readonly-password"},
+		// readonly-user and readonly-password are now optional
 	}
 
 	for _, tt := range tests {

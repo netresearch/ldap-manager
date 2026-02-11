@@ -13,24 +13,31 @@ import (
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
-// usersHandler handles GET /users requests to list all user accounts in the LDAP directory.
-// Supports optional show-disabled query parameter to include disabled user accounts.
-// Users are sorted alphabetically by CN (Common Name) and returned as HTML using template caching.
-//
-// Query Parameters:
-//   - show-disabled: Set to "1" to include disabled users in the listing
-//
-// Returns:
-//   - 200: HTML page with user listing including display names, account names, and email addresses
-//   - 500: Internal server error if LDAP query fails
-//
-// Example:
-//
-//	GET /users?show-disabled=1
 func (a *App) usersHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
 	showDisabled := c.Query("show-disabled", "0") == "1"
-	users := a.ldapCache.FindUsers(showDisabled)
+
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	allUsers, err := userLDAP.FindUsers()
+	if err != nil {
+		return handle500(c, err)
+	}
+
+	var users []ldap.User
+	if !showDisabled {
+		for _, u := range allUsers {
+			if u.Enabled {
+				users = append(users, u)
+			}
+		}
+	} else {
+		users = allUsers
+	}
+
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].CN() < users[j].CN()
 	})
@@ -39,28 +46,19 @@ func (a *App) usersHandler(c *fiber.Ctx) error {
 	return a.templateCache.RenderWithCache(c, templates.Users(users, showDisabled, templates.Flashes()))
 }
 
-// userHandler handles GET /users/:userDN requests to display detailed information for a specific user.
-// The userDN path parameter must be URL-encoded Distinguished Name of the user account.
-// Returns user details including all LDAP attributes, group memberships, and edit form with CSRF protection.
-//
-// Path Parameters:
-//   - userDN: URL-encoded Distinguished Name of the user (e.g. "CN=John Doe,OU=Users,DC=example,DC=com")
-//
-// Returns:
-//   - 200: HTML page with user details, group memberships, and editable form fields
-//   - 500: Internal server error if user not found or LDAP query fails
-//
-// Example:
-//
-//	GET /users/CN%3DJohn%20Doe%2COU%3DUsers%2CDC%3Dexample%2CDC%3Dcom
 func (a *App) userHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
 	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}
 
-	user, unassignedGroups, err := a.loadUserData(userDN)
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
 	if err != nil {
 		return handle500(c, err)
 	}
@@ -80,7 +78,6 @@ type userModifyForm struct {
 
 // nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
 func (a *App) userModifyHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
 	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
@@ -95,81 +92,89 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 		return c.Redirect("/users/" + userDN)
 	}
 
-	// Perform the user modification using the readonly LDAP client
-	// User is already authenticated via session middleware
-	if err := a.performUserModification(a.ldapReadonly, &form, userDN); err != nil {
-		return a.renderUserWithError(c, userDN, "Failed to modify: "+err.Error())
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	// Perform the user modification using the logged-in user's LDAP connection
+	if err := a.performUserModification(userLDAP, &form, userDN); err != nil {
+		return a.renderUserWithFlash(c, userLDAP, userDN, templates.ErrorFlash("Failed to modify: "+err.Error()))
 	}
 
 	// Invalidate template cache after successful modification
 	a.invalidateTemplateCacheOnUserModification(userDN)
 
 	// Render success response
-	return a.renderUserWithSuccess(c, userDN, "Successfully modified user")
+	return a.renderUserWithFlash(c, userLDAP, userDN, templates.SuccessFlash("Successfully modified user"))
 }
 
-func (a *App) findUnassignedGroups(user *ldap_cache.FullLDAPUser) []ldap.Group {
-	return a.ldapCache.Groups.Filter(func(g ldap.Group) bool {
-		for _, ug := range user.Groups {
-			if ug.DN() == g.DN() {
-				return false
-			}
-		}
-
-		return true
-	})
-}
-
-// loadUserData loads and prepares user data with proper sorting
-func (a *App) loadUserData(userDN string) (*ldap_cache.FullLDAPUser, []ldap.Group, error) {
-	thinUser, err := a.ldapCache.FindUserByDN(userDN)
+// loadUserDataFromLDAP loads user data directly from an LDAP client connection.
+func (a *App) loadUserDataFromLDAP(userLDAP *ldap.LDAP, userDN string) (*ldap_cache.FullLDAPUser, []ldap.Group, error) {
+	allUsers, err := userLDAP.FindUsers()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	user := a.ldapCache.PopulateGroupsForUser(thinUser)
-	sort.SliceStable(user.Groups, func(i, j int) bool {
-		return user.Groups[i].CN() < user.Groups[j].CN()
+	user, err := findByDN(allUsers, userDN)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	groups, err := userLDAP.FindGroups()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fullUser := ldap_cache.PopulateGroupsForUserFromData(user, groups)
+	sort.SliceStable(fullUser.Groups, func(i, j int) bool {
+		return fullUser.Groups[i].CN() < fullUser.Groups[j].CN()
 	})
-	unassignedGroups := a.findUnassignedGroups(user)
+
+	unassignedGroups := filterUnassignedGroups(groups, fullUser)
 	sort.SliceStable(unassignedGroups, func(i, j int) bool {
 		return unassignedGroups[i].CN() < unassignedGroups[j].CN()
 	})
 
-	return user, unassignedGroups, nil
+	return fullUser, unassignedGroups, nil
 }
 
-// renderUserWithError renders the user page with an error message
-func (a *App) renderUserWithError(c *fiber.Ctx, userDN, errorMsg string) error {
+// renderUserWithFlash renders the user page with a flash message using a user LDAP connection.
+func (a *App) renderUserWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, userDN string, flash templates.Flash) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	user, unassignedGroups, err := a.loadUserData(userDN)
+
+	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
 	if err != nil {
 		return handle500(c, err)
 	}
 
 	return templates.User(
 		user, unassignedGroups,
-		templates.Flashes(templates.ErrorFlash(errorMsg)),
+		templates.Flashes(flash),
 		a.GetCSRFToken(c),
 	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-// renderUserWithSuccess renders the user page with a success message
-func (a *App) renderUserWithSuccess(c *fiber.Ctx, userDN, successMsg string) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	user, unassignedGroups, err := a.loadUserData(userDN)
-	if err != nil {
-		return handle500(c, err)
+// filterUnassignedGroups returns groups the user is not a member of.
+func filterUnassignedGroups(allGroups []ldap.Group, user *ldap_cache.FullLDAPUser) []ldap.Group {
+	memberGroupDNs := make(map[string]struct{}, len(user.Groups))
+	for _, g := range user.Groups {
+		memberGroupDNs[g.DN()] = struct{}{}
 	}
 
-	return templates.User(
-		user, unassignedGroups,
-		templates.Flashes(templates.SuccessFlash(successMsg)),
-		a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	result := make([]ldap.Group, 0)
+
+	for _, g := range allGroups {
+		if _, isMember := memberGroupDNs[g.DN()]; !isMember {
+			result = append(result, g)
+		}
+	}
+
+	return result
 }
 
-// performUserModification handles the actual LDAP user modification operation
+// performUserModification handles the actual LDAP user modification operation.
 func (a *App) performUserModification(
 	ldapClient *ldap.LDAP, form *userModifyForm, userDN string,
 ) error {
@@ -177,12 +182,18 @@ func (a *App) performUserModification(
 		if err := ldapClient.AddUserToGroup(userDN, *form.AddGroup); err != nil {
 			return err
 		}
-		a.ldapCache.OnAddUserToGroup(userDN, *form.AddGroup)
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(userDN, *form.AddGroup)
+		}
 	} else if form.RemoveGroup != nil {
 		if err := ldapClient.RemoveUserFromGroup(userDN, *form.RemoveGroup); err != nil {
 			return err
 		}
-		a.ldapCache.OnRemoveUserFromGroup(userDN, *form.RemoveGroup)
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnRemoveUserFromGroup(userDN, *form.RemoveGroup)
+		}
 	}
 
 	return nil
@@ -200,6 +211,5 @@ func (a *App) invalidateTemplateCacheOnUserModification(userDN string) {
 	a.invalidateTemplateCache("/groups")
 
 	// Clear all cache entries for safety (this could be optimized further)
-	// In a high-traffic environment, you might want to be more selective
 	a.templateCache.Clear()
 }
