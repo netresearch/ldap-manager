@@ -6,7 +6,17 @@ import (
 
 // healthHandler provides a comprehensive health check endpoint.
 // Returns cache metrics, connection pool health, system health status, and operational statistics.
+// When no service account is configured, reports a simplified status.
 func (a *App) healthHandler(c *fiber.Ctx) error {
+	if a.ldapCache == nil || a.ldapReadonly == nil {
+		return c.JSON(fiber.Map{
+			"overall_healthy": true,
+			"mode":            "per-user credentials",
+			"cache":           "disabled (no service account)",
+			"connection_pool": "disabled (no service account)",
+		})
+	}
+
 	cacheHealthStats := a.ldapCache.GetHealthCheck()
 	poolStats := a.ldapReadonly.GetPoolStats()
 
@@ -42,9 +52,16 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 }
 
 // readinessHandler provides a simple readiness check.
-// Returns 200 OK if the cache system and connection pool are operational and ready to serve requests.
-// Includes cache warming status and connection pool health to indicate if system is ready.
+// Returns 200 OK if the system is operational and ready to serve requests.
+// When no service account is configured, always reports ready (auth happens per-request).
 func (a *App) readinessHandler(c *fiber.Ctx) error {
+	if a.ldapCache == nil || a.ldapReadonly == nil {
+		return c.JSON(fiber.Map{
+			"status": "ready",
+			"mode":   "per-user credentials",
+		})
+	}
+
 	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
 	poolStats := a.ldapReadonly.GetPoolStats()
@@ -108,8 +125,13 @@ func (a *App) getReadinessStatus(cacheHealthy, warmedUp, poolHealthy bool) (stat
 // livenessHandler provides a simple liveness check.
 // Returns 200 OK if the application is running and responsive.
 func (a *App) livenessHandler(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{
+	response := fiber.Map{
 		"status": "alive",
-		"uptime": a.ldapCache.GetMetrics().GetUptime().String(),
-	})
+	}
+
+	if a.ldapCache != nil {
+		response["uptime"] = a.ldapCache.GetMetrics().GetUptime().String()
+	}
+
+	return c.JSON(response)
 }

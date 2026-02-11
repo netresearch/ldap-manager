@@ -12,8 +12,17 @@ import (
 )
 
 func (a *App) groupsHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
-	groups := a.ldapCache.FindGroups()
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	groups, err := userLDAP.FindGroups()
+	if err != nil {
+		return handle500(c, err)
+	}
+
 	sort.SliceStable(groups, func(i, j int) bool {
 		return groups[i].CN() < groups[j].CN()
 	})
@@ -23,13 +32,18 @@ func (a *App) groupsHandler(c *fiber.Ctx) error {
 }
 
 func (a *App) groupHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
 	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}
 
-	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	group, unassignedUsers, err := a.loadGroupDataFromLDAP(c, userLDAP, groupDN)
 	if err != nil {
 		return handle500(c, err)
 	}
@@ -49,7 +63,6 @@ type groupModifyForm struct {
 
 // nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
 func (a *App) groupModifyHandler(c *fiber.Ctx) error {
-	// Authentication handled by middleware, no need to check session
 	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
@@ -64,83 +77,102 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return c.Redirect("/groups/" + groupDN)
 	}
 
-	// Perform the group modification using the readonly LDAP client
-	// User is already authenticated via session middleware
-	if err := a.performGroupModification(a.ldapReadonly, &form, groupDN); err != nil {
-		return a.renderGroupWithError(c, groupDN, "Failed to modify: "+err.Error())
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer userLDAP.Close()
+
+	// Perform the group modification using the logged-in user's LDAP connection
+	if err := a.performGroupModification(userLDAP, &form, groupDN); err != nil {
+		return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.ErrorFlash("Failed to modify: "+err.Error()))
 	}
 
 	// Invalidate template cache after successful modification
 	a.invalidateTemplateCacheOnGroupModification(groupDN)
 
 	// Render success response
-	return a.renderGroupWithSuccess(c, groupDN, "Successfully modified group")
+	return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.SuccessFlash("Successfully modified group"))
 }
 
-func (a *App) findUnassignedUsers(group *ldap_cache.FullLDAPGroup) []ldap.User {
-	return a.ldapCache.Users.Filter(func(u ldap.User) bool {
-		// Check if user is already a member of this group
-		for _, member := range group.Members {
-			if member.DN() == u.DN() {
-				return false
-			}
-		}
+// loadGroupDataFromLDAP loads group data directly from an LDAP client connection.
+func (a *App) loadGroupDataFromLDAP(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
+	groups, err := userLDAP.FindGroups()
+	if err != nil {
+		return nil, nil, err
+	}
 
-		return true
-	})
-}
+	group := findGroupByDN(groups, groupDN)
+	if group == nil {
+		return nil, nil, ldap.ErrGroupNotFound
+	}
 
-// loadGroupData loads and prepares group data with proper sorting
-func (a *App) loadGroupData(c *fiber.Ctx, groupDN string) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
-	thinGroup, err := a.ldapCache.FindGroupByDN(groupDN)
+	users, err := userLDAP.FindUsers()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	showDisabledUsers := c.Query("show-disabled", "0") == "1"
-	group := a.ldapCache.PopulateUsersForGroup(thinGroup, showDisabledUsers)
-	sort.SliceStable(group.Members, func(i, j int) bool {
-		return group.Members[i].CN() < group.Members[j].CN()
+	fullGroup := ldap_cache.PopulateUsersForGroupFromData(group, users, groups, showDisabledUsers)
+
+	sort.SliceStable(fullGroup.Members, func(i, j int) bool {
+		return fullGroup.Members[i].CN() < fullGroup.Members[j].CN()
 	})
-	unassignedUsers := a.findUnassignedUsers(group)
+
+	unassignedUsers := filterUnassignedUsers(users, fullGroup)
 	sort.SliceStable(unassignedUsers, func(i, j int) bool {
 		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
 	})
 
-	return group, unassignedUsers, nil
+	return fullGroup, unassignedUsers, nil
 }
 
-// renderGroupWithError renders the group page with an error message
-func (a *App) renderGroupWithError(c *fiber.Ctx, groupDN, errorMsg string) error {
+// renderGroupWithFlash renders the group page with a flash message using a user LDAP connection.
+func (a *App) renderGroupWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string, flash templates.Flash) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
+
+	group, unassignedUsers, err := a.loadGroupDataFromLDAP(c, userLDAP, groupDN)
 	if err != nil {
 		return handle500(c, err)
 	}
 
 	return templates.Group(
 		group, unassignedUsers,
-		templates.Flashes(templates.ErrorFlash(errorMsg)),
+		templates.Flashes(flash),
 		a.GetCSRFToken(c),
 	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-// renderGroupWithSuccess renders the group page with a success message
-func (a *App) renderGroupWithSuccess(c *fiber.Ctx, groupDN, successMsg string) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	group, unassignedUsers, err := a.loadGroupData(c, groupDN)
-	if err != nil {
-		return handle500(c, err)
+// filterUnassignedUsers returns users not in the given group.
+func filterUnassignedUsers(allUsers []ldap.User, group *ldap_cache.FullLDAPGroup) []ldap.User {
+	memberDNs := make(map[string]struct{}, len(group.Members))
+	for _, member := range group.Members {
+		memberDNs[member.DN()] = struct{}{}
 	}
 
-	return templates.Group(
-		group, unassignedUsers,
-		templates.Flashes(templates.SuccessFlash(successMsg)),
-		a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	result := make([]ldap.User, 0)
+
+	for _, u := range allUsers {
+		if _, isMember := memberDNs[u.DN()]; !isMember {
+			result = append(result, u)
+		}
+	}
+
+	return result
 }
 
-// performGroupModification handles the actual LDAP group modification operation
+// findGroupByDN searches for a group by DN in a slice.
+func findGroupByDN(groups []ldap.Group, dn string) *ldap.Group {
+	for i := range groups {
+		if groups[i].DN() == dn {
+			return &groups[i]
+		}
+	}
+
+	return nil
+}
+
+// performGroupModification handles the actual LDAP group modification operation.
 func (a *App) performGroupModification(
 	ldapClient *ldap.LDAP, form *groupModifyForm, groupDN string,
 ) error {
@@ -148,12 +180,18 @@ func (a *App) performGroupModification(
 		if err := ldapClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err
 		}
-		a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
+		}
 	} else if form.RemoveUser != nil {
 		if err := ldapClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
 			return err
 		}
-		a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
+		}
 	}
 
 	return nil
@@ -171,6 +209,5 @@ func (a *App) invalidateTemplateCacheOnGroupModification(groupDN string) {
 	a.invalidateTemplateCache("/users")
 
 	// Clear all cache entries for safety (this could be optimized further)
-	// In a high-traffic environment, you might want to be more selective
 	a.templateCache.Clear()
 }

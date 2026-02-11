@@ -547,6 +547,95 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 	})
 }
 
+// PopulateGroupsForUserFromData creates a FullLDAPUser with populated group memberships
+// using provided data instead of cache. Works identically to PopulateGroupsForUser
+// but operates on explicit slices rather than the cache.
+func PopulateGroupsForUserFromData(user *ldap.User, allGroups []ldap.Group) *FullLDAPUser {
+	full := &FullLDAPUser{
+		User:   *user,
+		Groups: make([]ldap.Group, 0),
+	}
+
+	userDN := user.DN()
+
+	for _, group := range allGroups {
+		for _, memberDN := range group.Members {
+			if memberDN == userDN {
+				full.Groups = append(full.Groups, group)
+
+				break
+			}
+		}
+	}
+
+	return full
+}
+
+// PopulateUsersForGroupFromData creates a FullLDAPGroup with populated member list
+// using provided data instead of cache. Works identically to PopulateUsersForGroup
+// but operates on explicit slices rather than the cache.
+func PopulateUsersForGroupFromData(group *ldap.Group, allUsers []ldap.User, allGroups []ldap.Group, showDisabled bool) *FullLDAPGroup {
+	full := &FullLDAPGroup{
+		Group:        *group,
+		Members:      make([]ldap.User, 0),
+		ParentGroups: make([]ldap.Group, 0),
+	}
+
+	// Build a map for O(1) user lookups by DN
+	usersByDN := make(map[string]*ldap.User, len(allUsers))
+	for i := range allUsers {
+		usersByDN[allUsers[i].DN()] = &allUsers[i]
+	}
+
+	for _, memberDN := range group.Members {
+		if user, ok := usersByDN[memberDN]; ok {
+			if !showDisabled && !user.Enabled {
+				continue
+			}
+
+			full.Members = append(full.Members, *user)
+		}
+	}
+
+	// Build a map for O(1) group lookups by DN
+	groupsByDN := make(map[string]*ldap.Group, len(allGroups))
+	for i := range allGroups {
+		groupsByDN[allGroups[i].DN()] = &allGroups[i]
+	}
+
+	for _, parentDN := range group.MemberOf {
+		if parentGroup, ok := groupsByDN[parentDN]; ok {
+			full.ParentGroups = append(full.ParentGroups, *parentGroup)
+		}
+	}
+
+	return full
+}
+
+// PopulateGroupsForComputerFromData creates a FullLDAPComputer with populated group memberships
+// using provided data instead of cache. Works identically to PopulateGroupsForComputer
+// but operates on explicit slices rather than the cache.
+func PopulateGroupsForComputerFromData(computer *ldap.Computer, allGroups []ldap.Group) *FullLDAPComputer {
+	full := &FullLDAPComputer{
+		Computer: *computer,
+		Groups:   make([]ldap.Group, 0),
+	}
+
+	computerDN := computer.DN()
+
+	for _, group := range allGroups {
+		for _, memberDN := range group.Members {
+			if memberDN == computerDN {
+				full.Groups = append(full.Groups, group)
+
+				break
+			}
+		}
+	}
+
+	return full
+}
+
 // GetMetrics returns the current cache metrics for monitoring and observability.
 // Provides comprehensive statistics about cache performance, health, and operations.
 func (m *Manager) GetMetrics() *Metrics {
