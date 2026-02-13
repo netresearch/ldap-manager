@@ -1,5 +1,7 @@
 package templates
 
+import "github.com/netresearch/ldap-manager/internal/version"
+
 const navbarClasses = "px-3 py-1 rounded-md flex items-center gap-2 transition-colors focus:outline-none hocus:text-text-primary max-sm:px-2 max-sm:py-2 compact:px-2 compact:py-1 comfortable:px-3 comfortable:py-2 "
 const navbarInactiveClasses = "text-text-secondary hocus:bg-surface-elevated"
 const navbarActiveClasses = "text-text-primary bg-surface-elevated"
@@ -63,6 +65,21 @@ templ loggedIn(current, title string, flashes []Flash) {
 				}
 				{ children... }
 			</div>
+			<footer class="mt-auto border-t border-border py-3 text-center text-xs text-text-secondary">
+				<p>
+					Powered by
+					<a
+						href="https://github.com/netresearch/ldap-manager"
+						class="break-keep outline-none transition-colors hocus:text-text-primary hocus:underline"
+						title="View project on GitHub"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						netresearch/ldap-manager
+					</a>
+				</p>
+				<p>{ version.FormatVersion() }</p>
+			</footer>
 		</div>
 	}
 }

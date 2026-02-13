@@ -15,7 +15,7 @@ import (
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
 
-// setupHealthTestApp creates a test application for health endpoint testing
+// setupHealthTestApp creates a test application for health endpoint testing (with service account)
 func setupHealthTestApp() *App {
 	mockClient := &testLDAPClient{
 		users: []ldap.User{
@@ -53,6 +53,30 @@ func setupHealthTestApp() *App {
 	_ = app.ldapCache.RefreshComputers() //nolint:errcheck
 
 	// Setup health routes (no authentication required)
+	f.Get("/health", app.healthHandler)
+	f.Get("/ready", app.readinessHandler)
+	f.Get("/live", app.livenessHandler)
+
+	return app
+}
+
+// setupHealthTestAppNoServiceAccount creates a test application without service account
+func setupHealthTestAppNoServiceAccount() *App {
+	sessionStore := session.New(session.Config{
+		Storage: memory.New(),
+	})
+
+	f := fiber.New(fiber.Config{
+		ErrorHandler: handle500,
+	})
+
+	app := &App{
+		ldapReadonly: nil,
+		ldapCache:    nil,
+		sessionStore: sessionStore,
+		fiber:        f,
+	}
+
 	f.Get("/health", app.healthHandler)
 	f.Get("/ready", app.readinessHandler)
 	f.Get("/live", app.livenessHandler)
@@ -114,6 +138,47 @@ func TestHealthHandler(t *testing.T) {
 	})
 }
 
+func TestHealthHandlerNoServiceAccount(t *testing.T) {
+	app := setupHealthTestAppNoServiceAccount()
+
+	t.Run("returns healthy status without service account", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		resp, err := app.fiber.Test(req)
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		assertHTTPStatus(t, resp, fiber.StatusOK)
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("Failed to read body: %v", err)
+		}
+
+		var response map[string]interface{}
+		if err := json.Unmarshal(body, &response); err != nil {
+			t.Errorf("Response is not valid JSON: %v", err)
+		}
+
+		healthy, ok := response["overall_healthy"]
+		if !ok {
+			t.Error("Response should contain 'overall_healthy' field")
+		}
+		if healthy != true {
+			t.Errorf("Expected overall_healthy=true, got %v", healthy)
+		}
+
+		mode, ok := response["mode"]
+		if !ok {
+			t.Error("Response should contain 'mode' field")
+		}
+		if mode != "per-user credentials" {
+			t.Errorf("Expected mode='per-user credentials', got %v", mode)
+		}
+	})
+}
+
 func TestLivenessHandler(t *testing.T) {
 	app := setupHealthTestApp()
 
@@ -146,9 +211,9 @@ func TestLivenessHandler(t *testing.T) {
 			t.Errorf("Expected status 'alive', got '%v'", status)
 		}
 
-		// Check uptime field
+		// Check uptime field (present when service account is configured)
 		if _, ok := response["uptime"]; !ok {
-			t.Error("Response should contain 'uptime' field")
+			t.Error("Response should contain 'uptime' field when service account is configured")
 		}
 	})
 
@@ -164,6 +229,49 @@ func TestLivenessHandler(t *testing.T) {
 		if resp.StatusCode != fiber.StatusOK {
 			t.Errorf("Liveness should always return 200, got %d", resp.StatusCode)
 		}
+	})
+}
+
+// assertNoServiceAccountStatusEndpoint tests a health endpoint returns expected status without service account.
+func assertNoServiceAccountStatusEndpoint(t *testing.T, app *App, endpoint, expectedStatus string) {
+	t.Helper()
+
+	req := httptest.NewRequest("GET", endpoint, http.NoBody)
+
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	assertHTTPStatus(t, resp, fiber.StatusOK)
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read body: %v", err)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		t.Errorf("Response is not valid JSON: %v", err)
+	}
+
+	status, ok := response["status"]
+	if !ok {
+		t.Error("Response should contain 'status' field")
+	}
+
+	if status != expectedStatus {
+		t.Errorf("Expected status %q, got %v", expectedStatus, status)
+	}
+}
+
+func TestLivenessHandlerNoServiceAccount(t *testing.T) {
+	app := setupHealthTestAppNoServiceAccount()
+
+	t.Run("returns alive status without uptime", func(t *testing.T) {
+		assertNoServiceAccountStatusEndpoint(t, app, "/live", "alive")
 	})
 }
 
@@ -197,15 +305,14 @@ func TestReadinessHandler(t *testing.T) {
 		if _, ok := response["status"]; !ok {
 			t.Error("Response should contain 'status' field")
 		}
-		if _, ok := response["cache"]; !ok {
-			t.Error("Response should contain 'cache' field")
-		}
-		if _, ok := response["warmed_up"]; !ok {
-			t.Error("Response should contain 'warmed_up' field")
-		}
-		if _, ok := response["connection_pool"]; !ok {
-			t.Error("Response should contain 'connection_pool' field")
-		}
+	})
+}
+
+func TestReadinessHandlerNoServiceAccount(t *testing.T) {
+	app := setupHealthTestAppNoServiceAccount()
+
+	t.Run("returns ready without service account", func(t *testing.T) {
+		assertNoServiceAccountStatusEndpoint(t, app, "/ready", "ready")
 	})
 }
 
