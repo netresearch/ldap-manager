@@ -1,6 +1,6 @@
 # AGENTS.md (root)
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
 
 This file explains repo-wide conventions and where to find scoped rules.
 **Precedence:** the **closest `AGENTS.md`** to the files you're changing wins. Root holds global defaults only.
@@ -46,13 +46,13 @@ make lint-security  # Security vulnerability checks
 
 ## Index of scoped AGENTS.md
 
-| Scope   | Path                                               | Purpose                                     |
-| ------- | -------------------------------------------------- | ------------------------------------------- |
-| CLI     | [`cmd/AGENTS.md`](cmd/AGENTS.md)                   | CLI entry point and main package            |
-| Core    | [`internal/AGENTS.md`](internal/AGENTS.md)         | Core application logic, LDAP client, config |
-| Web     | [`internal/web/AGENTS.md`](internal/web/AGENTS.md) | HTTP handlers, templates, middleware        |
-| Scripts | [`scripts/AGENTS.md`](scripts/AGENTS.md)           | Build scripts and tooling                   |
-| Docs    | [`docs/AGENTS.md`](docs/AGENTS.md)                 | Documentation standards                     |
+| Scope   | Path                                                 | Purpose                                     |
+| ------- | ---------------------------------------------------- | ------------------------------------------- |
+| CLI     | [`cmd/AGENTS.md`](./cmd/AGENTS.md)                   | CLI entry point and main package            |
+| Core    | [`internal/AGENTS.md`](./internal/AGENTS.md)         | Core application logic, LDAP client, config |
+| Web     | [`internal/web/AGENTS.md`](./internal/web/AGENTS.md) | HTTP handlers, templates, middleware        |
+| Scripts | [`scripts/AGENTS.md`](./scripts/AGENTS.md)           | Build scripts and tooling                   |
+| Docs    | [`docs/AGENTS.md`](./docs/AGENTS.md)                 | Documentation standards                     |
 
 ## When instructions conflict
 

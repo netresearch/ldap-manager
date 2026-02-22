@@ -1,6 +1,6 @@
 # AGENTS.md — internal/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
 
 ## Overview
 
@@ -310,7 +310,7 @@ if err := client.Search(filter); err != nil {
 return errors.New("search failed") // No context - where? why?
 ```
 
-## When You're Stuck
+## When stuck
 
 1. **LDAP operations**: Check `internal/ldap/` for existing patterns
 2. **Configuration**: See `internal/options/options.go` for struct tags and flag definitions

@@ -1,6 +1,6 @@
 # AGENTS.md — internal/web/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
 
 ## Overview
 
@@ -409,7 +409,7 @@ sess.Set("user_id", user.ID)
 sess.Save()
 ```
 
-## When You're Stuck
+## When stuck
 
 1. **Routing**: Check `server.go` for route setup patterns
 2. **Handlers**: Review existing handlers in `users.go`, `groups.go`, `auth.go`

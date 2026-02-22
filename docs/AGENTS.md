@@ -1,6 +1,6 @@
 # AGENTS.md — docs/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
 
 ## Overview
 
@@ -212,8 +212,60 @@ After taking screenshots:
 docker compose --profile dev down
 ```
 
-## Code Style and Conventions
+## Setup
+
+No special setup beyond the root-level dev environment. See root `README.md`.
+
+## Build & Tests
+
+```bash
+# Verify documentation renders correctly
+# Screenshots are in docs/assets/ - use Playwright MCP to capture
+docker compose --profile dev up -d   # Start dev environment
+docker compose --profile dev down    # Cleanup after screenshots
+```
+
+## Security
+
+- Never include real credentials, passwords, or tokens in documentation or screenshots
+- Use test data with generic passwords (e.g., `password`) for screenshots
+- Redact sensitive information from example LDAP queries
+
+## Code Style
 
 - Follow existing patterns in the codebase
 - Use conventional commits for commit messages
 - Run `make check` before committing to ensure tests pass
+
+## PR & Commit Checklist
+
+- [ ] Screenshots are current and match the UI
+- [ ] All example commands are tested and working
+- [ ] No real credentials in documentation
+- [ ] Image references in README.md point to correct paths
+
+## Examples
+
+### Taking screenshots
+
+See "Creating and Updating Screenshots" section above for the complete workflow.
+
+### Good: Referencing screenshots
+
+```markdown
+<img src="./docs/assets/ldap_manager_users.png" height="256" alt="Users List">
+```
+
+### Bad: Missing alt text or wrong paths
+
+```markdown
+![](screenshots/users.png) <!-- Wrong path, no alt text -->
+```
+
+## When stuck
+
+1. **Screenshots not loading**: Check file paths in `docs/assets/` and README references
+2. **LDAP data missing**: Verify dev LDAP server has test data seeded
+3. **Groups not showing**: Ensure `objectClass: groupOfNames` (not `posixGroup`)
+4. **Port conflicts**: Modify `compose.yml` port mapping temporarily
+5. **Cache issues**: Wait 35 seconds for LDAP cache refresh after data changes
