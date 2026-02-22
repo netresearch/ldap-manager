@@ -1,6 +1,6 @@
 # AGENTS.md — scripts/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-01-16 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
 
 ## Overview
 
@@ -191,7 +191,7 @@ console.log("starting"); // No context or visual indicators
 console.log(hashedCssName); // Just dumps values
 ```
 
-## When You're Stuck
+## When stuck
 
 1. **Script not executing**: Check shebang and file permissions (`chmod +x scripts/*.mjs`)
 2. **Import errors**: Verify using ESM syntax and package.json has `"type": "module"`
