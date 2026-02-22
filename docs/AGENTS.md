@@ -259,7 +259,7 @@ See "Creating and Updating Screenshots" section above for the complete workflow.
 ### Bad: Missing alt text or wrong paths
 
 ```markdown
-![](screenshots/users.png)  <!-- Wrong path, no alt text -->
+![](screenshots/users.png) <!-- Wrong path, no alt text -->
 ```
 
 ## When stuck

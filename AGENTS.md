@@ -46,8 +46,8 @@ make lint-security  # Security vulnerability checks
 
 ## Index of scoped AGENTS.md
 
-| Scope   | Path                                               | Purpose                                     |
-| ------- | -------------------------------------------------- | ------------------------------------------- |
+| Scope   | Path                                                 | Purpose                                     |
+| ------- | ---------------------------------------------------- | ------------------------------------------- |
 | CLI     | [`cmd/AGENTS.md`](./cmd/AGENTS.md)                   | CLI entry point and main package            |
 | Core    | [`internal/AGENTS.md`](./internal/AGENTS.md)         | Core application logic, LDAP client, config |
 | Web     | [`internal/web/AGENTS.md`](./internal/web/AGENTS.md) | HTTP handlers, templates, middleware        |
