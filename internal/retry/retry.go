@@ -91,10 +91,7 @@ func DoWithConfig(ctx context.Context, config Config, operation func() error) er
 		}
 
 		// Calculate next delay with exponential backoff
-		delay = time.Duration(float64(delay) * config.Multiplier)
-		if delay > config.MaxDelay {
-			delay = config.MaxDelay
-		}
+		delay = min(time.Duration(float64(delay)*config.Multiplier), config.MaxDelay)
 	}
 
 	log.Error().

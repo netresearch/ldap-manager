@@ -105,9 +105,7 @@ func TestCache_ConcurrentWriteDuringRead(t *testing.T) {
 
 	// Concurrent readers
 	for range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 100 {
 				// Read operations should not panic
 				_ = cache.Get()
@@ -115,14 +113,12 @@ func TestCache_ConcurrentWriteDuringRead(t *testing.T) {
 				_, _ = cache.FindByDN("cn=user0,dc=example,dc=com")
 				_ = cache.Filter(func(m mockCacheable) bool { return true })
 			}
-		}()
+		})
 	}
 
 	// Concurrent writers
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := range 50 {
 				newItems := make([]mockCacheable, 100)
 				for k := range 100 {
@@ -133,7 +129,7 @@ func TestCache_ConcurrentWriteDuringRead(t *testing.T) {
 				}
 				cache.setAll(newItems)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -287,14 +283,12 @@ func TestMetrics_ConcurrentAccess(t *testing.T) {
 
 	// Concurrent cache hit/miss recording
 	for range 100 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 1000 {
 				metrics.RecordCacheHit()
 				metrics.RecordCacheMiss()
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -549,21 +543,17 @@ func TestCache_ConcurrentIndexAccess(t *testing.T) {
 
 	// Concurrent FindByDN operations
 	for range 50 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := range 100 {
 				dn := "cn=user" + strconv.Itoa(j) + ",dc=example,dc=com"
 				cache.FindByDN(dn)
 			}
-		}()
+		})
 	}
 
 	// Concurrent setAll operations (index rebuilding)
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 10 {
 				newItems := make([]mockCacheable, 50)
 				for k := range 50 {
@@ -574,7 +564,7 @@ func TestCache_ConcurrentIndexAccess(t *testing.T) {
 				}
 				cache.setAll(newItems)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

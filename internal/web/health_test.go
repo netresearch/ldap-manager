@@ -82,7 +82,7 @@ func TestHealthHandler(t *testing.T) {
 			t.Fatalf("Failed to read body: %v", err)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(body, &response); err != nil {
 			t.Errorf("Response is not valid JSON: %v", err)
 		}
@@ -132,7 +132,7 @@ func TestLivenessHandler(t *testing.T) {
 			t.Fatalf("Failed to read body: %v", err)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(body, &response); err != nil {
 			t.Errorf("Response is not valid JSON: %v", err)
 		}
@@ -188,7 +188,7 @@ func TestReadinessHandler(t *testing.T) {
 			t.Fatalf("Failed to read body: %v", err)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(body, &response); err != nil {
 			t.Errorf("Response is not valid JSON: %v", err)
 		}

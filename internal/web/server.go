@@ -345,7 +345,7 @@ func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 func (a *App) poolStatsHandler(c *fiber.Ctx) error {
 	stats := a.ldapReadonly.GetPoolStats()
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"stats":   stats,
 		"message": "Connection pooling is disabled - each operation creates a fresh connection",
 	}

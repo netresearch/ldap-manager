@@ -11,7 +11,7 @@ import (
 func BenchmarkFindBySAMAccountName_LinearSearch(b *testing.B) {
 	// Create test data using mock users
 	users := make([]ldap.User, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
 		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
 	}
@@ -37,7 +37,7 @@ func BenchmarkFindBySAMAccountName_LinearSearch(b *testing.B) {
 // createUserCache creates a cache populated with users for benchmarking
 func createUserCache(count int) *Cache[ldap.User] {
 	users := make([]ldap.User, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
 		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
 	}
@@ -91,7 +91,7 @@ func BenchmarkFindBySAMAccountName_Scale50k(b *testing.B) {
 func BenchmarkCacheUpdate_IndexRebuild(b *testing.B) {
 	// Create test data using mock users
 	users := make([]ldap.User, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
 		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
 	}
@@ -113,7 +113,7 @@ func BenchmarkCacheUpdate_IndexRebuild(b *testing.B) {
 func BenchmarkMemoryOverhead(b *testing.B) {
 	// This benchmark helps understand memory overhead of indexing
 	users := make([]ldap.User, 10000)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		dn := fmt.Sprintf("CN=user%d,OU=Users,DC=example,DC=com", i)
 		users[i] = NewMockUser(dn, fmt.Sprintf("user%d", i), true, []string{})
 	}
@@ -131,7 +131,7 @@ func BenchmarkMemoryOverhead(b *testing.B) {
 // BenchmarkComputers_FindBySAMAccountName tests computer lookups by SAMAccountName
 func BenchmarkComputers_FindBySAMAccountName(b *testing.B) {
 	computers := make([]ldap.Computer, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		dn := fmt.Sprintf("CN=computer%d,OU=Computers,DC=example,DC=com", i)
 		computers[i] = NewMockComputer(dn, fmt.Sprintf("computer%d$", i), true, []string{})
 	}

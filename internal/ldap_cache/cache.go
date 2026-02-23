@@ -21,7 +21,7 @@ func getSAMAccountName(item any) string {
 	v := reflect.ValueOf(item)
 
 	// Handle pointers by dereferencing
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return ""
 		}

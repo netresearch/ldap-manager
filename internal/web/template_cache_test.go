@@ -221,7 +221,7 @@ func BenchmarkTemplateCacheGet(b *testing.B) {
 
 	// Pre-populate cache
 	content := []byte(strings.Repeat("test content ", 100))
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		key := strings.Repeat("k", i%10+1)
 		cache.Set(key, content, 0)
 	}

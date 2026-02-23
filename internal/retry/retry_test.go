@@ -204,7 +204,7 @@ func TestAddJitter(t *testing.T) {
 	fraction := 0.2
 
 	// Run multiple times to verify jitter is applied
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		result := addJitter(duration, fraction)
 		if result < duration {
 			t.Errorf("jittered duration should be >= original: %v < %v", result, duration)
