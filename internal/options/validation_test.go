@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,11 +29,11 @@ func TestEnvStringOrDefault_EdgeCases(t *testing.T) {
 
 	t.Run("very long string value", func(t *testing.T) {
 		// Create a long string (10000 'x' characters)
-		longValue := ""
+		var longValue strings.Builder
 		for range 1000 {
-			longValue += "xxxxxxxxxx"
+			longValue.WriteString("xxxxxxxxxx")
 		}
-		cleanup := setEnvVar(t, "TEST_LONG", longValue)
+		cleanup := setEnvVar(t, "TEST_LONG", longValue.String())
 		defer cleanup()
 
 		result := envStringOrDefault("TEST_LONG", "default")

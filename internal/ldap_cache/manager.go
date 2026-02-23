@@ -7,6 +7,7 @@ package ldap_cache
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -193,7 +194,7 @@ func (m *Manager) WarmupCache() {
 	// Collect results
 	totalEntities := 0
 	hasErrors := false
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		result := <-results
 		if result.err != nil {
 			log.Error().Err(result.err).Str("cache", result.name).Msg("Failed to warm up cache")
@@ -423,12 +424,8 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 	// Iterate through all groups and check if user is a member
 	// This approach works regardless of whether memberOf overlay is enabled
 	for _, group := range m.Groups.Get() {
-		for _, memberDN := range group.Members {
-			if memberDN == userDN {
-				full.Groups = append(full.Groups, group)
-
-				break
-			}
+		if slices.Contains(group.Members, userDN) {
+			full.Groups = append(full.Groups, group)
 		}
 	}
 
@@ -485,12 +482,8 @@ func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPCo
 	// Iterate through all groups and check if computer is a member
 	// This approach works regardless of whether memberOf overlay is enabled
 	for _, group := range m.Groups.Get() {
-		for _, memberDN := range group.Members {
-			if memberDN == computerDN {
-				full.Groups = append(full.Groups, group)
-
-				break
-			}
+		if slices.Contains(group.Members, computerDN) {
+			full.Groups = append(full.Groups, group)
 		}
 	}
 

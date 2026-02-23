@@ -53,14 +53,12 @@ func TestTemplateCacheConcurrentAccess(t *testing.T) {
 
 	// Concurrent invalidators
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 10 {
 				cache.Invalidate("*")
 				time.Sleep(10 * time.Millisecond)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -94,8 +94,8 @@ func TestEnvDurationOrDefault(t *testing.T) {
 			t.Error("Expected error for invalid duration, got nil")
 		}
 
-		var validationErr ValidationError
-		if !errors.As(err, &validationErr) {
+		validationErr, ok := errors.AsType[ValidationError](err)
+		if !ok {
 			t.Errorf("Expected ValidationError, got %T", err)
 		}
 		if validationErr.Field != "TEST_DURATION" {
@@ -137,8 +137,8 @@ func TestEnvLogLevelOrDefault(t *testing.T) {
 			t.Error("Expected error for invalid log level, got nil")
 		}
 
-		var validationErr ValidationError
-		if !errors.As(err, &validationErr) {
+		validationErr, ok := errors.AsType[ValidationError](err)
+		if !ok {
 			t.Errorf("Expected ValidationError, got %T", err)
 		}
 		if validationErr.Field != "TEST_LOG_LEVEL" {
@@ -201,8 +201,8 @@ func TestEnvBoolOrDefault(t *testing.T) {
 			t.Error("Expected error for invalid bool, got nil")
 		}
 
-		var validationErr ValidationError
-		if !errors.As(err, &validationErr) {
+		validationErr, ok := errors.AsType[ValidationError](err)
+		if !ok {
 			t.Errorf("Expected ValidationError, got %T", err)
 		}
 		if validationErr.Field != "TEST_BOOL" {
@@ -268,8 +268,8 @@ func TestEnvIntOrDefault(t *testing.T) {
 			t.Error("Expected error for invalid int, got nil")
 		}
 
-		var validationErr ValidationError
-		if !errors.As(err, &validationErr) {
+		validationErr, ok := errors.AsType[ValidationError](err)
+		if !ok {
 			t.Errorf("Expected ValidationError, got %T", err)
 		}
 		if validationErr.Field != "TEST_INT" {
@@ -294,8 +294,8 @@ func TestValidateRequired(t *testing.T) {
 			t.Error("Expected error for empty value, got nil")
 		}
 
-		var validationErr ValidationError
-		if !errors.As(err, &validationErr) {
+		validationErr, ok := errors.AsType[ValidationError](err)
+		if !ok {
 			t.Errorf("Expected ValidationError, got %T", err)
 		}
 		if validationErr.Field != "test-field" {
