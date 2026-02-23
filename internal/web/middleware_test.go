@@ -568,7 +568,6 @@ func TestConcurrentSessionAccess(t *testing.T) {
 
 	for range 10 {
 		wg.Go(func() {
-
 			req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
 			for _, cookie := range cookies {
 				req.AddCookie(cookie)
