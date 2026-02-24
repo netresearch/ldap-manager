@@ -9,7 +9,7 @@ require (
 	github.com/gofiber/storage/memory/v2 v2.1.1
 	github.com/joho/godotenv v1.5.1
 	github.com/netresearch/simple-ldap-go v1.8.0
-	github.com/playwright-community/playwright-go v0.5700.0
+	github.com/playwright-community/playwright-go v0.5700.1
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
