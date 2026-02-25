@@ -16,7 +16,7 @@ importers:
         version: 4.2.1
       autoprefixer:
         specifier: ^10.4.21
-        version: 10.4.25(postcss@8.5.6)
+        version: 10.4.27(postcss@8.5.6)
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
@@ -203,8 +203,8 @@ packages:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
 
-  autoprefixer@10.4.25:
-    resolution: {integrity: sha512-haPdJifHzYbmnDxx0be44kvj89RWIe+1DZBUyM5BIsT/1bpI5pwK+v30cqz+EfxsxanHq8q2YUvy7LfdRXd/rQ==}
+  autoprefixer@10.4.27:
+    resolution: {integrity: sha512-NP9APE+tO+LuJGn7/9+cohklunJsXWiaWEfV3si4Gi/XHDwVNgkwr1J3RQYFIvPy76GmJ9/bW8vyoU1LcxwKHA==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
@@ -1214,7 +1214,7 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  autoprefixer@10.4.25(postcss@8.5.6):
+  autoprefixer@10.4.27(postcss@8.5.6):
     dependencies:
       browserslist: 4.28.1
       caniuse-lite: 1.0.30001774
@@ -1338,7 +1338,7 @@ snapshots:
 
   cssnano-preset-advanced@7.0.10(postcss@8.5.6):
     dependencies:
-      autoprefixer: 10.4.25(postcss@8.5.6)
+      autoprefixer: 10.4.27(postcss@8.5.6)
       browserslist: 4.27.0
       cssnano-preset-default: 7.0.10(postcss@8.5.6)
       postcss: 8.5.6
