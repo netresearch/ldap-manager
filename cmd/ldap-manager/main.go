@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,9 +27,26 @@ const (
 )
 
 func main() {
-	// Handle --health-check flag early, before any other initialization
-	if len(os.Args) == 2 && os.Args[1] == "--health-check" {
-		os.Exit(runHealthCheck())
+	// Handle version and health-check flags early, before any other initialization
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "version", "--version":
+			if len(os.Args) == 3 && os.Args[2] == "--json" {
+				info := map[string]string{
+					"version":   version.Version,
+					"commit":    version.CommitHash,
+					"buildTime": version.BuildTimestamp,
+				}
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				_ = enc.Encode(info)
+				os.Exit(0)
+			}
+			fmt.Println(version.FormatVersion())
+			os.Exit(0)
+		case "--health-check":
+			os.Exit(runHealthCheck())
+		}
 	}
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
