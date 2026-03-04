@@ -3,11 +3,13 @@ package web
 // HTTP handlers for user management endpoints.
 
 import (
+	"errors"
 	"net/url"
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -60,6 +62,12 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 
 	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
 	if err != nil {
+		if errors.Is(err, ldap.ErrUserNotFound) {
+			c.Status(fiber.StatusNotFound)
+
+			return a.fourOhFourHandler(c)
+		}
+
 		return handle500(c, err)
 	}
 
@@ -89,7 +97,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	if form.RemoveGroup == nil && form.AddGroup == nil {
-		return c.Redirect("/users/" + userDN)
+		return c.Redirect("/users/" + url.PathEscape(userDN))
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -100,11 +108,13 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 
 	// Perform the user modification using the logged-in user's LDAP connection
 	if err := a.performUserModification(userLDAP, &form, userDN); err != nil {
-		return a.renderUserWithFlash(c, userLDAP, userDN, templates.ErrorFlash("Failed to modify: "+err.Error()))
+		log.Warn().Err(err).Str("userDN", userDN).Msg("failed to modify user")
+
+		return a.renderUserWithFlash(c, userLDAP, userDN, templates.ErrorFlash("Failed to modify user membership"))
 	}
 
 	// Invalidate template cache after successful modification
-	a.invalidateTemplateCacheOnUserModification(userDN)
+	a.invalidateTemplateCacheOnModification()
 
 	// Render success response
 	return a.renderUserWithFlash(c, userLDAP, userDN, templates.SuccessFlash("Successfully modified user"))
@@ -117,7 +127,7 @@ func (a *App) loadUserDataFromLDAP(userLDAP *ldap.LDAP, userDN string) (*ldap_ca
 		return nil, nil, err
 	}
 
-	user, err := findByDN(allUsers, userDN)
+	user, err := findUserByDN(allUsers, userDN)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -158,20 +168,31 @@ func (a *App) renderUserWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, userDN stri
 
 // filterUnassignedGroups returns groups the user is not a member of.
 func filterUnassignedGroups(allGroups []ldap.Group, user *ldap_cache.FullLDAPUser) []ldap.Group {
-	memberGroupDNS := make(map[string]struct{}, len(user.Groups))
+	memberGroupDNs := make(map[string]struct{}, len(user.Groups))
 	for _, g := range user.Groups {
-		memberGroupDNS[g.DN()] = struct{}{}
+		memberGroupDNs[g.DN()] = struct{}{}
 	}
 
 	result := make([]ldap.Group, 0)
 
 	for _, g := range allGroups {
-		if _, isMember := memberGroupDNS[g.DN()]; !isMember {
+		if _, isMember := memberGroupDNs[g.DN()]; !isMember {
 			result = append(result, g)
 		}
 	}
 
 	return result
+}
+
+// findUserByDN searches for a user by DN in a slice.
+func findUserByDN(users []ldap.User, dn string) (*ldap.User, error) {
+	for i := range users {
+		if users[i].DN() == dn {
+			return &users[i], nil
+		}
+	}
+
+	return nil, ldap.ErrUserNotFound
 }
 
 // performUserModification handles the actual LDAP user modification operation.
@@ -199,17 +220,9 @@ func (a *App) performUserModification(
 	return nil
 }
 
-// invalidateTemplateCacheOnUserModification invalidates relevant cache entries after user modification
-func (a *App) invalidateTemplateCacheOnUserModification(userDN string) {
-	// Invalidate the specific user page
-	a.invalidateTemplateCache("/users/" + userDN)
-
-	// Invalidate users list page (counts may have changed)
-	a.invalidateTemplateCache("/users")
-
-	// Invalidate groups pages (group membership may have changed)
-	a.invalidateTemplateCache("/groups")
-
-	// Clear all cache entries for safety (this could be optimized further)
+// invalidateTemplateCacheOnModification clears the template cache after any modification.
+// Membership changes can affect multiple pages, so we clear the entire cache.
+func (a *App) invalidateTemplateCacheOnModification() {
 	a.templateCache.Clear()
+	log.Debug().Msg("Template cache cleared after modification")
 }

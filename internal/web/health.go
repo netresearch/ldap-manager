@@ -81,11 +81,16 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	status, reason := a.getReadinessStatus(isCacheHealthy, isWarmedUp, isPoolHealthy)
 	c.Status(fiber.StatusServiceUnavailable)
 
+	poolStatus := "unhealthy"
+	if isPoolHealthy {
+		poolStatus = "healthy"
+	}
+
 	return c.JSON(fiber.Map{
 		"status":          status,
 		"cache":           reason,
 		"warmed_up":       isWarmedUp,
-		"connection_pool": "unhealthy",
+		"connection_pool": poolStatus,
 	})
 }
 

@@ -18,12 +18,28 @@ These settings must be configured for LDAP Manager to function:
 
 ### LDAP Connection Settings
 
-| Setting           | Environment Variable     | CLI Flag              | Description                            | Example                       |
-| ----------------- | ------------------------ | --------------------- | -------------------------------------- | ----------------------------- |
-| LDAP Server       | `LDAP_SERVER`            | `--ldap-server`       | LDAP server URI with protocol and port | `ldaps://dc1.example.com:636` |
-| Base DN           | `LDAP_BASE_DN`           | `--base-dn`           | Base Distinguished Name for searches   | `DC=example,DC=com`           |
-| Readonly User     | `LDAP_READONLY_USER`     | `--readonly-user`     | Service account username               | `readonly`                    |
-| Readonly Password | `LDAP_READONLY_PASSWORD` | `--readonly-password` | Service account password               | `secure_password123`          |
+| Setting           | Environment Variable     | CLI Flag              | Description                            | Example                       | Required |
+| ----------------- | ------------------------ | --------------------- | -------------------------------------- | ----------------------------- | -------- |
+| LDAP Server       | `LDAP_SERVER`            | `--ldap-server`       | LDAP server URI with protocol and port | `ldaps://dc1.example.com:636` | Yes      |
+| Base DN           | `LDAP_BASE_DN`           | `--base-dn`           | Base Distinguished Name for searches   | `DC=example,DC=com`           | Yes      |
+| Readonly User     | `LDAP_READONLY_USER`     | `--readonly-user`     | Service account username               | `readonly`                    | No       |
+| Readonly Password | `LDAP_READONLY_PASSWORD` | `--readonly-password` | Service account password               | `secure_password123`          | No       |
+
+### Operating Modes
+
+LDAP Manager supports two operating modes based on whether a service account is configured:
+
+**Service Account Mode** (both `LDAP_READONLY_USER` and `LDAP_READONLY_PASSWORD` set):
+- Background cache refreshes LDAP data every 30 seconds
+- Health checks verify LDAP connectivity
+- Service account used for initial user lookup during authentication
+
+**Per-User Credentials Mode** (no service account configured):
+- Each request uses the logged-in user's own LDAP credentials
+- No background cache (data fetched fresh per request)
+- Health checks report simplified status
+- Requires Active Directory with UPN-based authentication (`user@domain`)
+- Users must have sufficient LDAP permissions to read directory data
 
 ### LDAP Server URI Format
 
@@ -169,6 +185,24 @@ LDAP_IS_AD=true
 LOG_LEVEL=warn
 PERSIST_SESSIONS=true
 SESSION_PATH=/data/sessions.bbolt
+SESSION_DURATION=30m
+```
+
+### Per-User Credentials (No Service Account)
+
+For Active Directory environments where each user authenticates with their own credentials:
+
+```bash
+# .env.local
+LDAP_SERVER=ldaps://dc1.ad.example.com:636
+LDAP_BASE_DN=DC=ad,DC=example,DC=com
+LDAP_IS_AD=true
+
+# No LDAP_READONLY_USER or LDAP_READONLY_PASSWORD
+# Users authenticate with their own AD credentials via UPN (user@domain)
+
+LOG_LEVEL=info
+PERSIST_SESSIONS=true
 SESSION_DURATION=30m
 ```
 

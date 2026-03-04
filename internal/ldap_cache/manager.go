@@ -9,6 +9,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -40,9 +41,9 @@ type Manager struct {
 
 	client          LDAPClient    // LDAP client for directory operations
 	metrics         *Metrics      // Performance metrics and health monitoring
-	refreshInterval time.Duration // Configurable refresh interval (default 30s)
-	warmupComplete  bool          // Tracks if initial cache warming is complete
-	retryConfig     retry.Config  // Retry configuration for LDAP operations
+	refreshInterval time.Duration  // Configurable refresh interval (default 30s)
+	warmupComplete  atomic.Bool    // Tracks if initial cache warming is complete (concurrent-safe)
+	retryConfig     retry.Config   // Retry configuration for LDAP operations
 
 	Users     Cache[ldap.User]     // Cached user entries with O(1) indexed lookups
 	Groups    Cache[ldap.Group]    // Cached group entries with O(1) indexed lookups
@@ -95,7 +96,6 @@ func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 		client:          client,
 		metrics:         metrics,
 		refreshInterval: refreshInterval,
-		warmupComplete:  false,
 		retryConfig:     retry.LDAPConfig(),
 		Users:           NewCachedWithMetrics[ldap.User](metrics),
 		Groups:          NewCachedWithMetrics[ldap.Group](metrics),
@@ -209,7 +209,7 @@ func (m *Manager) WarmupCache() {
 	duration := time.Since(startTime)
 
 	if !hasErrors {
-		m.warmupComplete = true
+		m.warmupComplete.Store(true)
 		m.metrics.RecordRefreshComplete(startTime, m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 		log.Info().
 			Int("total_entities", totalEntities).
@@ -226,7 +226,7 @@ func (m *Manager) WarmupCache() {
 // IsWarmedUp returns true if the initial cache warming process has completed successfully.
 // Used to determine if the cache is ready to serve requests optimally.
 func (m *Manager) IsWarmedUp() bool {
-	return m.warmupComplete
+	return m.warmupComplete.Load()
 }
 
 // RefreshUsers fetches all users from LDAP and updates the user cache.

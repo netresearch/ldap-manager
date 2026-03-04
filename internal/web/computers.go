@@ -64,7 +64,9 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 
 	computer := findComputerByDN(computers, computerDN)
 	if computer == nil {
-		return handle500(c, ldap.ErrComputerNotFound)
+		c.Status(fiber.StatusNotFound)
+
+		return a.fourOhFourHandler(c)
 	}
 
 	groups, err := userLDAP.FindGroups()

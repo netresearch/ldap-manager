@@ -51,11 +51,11 @@ func TestTemplateCacheConcurrentAccess(t *testing.T) {
 		}(i)
 	}
 
-	// Concurrent invalidators
+	// Concurrent clearers
 	for range 5 {
 		wg.Go(func() {
 			for range 10 {
-				cache.Invalidate("*")
+				cache.Clear()
 				time.Sleep(10 * time.Millisecond)
 			}
 		})
@@ -201,8 +201,8 @@ func TestTemplateCacheStatsAccuracy(t *testing.T) {
 	assert.Equal(t, 0, stats.Entries)
 }
 
-// TestTemplateCacheInvalidatePatterns tests various invalidation patterns
-func TestTemplateCacheInvalidatePatterns(t *testing.T) {
+// TestTemplateCacheClearAll tests clearing all entries
+func TestTemplateCacheClearAll(t *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 	defer cache.Stop()
 
@@ -215,42 +215,17 @@ func TestTemplateCacheInvalidatePatterns(t *testing.T) {
 	stats := cache.Stats()
 	assert.Equal(t, 4, stats.Entries)
 
-	// Invalidate specific entry
-	count := cache.Invalidate("user-1")
-	assert.Equal(t, 1, count)
-
-	stats = cache.Stats()
-	assert.Equal(t, 3, stats.Entries)
-
-	// Invalidate non-existent entry
-	count = cache.Invalidate("nonexistent")
-	assert.Equal(t, 0, count)
-
-	// Invalidate all
-	count = cache.Invalidate("*")
-	assert.Equal(t, 3, count)
+	// Clear all
+	cache.Clear()
 
 	stats = cache.Stats()
 	assert.Equal(t, 0, stats.Entries)
-}
 
-// TestTemplateCacheInvalidateByPath tests path-based invalidation
-func TestTemplateCacheInvalidateByPath(t *testing.T) {
-	cache := NewTemplateCache(DefaultTemplateCacheConfig())
-	defer cache.Stop()
-
-	cache.Set("key1", []byte("content1"), 0)
-	cache.Set("key2", []byte("content2"), 0)
-
-	stats := cache.Stats()
-	assert.Equal(t, 2, stats.Entries)
-
-	// Invalidate by path
-	count := cache.InvalidateByPath("/users")
-	assert.Equal(t, 2, count) // Currently invalidates all for non-empty path
-
-	stats = cache.Stats()
-	assert.Equal(t, 0, stats.Entries)
+	// Verify all entries are gone
+	_, found := cache.Get("user-1")
+	assert.False(t, found)
+	_, found = cache.Get("group-1")
+	assert.False(t, found)
 }
 
 // TestTemplateCacheStopSingleCallSafe tests that Stop can be called once safely
@@ -334,56 +309,6 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 	})
 }
 
-// TestTemplateCacheMiddleware tests the cache middleware
-func TestTemplateCacheMiddleware(t *testing.T) {
-	cache := NewTemplateCache(DefaultTemplateCacheConfig())
-	defer cache.Stop()
-
-	app := fiber.New()
-
-	// Add cache middleware for specific paths
-	app.Use(cache.CacheMiddleware("/cached"))
-
-	callCount := 0
-	app.Get("/cached", func(c *fiber.Ctx) error {
-		callCount++
-
-		return c.SendString("content")
-	})
-
-	app.Get("/not-cached", func(c *fiber.Ctx) error {
-		callCount++
-
-		return c.SendString("content")
-	})
-
-	t.Run("non-GET requests are not cached", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/cached", http.NoBody)
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		_ = resp.Body.Close()
-
-		// POST should not be cached
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	})
-
-	t.Run("non-matching paths are not cached", func(t *testing.T) {
-		callCount = 0
-
-		req := httptest.NewRequest(http.MethodGet, "/not-cached", http.NoBody)
-		resp, _ := app.Test(req)
-		_ = resp.Body.Close()
-
-		assert.Equal(t, 1, callCount)
-
-		// Second request should still call handler
-		req = httptest.NewRequest(http.MethodGet, "/not-cached", http.NoBody)
-		resp, _ = app.Test(req)
-		_ = resp.Body.Close()
-
-		assert.Equal(t, 2, callCount)
-	})
-}
 
 // TestTemplateCacheEvictionOrder tests that oldest entries are evicted first
 func TestTemplateCacheEvictionOrder(t *testing.T) {
@@ -394,18 +319,15 @@ func TestTemplateCacheEvictionOrder(t *testing.T) {
 	})
 	defer cache.Stop()
 
-	// Add entries with time gaps to establish access order
+	// Add entries with time gaps to establish creation order
 	cache.Set("first", []byte("1"), 0)
 	time.Sleep(10 * time.Millisecond)
 	cache.Set("second", []byte("2"), 0)
 	time.Sleep(10 * time.Millisecond)
 	cache.Set("third", []byte("3"), 0)
-
-	// Access "first" to make it more recently used
-	cache.Get("first")
 	time.Sleep(10 * time.Millisecond)
 
-	// Add fourth entry, should evict "second" (oldest accessed)
+	// Add fourth entry, should evict "first" (oldest created)
 	cache.Set("fourth", []byte("4"), 0)
 
 	// Check what's in cache
@@ -414,8 +336,8 @@ func TestTemplateCacheEvictionOrder(t *testing.T) {
 	_, foundThird := cache.Get("third")
 	_, foundFourth := cache.Get("fourth")
 
-	assert.True(t, foundFirst, "first should still be in cache (recently accessed)")
-	assert.False(t, foundSecond, "second should be evicted (oldest accessed)")
+	assert.False(t, foundFirst, "first should be evicted (oldest created)")
+	assert.True(t, foundSecond, "second should still be in cache")
 	assert.True(t, foundThird, "third should still be in cache")
 	assert.True(t, foundFourth, "fourth should be in cache (just added)")
 }

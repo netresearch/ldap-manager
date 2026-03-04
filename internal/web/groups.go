@@ -1,11 +1,13 @@
 package web
 
 import (
+	"errors"
 	"net/url"
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -43,8 +45,16 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
-	group, unassignedUsers, err := a.loadGroupDataFromLDAP(c, userLDAP, groupDN)
+	showDisabled := c.Query("show-disabled", "0") == "1"
+
+	group, unassignedUsers, err := a.loadGroupDataFromLDAP(userLDAP, groupDN, showDisabled)
 	if err != nil {
+		if errors.Is(err, ldap.ErrGroupNotFound) {
+			c.Status(fiber.StatusNotFound)
+
+			return a.fourOhFourHandler(c)
+		}
+
 		return handle500(c, err)
 	}
 
@@ -74,7 +84,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	}
 
 	if form.RemoveUser == nil && form.AddUser == nil {
-		return c.Redirect("/groups/" + groupDN)
+		return c.Redirect("/groups/" + url.PathEscape(groupDN))
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -85,11 +95,13 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 	// Perform the group modification using the logged-in user's LDAP connection
 	if err := a.performGroupModification(userLDAP, &form, groupDN); err != nil {
-		return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.ErrorFlash("Failed to modify: "+err.Error()))
+		log.Warn().Err(err).Str("groupDN", groupDN).Msg("failed to modify group")
+
+		return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.ErrorFlash("Failed to modify group membership"))
 	}
 
 	// Invalidate template cache after successful modification
-	a.invalidateTemplateCacheOnGroupModification(groupDN)
+	a.invalidateTemplateCacheOnModification()
 
 	// Render success response
 	return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.SuccessFlash("Successfully modified group"))
@@ -97,7 +109,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 // loadGroupDataFromLDAP loads group data directly from an LDAP client connection.
 func (a *App) loadGroupDataFromLDAP(
-	c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string,
+	userLDAP *ldap.LDAP, groupDN string, showDisabledUsers bool,
 ) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
 	groups, err := userLDAP.FindGroups()
 	if err != nil {
@@ -114,7 +126,6 @@ func (a *App) loadGroupDataFromLDAP(
 		return nil, nil, err
 	}
 
-	showDisabledUsers := c.Query("show-disabled", "0") == "1"
 	fullGroup := ldap_cache.PopulateUsersForGroupFromData(group, users, groups, showDisabledUsers)
 
 	sort.SliceStable(fullGroup.Members, func(i, j int) bool {
@@ -133,7 +144,9 @@ func (a *App) loadGroupDataFromLDAP(
 func (a *App) renderGroupWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string, flash templates.Flash) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	group, unassignedUsers, err := a.loadGroupDataFromLDAP(c, userLDAP, groupDN)
+	showDisabled := c.Query("show-disabled", "0") == "1"
+
+	group, unassignedUsers, err := a.loadGroupDataFromLDAP(userLDAP, groupDN, showDisabled)
 	if err != nil {
 		return handle500(c, err)
 	}
@@ -147,15 +160,15 @@ func (a *App) renderGroupWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN st
 
 // filterUnassignedUsers returns users not in the given group.
 func filterUnassignedUsers(allUsers []ldap.User, group *ldap_cache.FullLDAPGroup) []ldap.User {
-	memberDNS := make(map[string]struct{}, len(group.Members))
+	memberDNs := make(map[string]struct{}, len(group.Members))
 	for _, member := range group.Members {
-		memberDNS[member.DN()] = struct{}{}
+		memberDNs[member.DN()] = struct{}{}
 	}
 
 	result := make([]ldap.User, 0)
 
 	for _, u := range allUsers {
-		if _, isMember := memberDNS[u.DN()]; !isMember {
+		if _, isMember := memberDNs[u.DN()]; !isMember {
 			result = append(result, u)
 		}
 	}
@@ -199,17 +212,3 @@ func (a *App) performGroupModification(
 	return nil
 }
 
-// invalidateTemplateCacheOnGroupModification invalidates relevant cache entries after group modification
-func (a *App) invalidateTemplateCacheOnGroupModification(groupDN string) {
-	// Invalidate the specific group page
-	a.invalidateTemplateCache("/groups/" + groupDN)
-
-	// Invalidate groups list page (counts may have changed)
-	a.invalidateTemplateCache("/groups")
-
-	// Invalidate users pages (user membership may have changed)
-	a.invalidateTemplateCache("/users")
-
-	// Clear all cache entries for safety (this could be optimized further)
-	a.templateCache.Clear()
-}

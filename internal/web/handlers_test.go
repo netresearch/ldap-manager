@@ -785,7 +785,7 @@ func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
 	}
 }
 
-// Test findByDN helper
+// Test findUserByDN helper
 func TestFindByDN(t *testing.T) {
 	users := []ldap.User{
 		{SAMAccountName: "user1"},
@@ -794,7 +794,7 @@ func TestFindByDN(t *testing.T) {
 
 	t.Run("returns nil error for empty DN (matches default)", func(t *testing.T) {
 		// Users with empty DN will match empty string search
-		user, err := findByDN(users, users[0].DN())
+		user, err := findUserByDN(users, users[0].DN())
 		if err != nil {
 			// If DN() returns empty for test users, this is expected
 			if user == nil {
@@ -804,7 +804,7 @@ func TestFindByDN(t *testing.T) {
 	})
 
 	t.Run("returns error for non-existent DN", func(t *testing.T) {
-		_, err := findByDN(users, "cn=nonexistent,dc=test,dc=com")
+		_, err := findUserByDN(users, "cn=nonexistent,dc=test,dc=com")
 		if !errors.Is(err, ldap.ErrUserNotFound) {
 			t.Errorf("Expected ErrUserNotFound, got %v", err)
 		}

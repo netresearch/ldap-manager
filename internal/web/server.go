@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -40,8 +41,9 @@ type App struct {
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
 	logger        *slog.Logger
-	assetManifest *AssetManifest // Asset manifest for cache-busted files
-	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
+	assetManifest  *AssetManifest // Asset manifest for cache-busted files
+	rateLimiter    *RateLimiter   // Rate limiter for authentication endpoints
+	stopCacheLog   chan struct{}  // Stops periodicCacheLogging goroutine
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -153,8 +155,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 		csrfHandler:   csrfHandler,
 		fiber:         f,
 		logger:        logger,
-		assetManifest: manifest,
-		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
+		assetManifest:  manifest,
+		rateLimiter:    NewRateLimiter(DefaultRateLimiterConfig()),
+		stopCacheLog:   make(chan struct{}),
 	}
 
 	// Setup all routes
@@ -289,6 +292,9 @@ func (a *App) Listen(ctx context.Context, addr string) error {
 // Shutdown gracefully shuts down the application within the given context timeout.
 // It stops all background goroutines, closes connections, and releases resources.
 func (a *App) Shutdown(ctx context.Context) error {
+	log.Info().Msg("Stopping periodic cache logging...")
+	close(a.stopCacheLog)
+
 	log.Info().Msg("Stopping template cache...")
 	a.templateCache.Stop()
 
@@ -301,8 +307,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 	a.rateLimiter.Stop()
 
 	log.Info().Msg("Shutting down Fiber server...")
-	if err := a.fiber.ShutdownWithContext(ctx); err != nil {
-		log.Error().Err(err).Msg("Error shutting down Fiber server")
+	shutdownErr := a.fiber.ShutdownWithContext(ctx)
+	if shutdownErr != nil {
+		log.Error().Err(shutdownErr).Msg("Error shutting down Fiber server")
 	}
 
 	log.Info().Msg("Closing LDAP connections...")
@@ -312,25 +319,33 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return shutdownErr
 }
 
 // getUserLDAP creates a user-bound LDAP client from session credentials.
 // The caller must close the returned client via defer client.Close().
+// Returns a fiber.StatusUnauthorized error if session has no credentials,
+// which handle500 will convert to a login redirect.
 func (a *App) getUserLDAP(c *fiber.Ctx) (*ldap.LDAP, error) {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getUserLDAP: session error: %w", err)
 	}
 
 	dn, _ := sess.Get("dn").(string)
 	password, _ := sess.Get("password").(string)
 
 	if dn == "" || password == "" {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "No credentials in session")
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "session expired or missing credentials")
 	}
 
-	return ldap.New(a.ldapConfig, dn, password, a.ldapOpts...)
+	client, err := ldap.New(a.ldapConfig, dn, password, a.ldapOpts...)
+	if err != nil {
+		// LDAP bind failure likely means expired/changed password → redirect to login
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "LDAP connection failed, please re-login")
+	}
+
+	return client, nil
 }
 
 // templateCacheMiddleware creates middleware for template caching
@@ -359,14 +374,6 @@ func (a *App) templateCacheMiddleware() fiber.Handler {
 	}
 }
 
-// invalidateTemplateCache invalidates cache entries after data modifications
-func (a *App) invalidateTemplateCache(paths ...string) {
-	for _, path := range paths {
-		count := a.templateCache.InvalidateByPath(path)
-		log.Debug().Str("path", path).Int("invalidated", count).Msg("Template cache invalidated")
-	}
-}
-
 // cacheStatsHandler provides cache statistics for monitoring
 func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 	stats := a.templateCache.Stats()
@@ -385,8 +392,7 @@ func (a *App) poolStatsHandler(c *fiber.Ctx) error {
 	stats := a.ldapReadonly.GetPoolStats()
 
 	return c.JSON(map[string]any{
-		"stats":   stats,
-		"message": "Connection pooling is disabled - each operation creates a fresh connection",
+		"stats": stats,
 	})
 }
 
@@ -395,25 +401,29 @@ func (a *App) periodicCacheLogging() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		a.templateCache.LogStats()
-	}
-}
-
-// findByDN searches for a user by DN in a slice.
-func findByDN(users []ldap.User, dn string) (*ldap.User, error) {
-	for i := range users {
-		if users[i].DN() == dn {
-			return &users[i], nil
+	for {
+		select {
+		case <-ticker.C:
+			a.templateCache.LogStats()
+		case <-a.stopCacheLog:
+			return
 		}
 	}
-
-	return nil, ldap.ErrUserNotFound
 }
 
+
 func handle500(c *fiber.Ctx, err error) error {
+	// Redirect to login on authentication errors instead of showing 500
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) && fiberErr.Code == fiber.StatusUnauthorized {
+		log.Warn().Err(err).Msg("session expired or invalid, redirecting to login")
+
+		return c.Redirect("/login")
+	}
+
 	log.Error().Err(err).Send()
 
+	c.Status(fiber.StatusInternalServerError)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
@@ -432,13 +442,8 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
-	// Get username from session to look up user
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	username, _ := sess.Get("username").(string)
+	// Get username from middleware context (stored during auth)
+	username, _ := c.Locals("username").(string)
 
 	var user *ldap.User
 
@@ -457,7 +462,7 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 			return handle500(c, findErr)
 		}
 
-		user, err = findByDN(allUsers, userDN)
+		user, err = findUserByDN(allUsers, userDN)
 		if err != nil {
 			return handle500(c, err)
 		}
@@ -475,6 +480,7 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
+	c.Status(fiber.StatusNotFound)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
