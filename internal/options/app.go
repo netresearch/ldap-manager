@@ -264,12 +264,9 @@ func Parse() (*Opts, error) {
 	if err := validateRequired("base-dn", fBaseDN); err != nil {
 		return nil, err
 	}
-	if err := validateRequired("readonly-user", fReadonlyUser); err != nil {
-		return nil, err
-	}
-	if err := validateRequired("readonly-password", fReadonlyPassword); err != nil {
-		return nil, err
-	}
+	// readonly-user and readonly-password are optional.
+	// When not configured, the app uses per-user LDAP credentials
+	// and the background cache is disabled.
 
 	if *fPersistSessions {
 		if err := validateRequired("session-path", fSessionPath); err != nil {

@@ -6,14 +6,24 @@ import (
 
 // healthHandler provides a comprehensive health check endpoint.
 // Returns cache metrics, connection pool health, system health status, and operational statistics.
+// When no service account is configured, reports a simplified status.
 func (a *App) healthHandler(c *fiber.Ctx) error {
+	if a.ldapCache == nil || a.ldapReadonly == nil {
+		return c.JSON(fiber.Map{
+			"overall_healthy": true,
+			"mode":            "per-user credentials",
+			"cache":           "disabled (no service account)",
+			"connection_pool": "disabled (no service account)",
+		})
+	}
+
 	cacheHealthStats := a.ldapCache.GetHealthCheck()
 	poolStats := a.ldapReadonly.GetPoolStats()
 
 	// Determine pool health
 	poolHealthy := poolStats.TotalConnections > 0
 
-	overallHealthy := cacheHealthStats.HealthStatus == "healthy" && poolHealthy
+	overallHealthy := cacheHealthStats.HealthStatus == statusHealthy && poolHealthy
 
 	// Determine status code based on health state
 	statusCode := a.getHealthStatusCode(overallHealthy, cacheHealthStats.HealthStatus, poolHealthy)
@@ -34,7 +44,7 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 	if overallHealthy {
 		return fiber.StatusOK
 	}
-	if cacheStatus == "degraded" || (cacheStatus == "healthy" && !poolHealthy) {
+	if cacheStatus == "degraded" || (cacheStatus == statusHealthy && !poolHealthy) {
 		return fiber.StatusOK // Still functional but degraded
 	}
 
@@ -42,9 +52,16 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 }
 
 // readinessHandler provides a simple readiness check.
-// Returns 200 OK if the cache system and connection pool are operational and ready to serve requests.
-// Includes cache warming status and connection pool health to indicate if system is ready.
+// Returns 200 OK if the system is operational and ready to serve requests.
+// When no service account is configured, always reports ready (auth happens per-request).
 func (a *App) readinessHandler(c *fiber.Ctx) error {
+	if a.ldapCache == nil || a.ldapReadonly == nil {
+		return c.JSON(fiber.Map{
+			"status": "ready",
+			"mode":   "per-user credentials",
+		})
+	}
+
 	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
 	poolStats := a.ldapReadonly.GetPoolStats()
@@ -54,9 +71,9 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {
 		return c.JSON(fiber.Map{
 			"status":          "ready",
-			"cache":           "healthy",
+			"cache":           statusHealthy,
 			"warmed_up":       true,
-			"connection_pool": "healthy",
+			"connection_pool": statusHealthy,
 		})
 	}
 
@@ -64,17 +81,24 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	status, reason := a.getReadinessStatus(isCacheHealthy, isWarmedUp, isPoolHealthy)
 	c.Status(fiber.StatusServiceUnavailable)
 
+	poolStatus := statusUnhealthy
+	if isPoolHealthy {
+		poolStatus = statusHealthy
+	}
+
 	return c.JSON(fiber.Map{
 		"status":          status,
 		"cache":           reason,
 		"warmed_up":       isWarmedUp,
-		"connection_pool": "unhealthy",
+		"connection_pool": poolStatus,
 	})
 }
 
 const (
 	statusNotReady  = "not ready"
 	statusWarmingUp = "warming up"
+	statusHealthy   = "healthy"
+	statusUnhealthy = "unhealthy"
 )
 
 // getReadinessStatus determines status and reason based on readiness conditions
@@ -108,8 +132,13 @@ func (a *App) getReadinessStatus(cacheHealthy, warmedUp, poolHealthy bool) (stat
 // livenessHandler provides a simple liveness check.
 // Returns 200 OK if the application is running and responsive.
 func (a *App) livenessHandler(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{
+	response := fiber.Map{
 		"status": "alive",
-		"uptime": a.ldapCache.GetMetrics().GetUptime().String(),
-	})
+	}
+
+	if a.ldapCache != nil {
+		response["uptime"] = a.ldapCache.GetMetrics().GetUptime().String()
+	}
+
+	return c.JSON(response)
 }

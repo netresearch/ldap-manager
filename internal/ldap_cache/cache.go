@@ -129,13 +129,16 @@ func (c *Cache[T]) update(fn func(*T)) {
 	c.buildIndexes()
 }
 
-// Get returns a copy of all cached items.
-// This operation is read-locked to allow concurrent access from multiple readers.
+// Get returns a snapshot copy of all cached items.
+// The returned slice is safe to iterate without holding any lock.
 func (c *Cache[T]) Get() []T {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
-	return c.items
+	result := make([]T, len(c.items))
+	copy(result, c.items)
+
+	return result
 }
 
 // Find searches the cache for the first item matching the provided predicate.

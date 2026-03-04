@@ -31,8 +31,11 @@ func (a *App) RequireAuth() fiber.Handler {
 			return c.Redirect("/login")
 		}
 
-		// Store user DN in context for handlers to use
+		// Store user DN and username in context for handlers to use
 		c.Locals("userDN", userDN)
+		if username, ok := sess.Get("username").(string); ok {
+			c.Locals("username", username)
+		}
 
 		log.Debug().
 			Str("userDN", userDN).

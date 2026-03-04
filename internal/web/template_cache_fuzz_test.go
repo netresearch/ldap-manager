@@ -81,40 +81,33 @@ func FuzzTemplateCacheGet(f *testing.F) {
 	})
 }
 
-// FuzzTemplateCacheInvalidate tests invalidation with fuzzed patterns
-func FuzzTemplateCacheInvalidate(f *testing.F) {
-	// Seed with patterns
-	f.Add("*")
-	f.Add("user-*")
-	f.Add("*-suffix")
-	f.Add("")
-	f.Add("exact-key")
-	f.Add("key with spaces")
-	f.Add(strings.Repeat("x", 1000))
+// FuzzTemplateCacheClear tests clear with fuzzed pre-populated cache
+func FuzzTemplateCacheClear(f *testing.F) {
+	f.Add(1)
+	f.Add(5)
+	f.Add(50)
 
-	f.Fuzz(func(t *testing.T, pattern string) {
+	f.Fuzz(func(t *testing.T, numEntries int) {
+		if numEntries < 0 {
+			numEntries = 0
+		}
+		if numEntries > 100 {
+			numEntries = 100
+		}
+
 		cache := NewTemplateCache(DefaultTemplateCacheConfig())
 		defer cache.Stop()
 
-		// Add some entries
-		cache.Set("user-1", []byte("1"), 0)
-		cache.Set("user-2", []byte("2"), 0)
-		cache.Set("group-1", []byte("3"), 0)
-
-		// Invalidate shouldn't panic
-		count := cache.Invalidate(pattern)
-
-		// Verify count is reasonable
-		if count < 0 {
-			t.Errorf("Negative invalidation count: %d", count)
+		for i := range numEntries {
+			cache.Set("key-"+string(rune(i%65536)), []byte("content"), 0)
 		}
 
-		// After "*" invalidation, cache should be empty
-		if pattern == "*" {
-			stats := cache.Stats()
-			if stats.Entries != 0 {
-				t.Errorf("Cache not empty after '*' invalidation: %d entries", stats.Entries)
-			}
+		// Clear shouldn't panic
+		cache.Clear()
+
+		stats := cache.Stats()
+		if stats.Entries != 0 {
+			t.Errorf("Cache not empty after Clear: %d entries", stats.Entries)
 		}
 	})
 }

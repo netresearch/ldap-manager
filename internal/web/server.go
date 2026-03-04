@@ -3,6 +3,8 @@ package web
 import (
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -27,12 +29,13 @@ import (
 // App represents the main web application structure.
 // Encapsulates LDAP config, readonly client, cache, session store, template cache, Fiber framework.
 // Provides centralized auth, caching, and HTTP request handling.
-// Note: Connection pooling is disabled because CheckPasswordForSAMAccountName rebinds
-// pooled connections with user credentials, causing credential contamination issues.
+// When ReadonlyUser is not configured, ldapReadonly and ldapCache are nil;
+// all interactive LDAP operations use the logged-in user's own credentials.
 type App struct {
 	ldapConfig    ldap.Config
-	ldapReadonly  *ldap.LDAP // Read-only client (no pooling)
-	ldapCache     *ldap_cache.Manager
+	ldapOpts      []ldap.Option       // LDAP client options (TLS, logging)
+	ldapReadonly  *ldap.LDAP          // Service account client (nil when not configured)
+	ldapCache     *ldap_cache.Manager // Background cache (nil when no service account)
 	sessionStore  *session.Store
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
@@ -40,6 +43,7 @@ type App struct {
 	logger        *slog.Logger
 	assetManifest *AssetManifest // Asset manifest for cache-busted files
 	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
+	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -82,13 +86,13 @@ func createFiberApp() *fiber.App {
 }
 
 // NewApp creates a new web application instance with the provided configuration options.
-// It initializes the LDAP configuration, readonly client, session management,
+// It initializes the LDAP configuration, readonly client (if configured), session management,
 // template cache, Fiber web server, and registers all routes.
 // Returns a configured App instance ready to start serving requests via Listen().
 //
-// Note: Connection pooling is intentionally disabled. The CheckPasswordForSAMAccountName
-// method rebinds pooled connections with user credentials, contaminating the pool.
-// Each operation creates a fresh connection like ldap-selfservice-password-changer.
+// When ReadonlyUser is not configured, the app operates without a service account:
+// all LDAP operations use the logged-in user's own credentials, and
+// the background cache is disabled.
 func NewApp(opts *options.Opts) (*App, error) {
 	logger := slog.Default()
 
@@ -103,17 +107,26 @@ func NewApp(opts *options.Opts) (*App, error) {
 		}))
 	}
 
-	// Create readonly LDAP client WITHOUT connection pooling
-	// Pooling is disabled because CheckPasswordForSAMAccountName rebinds connections
-	// with user credentials, which contaminates the pool and causes timeout issues
-	ldapReadonly, err := ldap.New(
-		opts.LDAP,
-		opts.ReadonlyUser,
-		opts.ReadonlyPassword,
-		ldapOpts...,
-	)
-	if err != nil {
-		return nil, err
+	// Create readonly LDAP client only when service account is configured
+	var ldapReadonly *ldap.LDAP
+	var ldapCache *ldap_cache.Manager
+
+	if opts.ReadonlyUser != "" && opts.ReadonlyPassword != "" {
+		var err error
+		ldapReadonly, err = ldap.New(
+			opts.LDAP,
+			opts.ReadonlyUser,
+			opts.ReadonlyPassword,
+			ldapOpts...,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		ldapCache = ldap_cache.New(ldapReadonly)
+		log.Info().Msg("Service account configured, background cache enabled")
+	} else {
+		log.Info().Msg("No service account configured, using per-user LDAP credentials")
 	}
 
 	sessionStore := createSessionStore(opts)
@@ -134,8 +147,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	a := &App{
 		ldapConfig:    opts.LDAP,
+		ldapOpts:      ldapOpts,
 		ldapReadonly:  ldapReadonly,
-		ldapCache:     ldap_cache.New(ldapReadonly),
+		ldapCache:     ldapCache,
 		templateCache: templateCache,
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
@@ -143,6 +157,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 		logger:        logger,
 		assetManifest: manifest,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
+		stopCacheLog:  make(chan struct{}),
 	}
 
 	// Setup all routes
@@ -267,7 +282,9 @@ func (a *App) setupRoutes() {
 // The context is used for graceful shutdown signaling to background goroutines.
 // This method blocks until the server is shutdown or encounters an error.
 func (a *App) Listen(ctx context.Context, addr string) error {
-	go a.ldapCache.Run(ctx)
+	if a.ldapCache != nil {
+		go a.ldapCache.Run(ctx)
+	}
 
 	return a.fiber.Listen(addr)
 }
@@ -275,18 +292,24 @@ func (a *App) Listen(ctx context.Context, addr string) error {
 // Shutdown gracefully shuts down the application within the given context timeout.
 // It stops all background goroutines, closes connections, and releases resources.
 func (a *App) Shutdown(ctx context.Context) error {
+	log.Info().Msg("Stopping periodic cache logging...")
+	close(a.stopCacheLog)
+
 	log.Info().Msg("Stopping template cache...")
 	a.templateCache.Stop()
 
-	log.Info().Msg("Stopping LDAP cache manager...")
-	a.ldapCache.Stop()
+	if a.ldapCache != nil {
+		log.Info().Msg("Stopping LDAP cache manager...")
+		a.ldapCache.Stop()
+	}
 
 	log.Info().Msg("Stopping rate limiter...")
 	a.rateLimiter.Stop()
 
 	log.Info().Msg("Shutting down Fiber server...")
-	if err := a.fiber.ShutdownWithContext(ctx); err != nil {
-		log.Error().Err(err).Msg("Error shutting down Fiber server")
+	shutdownErr := a.fiber.ShutdownWithContext(ctx)
+	if shutdownErr != nil {
+		log.Error().Err(shutdownErr).Msg("Error shutting down Fiber server")
 	}
 
 	log.Info().Msg("Closing LDAP connections...")
@@ -296,7 +319,33 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return shutdownErr
+}
+
+// getUserLDAP creates a user-bound LDAP client from session credentials.
+// The caller must close the returned client via defer client.Close().
+// Returns a fiber.StatusUnauthorized error if session has no credentials,
+// which handle500 will convert to a login redirect.
+func (a *App) getUserLDAP(c *fiber.Ctx) (*ldap.LDAP, error) {
+	sess, err := a.sessionStore.Get(c)
+	if err != nil {
+		return nil, fmt.Errorf("getUserLDAP: session error: %w", err)
+	}
+
+	dn, _ := sess.Get("dn").(string)
+	password, _ := sess.Get("password").(string)
+
+	if dn == "" || password == "" {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "session expired or missing credentials")
+	}
+
+	client, err := ldap.New(a.ldapConfig, dn, password, a.ldapOpts...)
+	if err != nil {
+		// LDAP bind failure likely means expired/changed password → redirect to login
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "LDAP connection failed, please re-login")
+	}
+
+	return client, nil
 }
 
 // templateCacheMiddleware creates middleware for template caching
@@ -325,14 +374,6 @@ func (a *App) templateCacheMiddleware() fiber.Handler {
 	}
 }
 
-// invalidateTemplateCache invalidates cache entries after data modifications
-func (a *App) invalidateTemplateCache(paths ...string) {
-	for _, path := range paths {
-		count := a.templateCache.InvalidateByPath(path)
-		log.Debug().Str("path", path).Int("invalidated", count).Msg("Template cache invalidated")
-	}
-}
-
 // cacheStatsHandler provides cache statistics for monitoring
 func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 	stats := a.templateCache.Stats()
@@ -341,16 +382,18 @@ func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
 }
 
 // poolStatsHandler provides LDAP performance statistics for monitoring
-// Note: Connection pooling is disabled, so pool-specific stats will be empty
 func (a *App) poolStatsHandler(c *fiber.Ctx) error {
-	stats := a.ldapReadonly.GetPoolStats()
-
-	response := map[string]any{
-		"stats":   stats,
-		"message": "Connection pooling is disabled - each operation creates a fresh connection",
+	if a.ldapReadonly == nil {
+		return c.JSON(map[string]any{
+			"message": "No service account configured - per-user LDAP credentials in use",
+		})
 	}
 
-	return c.JSON(response)
+	stats := a.ldapReadonly.GetPoolStats()
+
+	return c.JSON(map[string]any{
+		"stats": stats,
+	})
 }
 
 // periodicCacheLogging logs cache statistics periodically for monitoring
@@ -358,14 +401,28 @@ func (a *App) periodicCacheLogging() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		a.templateCache.LogStats()
+	for {
+		select {
+		case <-ticker.C:
+			a.templateCache.LogStats()
+		case <-a.stopCacheLog:
+			return
+		}
 	}
 }
 
 func handle500(c *fiber.Ctx, err error) error {
+	// Redirect to login on authentication errors instead of showing 500
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) && fiberErr.Code == fiber.StatusUnauthorized {
+		log.Warn().Err(err).Msg("session expired or invalid, redirecting to login")
+
+		return c.Redirect("/login")
+	}
+
 	log.Error().Err(err).Send()
 
+	c.Status(fiber.StatusInternalServerError)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
@@ -378,19 +435,51 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	user, err := a.ldapCache.FindUserByDN(userDN)
+	userLDAP, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer func() { _ = userLDAP.Close() }()
+
+	// Get username from middleware context (stored during auth)
+	username, _ := c.Locals("username").(string)
+
+	var user *ldap.User
+
+	if username != "" {
+		user, err = userLDAP.FindUserBySAMAccountName(username)
+		// Fail fast on real errors (not just "not found")
+		if err != nil && !errors.Is(err, ldap.ErrUserNotFound) {
+			return handle500(c, err)
+		}
+	}
+
+	// Fall back to finding by DN if lookup by SAMAccountName was not attempted or user not found
+	if user == nil {
+		allUsers, findErr := userLDAP.FindUsers()
+		if findErr != nil {
+			return handle500(c, findErr)
+		}
+
+		user, err = findUserByDN(allUsers, userDN)
+		if err != nil {
+			return handle500(c, err)
+		}
+	}
+
+	groups, err := userLDAP.FindGroups()
 	if err != nil {
 		return handle500(c, err)
 	}
 
-	// Populate groups for the home screen
-	fullUser := a.ldapCache.PopulateGroupsForUser(user)
+	fullUser := ldap_cache.PopulateGroupsForUserFromData(user, groups)
 
 	// Use template caching
 	return a.templateCache.RenderWithCache(c, templates.Index(fullUser))
 }
 
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
+	c.Status(fiber.StatusNotFound)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())

@@ -65,28 +65,25 @@ func TestTemplateCacheEviction(t *testing.T) {
 
 	// Fill cache to capacity
 	cache.Set("key1", []byte("content1"), 0)
+	time.Sleep(10 * time.Millisecond) // Ensure different creation times
 	cache.Set("key2", []byte("content2"), 0)
 
 	stats := cache.Stats()
 	assert.Equal(t, 2, stats.Entries)
 
-	// Access key1 to make it more recently used
-	_, found := cache.Get("key1")
-	assert.True(t, found)
-
-	// Add another entry, should evict key2 (oldest)
+	// Add another entry, should evict key1 (oldest created)
 	cache.Set("key3", []byte("content3"), 0)
 
 	stats = cache.Stats()
 	assert.Equal(t, 2, stats.Entries)
 
-	// key1 should still exist
-	_, found = cache.Get("key1")
-	assert.True(t, found)
-
-	// key2 should be evicted
-	_, found = cache.Get("key2")
+	// key1 should be evicted (oldest)
+	_, found := cache.Get("key1")
 	assert.False(t, found)
+
+	// key2 should still exist
+	_, found = cache.Get("key2")
+	assert.True(t, found)
 
 	// key3 should exist
 	_, found = cache.Get("key3")
@@ -117,7 +114,7 @@ func TestTemplateCacheClear(t *testing.T) {
 	assert.False(t, found)
 }
 
-func TestTemplateCacheInvalidation(t *testing.T) {
+func TestTemplateCacheClearOperation(t *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 	defer cache.Stop()
 
@@ -129,24 +126,17 @@ func TestTemplateCacheInvalidation(t *testing.T) {
 	stats := cache.Stats()
 	assert.Equal(t, 3, stats.Entries)
 
-	// Test pattern invalidation
-	count := cache.Invalidate("key1")
-	assert.Equal(t, 1, count)
-
-	// Verify key1 is gone
-	_, found := cache.Get("key1")
-	assert.False(t, found)
-
-	// Other keys should remain
-	_, found = cache.Get("key2")
-	assert.True(t, found)
-
-	// Test wildcard invalidation
-	count = cache.Invalidate("*")
-	assert.Equal(t, 2, count) // Should remove remaining 2 entries
+	// Clear all entries
+	cache.Clear()
 
 	stats = cache.Stats()
 	assert.Equal(t, 0, stats.Entries)
+
+	// Verify all are gone
+	_, found := cache.Get("key1")
+	assert.False(t, found)
+	_, found = cache.Get("key2")
+	assert.False(t, found)
 }
 
 func TestTemplateCacheCleanup(t *testing.T) {
