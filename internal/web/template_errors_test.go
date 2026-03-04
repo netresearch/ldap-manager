@@ -309,7 +309,6 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 	})
 }
 
-
 // TestTemplateCacheEvictionOrder tests that oldest entries are evicted first
 func TestTemplateCacheEvictionOrder(t *testing.T) {
 	cache := NewTemplateCache(TemplateCacheConfig{

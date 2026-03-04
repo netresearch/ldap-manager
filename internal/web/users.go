@@ -168,15 +168,15 @@ func (a *App) renderUserWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, userDN stri
 
 // filterUnassignedGroups returns groups the user is not a member of.
 func filterUnassignedGroups(allGroups []ldap.Group, user *ldap_cache.FullLDAPUser) []ldap.Group {
-	memberGroupDNs := make(map[string]struct{}, len(user.Groups))
+	memberGroupDNS := make(map[string]struct{}, len(user.Groups))
 	for _, g := range user.Groups {
-		memberGroupDNs[g.DN()] = struct{}{}
+		memberGroupDNS[g.DN()] = struct{}{}
 	}
 
 	result := make([]ldap.Group, 0)
 
 	for _, g := range allGroups {
-		if _, isMember := memberGroupDNs[g.DN()]; !isMember {
+		if _, isMember := memberGroupDNS[g.DN()]; !isMember {
 			result = append(result, g)
 		}
 	}

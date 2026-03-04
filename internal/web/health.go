@@ -23,7 +23,7 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 	// Determine pool health
 	poolHealthy := poolStats.TotalConnections > 0
 
-	overallHealthy := cacheHealthStats.HealthStatus == "healthy" && poolHealthy
+	overallHealthy := cacheHealthStats.HealthStatus == statusHealthy && poolHealthy
 
 	// Determine status code based on health state
 	statusCode := a.getHealthStatusCode(overallHealthy, cacheHealthStats.HealthStatus, poolHealthy)
@@ -44,7 +44,7 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 	if overallHealthy {
 		return fiber.StatusOK
 	}
-	if cacheStatus == "degraded" || (cacheStatus == "healthy" && !poolHealthy) {
+	if cacheStatus == "degraded" || (cacheStatus == statusHealthy && !poolHealthy) {
 		return fiber.StatusOK // Still functional but degraded
 	}
 
@@ -71,9 +71,9 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {
 		return c.JSON(fiber.Map{
 			"status":          "ready",
-			"cache":           "healthy",
+			"cache":           statusHealthy,
 			"warmed_up":       true,
-			"connection_pool": "healthy",
+			"connection_pool": statusHealthy,
 		})
 	}
 
@@ -81,9 +81,9 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 	status, reason := a.getReadinessStatus(isCacheHealthy, isWarmedUp, isPoolHealthy)
 	c.Status(fiber.StatusServiceUnavailable)
 
-	poolStatus := "unhealthy"
+	poolStatus := statusUnhealthy
 	if isPoolHealthy {
-		poolStatus = "healthy"
+		poolStatus = statusHealthy
 	}
 
 	return c.JSON(fiber.Map{
@@ -97,6 +97,8 @@ func (a *App) readinessHandler(c *fiber.Ctx) error {
 const (
 	statusNotReady  = "not ready"
 	statusWarmingUp = "warming up"
+	statusHealthy   = "healthy"
+	statusUnhealthy = "unhealthy"
 )
 
 // getReadinessStatus determines status and reason based on readiness conditions

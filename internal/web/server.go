@@ -41,9 +41,9 @@ type App struct {
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
 	logger        *slog.Logger
-	assetManifest  *AssetManifest // Asset manifest for cache-busted files
-	rateLimiter    *RateLimiter   // Rate limiter for authentication endpoints
-	stopCacheLog   chan struct{}  // Stops periodicCacheLogging goroutine
+	assetManifest *AssetManifest // Asset manifest for cache-busted files
+	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
+	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -155,9 +155,9 @@ func NewApp(opts *options.Opts) (*App, error) {
 		csrfHandler:   csrfHandler,
 		fiber:         f,
 		logger:        logger,
-		assetManifest:  manifest,
-		rateLimiter:    NewRateLimiter(DefaultRateLimiterConfig()),
-		stopCacheLog:   make(chan struct{}),
+		assetManifest: manifest,
+		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
+		stopCacheLog:  make(chan struct{}),
 	}
 
 	// Setup all routes
@@ -410,7 +410,6 @@ func (a *App) periodicCacheLogging() {
 		}
 	}
 }
-
 
 func handle500(c *fiber.Ctx, err error) error {
 	// Redirect to login on authentication errors instead of showing 500
