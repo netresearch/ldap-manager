@@ -31,3 +31,5 @@ certs/
 docker-compose.dev.yml
 nginx.dev.conf
 Caddyfile.dev
+
+.serena/
