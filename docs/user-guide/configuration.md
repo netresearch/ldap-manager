@@ -30,11 +30,13 @@ These settings must be configured for LDAP Manager to function:
 LDAP Manager supports two operating modes based on whether a service account is configured:
 
 **Service Account Mode** (both `LDAP_READONLY_USER` and `LDAP_READONLY_PASSWORD` set):
+
 - Background cache refreshes LDAP data every 30 seconds
 - Health checks verify LDAP connectivity
 - Service account used for initial user lookup during authentication
 
 **Per-User Credentials Mode** (no service account configured):
+
 - Each request uses the logged-in user's own LDAP credentials
 - No background cache (data fetched fresh per request)
 - Health checks report simplified status
