@@ -71,12 +71,11 @@ func (a *App) userHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	// Use template caching with user DN as additional cache data
-	return a.templateCache.RenderWithCache(
-		c,
-		templates.User(user, unassignedGroups, templates.Flashes(), a.GetCSRFToken(c)),
-		"userDN:"+userDN,
-	)
+	// Detail pages with CSRF tokens are not cached to avoid stale token issues
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+	return templates.User(user, unassignedGroups, templates.Flashes(), a.GetCSRFToken(c)).
+		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 type userModifyForm struct {

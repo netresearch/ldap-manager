@@ -79,12 +79,10 @@ func (a *App) computerHandler(c *fiber.Ctx) error {
 		return fullComputer.Groups[i].CN() < fullComputer.Groups[j].CN()
 	})
 
-	// Use template caching with computer DN as additional cache data
-	return a.templateCache.RenderWithCache(
-		c,
-		templates.Computer(fullComputer),
-		"computerDN:"+computerDN,
-	)
+	// Detail pages are not cached (consistent with user/group detail pages)
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+	return templates.Computer(fullComputer).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // findComputerByDN searches for a computer by DN in a slice.

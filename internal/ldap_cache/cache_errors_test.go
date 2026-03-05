@@ -473,8 +473,8 @@ func TestCache_FilterNoMatches(t *testing.T) {
 		return m.data == nonexistentData
 	})
 
-	// Filter returns nil when no matches (not an empty slice)
-	assert.Nil(t, result)
+	// Filter returns empty slice when no matches
+	assert.Empty(t, result)
 }
 
 // TestCache_EmptySetAll tests setAll with empty slice

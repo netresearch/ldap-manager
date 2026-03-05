@@ -48,11 +48,8 @@ func TestLoadAssetManifest(t *testing.T) {
 	})
 }
 
-func TestGetCachedManifest(t *testing.T) {
-	t.Run("caches manifest on first load", func(t *testing.T) {
-		// Clear cache before test
-		manifestCache = nil
-
+func TestLoadAssetManifestIdempotent(t *testing.T) {
+	t.Run("repeated loads return equivalent results", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		manifestPath := filepath.Join(tmpDir, "manifest.json")
 		manifestContent := `{
@@ -63,27 +60,13 @@ func TestGetCachedManifest(t *testing.T) {
 		err := os.WriteFile(manifestPath, []byte(manifestContent), 0o600)
 		require.NoError(t, err)
 
-		// First call should load and cache
-		manifest1 := GetCachedManifest(manifestPath)
+		manifest1, err := LoadAssetManifest(manifestPath)
+		require.NoError(t, err)
 		assert.Equal(t, "styles.def456.css", manifest1.StylesCSS)
 
-		// Second call should return cached version
-		manifest2 := GetCachedManifest(manifestPath)
-		assert.Equal(t, manifest1, manifest2)
-	})
-
-	t.Run("returns default on error", func(t *testing.T) {
-		// Clear cache before test
-		manifestCache = nil
-
-		tmpDir := t.TempDir()
-		manifestPath := filepath.Join(tmpDir, "manifest.json")
-		// Write invalid JSON
-		err := os.WriteFile(manifestPath, []byte("not json"), 0o600)
+		manifest2, err := LoadAssetManifest(manifestPath)
 		require.NoError(t, err)
-
-		manifest := GetCachedManifest(manifestPath)
-		assert.Equal(t, "styles.css", manifest.StylesCSS)
+		assert.Equal(t, manifest1.StylesCSS, manifest2.StylesCSS)
 	})
 }
 

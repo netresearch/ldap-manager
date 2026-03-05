@@ -2,7 +2,6 @@ package web
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"sync"
@@ -21,6 +20,7 @@ type TemplateCache struct {
 	maxSize         int
 	cleanupInterval time.Duration
 	stopCleanup     chan struct{}
+	stopOnce        sync.Once
 }
 
 type cacheEntry struct {
@@ -218,9 +218,12 @@ func (tc *TemplateCache) startCleanup() {
 	}
 }
 
-// Stop gracefully shuts down the cache cleanup goroutine
+// Stop gracefully shuts down the cache cleanup goroutine.
+// Safe to call multiple times; subsequent calls are no-ops.
 func (tc *TemplateCache) Stop() {
-	close(tc.stopCleanup)
+	tc.stopOnce.Do(func() {
+		close(tc.stopCleanup)
+	})
 }
 
 // RenderWithCache renders a template component with caching support
@@ -237,7 +240,7 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 
 	// Not in cache, render the template
 	var buf bytes.Buffer
-	if err := component.Render(context.Background(), &buf); err != nil {
+	if err := component.Render(c.UserContext(), &buf); err != nil {
 		return err
 	}
 

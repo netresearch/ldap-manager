@@ -81,6 +81,6 @@ func (f Flash) BorderColor() string {
 	case FlashTypeInfo:
 		return flashInfoClasses
 	default:
-		panic("unknown flash type")
+		return flashInfoClasses
 	}
 }

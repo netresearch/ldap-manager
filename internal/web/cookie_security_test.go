@@ -226,7 +226,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Test endpoint that returns CSRF token on GET and validates on POST
-	f.All("/test-csrf", *csrfHandler, func(c *fiber.Ctx) error {
+	f.All("/test-csrf", csrfHandler, func(c *fiber.Ctx) error {
 		sess, err := sessionStore.Get(c)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to get session")

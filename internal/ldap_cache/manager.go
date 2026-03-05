@@ -41,9 +41,9 @@ type Manager struct {
 
 	client          LDAPClient    // LDAP client for directory operations
 	metrics         *Metrics      // Performance metrics and health monitoring
-	refreshInterval time.Duration  // Configurable refresh interval (default 30s)
-	warmupComplete  atomic.Bool    // Tracks if initial cache warming is complete (concurrent-safe)
-	retryConfig     retry.Config   // Retry configuration for LDAP operations
+	refreshInterval time.Duration // Configurable refresh interval (default 30s)
+	warmupComplete  atomic.Bool   // Tracks if initial cache warming is complete (concurrent-safe)
+	retryConfig     retry.Config  // Retry configuration for LDAP operations
 
 	Users     Cache[ldap.User]     // Cached user entries with O(1) indexed lookups
 	Groups    Cache[ldap.Group]    // Cached group entries with O(1) indexed lookups
@@ -468,6 +468,8 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 		for idx, group := range user.Groups {
 			if group == groupDN {
 				user.Groups = append(user.Groups[:idx], user.Groups[idx+1:]...)
+
+				break
 			}
 		}
 	})
@@ -480,6 +482,8 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 		for idx, member := range group.Members {
 			if member == userDN {
 				group.Members = append(group.Members[:idx], group.Members[idx+1:]...)
+
+				break
 			}
 		}
 	})

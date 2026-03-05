@@ -155,7 +155,9 @@ func (c *Cache[T]) Find(fn func(T) bool) (v *T, found bool) {
 				c.metrics.RecordCacheHit()
 			}
 
-			return &item, true
+			itemCopy := item
+
+			return &itemCopy, true
 		}
 	}
 
@@ -178,7 +180,9 @@ func (c *Cache[T]) FindByDN(dn string) (v *T, found bool) {
 			c.metrics.RecordCacheHit()
 		}
 
-		return item, true
+		itemCopy := *item
+
+		return &itemCopy, true
 	}
 
 	if c.metrics != nil {
@@ -201,7 +205,9 @@ func (c *Cache[T]) FindBySAMAccountName(samAccountName string) (v *T, found bool
 			c.metrics.RecordCacheHit()
 		}
 
-		return item, true
+		itemCopy := *item
+
+		return &itemCopy, true
 	}
 
 	if c.metrics != nil {
@@ -214,17 +220,18 @@ func (c *Cache[T]) FindBySAMAccountName(samAccountName string) (v *T, found bool
 // Filter returns all cached items that match the provided predicate.
 // Creates a new slice containing only the matching items.
 // The operation is read-locked for concurrent safety.
-func (c *Cache[T]) Filter(fn func(T) bool) (v []T) {
+func (c *Cache[T]) Filter(fn func(T) bool) []T {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
+	result := make([]T, 0, len(c.items))
 	for _, item := range c.items {
 		if fn(item) {
-			v = append(v, item)
+			result = append(result, item)
 		}
 	}
 
-	return v
+	return result
 }
 
 // Count returns the total number of cached items.
