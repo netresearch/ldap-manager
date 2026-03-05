@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  svgo: '>=4.0.1'
+
 importers:
 
   .:
@@ -21,10 +24,10 @@ importers:
         specifier: ^9.2.1
         version: 9.2.1
       cssnano:
-        specifier: ^7.1.1
+        specifier: ^7.1.2
         version: 7.1.2(postcss@8.5.8)
       cssnano-preset-advanced:
-        specifier: ^7.0.9
+        specifier: ^7.0.10
         version: 7.0.10(postcss@8.5.8)
       nodemon:
         specifier: ^3.1.10

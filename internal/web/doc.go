@@ -51,7 +51,6 @@
 // The package provides several middleware components for request processing:
 //
 //   - RequireAuth: Ensures user authentication for protected routes
-//   - OptionalAuth: Provides user context without requiring authentication
 //   - CSRF Protection: Prevents cross-site request forgery attacks
 //   - Template Caching: Caches rendered templates for performance
 //   - Security Headers: Sets appropriate security headers (Helmet)

@@ -124,8 +124,9 @@ func (a *App) authenticateUser(username, password string) (*ldap.User, error) {
 // authenticateViaUPNBind authenticates by binding as user@domain directly.
 // Used when no service account is configured.
 func (a *App) authenticateViaUPNBind(username, password string) (*ldap.User, error) {
-	// Validate username to prevent LDAP injection in UPN construction
-	if strings.ContainsAny(username, `\@,=+"<>#;`) {
+	// Validate username to prevent LDAP injection in UPN construction.
+	// Blocks LDAP DN special chars and filter metacharacters.
+	if strings.ContainsAny(username, `\@,=+"<>#;*()`) || strings.ContainsRune(username, 0) {
 		return nil, fmt.Errorf("invalid characters in username")
 	}
 

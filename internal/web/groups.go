@@ -58,12 +58,11 @@ func (a *App) groupHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	// Use template caching with group DN as additional cache data
-	return a.templateCache.RenderWithCache(
-		c,
-		templates.Group(group, unassignedUsers, templates.Flashes(), a.GetCSRFToken(c)),
-		"groupDN:"+groupDN,
-	)
+	// Detail pages with CSRF tokens are not cached to avoid stale token issues
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+	return templates.Group(group, unassignedUsers, templates.Flashes(), a.GetCSRFToken(c)).
+		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 type groupModifyForm struct {

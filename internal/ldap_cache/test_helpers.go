@@ -4,12 +4,14 @@ package ldap_cache
 
 import (
 	"errors"
+	"sync"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 )
 
 // mockLDAPClient implements LDAPClient for testing
 type mockLDAPClient struct {
+	mu        sync.Mutex
 	users     []ldap.User
 	groups    []ldap.Group
 	computers []ldap.Computer
@@ -26,7 +28,10 @@ type mockLDAPClient struct {
 }
 
 func (m *mockLDAPClient) FindUsers() ([]ldap.User, error) {
+	m.mu.Lock()
 	m.callCounts.findUsers++
+	m.mu.Unlock()
+
 	if m.findUsersError != nil {
 		return nil, m.findUsersError
 	}
@@ -35,7 +40,10 @@ func (m *mockLDAPClient) FindUsers() ([]ldap.User, error) {
 }
 
 func (m *mockLDAPClient) FindGroups() ([]ldap.Group, error) {
+	m.mu.Lock()
 	m.callCounts.findGroups++
+	m.mu.Unlock()
+
 	if m.findGroupsError != nil {
 		return nil, m.findGroupsError
 	}
@@ -44,7 +52,10 @@ func (m *mockLDAPClient) FindGroups() ([]ldap.Group, error) {
 }
 
 func (m *mockLDAPClient) FindComputers() ([]ldap.Computer, error) {
+	m.mu.Lock()
 	m.callCounts.findComputers++
+	m.mu.Unlock()
+
 	if m.findComputersError != nil {
 		return nil, m.findComputersError
 	}

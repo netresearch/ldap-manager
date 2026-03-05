@@ -40,7 +40,6 @@ type App struct {
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
-	logger        *slog.Logger
 	assetManifest *AssetManifest // Asset manifest for cache-busted files
 	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
 	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
@@ -132,7 +131,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 	sessionStore := createSessionStore(opts)
 	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
 	f := createFiberApp()
-	csrfHandler := *createCSRFConfig(opts, sessionStore)
+	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Load asset manifest for cache-busted files
 	manifestPath := "internal/web/static/manifest.json"
@@ -154,7 +153,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
 		fiber:         f,
-		logger:        logger,
 		assetManifest: manifest,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
@@ -209,8 +207,8 @@ func setupMiddleware(f *fiber.App) {
 // createCSRFConfig creates and returns CSRF middleware configuration
 // Uses session-based storage to ensure CSRF tokens persist across requests
 // and survive container restarts when PersistSessions is enabled.
-func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) *fiber.Handler {
-	csrfHandler := csrf.New(csrf.Config{
+func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) fiber.Handler {
+	return csrf.New(csrf.Config{
 		KeyLookup:      "form:csrf_token",
 		CookieName:     "csrf_",
 		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
@@ -229,8 +227,6 @@ func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) *fiber.Ha
 			return templates.FourOhThree("CSRF token validation failed").Render(c.UserContext(), c.Response().BodyWriter())
 		},
 	})
-
-	return &csrfHandler
 }
 
 // setupRoutes configures all routes for the application
@@ -255,15 +251,18 @@ func (a *App) setupRoutes() {
 	// Protected routes with template caching for GET requests
 	protected := f.Group("/", a.RequireAuth(), a.csrfHandler)
 
-	// Apply template caching middleware to read-only endpoints
+	// Apply template caching middleware to read-only list endpoints (no CSRF tokens)
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
 	cacheable.Get("/", a.indexHandler)
 	cacheable.Get("/users", a.usersHandler)
-	cacheable.Get("/users/*", a.userHandler)
 	cacheable.Get("/groups", a.groupsHandler)
-	cacheable.Get("/groups/*", a.groupHandler)
 	cacheable.Get("/computers", a.computersHandler)
-	cacheable.Get("/computers/*", a.computerHandler)
+
+	// Detail pages contain CSRF tokens in forms — must NOT be cached
+	// to avoid serving stale tokens that cause 403 on form submission
+	protected.Get("/users/*", a.userHandler)
+	protected.Get("/groups/*", a.groupHandler)
+	protected.Get("/computers/*", a.computerHandler)
 
 	// POST routes without caching (these invalidate cache)
 	protected.Post("/users/*", a.userModifyHandler)
@@ -290,11 +289,19 @@ func (a *App) Listen(ctx context.Context, addr string) error {
 }
 
 // Shutdown gracefully shuts down the application within the given context timeout.
-// It stops all background goroutines, closes connections, and releases resources.
+// Order: stop accepting requests → drain in-flight → stop background goroutines → close connections.
 func (a *App) Shutdown(ctx context.Context) error {
 	log.Info().Msg("Stopping periodic cache logging...")
 	close(a.stopCacheLog)
 
+	// Drain in-flight HTTP requests first, before stopping caches they may be reading
+	log.Info().Msg("Shutting down Fiber server...")
+	shutdownErr := a.fiber.ShutdownWithContext(ctx)
+	if shutdownErr != nil {
+		log.Error().Err(shutdownErr).Msg("Error shutting down Fiber server")
+	}
+
+	// Now safe to stop background goroutines — no handlers are reading from caches
 	log.Info().Msg("Stopping template cache...")
 	a.templateCache.Stop()
 
@@ -306,12 +313,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	log.Info().Msg("Stopping rate limiter...")
 	a.rateLimiter.Stop()
 
-	log.Info().Msg("Shutting down Fiber server...")
-	shutdownErr := a.fiber.ShutdownWithContext(ctx)
-	if shutdownErr != nil {
-		log.Error().Err(shutdownErr).Msg("Error shutting down Fiber server")
-	}
-
+	// Close LDAP connections last
 	log.Info().Msg("Closing LDAP connections...")
 	if a.ldapReadonly != nil {
 		if err := a.ldapReadonly.Close(); err != nil {
@@ -412,20 +414,35 @@ func (a *App) periodicCacheLogging() {
 }
 
 func handle500(c *fiber.Ctx, err error) error {
-	// Redirect to login on authentication errors instead of showing 500
 	var fiberErr *fiber.Error
-	if errors.As(err, &fiberErr) && fiberErr.Code == fiber.StatusUnauthorized {
-		log.Warn().Err(err).Msg("session expired or invalid, redirecting to login")
+	if errors.As(err, &fiberErr) {
+		switch fiberErr.Code {
+		case fiber.StatusUnauthorized:
+			log.Warn().Err(err).Msg("session expired or invalid, redirecting to login")
 
-		return c.Redirect("/login")
+			return c.Redirect("/login")
+		default:
+			// Use the fiber error's status code instead of always 500
+			c.Status(fiberErr.Code)
+		}
+	} else {
+		c.Status(fiber.StatusInternalServerError)
 	}
 
 	log.Error().Err(err).Send()
 
-	c.Status(fiber.StatusInternalServerError)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.FiveHundred(err).Render(c.UserContext(), c.Response().BodyWriter())
+	// Use a generic error to avoid leaking internal details to the user
+	displayErr := errors.New("an unexpected error occurred")
+	renderErr := templates.FiveHundred(displayErr).
+		Render(c.UserContext(), c.Response().BodyWriter())
+	if renderErr != nil {
+		// Fallback: plain text to avoid infinite recursion if template render fails
+		return c.SendString("Internal Server Error")
+	}
+
+	return nil
 }
 
 func (a *App) indexHandler(c *fiber.Ctx) error {
