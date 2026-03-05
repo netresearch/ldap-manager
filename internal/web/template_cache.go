@@ -2,7 +2,6 @@ package web
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"sync"
@@ -21,13 +20,13 @@ type TemplateCache struct {
 	maxSize         int
 	cleanupInterval time.Duration
 	stopCleanup     chan struct{}
+	stopOnce        sync.Once
 }
 
 type cacheEntry struct {
-	content    []byte
-	createdAt  time.Time
-	accessedAt time.Time
-	ttl        time.Duration
+	content   []byte
+	createdAt time.Time
+	ttl       time.Duration
 }
 
 // TemplateCacheConfig holds configuration for template caching
@@ -93,8 +92,8 @@ func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string
 
 // Get retrieves cached template content if available and not expired
 func (tc *TemplateCache) Get(key string) ([]byte, bool) {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
+	tc.mu.RLock()
+	defer tc.mu.RUnlock()
 
 	entry, exists := tc.entries[key]
 	if !exists {
@@ -103,12 +102,8 @@ func (tc *TemplateCache) Get(key string) ([]byte, bool) {
 
 	// Check if entry is expired
 	if time.Since(entry.createdAt) > entry.ttl {
-		// Entry expired, but don't remove it here to avoid complex logic
 		return nil, false
 	}
-
-	// Update access time for LRU tracking
-	entry.accessedAt = time.Now()
 
 	return entry.content, true
 }
@@ -127,49 +122,11 @@ func (tc *TemplateCache) Set(key string, content []byte, ttl time.Duration) {
 		ttl = tc.defaultTTL
 	}
 
-	now := time.Now()
 	tc.entries[key] = &cacheEntry{
-		content:    content,
-		createdAt:  now,
-		accessedAt: now,
-		ttl:        ttl,
+		content:   content,
+		createdAt: time.Now(),
+		ttl:       ttl,
 	}
-}
-
-// Invalidate removes cached entries matching the given pattern
-func (tc *TemplateCache) Invalidate(pattern string) int {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-
-	count := 0
-	for key := range tc.entries {
-		// Simple pattern matching - could be enhanced with regex if needed
-		if pattern == "*" || key == pattern {
-			delete(tc.entries, key)
-			count++
-		}
-	}
-
-	return count
-}
-
-// InvalidateByPath removes all cached entries for a specific path
-func (tc *TemplateCache) InvalidateByPath(path string) int {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-
-	count := 0
-	for key := range tc.entries {
-		// Check if the key contains the path (since keys are hashed,
-		// we'll need to maintain a reverse mapping or use a different approach)
-		// For now, we'll invalidate all entries (this could be optimized)
-		if path != "" {
-			delete(tc.entries, key)
-			count++
-		}
-	}
-
-	return count
 }
 
 // Clear removes all cached entries
@@ -222,9 +179,9 @@ func (tc *TemplateCache) evictOldestUnsafe() {
 	var oldestTime time.Time
 
 	for key, entry := range tc.entries {
-		if oldestKey == "" || entry.accessedAt.Before(oldestTime) {
+		if oldestKey == "" || entry.createdAt.Before(oldestTime) {
 			oldestKey = key
-			oldestTime = entry.accessedAt
+			oldestTime = entry.createdAt
 		}
 	}
 
@@ -261,9 +218,12 @@ func (tc *TemplateCache) startCleanup() {
 	}
 }
 
-// Stop gracefully shuts down the cache cleanup goroutine
+// Stop gracefully shuts down the cache cleanup goroutine.
+// Safe to call multiple times; subsequent calls are no-ops.
 func (tc *TemplateCache) Stop() {
-	close(tc.stopCleanup)
+	tc.stopOnce.Do(func() {
+		close(tc.stopCleanup)
+	})
 }
 
 // RenderWithCache renders a template component with caching support
@@ -280,7 +240,7 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 
 	// Not in cache, render the template
 	var buf bytes.Buffer
-	if err := component.Render(context.Background(), &buf); err != nil {
+	if err := component.Render(c.UserContext(), &buf); err != nil {
 		return err
 	}
 
@@ -293,39 +253,6 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	return c.Send(content)
-}
-
-// CacheMiddleware creates a Fiber middleware for template caching
-func (tc *TemplateCache) CacheMiddleware(paths ...string) fiber.Handler {
-	pathMap := make(map[string]bool)
-	for _, path := range paths {
-		pathMap[path] = true
-	}
-
-	return func(c *fiber.Ctx) error {
-		// Only cache GET requests for specified paths
-		if c.Method() != fiber.MethodGet {
-			return c.Next()
-		}
-
-		// Check if this path should be cached
-		if len(pathMap) > 0 && !pathMap[c.Path()] {
-			return c.Next()
-		}
-
-		// Generate cache key
-		cacheKey := tc.generateCacheKey(c)
-
-		// Try to serve from cache
-		if cachedContent, found := tc.Get(cacheKey); found {
-			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-			return c.Send(cachedContent)
-		}
-
-		// Not in cache, continue to handler
-		return c.Next()
-	}
 }
 
 // LogStats logs cache statistics

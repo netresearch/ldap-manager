@@ -97,15 +97,11 @@ func TestFlashBorderColor(t *testing.T) {
 		assertFlashBorderColor(t, InfoFlash, "border-blue-500")
 	})
 
-	t.Run("unknown flash type panics", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("Expected panic for unknown flash type")
-			}
-		}()
-
+	t.Run("unknown flash type returns info fallback", func(t *testing.T) {
 		flash := Flash{Message: "test", Type: "unknown"}
-		flash.BorderColor()
+		if got := flash.BorderColor(); got != "border-blue-500" {
+			t.Errorf("Expected border-blue-500 fallback, got %q", got)
+		}
 	})
 }
 

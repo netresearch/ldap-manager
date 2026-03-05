@@ -9,6 +9,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -41,7 +42,7 @@ type Manager struct {
 	client          LDAPClient    // LDAP client for directory operations
 	metrics         *Metrics      // Performance metrics and health monitoring
 	refreshInterval time.Duration // Configurable refresh interval (default 30s)
-	warmupComplete  bool          // Tracks if initial cache warming is complete
+	warmupComplete  atomic.Bool   // Tracks if initial cache warming is complete (concurrent-safe)
 	retryConfig     retry.Config  // Retry configuration for LDAP operations
 
 	Users     Cache[ldap.User]     // Cached user entries with O(1) indexed lookups
@@ -95,7 +96,6 @@ func NewWithConfig(client LDAPClient, refreshInterval time.Duration) *Manager {
 		client:          client,
 		metrics:         metrics,
 		refreshInterval: refreshInterval,
-		warmupComplete:  false,
 		retryConfig:     retry.LDAPConfig(),
 		Users:           NewCachedWithMetrics[ldap.User](metrics),
 		Groups:          NewCachedWithMetrics[ldap.Group](metrics),
@@ -209,7 +209,7 @@ func (m *Manager) WarmupCache() {
 	duration := time.Since(startTime)
 
 	if !hasErrors {
-		m.warmupComplete = true
+		m.warmupComplete.Store(true)
 		m.metrics.RecordRefreshComplete(startTime, m.Users.Count(), m.Groups.Count(), m.Computers.Count())
 		log.Info().
 			Int("total_entities", totalEntities).
@@ -226,7 +226,7 @@ func (m *Manager) WarmupCache() {
 // IsWarmedUp returns true if the initial cache warming process has completed successfully.
 // Used to determine if the cache is ready to serve requests optimally.
 func (m *Manager) IsWarmedUp() bool {
-	return m.warmupComplete
+	return m.warmupComplete.Load()
 }
 
 // RefreshUsers fetches all users from LDAP and updates the user cache.
@@ -414,22 +414,7 @@ func (m *Manager) FindComputerBySAMAccountName(samAccountName string) (*ldap.Com
 // which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete user object with expanded group information.
 func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
-	full := &FullLDAPUser{
-		User:   *user,
-		Groups: make([]ldap.Group, 0),
-	}
-
-	userDN := user.DN()
-
-	// Iterate through all groups and check if user is a member
-	// This approach works regardless of whether memberOf overlay is enabled
-	for _, group := range m.Groups.Get() {
-		if slices.Contains(group.Members, userDN) {
-			full.Groups = append(full.Groups, group)
-		}
-	}
-
-	return full
+	return PopulateGroupsForUserFromData(user, m.Groups.Get())
 }
 
 // PopulateUsersForGroup creates a FullLDAPGroup with populated member list.
@@ -438,32 +423,7 @@ func (m *Manager) PopulateGroupsForUser(user *ldap.User) *FullLDAPUser {
 // When showDisabled is false, filters out disabled users from membership.
 // Returns a complete group object with expanded member and parent group information.
 func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *FullLDAPGroup {
-	full := &FullLDAPGroup{
-		Group:        *group,
-		Members:      make([]ldap.User, 0),
-		ParentGroups: make([]ldap.Group, 0),
-	}
-
-	for _, userDN := range group.Members {
-		user, err := m.FindUserByDN(userDN)
-		if err == nil {
-			if !showDisabled && !user.Enabled {
-				continue
-			}
-
-			full.Members = append(full.Members, *user)
-		}
-	}
-
-	// Resolve parent groups from MemberOf
-	for _, parentDN := range group.MemberOf {
-		parentGroup, err := m.FindGroupByDN(parentDN)
-		if err == nil {
-			full.ParentGroups = append(full.ParentGroups, *parentGroup)
-		}
-	}
-
-	return full
+	return PopulateUsersForGroupFromData(group, m.Users.Get(), m.Groups.Get(), showDisabled)
 }
 
 // PopulateGroupsForComputer creates a FullLDAPComputer with populated group memberships.
@@ -472,22 +432,7 @@ func (m *Manager) PopulateUsersForGroup(group *ldap.Group, showDisabled bool) *F
 // which works correctly even when OpenLDAP's memberOf overlay is not enabled.
 // Returns a complete computer object with expanded group information.
 func (m *Manager) PopulateGroupsForComputer(computer *ldap.Computer) *FullLDAPComputer {
-	full := &FullLDAPComputer{
-		Computer: *computer,
-		Groups:   make([]ldap.Group, 0),
-	}
-
-	computerDN := computer.DN()
-
-	// Iterate through all groups and check if computer is a member
-	// This approach works regardless of whether memberOf overlay is enabled
-	for _, group := range m.Groups.Get() {
-		if slices.Contains(group.Members, computerDN) {
-			full.Groups = append(full.Groups, group)
-		}
-	}
-
-	return full
+	return PopulateGroupsForComputerFromData(computer, m.Groups.Get())
 }
 
 // OnAddUserToGroup updates cache when a user is added to a group.
@@ -523,6 +468,8 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 		for idx, group := range user.Groups {
 			if group == groupDN {
 				user.Groups = append(user.Groups[:idx], user.Groups[idx+1:]...)
+
+				break
 			}
 		}
 	})
@@ -535,9 +482,94 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 		for idx, member := range group.Members {
 			if member == userDN {
 				group.Members = append(group.Members[:idx], group.Members[idx+1:]...)
+
+				break
 			}
 		}
 	})
+}
+
+// PopulateGroupsForUserFromData creates a FullLDAPUser with populated group memberships
+// using provided data instead of cache. Works identically to PopulateGroupsForUser
+// but operates on explicit slices rather than the cache.
+func PopulateGroupsForUserFromData(user *ldap.User, allGroups []ldap.Group) *FullLDAPUser {
+	full := &FullLDAPUser{
+		User:   *user,
+		Groups: make([]ldap.Group, 0),
+	}
+
+	userDN := user.DN()
+
+	for _, group := range allGroups {
+		if slices.Contains(group.Members, userDN) {
+			full.Groups = append(full.Groups, group)
+		}
+	}
+
+	return full
+}
+
+// PopulateUsersForGroupFromData creates a FullLDAPGroup with populated member list
+// using provided data instead of cache. Works identically to PopulateUsersForGroup
+// but operates on explicit slices rather than the cache.
+func PopulateUsersForGroupFromData(
+	group *ldap.Group, allUsers []ldap.User, allGroups []ldap.Group, showDisabled bool,
+) *FullLDAPGroup {
+	full := &FullLDAPGroup{
+		Group:        *group,
+		Members:      make([]ldap.User, 0),
+		ParentGroups: make([]ldap.Group, 0),
+	}
+
+	// Build a map for O(1) user lookups by DN
+	usersByDN := make(map[string]*ldap.User, len(allUsers))
+	for i := range allUsers {
+		usersByDN[allUsers[i].DN()] = &allUsers[i]
+	}
+
+	for _, memberDN := range group.Members {
+		if user, ok := usersByDN[memberDN]; ok {
+			if !showDisabled && !user.Enabled {
+				continue
+			}
+
+			full.Members = append(full.Members, *user)
+		}
+	}
+
+	// Build a map for O(1) group lookups by DN
+	groupsByDN := make(map[string]*ldap.Group, len(allGroups))
+	for i := range allGroups {
+		groupsByDN[allGroups[i].DN()] = &allGroups[i]
+	}
+
+	for _, parentDN := range group.MemberOf {
+		if parentGroup, ok := groupsByDN[parentDN]; ok {
+			full.ParentGroups = append(full.ParentGroups, *parentGroup)
+		}
+	}
+
+	return full
+}
+
+// PopulateGroupsForComputerFromData creates a FullLDAPComputer with populated group memberships
+// using provided data instead of cache. Works identically to PopulateGroupsForComputer
+// but operates on explicit slices rather than the cache.
+func PopulateGroupsForComputerFromData(computer *ldap.Computer, allGroups []ldap.Group) *FullLDAPComputer {
+	full := &FullLDAPComputer{
+		Computer: *computer,
+		Groups:   make([]ldap.Group, 0),
+	}
+
+	computerDN := computer.DN()
+
+	for _, group := range allGroups {
+		if slices.Contains(group.Members, computerDN) {
+			full.Groups = append(full.Groups, group)
+		}
+	}
+
+	return full
 }
 
 // GetMetrics returns the current cache metrics for monitoring and observability.

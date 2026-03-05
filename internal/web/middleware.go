@@ -31,42 +31,16 @@ func (a *App) RequireAuth() fiber.Handler {
 			return c.Redirect("/login")
 		}
 
-		// Store user DN in context for handlers to use
+		// Store user DN and username in context for handlers to use
 		c.Locals("userDN", userDN)
+		if username, ok := sess.Get("username").(string); ok {
+			c.Locals("username", username)
+		}
 
 		log.Debug().
 			Str("userDN", userDN).
 			Str("path", c.Path()).
 			Msg("authenticated user accessing protected route")
-
-		return c.Next()
-	}
-}
-
-// OptionalAuth middleware provides user context if authenticated but doesn't require it
-// Useful for routes that behave differently for authenticated vs anonymous users
-func (a *App) OptionalAuth() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		sess, err := a.sessionStore.Get(c)
-		if err != nil {
-			// Continue without authentication context
-			return c.Next()
-		}
-
-		// If session is fresh, continue without authentication context
-		if sess.Fresh() {
-			return c.Next()
-		}
-
-		// Get user DN from session
-		if userDN, ok := sess.Get("dn").(string); ok && userDN != "" {
-			// Store user DN in context for handlers to use
-			c.Locals("userDN", userDN)
-			log.Debug().
-				Str("userDN", userDN).
-				Str("path", c.Path()).
-				Msg("optional auth: user context available")
-		}
 
 		return c.Next()
 	}

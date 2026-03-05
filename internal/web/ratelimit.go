@@ -222,8 +222,9 @@ func (rl *RateLimiter) Middleware() fiber.Handler {
 				Str("path", c.Path()).
 				Msg("Rate limited request blocked")
 
-			return c.Status(fiber.StatusTooManyRequests).
-				SendString("Too many failed login attempts. Please try again later.")
+			c.Status(fiber.StatusTooManyRequests)
+
+			return c.SendString("Too many failed login attempts. Please try again later.")
 		}
 
 		return c.Next()
