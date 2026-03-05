@@ -435,7 +435,9 @@ func handle500(c *fiber.Ctx, err error) error {
 
 	// Use a generic error to avoid leaking internal details to the user
 	displayErr := errors.New("an unexpected error occurred")
-	if renderErr := templates.FiveHundred(displayErr).Render(c.UserContext(), c.Response().BodyWriter()); renderErr != nil {
+	renderErr := templates.FiveHundred(displayErr).
+		Render(c.UserContext(), c.Response().BodyWriter())
+	if renderErr != nil {
 		// Fallback: plain text to avoid infinite recursion if template render fails
 		return c.SendString("Internal Server Error")
 	}
