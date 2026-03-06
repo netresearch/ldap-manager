@@ -1,0 +1,66 @@
+dn: ou=People,dc=netresearch,dc=local
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,dc=netresearch,dc=local
+objectClass: organizationalUnit
+ou: Groups
+
+dn: uid=admin,ou=People,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin
+sn: Admin
+givenName: LDAP
+cn: LDAP Admin
+displayName: LDAP Admin
+uidNumber: 1000
+gidNumber: 1000
+homeDirectory: /home/admin
+loginShell: /bin/bash
+mail: admin@netresearch.local
+userPassword: admin
+
+dn: uid=jdoe,ou=People,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: jdoe
+sn: Doe
+givenName: John
+cn: John Doe
+displayName: John Doe
+uidNumber: 1001
+gidNumber: 1000
+homeDirectory: /home/jdoe
+loginShell: /bin/bash
+mail: john.doe@netresearch.local
+userPassword: password
+
+dn: uid=jsmith,ou=People,dc=netresearch,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: jsmith
+sn: Smith
+givenName: Jane
+cn: Jane Smith
+displayName: Jane Smith
+uidNumber: 1002
+gidNumber: 1000
+homeDirectory: /home/jsmith
+loginShell: /bin/bash
+mail: jane.smith@netresearch.local
+userPassword: password
+
+dn: cn=developers,ou=Groups,dc=netresearch,dc=local
+objectClass: groupOfNames
+cn: developers
+member: uid=admin,ou=People,dc=netresearch,dc=local
+member: uid=jdoe,ou=People,dc=netresearch,dc=local
+
+dn: cn=admins,ou=Groups,dc=netresearch,dc=local
+objectClass: groupOfNames
+cn: admins
+member: uid=admin,ou=People,dc=netresearch,dc=local

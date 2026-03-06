@@ -14,7 +14,9 @@ services:
       LDAP_BASE_DN: "dc=netresearch,dc=local"
       LDAP_ADMIN_PASSWORD: "admin"
       LDAP_CONFIG_PASSWORD: "config"
-      LDAP_READONLY_USER: "false"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly"
       LDAP_RFC2307BIS_SCHEMA: "false"
       LDAP_BACKEND: "mdb"
       LDAP_TLS: "true"
@@ -33,6 +35,8 @@ services:
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
+      - ./dev/seed.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/seed.ldif:ro
+    command: --copy-service
     networks:
       - ldap-network
     restart: unless-stopped
@@ -46,6 +50,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    profiles:
+      - dev
+
+  # Applies ACLs granting read access to all authenticated users (like AD default)
+  openldap-init:
+    image: osixia/openldap:1.5.0
+    entrypoint: /bin/bash
+    command: /setup-acl.sh ldap://ldap-server:389
+    volumes:
+      - ./dev/setup-acl.sh:/setup-acl.sh:ro
+    depends_on:
+      openldap:
+        condition: service_healthy
+    networks:
+      - ldap-network
     profiles:
       - dev
 
@@ -64,6 +83,21 @@ services:
     networks:
       - ldap-network
     restart: unless-stopped
+    profiles:
+      - dev
+
+  # Nginx TLS reverse proxy for local HTTPS development
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - ldap-manager-dev
+    networks:
+      - ldap-network
     profiles:
       - dev
 
@@ -118,25 +152,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
     container_name: ldap-manager-dev
     hostname: ldap-manager-dev
-    ports:
-      - "3000:3000"
     environment:
       # LDAP connection settings
       LDAP_SERVER: "ldap://ldap-server:389"
       LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "admin"
+      LDAP_READONLY_USER: "cn=readonly,dc=netresearch,dc=local"
+      LDAP_READONLY_PASSWORD: "readonly"
 
-      # Note: Connection pooling is disabled in the application.
-      # CheckPasswordForSAMAccountName rebinds pooled connections with user
-      # credentials, contaminating the pool. Each operation creates a fresh connection.
-
-      # Session settings (BBolt-based as per requirement)
+      # Session settings
       SESSION_PATH: "/data/session.bbolt"
       SESSION_SECRET: "dev-secret-change-in-production"
+      COOKIE_SECURE: "true"
 
       # Application settings
       LOG_LEVEL: "debug"
@@ -144,22 +172,11 @@ services:
 
       # Development settings
       ENVIRONMENT: "development"
-    volumes:
-      # Mount source code for live development
-      - .:/app
-      - /app/node_modules
-      # Persistent storage for BBolt session database
-      - ldap_sessions:/data
-      # Cache Go modules and build cache
-      - go_modules:/go/pkg/mod
-      - go_cache:/root/.cache/go-build
     depends_on:
-      openldap:
-        condition: service_healthy
+      openldap-init:
+        condition: service_completed_successfully
     networks:
       - ldap-network
-    working_dir: /app
-    command: ["sh", "-c", "go run ./cmd/ldap-manager"]
     profiles:
       - dev
 
