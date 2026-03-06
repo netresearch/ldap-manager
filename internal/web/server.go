@@ -465,9 +465,9 @@ func (a *App) indexHandler(c *fiber.Ctx) error {
 
 	if username != "" {
 		user, err = userLDAP.FindUserBySAMAccountName(username)
-		// Fail fast on real errors (not just "not found")
-		if err != nil && !errors.Is(err, ldap.ErrUserNotFound) {
-			return handle500(c, err)
+		if err != nil {
+			log.Debug().Err(err).Str("username", username).
+				Msg("SAMAccountName lookup failed, falling back to DN search")
 		}
 	}
 

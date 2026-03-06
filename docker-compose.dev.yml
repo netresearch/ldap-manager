@@ -1,0 +1,59 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - ldap-dev
+    depends_on:
+      - ldap-manager
+
+  ldap-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - LDAP_SERVER=ldap://openldap:389
+      - LDAP_BASE_DN=dc=example,dc=org
+      - LDAP_READONLY_USER=cn=readonly,dc=example,dc=org
+      - LDAP_READONLY_PASSWORD=readonly
+      - COOKIE_SECURE=true
+      - SESSION_DURATION=30m
+    depends_on:
+      openldap-init:
+        condition: service_completed_successfully
+    networks:
+      - ldap-dev
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    environment:
+      - LDAP_ORGANISATION=Example Inc
+      - LDAP_DOMAIN=example.org
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_READONLY_USER=true
+      - LDAP_READONLY_USER_USERNAME=readonly
+      - LDAP_READONLY_USER_PASSWORD=readonly
+    volumes:
+      - ./dev/seed.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/seed.ldif:ro
+    command: --copy-service
+    networks:
+      - ldap-dev
+
+  openldap-init:
+    image: osixia/openldap:1.5.0
+    entrypoint: /bin/bash
+    command: /setup-acl.sh ldap://openldap:389
+    volumes:
+      - ./dev/setup-acl.sh:/setup-acl.sh:ro
+    depends_on:
+      - openldap
+    networks:
+      - ldap-dev
+
+networks:
+  ldap-dev:
+    driver: bridge

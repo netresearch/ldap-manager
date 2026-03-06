@@ -37,7 +37,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 	password := c.FormValue("password")
 
 	if username != "" && password != "" {
-		user, authErr := a.authenticateUser(username, password)
+		dn, authErr := a.authenticateUser(username, password)
 		if authErr != nil {
 			// Record failed attempt for rate limiting
 			ip := c.IP()
@@ -81,7 +81,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			return handle500(c, err)
 		}
 
-		sess.Set("dn", user.DN())
+		sess.Set("dn", dn)
 		// Password stored in session for per-user LDAP binding.
 		// Mitigated by: session-only cookies (HttpOnly, SameSite=Strict),
 		// configurable session TTL, and server-side session storage.
@@ -93,7 +93,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 
 		log.Info().
 			Str("username", username).
-			Str("dn", user.DN()).
+			Str("dn", dn).
 			Msg("successful login")
 
 		return c.Redirect("/")
@@ -109,16 +109,72 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-// authenticateUser verifies credentials using either the service account
-// (when configured) or direct UPN bind (for AD without service account).
-func (a *App) authenticateUser(username, password string) (*ldap.User, error) {
+// authenticateUser verifies credentials and returns the user's DN.
+// Tries service account lookup first, then UPN bind (AD), then direct bind
+// as fallback for non-person accounts (e.g. OpenLDAP admin).
+func (a *App) authenticateUser(username, password string) (string, error) {
 	if a.ldapReadonly != nil {
-		// Service account available: use it to look up user and verify password
-		return a.ldapReadonly.CheckPasswordForSAMAccountName(username, password)
+		user, err := a.ldapReadonly.CheckPasswordForSAMAccountName(username, password)
+		if err == nil {
+			return user.DN(), nil
+		}
+
+		// SAMAccountName lookup failed — try direct bind as fallback.
+		// This handles accounts like cn=admin that aren't person entries.
+		dn, bindErr := a.authenticateViaDirectBind(username, password)
+		if bindErr == nil {
+			return dn, nil
+		}
+
+		// Return the original error (more informative than direct bind error)
+		return "", err
 	}
 
 	// No service account: authenticate via UPN bind (Active Directory)
-	return a.authenticateViaUPNBind(username, password)
+	user, err := a.authenticateViaUPNBind(username, password)
+	if err == nil {
+		return user.DN(), nil
+	}
+
+	// UPN bind failed — try direct bind as fallback
+	dn, bindErr := a.authenticateViaDirectBind(username, password)
+	if bindErr == nil {
+		return dn, nil
+	}
+
+	return "", err
+}
+
+// authenticateViaDirectBind tries binding directly with common DN patterns.
+// This handles non-person accounts like the OpenLDAP root admin (cn=admin,dc=...).
+func (a *App) authenticateViaDirectBind(username, password string) (string, error) {
+	// Validate username to prevent LDAP injection
+	if strings.ContainsAny(username, `\@,=+"<>#;*()`) || strings.ContainsRune(username, 0) {
+		return "", fmt.Errorf("invalid characters in username")
+	}
+
+	// Try common DN patterns
+	candidates := []string{
+		fmt.Sprintf("cn=%s,%s", username, a.ldapConfig.BaseDN),
+		fmt.Sprintf("uid=%s,%s", username, a.ldapConfig.BaseDN),
+	}
+
+	for _, dn := range candidates {
+		client, err := ldap.New(a.ldapConfig, dn, password, a.ldapOpts...)
+		if err != nil {
+			continue
+		}
+		_ = client.Close()
+
+		log.Info().
+			Str("username", username).
+			Str("dn", dn).
+			Msg("authenticated via direct bind")
+
+		return dn, nil
+	}
+
+	return "", fmt.Errorf("direct bind failed for %s", username)
 }
 
 // authenticateViaUPNBind authenticates by binding as user@domain directly.
