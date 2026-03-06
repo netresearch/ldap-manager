@@ -1,12 +1,12 @@
-dn: ou=People,dc=example,dc=org
+dn: ou=People,dc=netresearch,dc=local
 objectClass: organizationalUnit
 ou: People
 
-dn: ou=Groups,dc=example,dc=org
+dn: ou=Groups,dc=netresearch,dc=local
 objectClass: organizationalUnit
 ou: Groups
 
-dn: uid=admin,ou=People,dc=example,dc=org
+dn: uid=admin,ou=People,dc=netresearch,dc=local
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
@@ -19,10 +19,10 @@ uidNumber: 1000
 gidNumber: 1000
 homeDirectory: /home/admin
 loginShell: /bin/bash
-mail: admin@example.org
+mail: admin@netresearch.local
 userPassword: admin
 
-dn: uid=jdoe,ou=People,dc=example,dc=org
+dn: uid=jdoe,ou=People,dc=netresearch,dc=local
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
@@ -35,10 +35,10 @@ uidNumber: 1001
 gidNumber: 1000
 homeDirectory: /home/jdoe
 loginShell: /bin/bash
-mail: john.doe@example.org
+mail: john.doe@netresearch.local
 userPassword: password
 
-dn: uid=jsmith,ou=People,dc=example,dc=org
+dn: uid=jsmith,ou=People,dc=netresearch,dc=local
 objectClass: inetOrgPerson
 objectClass: posixAccount
 objectClass: shadowAccount
@@ -51,16 +51,16 @@ uidNumber: 1002
 gidNumber: 1000
 homeDirectory: /home/jsmith
 loginShell: /bin/bash
-mail: jane.smith@example.org
+mail: jane.smith@netresearch.local
 userPassword: password
 
-dn: cn=developers,ou=Groups,dc=example,dc=org
+dn: cn=developers,ou=Groups,dc=netresearch,dc=local
 objectClass: groupOfNames
 cn: developers
-member: uid=admin,ou=People,dc=example,dc=org
-member: uid=jdoe,ou=People,dc=example,dc=org
+member: uid=admin,ou=People,dc=netresearch,dc=local
+member: uid=jdoe,ou=People,dc=netresearch,dc=local
 
-dn: cn=admins,ou=Groups,dc=example,dc=org
+dn: cn=admins,ou=Groups,dc=netresearch,dc=local
 objectClass: groupOfNames
 cn: admins
-member: uid=admin,ou=People,dc=example,dc=org
+member: uid=admin,ou=People,dc=netresearch,dc=local
