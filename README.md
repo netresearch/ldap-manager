@@ -134,7 +134,8 @@ Published to [GitHub Container Registry](https://github.com/netresearch/ldap-man
 - OCI-compliant labels and health check built in
 
 ```bash
-docker run -v /etc/ssl/certs:/etc/ssl/certs:ro -p 3000:3000 \
+docker run -d --name ldap-manager \
+  -v /etc/ssl/certs:/etc/ssl/certs:ro -p 3000:3000 \
   ghcr.io/netresearch/ldap-manager:latest \
   --ldap-server ldaps://dc1.example.com:636 \
   --base-dn DC=example,DC=com
