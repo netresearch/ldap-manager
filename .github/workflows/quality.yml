@@ -422,6 +422,9 @@ jobs:
           go test -fuzz=FuzzCacheFindBySAMAccountName -fuzztime=60s ./internal/ldap_cache/... || true
           go test -fuzz=FuzzURLPathUnescape -fuzztime=60s ./internal/web/... || true
           go test -fuzz=FuzzQueryParams -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzAuthUsernameValidation -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzDomainFromBaseDN -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzRateLimiter -fuzztime=60s ./internal/web/... || true
           echo "Fuzz testing completed"
 
   mutation-tests:

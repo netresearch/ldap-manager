@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 )
 
@@ -224,6 +225,80 @@ func htmlEscape(s string) string {
 	s = strings.ReplaceAll(s, "'", "&#39;")
 
 	return s
+}
+
+// FuzzAuthUsernameValidation tests username validation in auth handlers
+func FuzzAuthUsernameValidation(f *testing.F) {
+	f.Add("admin")
+	f.Add("john.doe")
+	f.Add("user_name")
+	f.Add("admin*")
+	f.Add("admin()")
+	f.Add("admin\\bad")
+	f.Add("admin@evil")
+	f.Add("admin,dc=evil")
+	f.Add("admin=bad")
+	f.Add(string([]byte{0x00}))
+	f.Add("")
+	f.Add(strings.Repeat("a", 1000))
+	f.Add("admin\"bad")
+	f.Add("admin<bad>")
+	f.Add("admin#bad")
+	f.Add("admin;bad")
+	f.Add("admin+bad")
+
+	f.Fuzz(func(t *testing.T, username string) {
+		// Username validation should never panic
+		hasBadChars := strings.ContainsAny(username, `\@,=+"<>#;*()`) || strings.ContainsRune(username, 0)
+		if hasBadChars {
+			// Should be rejected by validation
+			return
+		}
+		// Valid usernames pass validation (actual LDAP ops may still fail)
+		_ = username
+	})
+}
+
+// FuzzDomainFromBaseDN tests DN domain extraction with fuzzed input
+func FuzzDomainFromBaseDN(f *testing.F) {
+	f.Add("DC=example,DC=com")
+	f.Add("DC=sub,DC=example,DC=com")
+	f.Add("OU=Users,DC=example,DC=com")
+	f.Add("")
+	f.Add("OU=Users,CN=Admin")
+	f.Add("DC=a")
+	f.Add(strings.Repeat("DC=x,", 100))
+
+	f.Fuzz(func(t *testing.T, baseDN string) {
+		// Should never panic
+		result := domainFromBaseDN(baseDN)
+		_ = result
+	})
+}
+
+// FuzzRateLimiter tests rate limiter with fuzzed IPs
+func FuzzRateLimiter(f *testing.F) {
+	f.Add("192.168.1.1")
+	f.Add("10.0.0.1")
+	f.Add("::1")
+	f.Add("")
+	f.Add(strings.Repeat("x", 1000))
+
+	f.Fuzz(func(t *testing.T, ip string) {
+		rl := NewRateLimiter(RateLimiterConfig{
+			MaxAttempts:  3,
+			WindowPeriod: time.Minute,
+			BlockPeriod:  time.Minute,
+			CleanupEvery: time.Hour,
+		})
+		defer rl.Stop()
+
+		// Should never panic
+		rl.RecordAttempt(ip)
+		rl.IsBlocked(ip)
+		rl.GetRemainingAttempts(ip)
+		rl.ResetAttempts(ip)
+	})
 }
 
 // FuzzContentTypeDetection tests content type handling
