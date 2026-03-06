@@ -1,0 +1,10 @@
+coverage:
+  status:
+    project:
+      default:
+        # Don't fail PRs when there's no baseline coverage yet
+        informational: true
+    patch:
+      default:
+        # Require new code to have some coverage
+        target: auto
