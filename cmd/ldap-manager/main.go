@@ -21,12 +21,17 @@ import (
 )
 
 const (
-	shutdownTimeout     = 30 * time.Second
-	healthCheckTimeout  = 3 * time.Second
-	healthCheckEndpoint = "http://localhost:3000/health/live"
+	shutdownTimeout    = 30 * time.Second
+	healthCheckTimeout = 3 * time.Second
+	defaultPort        = "3000"
 )
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+
 	// Handle version and health-check flags early, before any other initialization
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
@@ -45,7 +50,7 @@ func main() {
 			fmt.Println(version.FormatVersion())
 			os.Exit(0)
 		case "--health-check":
-			os.Exit(runHealthCheck())
+			os.Exit(runHealthCheck(port))
 		}
 	}
 
@@ -75,7 +80,7 @@ func main() {
 	// Start server in goroutine
 	serverErr := make(chan error, 1)
 	go func() {
-		if err := app.Listen(ctx, ":3000"); err != nil {
+		if err := app.Listen(ctx, ":"+port); err != nil {
 			serverErr <- err
 		}
 	}()
@@ -107,11 +112,11 @@ func main() {
 // runHealthCheck performs an HTTP health check against the running application.
 // Returns 0 if healthy (HTTP 200), 1 otherwise.
 // Used by Docker HEALTHCHECK to verify the application is running correctly.
-func runHealthCheck() int {
+func runHealthCheck(port string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthCheckEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:"+port+"/health/live", nil)
 	if err != nil {
 		return 1
 	}
