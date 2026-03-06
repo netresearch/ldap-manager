@@ -113,36 +113,33 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 // Tries service account lookup first, then UPN bind (AD), then direct bind
 // as fallback for non-person accounts (e.g. OpenLDAP admin).
 func (a *App) authenticateUser(username, password string) (string, error) {
+	var primaryAuthErr error
+
 	if a.ldapReadonly != nil {
+		// Service account available: use it to look up user and verify password
 		user, err := a.ldapReadonly.CheckPasswordForSAMAccountName(username, password)
 		if err == nil {
 			return user.DN(), nil
 		}
-
-		// SAMAccountName lookup failed — try direct bind as fallback.
-		// This handles accounts like cn=admin that aren't person entries.
-		dn, bindErr := a.authenticateViaDirectBind(username, password)
-		if bindErr == nil {
-			return dn, nil
+		primaryAuthErr = err
+	} else {
+		// No service account: authenticate via UPN bind (Active Directory)
+		user, err := a.authenticateViaUPNBind(username, password)
+		if err == nil {
+			return user.DN(), nil
 		}
-
-		// Return the original error (more informative than direct bind error)
-		return "", err
+		primaryAuthErr = err
 	}
 
-	// No service account: authenticate via UPN bind (Active Directory)
-	user, err := a.authenticateViaUPNBind(username, password)
-	if err == nil {
-		return user.DN(), nil
-	}
-
-	// UPN bind failed — try direct bind as fallback
+	// Primary auth failed — try direct bind as fallback for non-person accounts
+	// (e.g. OpenLDAP root admin cn=admin that isn't an inetOrgPerson entry).
 	dn, bindErr := a.authenticateViaDirectBind(username, password)
 	if bindErr == nil {
 		return dn, nil
 	}
 
-	return "", err
+	// Return the original error (more informative than direct bind error)
+	return "", primaryAuthErr
 }
 
 // authenticateViaDirectBind tries binding directly with common DN patterns.
