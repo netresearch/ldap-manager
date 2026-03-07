@@ -247,15 +247,26 @@ func FuzzAuthUsernameValidation(f *testing.F) {
 	f.Add("admin;bad")
 	f.Add("admin+bad")
 
+	app, _ := setupTestApp()
+
 	f.Fuzz(func(t *testing.T, username string) {
-		// Username validation should never panic
-		hasBadChars := strings.ContainsAny(username, `\@,=+"<>#;*()`) || strings.ContainsRune(username, 0)
+		// Call production auth functions — should never panic
+		hasBadChars := strings.ContainsAny(username, `\@,=+"<>#;*()`) ||
+			strings.ContainsRune(username, 0)
+
+		_, err := app.authenticateViaDirectBind(username, "password")
 		if hasBadChars {
-			// Should be rejected by validation
-			return
+			if err == nil {
+				t.Errorf("expected error for username with bad chars: %q", username)
+			}
 		}
-		// Valid usernames pass validation (actual LDAP ops may still fail)
-		_ = username
+
+		_, err = app.authenticateViaUPNBind(username, "password")
+		if hasBadChars {
+			if err == nil {
+				t.Errorf("expected error for username with bad chars: %q", username)
+			}
+		}
 	})
 }
 
@@ -269,7 +280,7 @@ func FuzzDomainFromBaseDN(f *testing.F) {
 	f.Add("DC=a")
 	f.Add(strings.Repeat("DC=x,", 100))
 
-	f.Fuzz(func(t *testing.T, baseDN string) {
+	f.Fuzz(func(_ *testing.T, baseDN string) {
 		// Should never panic
 		result := domainFromBaseDN(baseDN)
 		_ = result
@@ -284,7 +295,7 @@ func FuzzRateLimiter(f *testing.F) {
 	f.Add("")
 	f.Add(strings.Repeat("x", 1000))
 
-	f.Fuzz(func(t *testing.T, ip string) {
+	f.Fuzz(func(_ *testing.T, ip string) {
 		rl := NewRateLimiter(RateLimiterConfig{
 			MaxAttempts:  3,
 			WindowPeriod: time.Minute,

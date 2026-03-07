@@ -25,13 +25,15 @@ import (
 func staticComponent(text string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		_, err := io.WriteString(w, text)
+
 		return err
 	})
 }
 
 // setupFullTestApp creates a test app with all routes and template cache,
 // mimicking the real setupRoutes but without CSRF for easier testing.
-func setupFullTestApp() (*App, *session.Store) {
+func setupFullTestApp(t *testing.T) (*App, *session.Store) {
+	t.Helper()
 	mockClient := &testLDAPClient{
 		users: []ldap.User{
 			{SAMAccountName: "john.doe", Enabled: true},
@@ -71,6 +73,13 @@ func setupFullTestApp() (*App, *session.Store) {
 		StylesCSS: "styles.abc123.css",
 	}
 
+	rateLimiter := NewRateLimiter(RateLimiterConfig{
+		MaxAttempts:  5,
+		WindowPeriod: time.Minute,
+		BlockPeriod:  time.Minute,
+		CleanupEvery: time.Hour,
+	})
+
 	app := &App{
 		ldapConfig:    testConfig,
 		ldapCache:     ldap_cache.New(mockClient),
@@ -78,9 +87,14 @@ func setupFullTestApp() (*App, *session.Store) {
 		templateCache: templateCache,
 		fiber:         f,
 		assetManifest: manifest,
-		rateLimiter:   NewRateLimiter(RateLimiterConfig{MaxAttempts: 5, WindowPeriod: time.Minute, BlockPeriod: time.Minute, CleanupEvery: time.Hour}),
+		rateLimiter:   rateLimiter,
 		stopCacheLog:  make(chan struct{}),
 	}
+
+	t.Cleanup(func() {
+		templateCache.Stop()
+		rateLimiter.Stop()
+	})
 
 	// Populate cache
 	_ = app.ldapCache.RefreshUsers()
@@ -112,7 +126,7 @@ func setupFullTestApp() (*App, *session.Store) {
 }
 
 // createAuthSession creates a valid authenticated session and returns cookies.
-func createAuthSession(t *testing.T, app *App, store *session.Store) []*http.Cookie {
+func createAuthSession(t *testing.T, _ *App, store *session.Store) []*http.Cookie {
 	t.Helper()
 
 	// Create a separate mini Fiber app to set up the session cookie.
@@ -126,6 +140,7 @@ func createAuthSession(t *testing.T, app *App, store *session.Store) []*http.Coo
 		sess.Set("dn", "cn=john.doe,ou=users,dc=test,dc=com")
 		sess.Set("password", "testpass")
 		sess.Set("username", "john.doe")
+
 		return sess.Save()
 	})
 
@@ -136,18 +151,20 @@ func createAuthSession(t *testing.T, app *App, store *session.Store) []*http.Coo
 
 	cookies := resp.Cookies()
 	require.NotEmpty(t, cookies, "Expected session cookie")
+
 	return cookies
 }
 
-// makeAuthRequest makes an authenticated request with session cookies.
-func makeAuthRequest(t *testing.T, app *App, method, path string, cookies []*http.Cookie) *http.Response {
+// makeAuthRequest makes an authenticated GET request with session cookies.
+func makeAuthRequest(t *testing.T, app *App, path string, cookies []*http.Cookie) *http.Response {
 	t.Helper()
-	req := httptest.NewRequest(method, path, http.NoBody)
+	req := httptest.NewRequest("GET", path, http.NoBody)
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
 	}
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
+
 	return resp
 }
 
@@ -214,13 +231,14 @@ func TestFourOhFourHandler(t *testing.T) {
 }
 
 func TestGetCSRFToken(t *testing.T) {
-	app, _ := setupFullTestApp()
+	app, _ := setupFullTestApp(t)
 
 	t.Run("returns empty for nil token", func(t *testing.T) {
 		f := fiber.New()
 		var result string
 		f.Get("/test", func(c *fiber.Ctx) error {
 			result = app.GetCSRFToken(c)
+
 			return c.SendString("ok")
 		})
 
@@ -237,6 +255,7 @@ func TestGetCSRFToken(t *testing.T) {
 		f.Get("/test", func(c *fiber.Ctx) error {
 			c.Locals("token", "test-csrf-token")
 			result = app.GetCSRFToken(c)
+
 			return c.SendString("ok")
 		})
 
@@ -253,6 +272,7 @@ func TestGetCSRFToken(t *testing.T) {
 		f.Get("/test", func(c *fiber.Ctx) error {
 			c.Locals("token", 12345) // not a string
 			result = app.GetCSRFToken(c)
+
 			return c.SendString("ok")
 		})
 
@@ -282,13 +302,13 @@ func TestGetStylesPath(t *testing.T) {
 }
 
 func TestCacheStatsHandler(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 	cookies := createAuthSession(t, app, store)
 
 	// Add some cache entries for meaningful stats
 	app.templateCache.Set("test-key", []byte("test content"), 0)
 
-	resp := makeAuthRequest(t, app, "GET", "/debug/cache", cookies)
+	resp := makeAuthRequest(t, app, "/debug/cache", cookies)
 	defer func() { _ = resp.Body.Close() }()
 
 	// Should get JSON response (or redirect if LDAP fails)
@@ -304,11 +324,11 @@ func TestCacheStatsHandler(t *testing.T) {
 }
 
 func TestPoolStatsHandler_NoServiceAccount(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 	app.ldapReadonly = nil // no service account
 	cookies := createAuthSession(t, app, store)
 
-	resp := makeAuthRequest(t, app, "GET", "/debug/ldap-pool", cookies)
+	resp := makeAuthRequest(t, app, "/debug/ldap-pool", cookies)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusOK {
@@ -323,12 +343,12 @@ func TestPoolStatsHandler_NoServiceAccount(t *testing.T) {
 }
 
 func TestTemplateCacheMiddleware(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 	cookies := createAuthSession(t, app, store)
 
 	t.Run("sets X-Cache header", func(t *testing.T) {
 		// First request should be MISS (or redirect due to LDAP)
-		resp := makeAuthRequest(t, app, "GET", "/users", cookies)
+		resp := makeAuthRequest(t, app, "/users", cookies)
 		defer func() { _ = resp.Body.Close() }()
 
 		// Either we get a cache header or a redirect
@@ -340,15 +360,27 @@ func TestTemplateCacheMiddleware(t *testing.T) {
 }
 
 func TestPeriodicCacheLogging(t *testing.T) {
-	app, _ := setupFullTestApp()
+	app, _ := setupFullTestApp(t)
 
-	// Test that stopping the periodic logging goroutine works
+	// Start the goroutine and verify it exits when stopCacheLog is closed
+	done := make(chan struct{})
+	go func() {
+		app.periodicCacheLogging()
+		close(done)
+	}()
+
 	close(app.stopCacheLog)
-	// No panic = success
+
+	select {
+	case <-done:
+		// Goroutine exited as expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("periodicCacheLogging did not exit after stopCacheLog was closed")
+	}
 }
 
 func TestInvalidateTemplateCacheOnModification(t *testing.T) {
-	app, _ := setupFullTestApp()
+	app, _ := setupFullTestApp(t)
 
 	// Add cache entries
 	app.templateCache.Set("key1", []byte("content1"), 0)
@@ -408,7 +440,7 @@ func TestRenderWithCache(t *testing.T) {
 }
 
 func TestAuthenticatedHandlers_LDAPConnectionFails(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 	cookies := createAuthSession(t, app, store)
 
 	// These handlers need LDAP connections which will fail in tests.
@@ -425,7 +457,7 @@ func TestAuthenticatedHandlers_LDAPConnectionFails(t *testing.T) {
 
 	for _, path := range paths {
 		t.Run("GET "+path, func(t *testing.T) {
-			resp := makeAuthRequest(t, app, "GET", path, cookies)
+			resp := makeAuthRequest(t, app, path, cookies)
 			defer func() { _ = resp.Body.Close() }()
 
 			// Should either redirect to login (LDAP failure → unauthorized)
@@ -436,7 +468,7 @@ func TestAuthenticatedHandlers_LDAPConnectionFails(t *testing.T) {
 }
 
 func TestGetUserLDAP_NoSession(t *testing.T) {
-	app, _ := setupFullTestApp()
+	app, _ := setupFullTestApp(t)
 
 	f := fiber.New()
 	var getUserLDAPErr error
@@ -446,6 +478,7 @@ func TestGetUserLDAP_NoSession(t *testing.T) {
 		if getUserLDAPErr != nil {
 			return getUserLDAPErr
 		}
+
 		return c.SendString("ok")
 	})
 
@@ -483,6 +516,7 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 		}
 		sess.Set("dn", "")
 		sess.Set("password", "")
+
 		return sess.Save()
 	})
 
@@ -491,6 +525,7 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 		if getUserLDAPErr != nil {
 			return getUserLDAPErr
 		}
+
 		return c.SendString("ok")
 	})
 
@@ -512,7 +547,8 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 
 	assert.Error(t, getUserLDAPErr)
 	var fiberErr *fiber.Error
-	if errors.As(getUserLDAPErr, &fiberErr) {
+	assert.ErrorAs(t, getUserLDAPErr, &fiberErr)
+	if fiberErr != nil {
 		assert.Equal(t, fiber.StatusUnauthorized, fiberErr.Code)
 	}
 }
@@ -554,7 +590,7 @@ func TestRateLimiter_BlockExpiry(t *testing.T) {
 }
 
 func TestPoolStatsHandler_WithServiceAccount(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 
 	testConfig := ldap.Config{
 		Server: "ldap://test.server.com",
@@ -566,7 +602,7 @@ func TestPoolStatsHandler_WithServiceAccount(t *testing.T) {
 
 	cookies := createAuthSession(t, app, store)
 
-	resp := makeAuthRequest(t, app, "GET", "/debug/ldap-pool", cookies)
+	resp := makeAuthRequest(t, app, "/debug/ldap-pool", cookies)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusOK {

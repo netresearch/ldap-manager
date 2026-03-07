@@ -16,7 +16,7 @@ func TestNewMetrics(t *testing.T) {
 	assert.Equal(t, int64(0), m.CacheHits)
 	assert.Equal(t, int64(0), m.CacheMisses)
 	assert.Equal(t, int64(0), m.RefreshCount)
-	assert.Equal(t, CacheHealth(HealthHealthy), m.GetHealthStatus())
+	assert.Equal(t, HealthHealthy, m.GetHealthStatus())
 	assert.False(t, m.StartTime.IsZero())
 }
 
@@ -72,9 +72,8 @@ func TestMetrics_HealthStatus_Degraded(t *testing.T) {
 	m.RecordRefreshStart()
 	m.RecordRefreshError()
 
-	// Error rate = 1/11 ≈ 9.09% < 10% → degraded
-	status := m.GetHealthStatus()
-	assert.True(t, status == HealthDegraded || status == HealthHealthy)
+	// Error rate = 1/11 ≈ 9.09% > 0% → degraded
+	assert.Equal(t, HealthDegraded, m.GetHealthStatus())
 }
 
 func TestMetrics_HealthStatus_Unhealthy(t *testing.T) {

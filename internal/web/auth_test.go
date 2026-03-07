@@ -164,7 +164,7 @@ func TestDomainFromBaseDN_EdgeCases(t *testing.T) {
 }
 
 func TestLoginHandler_ShowsForm(t *testing.T) {
-	app, _ := setupFullTestApp()
+	app, _ := setupFullTestApp(t)
 
 	// GET /login should show the login form
 	req := makeSimpleRequest("GET", "/login")
@@ -177,10 +177,10 @@ func TestLoginHandler_ShowsForm(t *testing.T) {
 }
 
 func TestLogoutHandler_RedirectsToLogin(t *testing.T) {
-	app, store := setupFullTestApp()
+	app, store := setupFullTestApp(t)
 	cookies := createAuthSession(t, app, store)
 
-	resp := makeAuthRequest(t, app, "GET", "/logout", cookies)
+	resp := makeAuthRequest(t, app, "/logout", cookies)
 	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, 302, resp.StatusCode)
