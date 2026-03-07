@@ -392,7 +392,7 @@ func TestInvalidateTemplateCacheOnModification(t *testing.T) {
 	assert.Equal(t, 0, app.templateCache.Stats().Entries)
 }
 
-func TestLogStats(t *testing.T) {
+func TestLogStats(_ *testing.T) {
 	cache := NewTemplateCache(DefaultTemplateCacheConfig())
 	defer cache.Stop()
 
@@ -616,7 +616,7 @@ func TestPoolStatsHandler_WithServiceAccount(t *testing.T) {
 	}
 }
 
-func TestRateLimiter_StopIdempotent(t *testing.T) {
+func TestRateLimiter_StopIdempotent(_ *testing.T) {
 	rl := NewRateLimiter(DefaultRateLimiterConfig())
 
 	// Stop should be safe to call multiple times

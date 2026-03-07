@@ -1,4 +1,5 @@
-package ldap_cache
+// Package name uses underscore for LDAP domain clarity (ldap_cache vs ldapcache).
+package ldap_cache //nolint:revive // underscore in package name is intentional
 
 import (
 	"sync"
