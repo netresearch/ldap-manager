@@ -384,6 +384,29 @@ func TestLDAPIntegration_UsersHandler(t *testing.T) {
 	})
 }
 
+// assertDetailPageOKOrError checks that a detail page either renders successfully
+// (containing expectedContent) or returns an acceptable error status.
+func assertDetailPageOKOrError(t *testing.T, resp *http.Response, expectedContent string) {
+	t.Helper()
+
+	if resp.StatusCode == http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		assert.Contains(t, string(body), expectedContent)
+	} else {
+		t.Logf("Detail handler returned status %d (LDAP connection issue)", resp.StatusCode)
+	}
+}
+
+// assertNotFoundOrError checks that a request for a nonexistent entity returns
+// 404, 302 (redirect), or 500 (LDAP connection error).
+func assertNotFoundOrError(t *testing.T, resp *http.Response) {
+	t.Helper()
+	assert.True(t,
+		resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusFound ||
+			resp.StatusCode == http.StatusInternalServerError,
+		"Expected 404, 302 (redirect), or 500, got %d", resp.StatusCode)
+}
+
 func TestLDAPIntegration_UserDetailHandler(t *testing.T) {
 	env := skipIfNoLDAP(t)
 	seedLDAPData(t, env)
@@ -396,25 +419,14 @@ func TestLDAPIntegration_UserDetailHandler(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/users/"+userDN, cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		// Handler creates a new LDAP connection from session credentials
-		if resp.StatusCode == http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			assert.Contains(t, string(body), "testuser1")
-		} else {
-			// LDAP connection may fail — handler returns error or redirect
-			t.Logf("User detail handler returned status %d (LDAP connection issue)", resp.StatusCode)
-		}
+		assertDetailPageOKOrError(t, resp, "testuser1")
 	})
 
 	t.Run("returns 404 for nonexistent user", func(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/users/cn=nonexistent,ou=users,"+env.baseDN, cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		// Should be 404 or error from LDAP connection
-		assert.True(t,
-			resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusFound ||
-				resp.StatusCode == http.StatusInternalServerError,
-			"Expected 404, 302 (redirect), or 500, got %d", resp.StatusCode)
+		assertNotFoundOrError(t, resp)
 	})
 }
 
@@ -450,22 +462,14 @@ func TestLDAPIntegration_GroupDetailHandler(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/groups/"+groupDN, cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			assert.Contains(t, string(body), "admins")
-		} else {
-			t.Logf("Group detail handler returned status %d", resp.StatusCode)
-		}
+		assertDetailPageOKOrError(t, resp, "admins")
 	})
 
 	t.Run("returns 404 for nonexistent group", func(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/groups/cn=nonexistent,ou=groups,"+env.baseDN, cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		assert.True(t,
-			resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusFound ||
-				resp.StatusCode == http.StatusInternalServerError,
-			"Expected 404, 302, or 500, got %d", resp.StatusCode)
+		assertNotFoundOrError(t, resp)
 	})
 }
 
