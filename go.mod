@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/a-h/templ v0.3.1001
+	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/storage/bbolt/v2 v2.1.3
 	github.com/gofiber/storage/memory/v2 v2.1.1
@@ -101,7 +102,6 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-critic/go-critic v0.14.3 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.12 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
