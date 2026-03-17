@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/a-h/templ v0.3.1001
-	github.com/go-ldap/ldap/v3 v3.4.12
+	github.com/go-ldap/ldap/v3 v3.4.13
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/storage/bbolt/v2 v2.1.3
 	github.com/gofiber/storage/memory/v2 v2.1.1
