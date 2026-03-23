@@ -41,7 +41,7 @@
     "prettier-plugin-tailwindcss": "^0.7.0",
     "purgecss": "^8.0.0",
     "tailwindcss": "^4.1.13",
-    "typescript": "^5.7.3"
+    "typescript": "^6.0.0"
   },
   "pnpm": {
     "overrides": {
