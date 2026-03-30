@@ -28,7 +28,7 @@ importers:
         version: 7.1.4(postcss@8.5.8)
       cssnano-preset-advanced:
         specifier: ^7.0.10
-        version: 7.0.11(postcss@8.5.8)
+        version: 7.0.12(postcss@8.5.8)
       nodemon:
         specifier: ^3.1.10
         version: 3.1.14
@@ -315,8 +315,8 @@ packages:
     engines: {node: '>=4'}
     hasBin: true
 
-  cssnano-preset-advanced@7.0.11:
-    resolution: {integrity: sha512-k9Dz/8TBOmLojoMZ+2xwrGjscU1XwYVDVB9T1AmvZcwiWz4ibWm8/y+/SN5jhYcpMPTeDe7FhI2uEYlNq1iDGg==}
+  cssnano-preset-advanced@7.0.12:
+    resolution: {integrity: sha512-S+UCfEMBCaYqNmjY+yCTNh4ur+B83z5qpwkzUMER6kVpdQ5CBUxIkALZGhp2KPP3M4VefRCIBMqJ6Z0PFMwvEA==}
     engines: {node: ^18.12.0 || ^20.9.0 || >=22.0}
     peerDependencies:
       postcss: ^8.4.32
@@ -1344,11 +1344,11 @@ snapshots:
 
   cssesc@3.0.0: {}
 
-  cssnano-preset-advanced@7.0.11(postcss@8.5.8):
+  cssnano-preset-advanced@7.0.12(postcss@8.5.8):
     dependencies:
       autoprefixer: 10.4.27(postcss@8.5.8)
       browserslist: 4.28.1
-      cssnano-preset-default: 7.0.11(postcss@8.5.8)
+      cssnano-preset-default: 7.0.12(postcss@8.5.8)
       postcss: 8.5.8
       postcss-discard-unused: 7.0.5(postcss@8.5.8)
       postcss-merge-idents: 7.0.1(postcss@8.5.8)
