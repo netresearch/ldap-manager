@@ -1,0 +1,16 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+jobs:
+  release:
+    uses: netresearch/.github/.github/workflows/golib-create-release.yml@main
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write

@@ -7,11 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [v1.2.0] - 2026-04-16
+
+### Fixed
+
+- Upgrade `simple-ldap-go` v1.9.0 → v1.10.0 — fixes password change bug and adds consistent `ValidateSAMAccountName` input validation across all entrypoints
+
+### Changed
+
+- **Migrate from pnpm to Bun** — faster installs, resolves broken `pnpm audit` (npm retired audit API endpoint)
+- All CI workflows, Dockerfile, Makefile updated for Bun
+- Remove duplicate `pnpm audit` from quality.yml (covered by reusable `node-audit.yml`)
+
 ### Added
 
 - CONTRIBUTING.md with contribution guidelines
-- CHANGELOG.md (this file)
+- CHANGELOG.md
 - Release labeler workflow for automatic PR/issue tagging
+
+### Dependencies
+
+- `simple-ldap-go` v1.9.0 → v1.10.0
+- `testcontainers-go` v0.40.0 → v0.42.0
+- `valyala/fasthttp` v1.69.0 → v1.70.0
+- `go.opentelemetry.io/otel` v1.41.0 → v1.43.0
+- All Node dependencies upgraded to latest (Tailwind 4.2.2, PostCSS 8.5.10, TypeScript 6.0.2)
 
 ---
 
