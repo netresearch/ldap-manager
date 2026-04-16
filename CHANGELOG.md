@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--version` flag — prints version, commit hash, and build timestamp ([#462](https://github.com/netresearch/ldap-manager/pull/462) by @liberodark)
 - CONTRIBUTING.md with contribution guidelines
 - CHANGELOG.md
 - Release labeler workflow for automatic PR/issue tagging
