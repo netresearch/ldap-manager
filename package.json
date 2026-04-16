@@ -3,49 +3,46 @@
   "version": "1.0.0",
   "author": "DevMiner <devminer@devminer.xyz>",
   "license": "MIT",
-  "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "start": "pnpm build:assets && pnpm go:start",
-    "dev": "pnpm build:assets:dev && concurrently -n css,js,templ,go \"pnpm css:dev\" \"pnpm js:dev\" \"pnpm templ:dev\" \"pnpm go:dev\"",
-    "build": "pnpm build:assets:prod && pnpm go:build",
-    "build:assets": "pnpm build:assets:prod",
-    "build:assets:dev": "concurrently -n css,js,templ \"pnpm css:build:dev\" \"pnpm js:build\" \"pnpm templ:build\"",
-    "build:assets:prod": "concurrently -n css,js,templ \"pnpm css:build:prod\" \"pnpm js:build\" \"pnpm templ:build\"",
-    "css:build": "pnpm css:build:prod",
+    "start": "bun run build:assets && bun run go:start",
+    "dev": "bun run build:assets:dev && concurrently -n css,js,templ,go \"bun run css:dev\" \"bun run js:dev\" \"bun run templ:dev\" \"bun run go:dev\"",
+    "build": "bun run build:assets:prod && bun run go:build",
+    "build:assets": "bun run build:assets:prod",
+    "build:assets:dev": "concurrently -n css,js,templ \"bun run css:build:dev\" \"bun run js:build\" \"bun run templ:build\"",
+    "build:assets:prod": "concurrently -n css,js,templ \"bun run css:build:prod\" \"bun run js:build\" \"bun run templ:build\"",
+    "css:build": "bun run css:build:prod",
     "css:build:dev": "NODE_ENV=development postcss ./internal/web/tailwind.css -o ./internal/web/static/styles.css --verbose",
     "css:build:prod": "NODE_ENV=production postcss ./internal/web/tailwind.css -o ./internal/web/static/styles.css --verbose && node scripts/cache-bust.mjs",
-    "css:dev": "pnpm css:build:dev -w",
-    "css:analyze": "pnpm css:build:prod && node scripts/analyze-css.mjs",
+    "css:dev": "bun run css:build:dev -w",
+    "css:analyze": "bun run css:build:prod && node scripts/analyze-css.mjs",
     "js:build": "tsc",
     "js:dev": "tsc -w --preserveWatchOutput",
     "templ:build": "templ generate",
-    "templ:dev": "nodemon --signal SIGTERM -e templ -w \"./**\" -x pnpm templ:build",
+    "templ:dev": "nodemon --signal SIGTERM -e templ -w \"./**\" -x bun run templ:build",
     "go:start": "go run ./cmd/ldap-manager",
     "go:build": "go build ./cmd/ldap-manager",
-    "go:dev": "nodemon --signal SIGTERM -e go,css,js -w \"./**\" -x pnpm go:start --persist-sessions --session-path session.bbolt --log-level debug"
+    "go:dev": "nodemon --signal SIGTERM -e go,css,js -w \"./**\" -x bun run go:start --persist-sessions --session-path session.bbolt --log-level debug"
   },
+  "trustedDependencies": [
+    "@tailwindcss/oxide"
+  ],
   "devDependencies": {
-    "@tailwindcss/forms": "^0.5.10",
-    "@tailwindcss/postcss": "^4.1.13",
-    "autoprefixer": "^10.4.21",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/postcss": "^4.2.2",
+    "autoprefixer": "^10.5.0",
     "concurrently": "^9.2.1",
-    "cssnano": "^7.1.2",
-    "cssnano-preset-advanced": "^7.0.10",
-    "nodemon": "^3.1.10",
-    "postcss": "^8.5.6",
+    "cssnano": "^7.1.5",
+    "cssnano-preset-advanced": "^7.0.13",
+    "nodemon": "^3.1.14",
+    "postcss": "^8.5.10",
     "postcss-cli": "^11.0.1",
     "postcss-hash": "^3.0.0",
     "postcss-reporter": "^7.1.0",
-    "prettier": "^3.6.2",
+    "prettier": "^3.8.3",
     "prettier-plugin-go-template": "^0.0.15",
-    "prettier-plugin-tailwindcss": "^0.7.0",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "purgecss": "^8.0.0",
-    "tailwindcss": "^4.1.13",
-    "typescript": "^6.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "svgo": ">=4.0.1"
-    }
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2"
   }
 }

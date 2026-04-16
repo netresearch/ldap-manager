@@ -3,20 +3,17 @@
 
 # Frontend builder - builds Tailwind CSS
 # Uses Alpine for 80% smaller image size (~200MB vs ~1GB)
-FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM oven/bun:alpine AS frontend-builder
 WORKDIR /build
 
-# Enable pnpm via corepack (built into Node 22, no install needed)
-RUN corepack enable pnpm
-
 # Copy dependency files first for better layer caching
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json ./
 
 # Install dependencies with cache mount for faster rebuilds
 # Cache persists between builds, avoiding re-downloads
 # sharing=locked prevents race conditions in parallel builds
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
-    pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.bun/install/cache,sharing=locked \
+    bun install
 
 # Copy only files needed for CSS build to maximize cache efficiency
 COPY postcss.config.mjs tailwind.config.js ./
@@ -25,7 +22,7 @@ COPY internal/web/tailwind.css ./internal/web/
 COPY internal/web/templates ./internal/web/templates
 
 # Build CSS
-RUN pnpm css:build
+RUN bun run css:build
 
 # Development stage with all tools for linting, testing, and development
 FROM golang:1.26.2-alpine AS dev
@@ -36,27 +33,29 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /app
 
 # Install system dependencies for development
-# and install pnpm globally (corepack not available in Alpine nodejs package)
 # Note: Using latest stable versions instead of pinned versions for faster builds
 RUN apk add --no-cache \
     git \
     make \
     curl \
-    nodejs \
-    npm && \
-    npm install -g pnpm@10.17.1
+    bash
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
 
 # Copy dependency files first for better caching
 # Note: Dev tools (templ, golangci-lint, goimports, gofumpt) are declared in go.mod
 # and available via `go tool <name>` after go mod download
-COPY go.mod go.sum package.json pnpm-lock.yaml ./
+COPY go.mod go.sum package.json bun.lock ./
 
 # Download Go modules and install Node dependencies with cache mounts
 # sharing=locked prevents race conditions in parallel builds
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
-    --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
+    --mount=type=cache,target=/root/.bun/install/cache,sharing=locked \
     go mod download && \
-    pnpm install --frozen-lockfile
+    bun install
 
 # Note: Source code is mounted at runtime via compose.yml, not copied here
 # The dev container rebuilds CSS/templates on demand with mounted source

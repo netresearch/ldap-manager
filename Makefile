@@ -60,7 +60,7 @@ setup-go:
 ## Setup Node: Install Node.js dependencies  
 setup-node:
 	@echo "$(BLUE)Installing Node.js dependencies...$(RESET)"
-	@pnpm install
+	@bun install
 
 ## Setup Tools: Install development tools
 setup-tools:
@@ -93,7 +93,7 @@ build: build-assets
 ## Build Assets: Build CSS and template assets
 build-assets:
 	@echo "$(BLUE)Building assets...$(RESET)"
-	@pnpm build:assets
+	@bun run build:assets
 
 ## Build Release: Build optimized release binary
 build-release: build-assets
@@ -250,7 +250,7 @@ fix:
 ## Dev: Start development server with hot reload
 dev:
 	@echo "$(BLUE)Starting development server...$(RESET)"
-	@pnpm dev
+	@bun run dev
 
 ## Docker: Build Docker image
 docker:
@@ -363,7 +363,7 @@ deps:
 	@echo "$(BLUE)Updating dependencies...$(RESET)"
 	@go get -u ./...
 	@go mod tidy
-	@pnpm update
+	@bun update
 	@echo "$(GREEN)✓ Dependencies updated$(RESET)"
 
 ## Info: Display build information
@@ -462,29 +462,29 @@ fresh: docker-clean
 ## Watch: Watch and rebuild assets on change
 watch:
 	@echo "$(BLUE)Watching for changes...$(RESET)"
-	@pnpm dev
+	@bun run dev
 
 ## CSS Build: Build CSS only
 css:
 	@echo "$(BLUE)Building CSS...$(RESET)"
-	@pnpm css:build:prod
+	@bun run css:build:prod
 	@echo "$(GREEN)✓ CSS built$(RESET)"
 
 ## CSS Watch: Watch and rebuild CSS
 css-watch:
 	@echo "$(BLUE)Watching CSS...$(RESET)"
-	@pnpm css:dev
+	@bun run css:dev
 
 ## Templates: Generate Go templates from .templ files
 templates:
 	@echo "$(BLUE)Generating templates...$(RESET)"
-	@pnpm templ:build
+	@bun run templ:build
 	@echo "$(GREEN)✓ Templates generated$(RESET)"
 
 ## Templates Watch: Watch and regenerate templates
 templates-watch:
 	@echo "$(BLUE)Watching templates...$(RESET)"
-	@pnpm templ:dev
+	@bun run templ:dev
 
 ## Format Go: Format Go code
 format-go:
@@ -496,7 +496,7 @@ format-go:
 ## Format JS: Format JavaScript/JSON/CSS
 format-js:
 	@echo "$(BLUE)Formatting JS/JSON/CSS...$(RESET)"
-	@pnpm prettier --write .
+	@bunx prettier --write .
 	@echo "$(GREEN)✓ JS/JSON/CSS formatted$(RESET)"
 
 ## Format All: Format all code
