@@ -46,7 +46,7 @@ jobs:
       goarch: ${{ matrix.goarch }}
       goarm: ${{ matrix.goarm || '' }}
       main-package: ./cmd/ldap-manager
-      ldflags: "-s -w -X github.com/netresearch/ldap-manager/internal/version.Version=${{ needs.create-release.outputs.version }} -X github.com/netresearch/ldap-manager/internal/version.CommitHash=${{ github.sha }}"
+      ldflags: "-s -w -X github.com/netresearch/ldap-manager/internal/version.Version=${{ needs.create-release.outputs.version }} -X github.com/netresearch/ldap-manager/internal/version.CommitHash=${{ needs.create-release.outputs.sha }}"
       ref: ${{ needs.create-release.outputs.tag }}
       release-tag: ${{ needs.create-release.outputs.tag }}
       sbom: true
