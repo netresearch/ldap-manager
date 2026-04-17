@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,5 +20,7 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      id-token: write
+      attestations: write
     with:
       image-name: ldap-manager
