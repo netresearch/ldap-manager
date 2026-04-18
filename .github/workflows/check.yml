@@ -1,3 +1,12 @@
+# Unified CI check pipeline — delegates Go + TypeScript checks to the
+# canonical reusables at netresearch/.github, and retains only the jobs
+# that the reusables cannot cover (integration tests against a real LDAP
+# service, fuzz testing, mutation testing).
+#
+# `go-check.yml` covers: go build / vet / test (with coverage + Codecov
+# upload), golangci-lint, govulncheck, gosec (SARIF). `ts-check.yml`
+# covers: tsc type-check and Prettier format-check. ESLint is not
+# configured in this repo so the lint job is disabled.
 name: Check
 
 on:
@@ -8,22 +17,159 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Weekly quality sweep (fuzz + mutation) on Sundays at 02:00 UTC.
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
 
-# Default read-only permissions for security hardening
 permissions:
   contents: read
 
 jobs:
-  go-test:
-    name: Run Go tests
+  go-check:
+    name: Go
+    uses: netresearch/.github/.github/workflows/go-check.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      go-version-file: go.mod
+      setup-bun: true
+      # `bun run build:assets` already invokes `templ generate` via its
+      # concurrently pipeline — don't run templ generate twice.
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
+      # Pin to the golangci-lint version this repo's .golangci.yml was
+      # last validated against. Bump together with the config file.
+      golangci-lint-version: v2.5.0
+      # The config still uses v1-schema keys (exclude-use-default,
+      # linters-settings, version: 1 as number). Skip `config verify`
+      # until the file is migrated to v2 schema — tracked as follow-up.
+      golangci-lint-verify: false
+      enable-codecov: true
+      codecov-flags: unittests
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  ts-check:
+    name: TypeScript
+    uses: netresearch/.github/.github/workflows/ts-check.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    permissions:
+      contents: read
+    with:
+      setup-go: true
+      go-version-file: go.mod
+      install-cmd: "bun install --frozen-lockfile"
+      pre-command: "go install github.com/a-h/templ/cmd/templ@latest && templ generate"
+      enable-lint: false
+      type-check-cmd: "bun run js:build"
+      format-check-cmd: "bunx prettier --check ."
+
+  hadolint:
+    # Restored from the old quality.yml — repo's code_scanning ruleset
+    # requires a Hadolint SARIF upload. Kept inline because no org
+    # reusable for it yet; follow-up: upstream into build-container.yml.
+    name: Hadolint
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: hadolint
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+      - name: Upload SARIF
+        if: always() && hashFiles('hadolint-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        with:
+          sarif_file: hadolint-results.sarif
+          # Preserve the legacy category from quality.yml so the repo's
+          # code_scanning ruleset (which was configured against this exact
+          # string on `main`) keeps matching. Follow-up: update the
+          # ruleset to the new path, then drop this override.
+          category: ".github/workflows/quality.yml:docker-quality"
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [go-check]
+    permissions:
+      contents: read
+
+    services:
+      openldap:
+        image: osixia/openldap:1.5.0
+        env:
+          LDAP_ORGANISATION: Example Inc
+          LDAP_DOMAIN: example.com
+          LDAP_ADMIN_PASSWORD: adminpassword
+        ports:
+          - 389:389
+        options: --health-cmd="ldapsearch -x -H ldap://localhost -b dc=example,dc=com -D 'cn=admin,dc=example,dc=com' -w adminpassword" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.26.2"
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run integration tests
+        env:
+          LDAP_HOST: localhost
+          LDAP_PORT: "389"
+        run: go test -v -tags=integration ./internal/integration/...
+
+  fuzz-tests:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -32,28 +178,71 @@ jobs:
         run: go install github.com/a-h/templ/cmd/templ@latest
 
       - name: Install dependencies
-        run: bun install && go mod download
+        run: |
+          go mod download
+          bun install --frozen-lockfile
 
-      - name: Check types
+      - name: Build assets
         run: bun run build:assets
 
-      - name: Build
-        run: go build -v ./cmd/ldap-manager
+      - name: Run fuzz tests
+        run: |
+          echo "Running fuzz tests for 60 seconds per target..."
+          go test -fuzz=FuzzCacheFindByDN -fuzztime=60s ./internal/ldap_cache/... || true
+          go test -fuzz=FuzzCacheFindBySAMAccountName -fuzztime=60s ./internal/ldap_cache/... || true
+          go test -fuzz=FuzzURLPathUnescape -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzQueryParams -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzAuthUsernameValidation -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzDomainFromBaseDN -fuzztime=60s ./internal/web/... || true
+          go test -fuzz=FuzzRateLimiter -fuzztime=60s ./internal/web/... || true
+          echo "Fuzz testing completed"
 
-      - name: Test
-        run: go test -v ./...
-
-  formatting:
-    name: Check formatting
+  mutation-tests:
+    name: Mutation Testing
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
-      - name: Install dependencies
-        run: bun install
+      - name: Install templ CLI
+        run: go install github.com/a-h/templ/cmd/templ@latest
 
-      - name: Check formatting
-        run: bunx prettier --check .
+      - name: Install gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          bun install --frozen-lockfile
+
+      - name: Build assets
+        run: bun run build:assets
+
+      - name: Run mutation tests
+        run: |
+          echo "Running mutation testing with gremlins..."
+          mkdir -p mutation-reports
+          gremlins unleash --config=.gremlins.yaml || true
+          echo "Mutation testing completed"
+        continue-on-error: true
