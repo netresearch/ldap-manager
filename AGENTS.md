@@ -1,6 +1,6 @@
 # AGENTS.md (root)
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-03-08 -->
 
 This file explains repo-wide conventions and where to find scoped rules.
 **Precedence:** the **closest `AGENTS.md`** to the files you're changing wins. Root holds global defaults only.
