@@ -1,42 +1,17 @@
-# Auto-merge dependency updates
-# Works with both merge queue and standard branch protection
+# Auto-merge dependency updates — delegates to the canonical reusable at
+# netresearch/.github. The reusable handles Harden Runner, auto-approve and
+# merge-strategy detection.
 name: Auto-merge dependency PRs
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  pull_request:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   auto-merge:
-    name: Auto-merge dependency PRs
-    runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
-
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
-        with:
-          egress-policy: audit
-
-      - name: Dependabot metadata
-        id: metadata
-        if: github.actor == 'dependabot[bot]'
-        uses: dependabot/fetch-metadata@ffa630c65fa7e0ecfa0625b5ceda64399aea1b36 # v3.0.0
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Auto-approve PR
-        run: gh pr review --approve "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable auto-merge
-        run: gh pr merge --auto "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: netresearch/.github/.github/workflows/auto-merge-deps.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
