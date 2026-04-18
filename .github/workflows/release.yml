@@ -17,7 +17,7 @@ permissions:
 jobs:
   create-release:
     name: Create GitHub Release
-    uses: netresearch/.github/.github/workflows/create-release.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    uses: netresearch/.github/.github/workflows/create-release.yml@main
     permissions:
       contents: write
     with:
@@ -35,7 +35,7 @@ jobs:
           - { goos: linux, goarch: arm, goarm: "7" }
           - { goos: darwin, goarch: amd64 }
           - { goos: darwin, goarch: arm64 }
-    uses: netresearch/.github/.github/workflows/build-go-attest.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    uses: netresearch/.github/.github/workflows/build-go-attest.yml@main
     permissions:
       contents: write
       id-token: write
@@ -56,7 +56,7 @@ jobs:
   container:
     name: Build container image
     needs: create-release
-    uses: netresearch/.github/.github/workflows/build-container.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    uses: netresearch/.github/.github/workflows/build-container.yml@main
     permissions:
       contents: read
       packages: write
@@ -72,7 +72,7 @@ jobs:
   finalize:
     name: Finalize release
     needs: [create-release, binaries, container]
-    uses: netresearch/.github/.github/workflows/finalize-release.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
+    uses: netresearch/.github/.github/workflows/finalize-release.yml@main
     permissions:
       contents: write
       id-token: write
