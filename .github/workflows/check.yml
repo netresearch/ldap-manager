@@ -64,6 +64,39 @@ jobs:
       type-check-cmd: "bun run js:build"
       format-check-cmd: "bunx prettier --check ."
 
+  hadolint:
+    # Restored from the old quality.yml — repo's code_scanning ruleset
+    # requires a Hadolint SARIF upload. Kept inline because no org
+    # reusable for it yet; follow-up: upstream into build-container.yml.
+    name: Hadolint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: hadolint
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+      - name: Upload SARIF
+        if: always() && hashFiles('hadolint-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        with:
+          sarif_file: hadolint-results.sarif
+          category: hadolint
+
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
