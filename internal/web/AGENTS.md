@@ -35,7 +35,7 @@ make setup-hooks  # Install pre-commit hooks
 go install github.com/a-h/templ/cmd/templ@latest
 
 # Build frontend assets
-pnpm build:assets
+bun run build:assets
 
 # Development mode (hot reload)
 make dev    # Watches: CSS, templates, Go files
@@ -64,12 +64,12 @@ go test -coverprofile=coverage.out ./internal/web/
 go tool cover -html=coverage.out
 
 # Frontend assets
-pnpm css:build     # Build CSS
-pnpm templ:build   # Generate Go from .templ files
-pnpm build:assets  # Build both
+bun run css:build     # Build CSS
+bun run templ:build   # Generate Go from .templ files
+bun run build:assets  # Build both
 
 # Development watch
-pnpm dev           # Auto-rebuild on changes
+bun run dev           # Auto-rebuild on changes
 ```
 
 ## Code Style & Conventions
@@ -267,13 +267,13 @@ app.Use(func(c *fiber.Ctx) error {
 
 ```bash
 # Development (watch mode)
-pnpm css:dev
+bun run css:dev
 
 # Production (minified + purged)
-pnpm css:build:prod
+bun run css:build:prod
 
 # Analyze bundle size
-pnpm css:analyze
+bun run css:analyze
 ```
 
 Configuration: `tailwind.config.js` and `postcss.config.mjs`
@@ -282,10 +282,10 @@ Configuration: `tailwind.config.js` and `postcss.config.mjs`
 
 ```bash
 # Generate Go code from .templ files
-pnpm templ:build
+bun run templ:build
 
 # Watch mode (auto-regenerate)
-pnpm templ:dev
+bun run templ:dev
 ```
 
 Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
@@ -346,8 +346,8 @@ session.Config{
 - [ ] Tests cover happy path and error cases
 - [ ] CSRF protection on state-changing endpoints
 - [ ] Session handling follows security best practices
-- [ ] Templates compiled (`pnpm templ:build`)
-- [ ] CSS built and minified (`pnpm css:build:prod`)
+- [ ] Templates compiled (`bun run templ:build`)
+- [ ] CSS built and minified (`bun run css:build:prod`)
 - [ ] No console.log or debug prints in production code
 - [ ] `make format-all` - all code formatted
 - [ ] `make lint` - passes linters
@@ -435,17 +435,28 @@ resp, err := app.fiber.Test(req)
 Create sessions via a separate mini Fiber app that writes session cookies:
 
 ```go
+// Must set all three keys (dn, password, username). `getUserLDAP` in
+// internal/web/server.go returns 401 when `dn` OR `password` is empty.
 func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
     t.Helper()
     mini := fiber.New()
     mini.Get("/set-session", func(c *fiber.Ctx) error {
-        sess, _ := store.Get(c)
+        sess, err := store.Get(c)
+        if err != nil {
+            return fmt.Errorf("session get: %w", err)
+        }
         sess.Set("dn", "cn=admin,dc=test,dc=local")
+        sess.Set("password", "admin") // matches OpenLDAP test container admin password
         sess.Set("username", "admin")
-        _ = sess.Save()
+        if err := sess.Save(); err != nil {
+            return fmt.Errorf("session save: %w", err)
+        }
         return c.SendString("ok")
     })
-    resp, _ := mini.Test(httptest.NewRequest("GET", "/set-session", nil))
+    resp, err := mini.Test(httptest.NewRequest("GET", "/set-session", nil))
+    if err != nil {
+        t.Fatalf("mini.Test: %v", err)
+    }
     return resp.Cookies()
 }
 ```
@@ -454,12 +465,12 @@ func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
 
 Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 
-- `skipIfNoLDAP(t)`: Check TCP connectivity, skip if unavailable
-- Use `go-ldap/ldap/v3` directly to seed test data (OUs, users, groups)
-- **IMPORTANT**: Use `127.0.0.1` not `localhost` — `simple-ldap-go` treats localhost as a mock server
-- CI service container on port 1389, domain `test.local`, baseDN `dc=test,dc=local`
-- Handler assertions must be resilient (accept success OR error) since LDAP connections from session credentials may fail
-- Extract helper functions to avoid `dupl` linter violations in similar test patterns
+- `skipIfNoLDAP(t)`: Check TCP connectivity, skip the whole test if unavailable — never let a test tolerate LDAP being down silently.
+- Use `go-ldap/ldap/v3` directly to seed test data (OUs, users, groups).
+- **IMPORTANT**: Use `127.0.0.1` not `localhost` — `simple-ldap-go` treats localhost as a mock server.
+- CI service container on port 1389, domain `test.local`, baseDN `dc=test,dc=local`.
+- Assert the **expected** outcome for each test — either success (with a valid seeded user) or a specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides regressions. If the environment is unavailable, the `skipIfNoLDAP` skip is the correct path.
+- Extract helper functions to avoid `dupl` linter violations in similar test patterns.
 
 **Key test files:**
 
@@ -484,7 +495,7 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 4. **Middleware**: Look at `middleware.go` for auth/logging patterns
 5. **Testing**: Check `server_test.go` for `setupFullTestApp`, `ldap_integration_test.go` for LDAP tests
 6. **Frontend**: Review `tailwind.config.js` and `package.json` scripts
-7. **Assets not building**: Run `make clean && pnpm install && pnpm build:assets`
+7. **Assets not building**: Run `make clean && bun install && bun run build:assets`
 8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration
 9. **LDAP mock issues**: If `simple-ldap-go` returns "example server" errors, use `127.0.0.1` not `localhost`
 
@@ -495,5 +506,5 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 - **Templ templates**: Never manually construct HTML - use `.templ` components
 - **TailwindCSS only**: No custom CSS unless absolutely necessary
 - **Structured logging**: Use `zerolog`, never `fmt.Println()` or `console.log`
-- **Asset pipeline**: `pnpm build:assets` required before deployment
+- **Asset pipeline**: `bun run build:assets` required before deployment
 - **Cookie security**: Always configure `COOKIE_SECURE` based on HTTPS availability

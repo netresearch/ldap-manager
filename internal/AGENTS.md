@@ -330,20 +330,20 @@ func skipIfNoLDAP(t *testing.T) {
 
 - **Use `127.0.0.1` not `localhost`**: `simple-ldap-go` treats "localhost" as a mock/example server via `isExampleServerName()`, returning fake connections with "connection to example server not available"
 - **Use `net.JoinHostPort`** not `fmt.Sprintf("%s:%d")` — the latter breaks with IPv6
-- **Use `net.Dialer`** not `net.DialTimeout` — the `noctx` linter requires it
+- **Use `net.Dialer`** with a context-aware `DialContext` instead of `net.DialTimeout` — keeps network code consistent with the `noctx` expectation of threading context through HTTP clients
 - **Seed data with `go-ldap/ldap/v3`** directly, not through `simple-ldap-go`
 - **CI config**: Port 1389, domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`
 
 ## Linter Compliance (golangci-lint)
 
-| Linter     | Rule                          | Pattern                                              |
-| ---------- | ----------------------------- | ---------------------------------------------------- |
-| `dupl`     | No duplicate blocks >30 lines | Extract shared test logic into helpers               |
-| `nlreturn` | Blank line before return      | Even inside closures and anonymous functions         |
-| `noctx`    | No context-less network calls | Use `(&net.Dialer{}).Dial()` not `net.DialTimeout()` |
-| `revive`   | Unused parameters             | Rename to `_` (e.g., `_ *testing.T`)                 |
-| `revive`   | Package naming                | Add `//nolint:revive` for intentional underscores    |
-| `errcheck` | Check Close() errors          | `defer func() { _ = x.Close() }()`                   |
+| Linter     | Rule                             | Pattern                                                                                                 |
+| ---------- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `dupl`     | No duplicate blocks >30 lines    | Extract shared test logic into helpers                                                                  |
+| `nlreturn` | Blank line before return         | Even inside closures and anonymous functions                                                            |
+| `noctx`    | HTTP clients must thread context | Use `net.Dialer.DialContext` + `http.NewRequestWithContext`, not `net.DialTimeout` or `http.NewRequest` |
+| `revive`   | Unused parameters                | Rename to `_` (e.g., `_ *testing.T`)                                                                    |
+| `revive`   | Package naming                   | Add `//nolint:revive` for intentional underscores                                                       |
+| `errcheck` | Check Close() errors             | `defer func() { _ = x.Close() }()`                                                                      |
 
 ## When stuck
 
