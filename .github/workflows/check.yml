@@ -28,14 +28,16 @@ permissions:
 jobs:
   go-check:
     name: Go
-    uses: netresearch/.github/.github/workflows/go-check.yml@main
+    uses: netresearch/.github/.github/workflows/go-check.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
     permissions:
       contents: read
       security-events: write
     with:
       go-version-file: go.mod
       setup-bun: true
-      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && templ generate && bun install --frozen-lockfile && bun run build:assets"
+      # `bun run build:assets` already invokes `templ generate` via its
+      # concurrently pipeline — don't run templ generate twice.
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
       # Pin to the golangci-lint version this repo's .golangci.yml was
       # last validated against. Bump together with the config file.
       golangci-lint-version: v2.5.0
@@ -50,7 +52,7 @@ jobs:
 
   ts-check:
     name: TypeScript
-    uses: netresearch/.github/.github/workflows/ts-check.yml@main
+    uses: netresearch/.github/.github/workflows/ts-check.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
     permissions:
       contents: read
     with:

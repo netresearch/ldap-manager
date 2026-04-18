@@ -8,19 +8,19 @@ on:
 
 jobs:
   gitleaks:
-    uses: netresearch/.github/.github/workflows/gitleaks.yml@main
+    uses: netresearch/.github/.github/workflows/gitleaks.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
     secrets:
       GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   dependency-review:
     if: github.event_name == 'pull_request'
-    uses: netresearch/.github/.github/workflows/dependency-review.yml@main
+    uses: netresearch/.github/.github/workflows/dependency-review.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
     permissions:
       contents: read
       pull-requests: write
 
   node-audit:
-    uses: netresearch/.github/.github/workflows/node-audit.yml@main
+    uses: netresearch/.github/.github/workflows/node-audit.yml@4f6d149347c61a27ce243f5ac8011d6748487341 # main
     with:
       package-manager: bun
       audit-level: high
