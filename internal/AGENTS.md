@@ -1,6 +1,6 @@
 # AGENTS.md — internal/
 
-<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-02-22 -->
+<!-- Managed by agent: keep sections & order; edit content, not structure. Last updated: 2026-03-08 -->
 
 ## Overview
 
@@ -310,15 +310,52 @@ if err := client.Search(filter); err != nil {
 return errors.New("search failed") // No context - where? why?
 ```
 
+## LDAP Testing with Real OpenLDAP
+
+Integration tests use `osixia/openldap:1.5.0` container:
+
+```go
+// skipIfNoLDAP checks TCP connectivity and skips if unavailable
+func skipIfNoLDAP(t *testing.T) {
+    dialer := &net.Dialer{Timeout: 2 * time.Second}
+    conn, err := dialer.Dial("tcp", net.JoinHostPort("127.0.0.1", "1389"))
+    if err != nil {
+        t.Skipf("OpenLDAP not available: %v", err)
+    }
+    _ = conn.Close()
+}
+```
+
+**Critical gotchas:**
+
+- **Use `127.0.0.1` not `localhost`**: `simple-ldap-go` treats "localhost" as a mock/example server via `isExampleServerName()`, returning fake connections with "connection to example server not available"
+- **Use `net.JoinHostPort`** not `fmt.Sprintf("%s:%d")` — the latter breaks with IPv6
+- **Use `net.Dialer`** not `net.DialTimeout` — the `noctx` linter requires it
+- **Seed data with `go-ldap/ldap/v3`** directly, not through `simple-ldap-go`
+- **CI config**: Port 1389, domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`
+
+## Linter Compliance (golangci-lint)
+
+| Linter | Rule | Pattern |
+|--------|------|---------|
+| `dupl` | No duplicate blocks >30 lines | Extract shared test logic into helpers |
+| `nlreturn` | Blank line before return | Even inside closures and anonymous functions |
+| `noctx` | No context-less network calls | Use `(&net.Dialer{}).Dial()` not `net.DialTimeout()` |
+| `revive` | Unused parameters | Rename to `_` (e.g., `_ *testing.T`) |
+| `revive` | Package naming | Add `//nolint:revive` for intentional underscores |
+| `errcheck` | Check Close() errors | `defer func() { _ = x.Close() }()` |
+
 ## When stuck
 
 1. **LDAP operations**: Check `internal/ldap/` for existing patterns
 2. **Configuration**: See `internal/options/options.go` for struct tags and flag definitions
 3. **Web handlers**: Review `internal/web/AGENTS.md` for HTTP patterns
 4. **Testing**: Look at existing `*_test.go` files for table-driven examples
-5. **Dependencies**: Use `internal/` packages for shared code, avoid circular deps
-6. **Build issues**: Run `make clean && make setup && make build`
-7. **Test failures**: Run `make test` for coverage, `make test-race` for race conditions
+5. **LDAP integration tests**: See `internal/web/ldap_integration_test.go` for real LDAP patterns
+6. **Dependencies**: Use `internal/` packages for shared code, avoid circular deps
+7. **Build issues**: Run `make clean && make setup && make build`
+8. **Test failures**: Run `make test` for coverage, `make test-race` for race conditions
+9. **Localhost LDAP errors**: Use `127.0.0.1` — `simple-ldap-go` mocks localhost connections
 
 ## House Rules
 
