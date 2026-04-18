@@ -96,6 +96,12 @@ jobs:
         with:
           sarif_file: hadolint-results.sarif
           category: hadolint
+          # Explicit ref/sha so the upload registers against the PR's HEAD
+          # commit, not just the merge-commit. The repo's code_scanning
+          # ruleset polls for Hadolint results against the HEAD SHA and
+          # blocks merges until one exists.
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.ref }}
+          sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
   integration-tests:
     name: Integration Tests
