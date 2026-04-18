@@ -1,7 +1,8 @@
 # CodeQL — delegates to the canonical reusable at netresearch/.github.
 # This repo ships a Go backend and a TypeScript frontend, so both are
-# analysed. The `actions` language is covered separately at the org
-# level; adding it here would duplicate that coverage.
+# analysed. The reusable fans out per-language internally via a matrix.
+# The `actions` language is covered separately at the org level; adding
+# it here would duplicate that coverage.
 name: CodeQL
 
 on:
@@ -18,22 +19,12 @@ permissions:
   contents: read
 
 jobs:
-  analyze-go:
-    name: Analyze Go
+  analyze:
+    name: Analyze
     uses: netresearch/.github/.github/workflows/codeql.yml@main
     permissions:
       contents: read
       security-events: write
       actions: read
     with:
-      languages: go
-
-  analyze-ts:
-    name: Analyze TypeScript
-    uses: netresearch/.github/.github/workflows/codeql.yml@main
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    with:
-      languages: javascript-typescript
+      languages: go,javascript-typescript
