@@ -36,6 +36,9 @@ jobs:
       go-version-file: go.mod
       setup-bun: true
       pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && templ generate && bun install --frozen-lockfile && bun run build:assets"
+      # Pin to the golangci-lint version this repo's .golangci.yml was
+      # last validated against. Bump together with the config file.
+      golangci-lint-version: v2.5.0
       enable-codecov: true
       codecov-flags: unittests
     secrets:
