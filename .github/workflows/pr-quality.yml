@@ -1,0 +1,18 @@
+# PR Quality Gates — thin delegation to the canonical reusable at
+# netresearch/.github. Enforces PR size thresholds and the presence of
+# the security-controls doc.
+name: PR Quality Gates
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    uses: netresearch/.github/.github/workflows/pr-quality.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
