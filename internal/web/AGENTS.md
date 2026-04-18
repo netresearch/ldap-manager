@@ -463,18 +463,18 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 
 **Key test files:**
 
-| File | Purpose |
-|------|---------|
-| `server_test.go` | App setup, periodic logging, rate limiter, helper functions |
-| `auth_test.go` | Authentication handlers, session management, direct/UPN bind |
+| File                       | Purpose                                                      |
+| -------------------------- | ------------------------------------------------------------ |
+| `server_test.go`           | App setup, periodic logging, rate limiter, helper functions  |
+| `auth_test.go`             | Authentication handlers, session management, direct/UPN bind |
 | `ldap_integration_test.go` | Real LDAP tests: users, groups, computers, health, auth flow |
-| `handlers_test.go` | Handler error paths, template rendering |
-| `health_test.go` | Health check and readiness endpoints |
-| `fuzz_test.go` | Fuzz testing for auth username validation |
-| `cookie_security_test.go` | Cookie security attributes |
-| `middleware_test.go` | Auth middleware |
-| `ratelimit_test.go` | Rate limiter logic |
-| `template_cache_test.go` | Template caching |
+| `handlers_test.go`         | Handler error paths, template rendering                      |
+| `health_test.go`           | Health check and readiness endpoints                         |
+| `fuzz_test.go`             | Fuzz testing for auth username validation                    |
+| `cookie_security_test.go`  | Cookie security attributes                                   |
+| `middleware_test.go`       | Auth middleware                                              |
+| `ratelimit_test.go`        | Rate limiter logic                                           |
+| `template_cache_test.go`   | Template caching                                             |
 
 ## When stuck
 

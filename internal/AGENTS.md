@@ -336,14 +336,14 @@ func skipIfNoLDAP(t *testing.T) {
 
 ## Linter Compliance (golangci-lint)
 
-| Linter | Rule | Pattern |
-|--------|------|---------|
-| `dupl` | No duplicate blocks >30 lines | Extract shared test logic into helpers |
-| `nlreturn` | Blank line before return | Even inside closures and anonymous functions |
-| `noctx` | No context-less network calls | Use `(&net.Dialer{}).Dial()` not `net.DialTimeout()` |
-| `revive` | Unused parameters | Rename to `_` (e.g., `_ *testing.T`) |
-| `revive` | Package naming | Add `//nolint:revive` for intentional underscores |
-| `errcheck` | Check Close() errors | `defer func() { _ = x.Close() }()` |
+| Linter     | Rule                          | Pattern                                              |
+| ---------- | ----------------------------- | ---------------------------------------------------- |
+| `dupl`     | No duplicate blocks >30 lines | Extract shared test logic into helpers               |
+| `nlreturn` | Blank line before return      | Even inside closures and anonymous functions         |
+| `noctx`    | No context-less network calls | Use `(&net.Dialer{}).Dial()` not `net.DialTimeout()` |
+| `revive`   | Unused parameters             | Rename to `_` (e.g., `_ *testing.T`)                 |
+| `revive`   | Package naming                | Add `//nolint:revive` for intentional underscores    |
+| `errcheck` | Check Close() errors          | `defer func() { _ = x.Close() }()`                   |
 
 ## When stuck
 
