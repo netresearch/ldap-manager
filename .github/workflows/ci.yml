@@ -24,7 +24,7 @@ jobs:
       enable-codecov: true
       coverage-threshold: 60
       setup-bun: true
-      pre-build-cmd: "bun install --frozen-lockfile && bun run build:assets"
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
     permissions:
       contents: read
       security-events: write
