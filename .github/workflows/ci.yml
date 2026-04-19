@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['**']
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  go-check:
+    uses: netresearch/.github/.github/workflows/go-check.yml@main
+    with:
+      enable-smoke-fast-feedback: true
+      enable-fuzz: true
+      enable-license-check: true
+      enable-codecov: true
+      coverage-threshold: 20
+      enable-golangci-lint: false
+      golangci-lint-verify: false
+      setup-bun: true
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
+    permissions:
+      contents: read
+      security-events: write
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

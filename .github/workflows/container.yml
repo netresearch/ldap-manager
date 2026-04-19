@@ -1,26 +1,24 @@
-name: Docker
+name: Container
 
 on:
-  schedule:
-    - cron: "38 4 * * 0"
-  pull_request:
-  merge_group:
   push:
-    branches:
-      - main
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  container:
     uses: netresearch/.github/.github/workflows/build-container.yml@main
+    with:
+      image-name: ${{ github.repository }}
+      platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
     permissions:
       contents: read
       packages: write
-      security-events: write
       id-token: write
       attestations: write
-    with:
-      image-name: ldap-manager
