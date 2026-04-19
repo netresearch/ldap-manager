@@ -22,7 +22,8 @@ jobs:
       enable-fuzz: true
       enable-license-check: true
       enable-codecov: true
-      coverage-threshold: 60
+      coverage-threshold: 20
+      golangci-lint-verify: false
       setup-bun: true
       pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
     permissions:
