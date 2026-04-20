@@ -102,11 +102,11 @@ Light (III — Clean sans neutral):
 | --- | --- | --- | --- |
 | `--bg` | `#ffffff` | — | — |
 | `--bg-subtle` | `#fafafa` | `#ffffff` | 1.04 (surface) |
-| `--fg` | `#0a0a0a` | `#ffffff` | 20.6 |
-| `--fg-muted` | `#525252` | `#ffffff` | 8.3 |
+| `--fg` | `#0a0a0a` | `#ffffff` | 19.8 |
+| `--fg-muted` | `#525252` | `#ffffff` | 7.8 (also 7.5 on `--bg-subtle`) |
 | `--border` | `#e5e5e5` | `#ffffff` | non-text |
 | `--border-strong` | `#a3a3a3` | `#ffffff` | non-text (focus ring, active borders) |
-| `--accent` | `#0a0a0a` | `#ffffff` | 20.6 (primary actions = inverted background) |
+| `--accent` | `#0a0a0a` | `#ffffff` | 19.8 (primary actions = inverted background) |
 
 Dark (II — Terminal/IDE):
 
@@ -115,7 +115,7 @@ Dark (II — Terminal/IDE):
 | `--bg` | `#0d0d0d` | — | — |
 | `--bg-subtle` | `#1a1a1a` | `#0d0d0d` | 1.11 (surface) |
 | `--fg` | `#f5f5f5` | `#0d0d0d` | 17.8 |
-| `--fg-muted` | `#a3a3a3` | `#0d0d0d` | 10.4 |
+| `--fg-muted` | `#a5a5a5` | `#0d0d0d` | 7.9 (also 7.1 on `--bg-subtle`) |
 | `--border` | `#262626` | `#0d0d0d` | non-text (surface separators) |
 | `--border-strong` | `#525252` | `#0d0d0d` | non-text (focus ring, active borders) |
 | `--accent` | `#4ade80` | `#0d0d0d` | 11.2 |
