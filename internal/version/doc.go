@@ -2,33 +2,42 @@
 //
 // # Overview
 //
-// This package manages application version metadata that is injected at build time using Go's -ldflags.
-// It provides three key pieces of information: semantic version, git commit hash, and build timestamp.
+// This package holds the three user-facing build metadata values —
+// semantic version, git commit hash, and build timestamp — that the
+// application reports via FormatVersion() and the `version` / `--version`
+// subcommands.
 //
-// # Build-Time Injection
+// # Build-Time Injection (template-driven)
 //
-// Version information is injected during the build process using -ldflags to set package-level variables:
+// Release builds use the shared go-app release pipeline
+// (netresearch/.github/templates/go-app/.github/workflows/release.yml),
+// which passes these ldflags to every matrix entry:
 //
-//	go build -ldflags="\
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.Version=v1.0.8' \
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.CommitHash=$(git rev-parse --short HEAD)' \
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.BuildTimestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)' \
-//	" ./cmd/ldap-manager
+//	-X main.version=<tag>
+//	-X main.build=<commit-sha>
+//	-X main.buildTime=<commit-timestamp>
 //
-// The Makefile automates this process:
+// cmd/ldap-manager/main.go declares matching package-level variables
+// (`var version, build, buildTime string`) and calls
+// forwardBuildMetadata() at init() time to copy their values into
+// Version, CommitHash, and BuildTimestamp here. The indirection keeps
+// the fleet ldflag convention (`main.*`) uniform across every go-app
+// consumer while still letting this package expose structured
+// package-level identifiers.
 //
-//	make build        # Production build with version injection
-//	make build-dev    # Development build (Version="dev")
+// Local development builds (plain `go build ./cmd/ldap-manager`) leave
+// the shim vars empty; the defaults "dev"/"n/a"/"n/a" below are
+// preserved unchanged.
 //
 // # Package Variables
 //
 // Three package-level variables store build metadata:
 //
 //   - Version: Semantic version string (e.g., "v1.0.8") or "dev" for development builds
-//   - CommitHash: Short git commit SHA (e.g., "a4d1aae") or "n/a" if not available
-//   - BuildTimestamp: ISO 8601 build timestamp (e.g., "2025-09-30T21:41:41Z") or "n/a"
+//   - CommitHash: git commit SHA (e.g., "a4d1aae") or "n/a" if not available
+//   - BuildTimestamp: ISO 8601 build timestamp (e.g., "2026-04-20T17:58:00Z") or "n/a"
 //
-// Default values ("dev", "n/a", "n/a") are used for development builds when -ldflags are not provided.
+// Default values ("dev", "n/a", "n/a") are used for development builds when no ldflags are provided.
 //
 // # Usage
 //
@@ -41,11 +50,11 @@
 //
 //	func main() {
 //	    log.Info().Str("version", version.FormatVersion()).Msg("Starting LDAP Manager")
-//	    // Output (production): Starting LDAP Manager version=v1.0.8 (a4d1aae, built at 2025-09-30T21:41:41Z)
+//	    // Output (production): Starting LDAP Manager version=v1.0.8 (a4d1aae, built at 2026-04-20T17:58:00Z)
 //	    // Output (development): Starting LDAP Manager version=Development version
 //	}
 //
-// Add version endpoint for monitoring:
+// Version endpoint for monitoring:
 //
 //	func versionHandler(c *fiber.Ctx) error {
 //	    return c.JSON(fiber.Map{
@@ -57,35 +66,17 @@
 //
 // # FormatVersion Function
 //
-// The FormatVersion() function provides human-readable version strings:
+// FormatVersion() returns a human-readable version string:
 //
-//	// Development build (no -ldflags)
+//	// Development build (no ldflags)
 //	version.Version = "dev"
 //	version.FormatVersion() // Returns: "Development version"
 //
-//	// Production build (with -ldflags)
+//	// Release build (ldflags applied via main.* -> forwardBuildMetadata)
 //	version.Version = "v1.0.8"
 //	version.CommitHash = "a4d1aae"
-//	version.BuildTimestamp = "2025-09-30T21:41:41Z"
-//	version.FormatVersion() // Returns: "v1.0.8 (a4d1aae, built at 2025-09-30T21:41:41Z)"
-//
-// # Makefile Integration
-//
-// The project Makefile handles version injection automatically:
-//
-//	# Extract version from git tags
-//	VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-//	COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "n/a")
-//	BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-//
-//	# Build with version injection
-//	build:
-//	    @echo "Building version $(VERSION)..."
-//	    @go build -ldflags="\
-//	      -X 'github.com/netresearch/ldap-manager/internal/version.Version=$(VERSION)' \
-//	      -X 'github.com/netresearch/ldap-manager/internal/version.CommitHash=$(COMMIT_HASH)' \
-//	      -X 'github.com/netresearch/ldap-manager/internal/version.BuildTimestamp=$(BUILD_TIME)' \
-//	    " -o bin/ldap-manager ./cmd/ldap-manager
+//	version.BuildTimestamp = "2026-04-20T17:58:00Z"
+//	version.FormatVersion() // Returns: "v1.0.8 (a4d1aae, built at 2026-04-20T17:58:00Z)"
 //
 // # Version String Format
 //
@@ -107,37 +98,15 @@
 //  5. Release notes and changelog generation
 //  6. CI/CD pipeline integration for deployment tracking
 //
-// # Docker Builds
-//
-// For Docker images, version is injected at build time:
-//
-//	# In Dockerfile
-//	ARG VERSION=dev
-//	ARG COMMIT_HASH=n/a
-//	ARG BUILD_TIME=n/a
-//
-//	RUN go build -ldflags="\
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.Version=${VERSION}' \
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.CommitHash=${COMMIT_HASH}' \
-//	  -X 'github.com/netresearch/ldap-manager/internal/version.BuildTimestamp=${BUILD_TIME}' \
-//	" ./cmd/ldap-manager
-//
-//	# Build with version
-//	docker build \
-//	  --build-arg VERSION=v1.0.8 \
-//	  --build-arg COMMIT_HASH=$(git rev-parse --short HEAD) \
-//	  --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
-//	  -t ldap-manager:v1.0.8 .
-//
 // # Best Practices
 //
-//  1. Always use semantic versioning for Version field (e.g., v1.0.8, not 1.0.8)
+//  1. Always use semantic versioning for Version (e.g., v1.0.8, not 1.0.8)
 //  2. Include git commit hash for precise build identification
 //  3. Use ISO 8601 format for timestamps (YYYY-MM-DDTHH:MM:SSZ)
-//  4. Automate version injection in CI/CD pipelines
-//  5. Never hard-code version strings in source code
-//  6. Include version in application logs at startup
-//  7. Expose version via health check endpoint for monitoring
+//  4. Never hard-code version strings in source code
+//  5. Include version in application logs at startup
+//  6. Expose version via health check endpoint for monitoring
 //
-// For more details on build process, see: docs/development/contributing.md
+// For release pipeline details, see:
+// https://github.com/netresearch/.github/blob/main/templates/go-app/.github/workflows/release.yml
 package version
