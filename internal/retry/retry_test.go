@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+func TestDo_UsesDefaultConfig(t *testing.T) {
+	callCount := 0
+	err := Do(context.Background(), func() error {
+		callCount++
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if callCount != 1 {
+		t.Errorf("expected 1 call, got %d", callCount)
+	}
+}
+
 func TestDoWithConfig_Success(t *testing.T) {
 	callCount := 0
 	err := DoWithConfig(context.Background(), DefaultConfig(), func() error {
