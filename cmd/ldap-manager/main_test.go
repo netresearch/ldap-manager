@@ -10,7 +10,73 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	internalversion "github.com/netresearch/ldap-manager/internal/version"
 )
+
+func TestForwardBuildMetadata(t *testing.T) {
+	// Snapshot + restore so this test doesn't leak state to siblings.
+	origV, origC, origT := internalversion.Version, internalversion.CommitHash, internalversion.BuildTimestamp
+	t.Cleanup(func() {
+		internalversion.Version = origV
+		internalversion.CommitHash = origC
+		internalversion.BuildTimestamp = origT
+	})
+
+	t.Run("all values forwarded", func(t *testing.T) {
+		internalversion.Version = "dev"
+		internalversion.CommitHash = "n/a"
+		internalversion.BuildTimestamp = "n/a"
+
+		forwardBuildMetadata("v1.2.3", "abc123", "2026-04-20T00:00:00Z")
+
+		if got, want := internalversion.Version, "v1.2.3"; got != want {
+			t.Errorf("Version = %q, want %q", got, want)
+		}
+		if got, want := internalversion.CommitHash, "abc123"; got != want {
+			t.Errorf("CommitHash = %q, want %q", got, want)
+		}
+		if got, want := internalversion.BuildTimestamp, "2026-04-20T00:00:00Z"; got != want {
+			t.Errorf("BuildTimestamp = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("empty inputs preserve existing values", func(t *testing.T) {
+		internalversion.Version = "preserved-v"
+		internalversion.CommitHash = "preserved-c"
+		internalversion.BuildTimestamp = "preserved-t"
+
+		forwardBuildMetadata("", "", "")
+
+		if got := internalversion.Version; got != "preserved-v" {
+			t.Errorf("Version mutated to %q", got)
+		}
+		if got := internalversion.CommitHash; got != "preserved-c" {
+			t.Errorf("CommitHash mutated to %q", got)
+		}
+		if got := internalversion.BuildTimestamp; got != "preserved-t" {
+			t.Errorf("BuildTimestamp mutated to %q", got)
+		}
+	})
+
+	t.Run("partial injection", func(t *testing.T) {
+		internalversion.Version = "preserved"
+		internalversion.CommitHash = "preserved"
+		internalversion.BuildTimestamp = "preserved"
+
+		forwardBuildMetadata("v9.9.9", "", "2026-01-01T00:00:00Z")
+
+		if got, want := internalversion.Version, "v9.9.9"; got != want {
+			t.Errorf("Version = %q, want %q", got, want)
+		}
+		if got := internalversion.CommitHash; got != "preserved" {
+			t.Errorf("CommitHash mutated to %q", got)
+		}
+		if got, want := internalversion.BuildTimestamp, "2026-01-01T00:00:00Z"; got != want {
+			t.Errorf("BuildTimestamp = %q, want %q", got, want)
+		}
+	})
+}
 
 func TestIsValidPort(t *testing.T) {
 	cases := []struct {

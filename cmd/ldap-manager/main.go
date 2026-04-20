@@ -27,22 +27,36 @@ const (
 )
 
 // Build-injected version metadata. Populated by release.yml's ldflags
-// (`-X main.version=<tag>`, `-X main.build=<commit-sha>`); forwarded
-// into internal/version at init() so FormatVersion() / the `version`
+// (`-X main.version=<tag>`, `-X main.build=<commit-sha>`,
+// `-X main.buildTime=<commit-timestamp>`); forwarded into
+// internal/version at init() so FormatVersion() / the `version`
 // subcommand report the release info without requiring each repo to
 // invent its own ldflag target-path convention.
 var (
-	version = ""
-	build   = ""
+	version   = ""
+	build     = ""
+	buildTime = ""
 )
 
+// forwardBuildMetadata copies the build-injected package-main vars into
+// the internal/version package. Extracted from init() to keep it
+// unit-testable without mutating global state via the init machinery.
+// Empty inputs are treated as "not injected" and leave the existing
+// internal/version defaults in place.
+func forwardBuildMetadata(v, b, t string) {
+	if v != "" {
+		internalversion.Version = v
+	}
+	if b != "" {
+		internalversion.CommitHash = b
+	}
+	if t != "" {
+		internalversion.BuildTimestamp = t
+	}
+}
+
 func init() {
-	if version != "" {
-		internalversion.Version = version
-	}
-	if build != "" {
-		internalversion.CommitHash = build
-	}
+	forwardBuildMetadata(version, build, buildTime)
 }
 
 func main() {
