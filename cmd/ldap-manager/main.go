@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/options"
-	"github.com/netresearch/ldap-manager/internal/version"
+	internalversion "github.com/netresearch/ldap-manager/internal/version"
 	"github.com/netresearch/ldap-manager/internal/web"
 )
 
@@ -25,6 +25,25 @@ const (
 	healthCheckTimeout = 3 * time.Second
 	defaultPort        = "3000"
 )
+
+// Build-injected version metadata. Populated by release.yml's ldflags
+// (`-X main.version=<tag>`, `-X main.build=<commit-sha>`); forwarded
+// into internal/version at init() so FormatVersion() / the `version`
+// subcommand report the release info without requiring each repo to
+// invent its own ldflag target-path convention.
+var (
+	version = ""
+	build   = ""
+)
+
+func init() {
+	if version != "" {
+		internalversion.Version = version
+	}
+	if build != "" {
+		internalversion.CommitHash = build
+	}
+}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -38,16 +57,16 @@ func main() {
 		case "version", "--version":
 			if len(os.Args) == 3 && os.Args[2] == "--json" {
 				info := map[string]string{
-					"version":   version.Version,
-					"commit":    version.CommitHash,
-					"buildTime": version.BuildTimestamp,
+					"version":   internalversion.Version,
+					"commit":    internalversion.CommitHash,
+					"buildTime": internalversion.BuildTimestamp,
 				}
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
 				_ = enc.Encode(info)
 				os.Exit(0)
 			}
-			fmt.Println(version.FormatVersion())
+			fmt.Println(internalversion.FormatVersion())
 			os.Exit(0)
 		case "--health-check":
 			os.Exit(runHealthCheck(port))
@@ -56,7 +75,7 @@ func main() {
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	log.Info().Msgf("LDAP Manager %s starting...", version.FormatVersion())
+	log.Info().Msgf("LDAP Manager %s starting...", internalversion.FormatVersion())
 
 	opts, err := options.Parse()
 	if err != nil {
