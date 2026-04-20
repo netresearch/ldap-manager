@@ -25,6 +25,10 @@ type userModifyForm struct {
 // the V2 user detail page. Flash messages from the legacy V1 template have
 // been dropped; failures are logged and surfaced via the server log.
 //
+// Also dispatches to the inline-edit handler (handleUserV2Edit) when the
+// form carries a `field` value — keeps a single POST route for /users/* and
+// avoids widening the route table for drawer-driven attribute edits.
+//
 //nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
 func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	userDN, err := url.PathUnescape(c.Params("*"))
@@ -33,6 +37,13 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	detailURL := "/users/" + url.PathEscape(userDN)
+
+	// Inline-edit dispatch (Phase 2): the drawer `kv-edit` forms POST a
+	// whitelisted `field` + `value`. Route before BodyParser so
+	// FormValue-only handling is simple and uncoupled.
+	if field := c.FormValue("field"); field != "" {
+		return a.handleUserV2Edit(c, userDN, field, c.FormValue("value"))
+	}
 
 	form := userModifyForm{}
 	if err := c.BodyParser(&form); err != nil {

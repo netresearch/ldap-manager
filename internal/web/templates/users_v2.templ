@@ -145,14 +145,14 @@ templ userDrawerContents(vm UserDrawerVM) {
 					Disabled
 				}
 			</dd>
-			if vm.User.Mail != nil && *vm.User.Mail != "" {
-				<dt>Email</dt>
-				<dd><a href={ templ.URL("mailto:" + *vm.User.Mail) }>{ *vm.User.Mail }</a></dd>
-			}
-			if vm.User.Description != "" {
-				<dt>Description</dt>
-				<dd>{ vm.User.Description }</dd>
-			}
+			<dt>Email</dt>
+			<dd>
+				@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)")
+			</dd>
+			<dt>Description</dt>
+			<dd>
+				@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)")
+			</dd>
 		</dl>
 	</section>
 
@@ -194,6 +194,34 @@ templ userDrawerContents(vm UserDrawerVM) {
 	</section>
 }
 
+// userKVEdit renders an inline-editable drawer key/value row as a small
+// htmx form. The form POSTs to the existing /users/<dn> route (the handler
+// dispatches on the presence of a `field` form value) and swaps the drawer
+// fragment response into the surrounding #drawer. When no #drawer exists
+// (full-page user detail), htmx still succeeds and the new fragment
+// replaces the detail drawer contents via the `closest .drawer` target.
+templ userKVEdit(u ldap.User, field, inputType, value, placeholder string) {
+	<form
+		class="kv-edit"
+		hx-post={ userEditHref(u) }
+		hx-target="closest .drawer"
+		hx-swap="innerHTML"
+	>
+		<input type="hidden" name="field" value={ field }/>
+		<input
+			class="kv-edit__input"
+			name="value"
+			type={ inputType }
+			value={ value }
+			placeholder={ placeholder }
+			aria-label={ field }
+		/>
+		<button class="kv-edit__save" type="submit" aria-label={ "Save " + field }>
+			<span aria-hidden="true">✓</span>
+		</button>
+	</form>
+}
+
 // pinStarButton renders the pin/unpin toggle as a small form.
 //
 // LIMITATION (Slice 4): the handlers at /pin and /unpin currently return
@@ -226,6 +254,23 @@ func userDetailHref(u ldap.User) templ.SafeURL {
 
 func userDrawerFragmentHref(u ldap.User) string {
 	return "/users/" + url.PathEscape(u.DN()) + "?fragment=drawer"
+}
+
+// userEditHref is the POST target for the drawer inline-edit forms. It
+// shares the existing /users/<dn> POST route; dispatch happens inside
+// userModifyHandler based on the presence of a `field` form value.
+func userEditHref(u ldap.User) string {
+	return "/users/" + url.PathEscape(u.DN())
+}
+
+// derefString flattens *string (LDAP.Mail is pointer-wrapped) to a plain
+// string suitable for a form input value. Nil becomes "".
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+
+	return *p
 }
 
 func groupDetailHref(g ldap.Group) templ.SafeURL {
