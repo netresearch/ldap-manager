@@ -398,7 +398,7 @@ func TestResponsiveLayout(t *testing.T) {
 
 	t.Run("login page renders on mobile viewport", func(t *testing.T) {
 		page, err := browser.browser.NewPage(playwright.BrowserNewPageOptions{
-			ViewportSize: &playwright.Size{
+			Viewport: &playwright.Size{
 				Width:  375,
 				Height: 667,
 			},
@@ -416,7 +416,7 @@ func TestResponsiveLayout(t *testing.T) {
 
 	t.Run("login page renders on tablet viewport", func(t *testing.T) {
 		page, err := browser.browser.NewPage(playwright.BrowserNewPageOptions{
-			ViewportSize: &playwright.Size{
+			Viewport: &playwright.Size{
 				Width:  768,
 				Height: 1024,
 			},
