@@ -23,7 +23,7 @@ type UserDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -41,7 +41,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes
 					aria-label="Filter users"
 					data-search-input
 				/>
-				<a class={ filterChipClass(showDisabled) } href={ toggleDisabledHref(showDisabled, ouFilter) }>
+				<a class={ filterChipClass(showDisabled) } href={ usersFilterHref(!showDisabled, ouFilter, lastLogon) }>
 					if showDisabled {
 						including disabled
 					} else {
@@ -49,10 +49,14 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes
 					}
 				</a>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ clearOUHref(showDisabled) }>
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon) }>
 						ou={ ouFilter } ×
 					</a>
 				}
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, "24h", "last 24h")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, "7d", "last 7d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, "30d", "last 30d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, "never", "never logged in")
 			</div>
 
 			<div class="list-page__pane">
@@ -285,14 +289,22 @@ func filterChipClass(on bool) string {
 	return "filter-chip"
 }
 
-func toggleDisabledHref(currentShowDisabled bool, ouFilter string) templ.SafeURL {
+// usersFilterHref composes a /users URL with the supplied combination of
+// filters. Empty / zero values are omitted so we keep the URL short and
+// symmetric with the default view.
+func usersFilterHref(showDisabled bool, ouFilter, lastLogon string) templ.SafeURL {
 	v := url.Values{}
-	if !currentShowDisabled {
+
+	if showDisabled {
 		v.Set("show-disabled", "1")
 	}
 
 	if ouFilter != "" {
 		v.Set("ou", ouFilter)
+	}
+
+	if lastLogon != "" {
+		v.Set("last-logon", lastLogon)
 	}
 
 	qs := v.Encode()
@@ -303,11 +315,19 @@ func toggleDisabledHref(currentShowDisabled bool, ouFilter string) templ.SafeURL
 	return templ.URL("/users?" + qs)
 }
 
-func clearOUHref(showDisabled bool) templ.SafeURL {
-	if showDisabled {
-		return templ.URL("/users?show-disabled=1")
+// lastLogonChip renders one of the four last-logon filter chips. Clicking
+// the active chip clears the filter (by emitting the "" value); clicking
+// an inactive chip switches to that window. The filter stacks with the
+// show-disabled and ou filters via usersFilterHref.
+templ lastLogonChip(showDisabled bool, ouFilter, active, value, label string) {
+	if value == active {
+		<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, "") }>
+			{ label } ×
+		</a>
+	} else {
+		<a class="filter-chip" href={ usersFilterHref(showDisabled, ouFilter, value) }>
+			{ label }
+		</a>
 	}
-
-	return templ.URL("/users")
 }
 

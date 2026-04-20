@@ -3,6 +3,7 @@ package web
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -76,6 +77,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 
 	showDisabled := c.Query("show-disabled") == "1"
 	ouFilter := c.Query("ou")
+	lastLogon := c.Query("last-logon")
 
 	var all []ldap.User
 	if a.ldapCache != nil {
@@ -83,10 +85,11 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	}
 
 	users := filterUsersByOU(all, ouFilter)
+	users = filterUsersByLastLogon(users, lastLogon)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.UsersListV2(users, showDisabled, ouFilter, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.UsersListV2(users, showDisabled, ouFilter, lastLogon, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
@@ -126,6 +129,64 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 
 	return templates.UserFullV2(vm, a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// filterUsersByLastLogon narrows users by the `last-logon` query-param
+// window. Recognised values:
+//
+//	""       → no filter (input returned unchanged)
+//	"24h"    → logged in within the last 24 hours
+//	"7d"     → logged in within the last 7 days
+//	"30d"    → logged in within the last 30 days
+//	"never"  → users with no recorded lastLogonTimestamp (LastLogon == 0)
+//
+// Unknown values are treated as no-filter to keep the handler tolerant of
+// stale URLs.
+//
+// ldap.User.LastLogon is already a Unix timestamp in seconds (produced by
+// simple-ldap-go's parseLastLogonTimestamp), so no AD FILETIME conversion
+// is needed here.
+func filterUsersByLastLogon(users []ldap.User, window string) []ldap.User {
+	if window == "" {
+		return users
+	}
+
+	if window == "never" {
+		out := make([]ldap.User, 0, len(users))
+		for _, u := range users {
+			if u.LastLogon == 0 {
+				out = append(out, u)
+			}
+		}
+
+		return out
+	}
+
+	var cutoff time.Time
+
+	switch window {
+	case "24h":
+		cutoff = time.Now().Add(-24 * time.Hour)
+	case "7d":
+		cutoff = time.Now().Add(-7 * 24 * time.Hour)
+	case "30d":
+		cutoff = time.Now().Add(-30 * 24 * time.Hour)
+	default:
+		return users
+	}
+
+	out := make([]ldap.User, 0, len(users))
+	for _, u := range users {
+		if u.LastLogon == 0 {
+			continue
+		}
+
+		if time.Unix(u.LastLogon, 0).After(cutoff) {
+			out = append(out, u)
+		}
+	}
+
+	return out
 }
 
 // filterUsersByOU returns users whose immediate OU matches ou. When ou is
