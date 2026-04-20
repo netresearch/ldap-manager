@@ -16,30 +16,30 @@ HTTP layer for LDAP Manager using Fiber v2 framework and Templ templates.
 - `health.go` — Health check and readiness endpoints
 - `middleware.go` — Custom middleware (logging, auth, CSRF)
 - `template_cache.go` — Templ template preloading and caching
-- `assets.go` — Static asset serving
+- `static/static.go` — Static asset embed (served as `/static/*`)
 
 **Frontend:**
 
 - `templates/` — Templ template files (`.templ`)
-- `static/` — CSS, images, favicon
-- `tailwind.css` — TailwindCSS input (builds to `static/styles.css`)
+- `static/app.css` — Hand-written stylesheet layered on top of Pico CSS
+- `static/vendor/` — Vendored third-party CSS/JS (Pico, htmx, Alpine)
+- `static/js/v2-*.js` — Plain JS, CSP-safe (no inline `<script>`)
 
 ## Setup & Environment
 
 ```bash
-# Install Go + Node dependencies
+# Install Go deps + dev tools
 make setup
-make setup-hooks  # Install pre-commit hooks
 
 # Install templ CLI (if not already installed)
 go install github.com/a-h/templ/cmd/templ@latest
 
-# Build frontend assets
-bun run build:assets
+# Refresh vendored frontend files (pico/htmx/alpine) + regenerate templ
+make build-assets
 
-# Development mode (hot reload)
-make dev    # Watches: CSS, templates, Go files
-make watch  # Alternative: watch and rebuild assets
+# Development mode
+make dev             # templ generate + go run ./cmd/ldap-manager
+make templates-watch # regenerate templ on .templ edits
 ```
 
 Environment variables (see `.envrc` or `.env`):
@@ -63,13 +63,11 @@ go test -v ./internal/web/ -run TestAuthHandler
 go test -coverprofile=coverage.out ./internal/web/
 go tool cover -html=coverage.out
 
-# Frontend assets
-bun run css:build     # Build CSS
-bun run templ:build   # Generate Go from .templ files
-bun run build:assets  # Build both
+# Regenerate templ + vendor assets
+make build-assets
 
-# Development watch
-bun run dev           # Auto-rebuild on changes
+# Watch templ on change
+make templates-watch
 ```
 
 ## Code Style & Conventions
@@ -263,49 +261,44 @@ app.Use(func(c *fiber.Ctx) error {
 
 ## Frontend Assets & Styling
 
-### TailwindCSS
+### Stylesheet stack
+
+The UI ships on Pico CSS + a hand-written `static/app.css`. There is no
+Tailwind, PostCSS, or TypeScript build step. To refresh the vendored
+third-party files (Pico, htmx, Alpine), run:
 
 ```bash
-# Development (watch mode)
-bun run css:dev
-
-# Production (minified + purged)
-bun run css:build:prod
-
-# Analyze bundle size
-bun run css:analyze
+bash scripts/vendor.sh
 ```
-
-Configuration: `tailwind.config.js` and `postcss.config.mjs`
 
 ### Template Development
 
 ```bash
 # Generate Go code from .templ files
-bun run templ:build
+templ generate
 
 # Watch mode (auto-regenerate)
-bun run templ:dev
+templ generate --watch
 ```
 
 Templ files in `templates/` compile to `*_templ.go` (excluded from linting).
 
 ### Static Assets
 
-- Place in `static/` directory
-- Served at `/static/*` route
-- Cache busting: `scripts/cache-bust.mjs` adds hashes to filenames
+- Place in `static/` directory (CSS in the top level, third-party files under `static/vendor/`)
+- Served at `/static/*` route via `//go:embed` in `static/static.go`
+- Plain JS only — all `static/js/*.js` files are served as-is (no transpilation)
 
 ## Code Style
 
 ### Web Layer Standards
 
-- Run `make format-all` before commit (Go + JS/CSS)
+- Run `make format-all` before commit (Go only)
 - Handlers must be thin - business logic belongs in `internal/ldap/`
 - All inputs must be validated and sanitized
 - Use `zerolog` for logging, never `console.log` or `fmt.Println()`
 - Templates use Templ syntax (`.templ` files compile to `*_templ.go`)
-- TailwindCSS v4 for styling - no custom CSS unless necessary
+- Pico CSS + hand-written `app.css` for styling; no CSS build step
 
 ### Security Requirements
 
@@ -346,8 +339,7 @@ session.Config{
 - [ ] Tests cover happy path and error cases
 - [ ] CSRF protection on state-changing endpoints
 - [ ] Session handling follows security best practices
-- [ ] Templates compiled (`bun run templ:build`)
-- [ ] CSS built and minified (`bun run css:build:prod`)
+- [ ] Templates regenerated (`templ generate`) when `.templ` sources change
 - [ ] No console.log or debug prints in production code
 - [ ] `make format-all` - all code formatted
 - [ ] `make lint` - passes linters
@@ -494,8 +486,8 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 3. **Templates**: See `templates/` for Templ component examples
 4. **Middleware**: Look at `middleware.go` for auth/logging patterns
 5. **Testing**: Check `server_test.go` for `setupFullTestApp`, `ldap_integration_test.go` for LDAP tests
-6. **Frontend**: Review `tailwind.config.js` and `package.json` scripts
-7. **Assets not building**: Run `make clean && bun install && bun run build:assets`
+6. **Frontend**: `static/app.css` for styles, `static/js/v2-*.js` for plain JS; no build step
+7. **Assets out of date**: Run `make build-assets` (regenerates templ + refreshes `static/vendor/`)
 8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration
 9. **LDAP mock issues**: If `simple-ldap-go` returns "example server" errors, use `127.0.0.1` not `localhost`
 
@@ -504,7 +496,7 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 - **Thin handlers**: All business logic belongs in `internal/ldap/`, not in handlers
 - **Security first**: CSRF on POST/PUT/DELETE, session regeneration after auth
 - **Templ templates**: Never manually construct HTML - use `.templ` components
-- **TailwindCSS only**: No custom CSS unless absolutely necessary
+- **Pico + app.css**: Add styles to `static/app.css`; no preprocessors
+- **CSP-safe JS**: All scripts in external `/static/js/v2-*.js`; no inline `<script>` blocks
 - **Structured logging**: Use `zerolog`, never `fmt.Println()` or `console.log`
-- **Asset pipeline**: `bun run build:assets` required before deployment
 - **Cookie security**: Always configure `COOKIE_SECURE` based on HTTPS availability

@@ -6,10 +6,10 @@ ci:
       - any-glob-to-any-file: ['.github/**/*', 'Makefile']
 dependencies:
   - changed-files:
-      - any-glob-to-any-file: ['go.mod', 'go.sum', 'Dockerfile', '.devcontainer/**/*', 'package.json', 'package-lock.json', 'bun.lock', 'bun.lockb', 'yarn.lock', 'tsconfig*.json']
+      - any-glob-to-any-file: ['go.mod', 'go.sum', 'Dockerfile', '.devcontainer/**/*', 'scripts/vendor.lock']
 tests:
   - changed-files:
-      - any-glob-to-any-file: ['**/*_test.go', 'testdata/**/*', '**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts']
+      - any-glob-to-any-file: ['**/*_test.go', 'testdata/**/*']
 frontend:
   - changed-files:
-      - any-glob-to-any-file: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.css', '**/*.scss', '**/*.html', '**/*.templ']
+      - any-glob-to-any-file: ['**/*.js', '**/*.css', '**/*.templ']

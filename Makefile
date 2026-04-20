@@ -48,7 +48,7 @@ help:
 	@echo "  Go Version:  $(GO_VERSION)"
 
 ## Setup: Install all dependencies and tools
-setup: setup-go setup-node setup-tools
+setup: setup-go setup-tools
 	@echo "$(GREEN)✓ Setup complete$(RESET)"
 
 ## Setup Go: Download Go dependencies
@@ -56,11 +56,6 @@ setup-go:
 	@echo "$(BLUE)Installing Go dependencies...$(RESET)"
 	@go mod download
 	@go mod tidy
-
-## Setup Node: Install Node.js dependencies  
-setup-node:
-	@echo "$(BLUE)Installing Node.js dependencies...$(RESET)"
-	@bun install
 
 ## Setup Tools: Install development tools
 setup-tools:
@@ -90,10 +85,11 @@ build: build-assets
 	@CGO_ENABLED=0 go build $(BUILDFLAGS) -o bin/ldap-manager ./cmd/ldap-manager
 	@echo "$(GREEN)✓ Build complete: bin/ldap-manager$(RESET)"
 
-## Build Assets: Build CSS and template assets
+## Build Assets: Regenerate templ code + refresh vendored frontend files
 build-assets:
-	@echo "$(BLUE)Building assets...$(RESET)"
-	@bun run build:assets
+	@echo "$(BLUE)Generating templ code + vendoring frontend assets...$(RESET)"
+	@templ generate
+	@bash scripts/vendor.sh
 
 ## Build Release: Build optimized release binary
 build-release: build-assets
@@ -252,10 +248,11 @@ fix:
 	@find . -name "*.go" -not -name "*_templ.go" -exec goimports -w {} +
 	@echo "$(GREEN)✓ Code formatting fixed$(RESET)"
 
-## Dev: Start development server with hot reload
+## Dev: Start development server (templ watch + go run)
 dev:
-	@echo "$(BLUE)Starting development server...$(RESET)"
-	@bun run dev
+	@echo "$(BLUE)Starting development server (templ watch in background, go run in foreground)...$(RESET)"
+	@templ generate
+	@go run ./cmd/ldap-manager
 
 ## Docker: Build Docker image
 docker:
@@ -351,7 +348,6 @@ clean:
 	@rm -rf bin/
 	@rm -f coverage.out ldap-manager
 	@rm -rf $(COVERAGE_DIR)
-	@rm -rf node_modules/.cache
 	@go clean -cache -testcache -modcache
 	@echo "$(GREEN)✓ Clean complete$(RESET)"
 
@@ -363,12 +359,11 @@ check: lint test
 release: check build-release
 	@echo "$(GREEN)✓ Release ready$(RESET)"
 
-## Deps: Update dependencies  
+## Deps: Update dependencies
 deps:
 	@echo "$(BLUE)Updating dependencies...$(RESET)"
 	@go get -u ./...
 	@go mod tidy
-	@bun update
 	@echo "$(GREEN)✓ Dependencies updated$(RESET)"
 
 ## Info: Display build information
@@ -464,32 +459,21 @@ fresh: docker-clean
 # Development Workflow Commands
 # ============================================================================
 
-## Watch: Watch and rebuild assets on change
+## Watch: Watch and regenerate templ on change
 watch:
-	@echo "$(BLUE)Watching for changes...$(RESET)"
-	@bun run dev
-
-## CSS Build: Build CSS only
-css:
-	@echo "$(BLUE)Building CSS...$(RESET)"
-	@bun run css:build:prod
-	@echo "$(GREEN)✓ CSS built$(RESET)"
-
-## CSS Watch: Watch and rebuild CSS
-css-watch:
-	@echo "$(BLUE)Watching CSS...$(RESET)"
-	@bun run css:dev
+	@echo "$(BLUE)Watching .templ files...$(RESET)"
+	@templ generate --watch
 
 ## Templates: Generate Go templates from .templ files
 templates:
 	@echo "$(BLUE)Generating templates...$(RESET)"
-	@bun run templ:build
+	@templ generate
 	@echo "$(GREEN)✓ Templates generated$(RESET)"
 
 ## Templates Watch: Watch and regenerate templates
 templates-watch:
 	@echo "$(BLUE)Watching templates...$(RESET)"
-	@bun run templ:dev
+	@templ generate --watch
 
 ## Format Go: Format Go code
 format-go:
@@ -498,14 +482,8 @@ format-go:
 	@goimports -w .
 	@echo "$(GREEN)✓ Go code formatted$(RESET)"
 
-## Format JS: Format JavaScript/JSON/CSS
-format-js:
-	@echo "$(BLUE)Formatting JS/JSON/CSS...$(RESET)"
-	@bunx prettier --write .
-	@echo "$(GREEN)✓ JS/JSON/CSS formatted$(RESET)"
-
-## Format All: Format all code
-format-all: format-go format-js
+## Format All: Format all code (Go-only; JS lives in vendored/plain files)
+format-all: format-go
 	@echo "$(GREEN)✓ All code formatted$(RESET)"
 
 # ============================================================================

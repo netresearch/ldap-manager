@@ -216,4 +216,3 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 		}
 	})
 }
-

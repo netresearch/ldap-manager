@@ -42,9 +42,9 @@ type App struct {
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
 	rateLimiter   *RateLimiter  // Rate limiter for authentication endpoints
-	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
-	pinnedStore   *PinnedStore   // Per-user pinned-items store (spec §6.5)
-	pinnedDB      *bolt.DB       // Underlying bbolt handle for pinnedStore (nil when in-memory)
+	stopCacheLog  chan struct{} // Stops periodicCacheLogging goroutine
+	pinnedStore   *PinnedStore  // Per-user pinned-items store (spec §6.5)
+	pinnedDB      *bolt.DB      // Underlying bbolt handle for pinnedStore (nil when in-memory)
 }
 
 // pinnedStorePath returns the bbolt file path for the per-user pinned
@@ -500,4 +500,3 @@ func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 
 	return ""
 }
-
