@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -80,6 +82,12 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 		CleanupEvery: time.Hour,
 	})
 
+	// Per-user pinned store backed by a temp bbolt file.
+	pinnedDB, err := bolt.Open(filepath.Join(t.TempDir(), "pinned.bbolt"), 0o600, nil)
+	require.NoError(t, err)
+	pinnedStore, err := NewPinnedStore(pinnedDB)
+	require.NoError(t, err)
+
 	app := &App{
 		ldapConfig:    testConfig,
 		ldapCache:     ldap_cache.New(mockClient),
@@ -89,11 +97,14 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 		assetManifest: manifest,
 		rateLimiter:   rateLimiter,
 		stopCacheLog:  make(chan struct{}),
+		pinnedStore:   pinnedStore,
+		pinnedDB:      pinnedDB,
 	}
 
 	t.Cleanup(func() {
 		templateCache.Stop()
 		rateLimiter.Stop()
+		_ = pinnedDB.Close()
 	})
 
 	// Populate cache
@@ -125,6 +136,11 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	protected.Get("/computers/*", app.computerHandler)
 	protected.Post("/users/*", app.userModifyHandler)
 	protected.Post("/groups/*", app.groupModifyHandler)
+	// Pin / unpin — CSRF-free in the test harness so the handler tests
+	// exercise just the handler + store. Production wires these in the
+	// protected + CSRF group (see server.go).
+	protected.Post("/pin", app.handlePin)
+	protected.Post("/unpin", app.handleUnpin)
 	protected.Get("/logout", app.logoutHandler)
 	f.Use(app.fourOhFourHandler)
 

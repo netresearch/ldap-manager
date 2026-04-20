@@ -19,6 +19,7 @@ import (
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
@@ -43,6 +44,21 @@ type App struct {
 	assetManifest *AssetManifest // Asset manifest for cache-busted files
 	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
 	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
+	pinnedStore   *PinnedStore   // Per-user pinned-items store (spec §6.5)
+	pinnedDB      *bolt.DB       // Underlying bbolt handle for pinnedStore (nil when in-memory)
+}
+
+// pinnedStorePath returns the bbolt file path for the per-user pinned
+// store. It is derived from the session-storage path (when configured)
+// by appending `.pinned` — bbolt holds an exclusive lock on each file,
+// so the pinned store must not share the session file. When the caller
+// did not configure a session path, `pinned.bbolt` is used.
+func pinnedStorePath(sessionPath string) string {
+	if sessionPath == "" {
+		return "pinned.bbolt"
+	}
+
+	return sessionPath + ".pinned"
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -133,6 +149,23 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f := createFiberApp()
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
+	// Per-user PinnedStore (spec §6.5). bbolt keeps an exclusive lock on
+	// the file, so we cannot reuse the session bbolt file; instead we
+	// place the pinned store next to it with a `.pinned` suffix. When
+	// sessions are in-memory, the default "pinned.bbolt" path is used so
+	// pins survive restarts in dev mode too.
+	pinnedPath := pinnedStorePath(opts.SessionPath)
+	pinnedDB, err := bolt.Open(pinnedPath, 0o600, &bolt.Options{Timeout: 2 * time.Second})
+	if err != nil {
+		return nil, fmt.Errorf("open pinned store db: %w", err)
+	}
+	pinnedStore, err := NewPinnedStore(pinnedDB)
+	if err != nil {
+		_ = pinnedDB.Close()
+
+		return nil, fmt.Errorf("init pinned store: %w", err)
+	}
+
 	// Load asset manifest for cache-busted files
 	manifestPath := "internal/web/static/manifest.json"
 	manifest, err := LoadAssetManifest(manifestPath)
@@ -156,6 +189,8 @@ func NewApp(opts *options.Opts) (*App, error) {
 		assetManifest: manifest,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
+		pinnedStore:   pinnedStore,
+		pinnedDB:      pinnedDB,
 	}
 
 	// Setup all routes
@@ -272,6 +307,10 @@ func (a *App) setupRoutes() {
 	protected.Post("/users/*", a.userModifyHandler)
 	protected.Post("/groups/*", a.groupModifyHandler)
 
+	// Pin / unpin (spec §6.5) — CSRF-protected via the `protected` group
+	protected.Post("/pin", a.handlePin)
+	protected.Post("/unpin", a.handleUnpin)
+
 	protected.Get("/logout", a.logoutHandler)
 
 	f.Use(a.fourOhFourHandler)
@@ -316,6 +355,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 	log.Info().Msg("Stopping rate limiter...")
 	a.rateLimiter.Stop()
+
+	// Close pinned-store bbolt handle
+	if a.pinnedDB != nil {
+		log.Info().Msg("Closing pinned store...")
+		if err := a.pinnedDB.Close(); err != nil {
+			log.Warn().Err(err).Msg("Failed to close pinned store db")
+		}
+	}
 
 	// Close LDAP connections last
 	log.Info().Msg("Closing LDAP connections...")
