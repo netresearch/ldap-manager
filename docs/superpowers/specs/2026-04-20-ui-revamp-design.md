@@ -76,7 +76,7 @@ After Phase 1, the app is the revamp. Phases 2 and 3 are incremental.
 - `typescript`, `tsc`
 - `postcss`, `postcss-cli`, `postcss-hash`, `postcss-reporter`, `cssnano`, `cssnano-preset-advanced`, `autoprefixer`, `purgecss`
 - `bun`, `concurrently`, `nodemon`, `prettier-plugin-tailwindcss`
-- Entire TypeScript source tree (`internal/web/static/ts/**`), replaced by Alpine directives and a small `internal/web/static/js/ldap-manager.js` for non-declarative pieces (client-side search index, localStorage recents).
+- Entire TypeScript source tree (`internal/web/static/ts/**`), replaced by Alpine CSP-build components and a small `internal/web/static/js/ldap-manager.js` for non-declarative pieces (client-side search index, localStorage recents).
 - `tailwind.css`, `tailwind.config.js`, `postcss.config.mjs`, `tsconfig.json`, generated `styles.*.css`
 
 ## 4. Visual language
