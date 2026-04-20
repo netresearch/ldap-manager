@@ -94,6 +94,10 @@ html {
   outline-offset: 2px;
 }
 
+/* Hide Alpine-bound markup until Alpine has initialised.
+   Paired with the `x-cloak` attribute on <html> in base_v2.templ. */
+[x-cloak] { display: none !important; }
+
 /* ──────────────────────────── layouts ──────────────────────────────── */
 
 .page-center {
