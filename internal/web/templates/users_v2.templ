@@ -82,7 +82,15 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 }
 
 templ userRowV2(u ldap.User) {
-	<li class="list-row" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item>
+		<label class="list-row__check-wrap" aria-label={ "Select " + u.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ u.DN() }
+			/>
+		</label>
 		<a
 			class="list-row__link"
 			href={ userDetailHref(u) }

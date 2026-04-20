@@ -680,6 +680,29 @@ html {
     list-style: none;
 }
 
+/* A selectable row places the checkbox outside (and before) the link so a
+ * row click still follows the href — selection is intentional and discrete. */
+.list-row--selectable {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+}
+
+.list-row__check-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.5rem 0 0.25rem;
+    cursor: pointer;
+}
+
+.list-row__check {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
+}
+
 .list-row__link {
     display: grid;
     grid-template-columns: auto 1fr auto auto;
@@ -913,6 +936,48 @@ html {
     text-transform: uppercase;
     color: var(--fg-muted);
     pointer-events: none;
+}
+
+/* ───────────────────── bulk actions (Phase 3) ─────────────────────────── */
+
+.bulk-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    background: var(--fg);
+    color: var(--bg);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+    z-index: 80;
+}
+
+.bulk-bar__count {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.bulk-bar__action,
+.bulk-bar__cancel {
+    padding: 0.375rem 0.75rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--bg);
+    border-radius: 0.375rem;
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.bulk-bar__action:hover,
+.bulk-bar__action:focus-visible,
+.bulk-bar__cancel:hover,
+.bulk-bar__cancel:focus-visible {
+    border-color: var(--border-strong);
 }
 
 /* ───────────────────── drawer inline edit (Phase 2) ───────────────────── */

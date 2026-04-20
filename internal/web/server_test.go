@@ -128,6 +128,9 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	protected.Get("/users/*", app.handleUserV2)
 	protected.Get("/groups/*", app.handleGroupV2)
 	protected.Get("/computers/*", app.handleComputerV2)
+	// Bulk user actions — registered BEFORE /users/* so Fiber's wildcard
+	// doesn't swallow the exact /users/bulk route.
+	protected.Post("/users/bulk", app.handleBulkUsers)
 	protected.Post("/users/*", app.userModifyHandler)
 	protected.Post("/groups/*", app.groupModifyHandler)
 	// Pin / unpin — CSRF-free in the test harness so the handler tests
