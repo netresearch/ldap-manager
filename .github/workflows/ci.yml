@@ -22,7 +22,12 @@ jobs:
       enable-fuzz: true
       enable-license-check: true
       enable-codecov: true
-      coverage-threshold: 20
+      # Exclude the auto-generated internal/web/templates package from the
+      # coverage calculation: the *_templ.go files are produced by the templ
+      # CLI and contain many framework-internal defer/error branches that
+      # cannot be reached from unit tests. Authored-code coverage is the
+      # metric that matters for the fleet-wide 80% floor.
+      test-flags: "-race -covermode=atomic -coverprofile=coverage.out -coverpkg=github.com/netresearch/ldap-manager/cmd/...,github.com/netresearch/ldap-manager/internal/ldap_cache/...,github.com/netresearch/ldap-manager/internal/options/...,github.com/netresearch/ldap-manager/internal/retry/...,github.com/netresearch/ldap-manager/internal/version/...,github.com/netresearch/ldap-manager/internal/web"
       setup-bun: true
       pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
     permissions:
