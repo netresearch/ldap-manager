@@ -1,0 +1,185 @@
+// internal/web/templates/groups_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+)
+
+// GroupDrawerVM is the view-model shared by the group drawer fragment and
+// the full-page group detail. Populated by App.buildGroupDrawerVM.
+//
+// Group is a *FullLDAPGroup (not the bare ldap.Group) so that the template
+// can range over resolved []ldap.User member tags — the raw ldap.Group.Members
+// is a []string of DNs which is not enough to render CN/DN links.
+type GroupDrawerVM struct {
+	Group       *ldap_cache.FullLDAPGroup
+	Pinned      bool
+	OUName      string // plain-text OU name, e.g. "ou=Groups" (for display)
+	OUPivotHref string // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
+}
+
+templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash) {
+	@baseV2("Groups") {
+		@topnavV2("/groups")
+
+		<main class="list-page">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Groups</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
+			</header>
+
+			<div class="list-page__filters" data-search-filter>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter groups…"
+					aria-label="Filter groups"
+					data-search-input
+				/>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ clearGroupsOUHref() }>
+						ou={ ouFilter } ×
+					</a>
+				}
+			</div>
+
+			<div class="list-page__pane">
+				<ul class="list-rows" data-search-list aria-label="Groups">
+					for _, g := range groups {
+						@groupRowV2(g)
+					}
+					if len(groups) == 0 {
+						<li class="list-rows__empty">No groups match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a group to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+templ groupRowV2(g ldap.Group) {
+	<li class="list-row" data-search-item>
+		<a
+			class="list-row__link"
+			href={ groupDetailHref(g) }
+			hx-get={ groupDrawerFragmentHref(g) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + g.CN() }
+		>
+			<span class="list-row__dot" data-enabled="true"></span>
+			<span class="list-row__primary">{ g.CN() }</span>
+			<span class="list-row__secondary">{ fmt.Sprintf("%d members", len(g.Members)) }</span>
+		</a>
+	</li>
+}
+
+templ GroupFullV2(vm GroupDrawerVM) {
+	@baseV2(vm.Group.CN()) {
+		@topnavV2("/groups")
+
+		<main class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="Group detail">
+					@groupDrawerContents(vm)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+// groupDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside GroupFullV2.
+templ groupDrawerContents(vm GroupDrawerVM) {
+	<header
+		class="drawer__head"
+		data-recent-type="group"
+		data-recent-dn={ vm.Group.DN() }
+		data-recent-cn={ vm.Group.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.Group.CN() }</h2>
+			<p class="drawer__sub">{ fmt.Sprintf("%d members", len(vm.Group.Members)) }</p>
+		</div>
+		@pinStarButton("group", vm.Group.DN(), vm.Pinned)
+	</header>
+
+	<p class="drawer__dn">{ vm.Group.DN() }</p>
+
+	if vm.Group.Description != "" {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">Description</h3>
+			<p>{ vm.Group.Description }</p>
+		</section>
+	}
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">
+			{ fmt.Sprintf("Members · %d", len(vm.Group.Members)) }
+		</h3>
+		if len(vm.Group.Members) == 0 {
+			<p class="drawer__empty-inline">No members.</p>
+		} else {
+			<ul class="drawer__tags">
+				for _, u := range vm.Group.Members {
+					<li>
+						<a class="drawer__tag" href={ userDetailHref(u) }>{ u.CN() }</a>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Pivot</h3>
+		<ul class="drawer__pivots">
+			<li>
+				<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) }>
+					<span>Open full page</span>
+					<span aria-hidden="true">→</span>
+				</a>
+			</li>
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
+						<span>Other groups in { vm.OUName }</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+func groupDrawerFragmentHref(g ldap.Group) string {
+	return "/groups/" + url.PathEscape(g.DN()) + "?fragment=drawer"
+}
+
+func clearGroupsOUHref() templ.SafeURL {
+	return templ.URL("/groups")
+}
+
+// asLdapGroup returns the embedded ldap.Group from a FullLDAPGroup so
+// existing helpers that take ldap.Group (like groupDetailHref) can be reused
+// from template code that holds a *FullLDAPGroup.
+func asLdapGroup(g *ldap_cache.FullLDAPGroup) ldap.Group {
+	if g == nil {
+		return ldap.Group{}
+	}
+
+	return g.Group
+}
