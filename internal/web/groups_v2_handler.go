@@ -68,20 +68,9 @@ func buildGroupOUPivotHref(ou string) string {
 
 // handleGroupsV2 renders the new /groups list page (spec §6.2).
 func (a *App) handleGroupsV2(c *fiber.Ctx) error {
-	// Prefer the DN already populated by RequireAuth into c.Locals —
-	// re-reading the session after CSRF middleware can return a fresh
-	// session on this code path and drop the "dn" key.
-	viewerDN := GetUserDN(c)
-	if viewerDN == "" {
-		sess, err := a.sessionStore.Get(c)
-		if err != nil {
-			return handle500(c, err)
-		}
-		viewerDN, _ = sess.Get("dn").(string)
-	}
-
-	if viewerDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+	_, handled, res := a.resolveViewerDN(c)
+	if handled {
+		return res
 	}
 
 	ouFilter := c.Query("ou")
@@ -102,25 +91,15 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 // handleGroupV2 renders either the drawer fragment (?fragment=drawer) or the
 // full group detail page at /groups/:dn.
 func (a *App) handleGroupV2(c *fiber.Ctx) error {
-	viewerDN := GetUserDN(c)
-	if viewerDN == "" {
-		sess, err := a.sessionStore.Get(c)
-		if err != nil {
-			return handle500(c, err)
-		}
-		viewerDN, _ = sess.Get("dn").(string)
-	}
-
-	if viewerDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+	viewerDN, handled, res := a.resolveViewerDN(c)
+	if handled {
+		return res
 	}
 
 	// Route is registered as /groups/* — matches the legacy pattern so
 	// existing tests keep working. `c.Params("*")` yields the URL-encoded
 	// DN exactly as the client sent it.
-	encodedDN := c.Params("*")
-
-	groupDN, err := url.PathUnescape(encodedDN)
+	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid dn")
 	}

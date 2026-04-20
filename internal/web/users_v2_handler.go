@@ -69,20 +69,9 @@ func buildOUPivotHref(ou string) string {
 
 // handleUsersV2 renders the new /users list page (spec §6.2).
 func (a *App) handleUsersV2(c *fiber.Ctx) error {
-	// Prefer the DN already populated by RequireAuth into c.Locals —
-	// re-reading the session after CSRF middleware can return a fresh
-	// session on this code path and drop the "dn" key.
-	viewerDN := GetUserDN(c)
-	if viewerDN == "" {
-		sess, err := a.sessionStore.Get(c)
-		if err != nil {
-			return handle500(c, err)
-		}
-		viewerDN, _ = sess.Get("dn").(string)
-	}
-
-	if viewerDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+	_, handled, res := a.resolveViewerDN(c)
+	if handled {
+		return res
 	}
 
 	showDisabled := c.Query("show-disabled") == "1"
@@ -104,25 +93,15 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 // handleUserV2 renders either the drawer fragment (?fragment=drawer) or the
 // full user detail page at /users/:dn.
 func (a *App) handleUserV2(c *fiber.Ctx) error {
-	viewerDN := GetUserDN(c)
-	if viewerDN == "" {
-		sess, err := a.sessionStore.Get(c)
-		if err != nil {
-			return handle500(c, err)
-		}
-		viewerDN, _ = sess.Get("dn").(string)
-	}
-
-	if viewerDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+	viewerDN, handled, res := a.resolveViewerDN(c)
+	if handled {
+		return res
 	}
 
 	// Route is registered as /users/* — matches the legacy pattern so
 	// existing tests keep working. `c.Params("*")` yields the URL-encoded
 	// DN exactly as the client sent it.
-	encodedDN := c.Params("*")
-
-	userDN, err := url.PathUnescape(encodedDN)
+	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid dn")
 	}
