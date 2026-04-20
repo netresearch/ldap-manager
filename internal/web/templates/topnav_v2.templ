@@ -1,0 +1,45 @@
+// internal/web/templates/topnav_v2.templ
+package templates
+
+// PinnedEntry is the minimal view-model the pinned_fragment renders.
+// Produced server-side from PinnedStore + ldap_cache lookups.
+type PinnedEntry struct {
+	Type string // "user" | "group" | "computer"
+	DN   string
+	CN   string
+}
+
+// topnavV2 renders the sticky top navigation shared across signed-in
+// routes.
+templ topnavV2(activePath string) {
+	<header class="topnav">
+		<a class="topnav__logo" href="/" aria-label="Home">LDAP Manager</a>
+		<span class="topnav__spacer"></span>
+		<button type="button" class="topnav__cmdk" data-open-palette aria-label="Open command palette">
+			<span aria-hidden="true">⌕</span>
+			<span class="topnav__cmdk-label">Search</span>
+			<kbd>⌘K</kbd>
+		</button>
+		<button type="button" class="icon-btn" data-toggle="theme" aria-label="Toggle theme">
+			<span aria-hidden="true">◐</span>
+		</button>
+		<button type="button" class="icon-btn" data-toggle="density" aria-label="Toggle density">
+			<span aria-hidden="true">⇥</span>
+		</button>
+		<a class="icon-btn" href="/logout" aria-label="Log out">
+			<span aria-hidden="true">↗</span>
+		</a>
+	</header>
+	<nav class="topnav-secondary" aria-label="Primary">
+		<a href="/users" class={ navLinkClass(activePath, "/users") }>Users</a>
+		<a href="/groups" class={ navLinkClass(activePath, "/groups") }>Groups</a>
+		<a href="/computers" class={ navLinkClass(activePath, "/computers") }>Computers</a>
+	</nav>
+}
+
+func navLinkClass(activePath, linkPath string) string {
+	if activePath == linkPath {
+		return "topnav-secondary__link topnav-secondary__link--active"
+	}
+	return "topnav-secondary__link"
+}
