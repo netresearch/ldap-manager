@@ -3,9 +3,11 @@ package main
 // Tests for main.go's CLI helpers.
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -51,8 +53,18 @@ func TestRunHealthCheck(t *testing.T) {
 	})
 
 	t.Run("returns 1 when no server is listening", func(t *testing.T) {
-		// Pick an unlikely high port that almost certainly has no server bound.
-		got := runHealthCheck("65535")
+		// Acquire a known-free ephemeral port from the OS, close it, and reuse
+		// the number. This avoids the flaky assumption that a hard-coded port
+		// (e.g. 65535) is available on shared CI runners.
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatalf("listen: %v", err)
+		}
+
+		port := strconv.Itoa(l.Addr().(*net.TCPAddr).Port)
+		_ = l.Close()
+
+		got := runHealthCheck(port)
 		if got != 1 {
 			t.Errorf("expected 1 when no server listening, got %d", got)
 		}
