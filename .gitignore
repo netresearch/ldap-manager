@@ -4,7 +4,8 @@ node_modules
 # Build artifacts
 bin/
 *.bbolt
-ldap-manager
+# Binary only at repo root (do NOT match cmd/ldap-manager/ sources or tests).
+/ldap-manager
 
 # Generated files
 internal/web/static/styles.css

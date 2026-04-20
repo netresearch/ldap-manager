@@ -112,17 +112,31 @@ func main() {
 // runHealthCheck performs an HTTP health check against the running application.
 // Returns 0 if healthy (HTTP 200), 1 otherwise.
 // Used by Docker HEALTHCHECK to verify the application is running correctly.
+//
+// The target URL is constructed from the PORT environment variable for the
+// localhost health endpoint only; the scheme and host are hardcoded and the
+// port is validated below, so the URL cannot point at arbitrary external
+// hosts. The gosec G704 SSRF warnings are therefore suppressed with inline
+// annotations.
 func runHealthCheck(port string) int {
+	// Validate port is purely numeric and in range before building the URL.
+	// This prevents anything surprising (like embedded slashes or auth info)
+	// from reaching http.NewRequestWithContext.
+	if !isValidPort(port) {
+		return 1
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:"+port+"/health/live", nil)
+	url := "http://localhost:" + port + "/health/live"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // #nosec G704 -- URL is localhost with a validated numeric port
 	if err != nil {
 		return 1
 	}
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- request URL is localhost with a validated numeric port (see comment above)
 	if err != nil {
 		return 1
 	}
@@ -133,4 +147,20 @@ func runHealthCheck(port string) int {
 	}
 
 	return 1
+}
+
+// isValidPort reports whether s is a non-empty decimal port number in 1..65535.
+func isValidPort(s string) bool {
+	if s == "" || len(s) > 5 {
+		return false
+	}
+	n := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+		n = n*10 + int(c-'0')
+	}
+
+	return n >= 1 && n <= 65535
 }

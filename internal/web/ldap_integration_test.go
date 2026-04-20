@@ -408,27 +408,47 @@ func assertNotFoundOrError(t *testing.T, resp *http.Response) {
 		"Expected 404, 302 (redirect), or 500, got %d", resp.StatusCode)
 }
 
+// runDetailHandlerTests exercises a detail handler for a single LDAP entity
+// (user, group, computer) by asserting that the existing-entity path renders
+// expectedContent and that a nonexistent entity produces an acceptable status.
+// Extracted to deduplicate the near-identical user/group detail tests below
+// (caught by the `dupl` linter).
+func runDetailHandlerTests(
+	t *testing.T,
+	app *App,
+	cookies []*http.Cookie,
+	basePath string,
+	existingDN string,
+	nonexistentDN string,
+	expectedContent string,
+) {
+	t.Helper()
+
+	t.Run("shows detail page", func(t *testing.T) {
+		resp := makeLDAPAuthRequest(t, app, basePath+"/"+existingDN, cookies)
+		defer func() { _ = resp.Body.Close() }()
+
+		assertDetailPageOKOrError(t, resp, expectedContent)
+	})
+
+	t.Run("returns 404 for nonexistent entity", func(t *testing.T) {
+		resp := makeLDAPAuthRequest(t, app, basePath+"/"+nonexistentDN, cookies)
+		defer func() { _ = resp.Body.Close() }()
+
+		assertNotFoundOrError(t, resp)
+	})
+}
+
 func TestLDAPIntegration_UserDetailHandler(t *testing.T) {
 	env := skipIfNoLDAP(t)
 	seedLDAPData(t, env)
 	app, store := setupLDAPTestApp(t, env)
 	cookies := createLDAPAuthSession(t, env, store)
 
-	userDN := "cn=testuser1,ou=users," + env.baseDN
-
-	t.Run("shows user detail page", func(t *testing.T) {
-		resp := makeLDAPAuthRequest(t, app, "/users/"+userDN, cookies)
-		defer func() { _ = resp.Body.Close() }()
-
-		assertDetailPageOKOrError(t, resp, "testuser1")
-	})
-
-	t.Run("returns 404 for nonexistent user", func(t *testing.T) {
-		resp := makeLDAPAuthRequest(t, app, "/users/cn=nonexistent,ou=users,"+env.baseDN, cookies)
-		defer func() { _ = resp.Body.Close() }()
-
-		assertNotFoundOrError(t, resp)
-	})
+	runDetailHandlerTests(t, app, cookies, "/users",
+		"cn=testuser1,ou=users,"+env.baseDN,
+		"cn=nonexistent,ou=users,"+env.baseDN,
+		"testuser1")
 }
 
 func TestLDAPIntegration_GroupsHandler(t *testing.T) {
@@ -457,21 +477,10 @@ func TestLDAPIntegration_GroupDetailHandler(t *testing.T) {
 	app, store := setupLDAPTestApp(t, env)
 	cookies := createLDAPAuthSession(t, env, store)
 
-	groupDN := "cn=admins,ou=groups," + env.baseDN
-
-	t.Run("shows group detail page", func(t *testing.T) {
-		resp := makeLDAPAuthRequest(t, app, "/groups/"+groupDN, cookies)
-		defer func() { _ = resp.Body.Close() }()
-
-		assertDetailPageOKOrError(t, resp, "admins")
-	})
-
-	t.Run("returns 404 for nonexistent group", func(t *testing.T) {
-		resp := makeLDAPAuthRequest(t, app, "/groups/cn=nonexistent,ou=groups,"+env.baseDN, cookies)
-		defer func() { _ = resp.Body.Close() }()
-
-		assertNotFoundOrError(t, resp)
-	})
+	runDetailHandlerTests(t, app, cookies, "/groups",
+		"cn=admins,ou=groups,"+env.baseDN,
+		"cn=nonexistent,ou=groups,"+env.baseDN,
+		"admins")
 }
 
 func TestLDAPIntegration_ComputersHandler(t *testing.T) {
