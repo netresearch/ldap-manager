@@ -71,7 +71,17 @@ jobs:
       goos: ${{ matrix.goos }}
       goarch: ${{ matrix.goarch }}
       goarm: ${{ matrix.goarm || '' }}
-      ldflags: "-s -w -X main.version=${{ needs.create-release.outputs.tag }} -X main.build=${{ needs.create-release.outputs.sha }}"
+      # Fleet ldflag convention: repos that want to surface release
+      # metadata declare `var version, build, buildTime string` in their
+      # main package. Each repo decides which to forward into its own
+      # version package (ofelia uses main.* directly; ldap-manager
+      # forwards into internal/version.*). Empty values are a silent
+      # no-op for repos that don't declare the corresponding var.
+      ldflags: >-
+        -s -w
+        -X main.version=${{ needs.create-release.outputs.tag }}
+        -X main.build=${{ needs.create-release.outputs.sha }}
+        -X main.buildTime=${{ github.event.head_commit.timestamp }}
       ref: ${{ needs.create-release.outputs.tag }}
       release-tag: ${{ needs.create-release.outputs.tag }}
       sbom: true
