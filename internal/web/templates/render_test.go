@@ -17,6 +17,7 @@ import (
 
 	templruntime "github.com/a-h/templ/runtime"
 	ldap "github.com/netresearch/simple-ldap-go"
+	"github.com/stretchr/testify/require"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -157,11 +158,12 @@ func TestRender_Users(t *testing.T) {
 		}
 	}
 
-	// Variant: empty users list (exercises "no users" branch)
+	// Variant: empty users list (exercises "no users" branch). Assert the
+	// template still produces output and does not error.
 	var emptyBuf bytes.Buffer
-	mustRender(t, "Users-empty", func() error {
-		return Users(nil, false, Flashes()).Render(ctx, &emptyBuf)
-	})
+	require.NoError(t, Users(nil, false, Flashes()).Render(ctx, &emptyBuf),
+		"empty Users render should not error")
+	require.NotZero(t, emptyBuf.Len(), "empty Users render should still produce non-empty HTML")
 
 	// Detail: User with assigned groups, mail, description, disabled
 	userCases := []struct {
@@ -221,9 +223,11 @@ func TestRender_Groups(t *testing.T) {
 		t.Fatal("Groups produced empty output")
 	}
 
-	// Empty Groups list (covers "no groups" branch)
+	// Empty Groups list (covers "no groups" branch). Assert the render
+	// succeeds and produces non-empty output.
 	buf.Reset()
-	mustRender(t, "Groups-empty", func() error { return Groups(nil).Render(ctx, &buf) })
+	require.NoError(t, Groups(nil).Render(ctx, &buf), "empty Groups render should not error")
+	require.NotZero(t, buf.Len(), "empty Groups render should still produce non-empty HTML")
 
 	// Detail: cover populated + empty variants
 	cases := []struct {
@@ -283,8 +287,11 @@ func TestRender_Computers(t *testing.T) {
 		t.Fatal("Computers produced empty output")
 	}
 
+	// Empty Computers list (covers "no computers" branch). Assert that the
+	// render succeeds and produces non-empty output.
 	buf.Reset()
-	mustRender(t, "Computers-empty", func() error { return Computers(nil).Render(ctx, &buf) })
+	require.NoError(t, Computers(nil).Render(ctx, &buf), "empty Computers render should not error")
+	require.NotZero(t, buf.Len(), "empty Computers render should still produce non-empty HTML")
 
 	// Detail: with and without groups, enabled and disabled, with lastlogon
 	cases := []struct {
@@ -804,7 +811,9 @@ func TestRender_WithExistingBuffer(t *testing.T) {
 }
 
 // TestRender_WithCancelledContext ensures the early ctx.Err() check at the top
-// of every generated template is exercised.
+// of every generated template is exercised. With a cancelled context, Render
+// must return a non-nil error that wraps context.Canceled — anything else is
+// a real regression in the generated templ runtime.
 func TestRender_WithCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -831,9 +840,12 @@ func TestRender_WithCancelledContext(t *testing.T) {
 			buf.Reset()
 			err := c.renderer()
 
-			// With a cancelled context we expect an error (context.Canceled).
+			if err == nil {
+				t.Fatalf("%s: expected non-nil error from Render with cancelled ctx, got nil", c.name)
+			}
+
 			if !errors.Is(err, context.Canceled) {
-				t.Logf("%s: got err=%v (expected context.Canceled)", c.name, err)
+				t.Errorf("%s: expected error to wrap context.Canceled, got %v", c.name, err)
 			}
 		})
 	}
