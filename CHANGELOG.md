@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **UI revamp** (Phase 1): Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in CI via axe-core.
+
+### Removed
+
+- Tailwind CSS, PostCSS, TypeScript, and all associated build tooling (bun, concurrently, nodemon, tsc, postcss-*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` directly.
+
 ---
 
 ## [v1.2.0] - 2026-04-16

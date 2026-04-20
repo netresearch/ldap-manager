@@ -69,10 +69,10 @@ This starts:
 
 ### Native Build
 
-Prerequisites: Go 1.26+, Node.js v22+, pnpm, [templ CLI](https://github.com/a-h/templ)
+Prerequisites: Go 1.26+, [templ CLI](https://github.com/a-h/templ).
 
 ```bash
-pnpm install && pnpm build
+templ generate
 go build -o ldap-manager ./cmd/ldap-manager
 
 ./ldap-manager \
@@ -84,6 +84,14 @@ go build -o ldap-manager ./cmd/ldap-manager
 ```
 
 The server listens on port 3000 by default. Set the `PORT` environment variable to override.
+
+### Stack
+
+Go + Fiber + Templ on the backend; [Pico CSS](https://picocss.com/) +
+a hand-written `internal/web/static/app.css` + vendored htmx on the
+frontend. No Node.js toolchain — vendored files are refreshed with
+`bash scripts/vendor.sh`, which verifies SHA-256 checksums against
+`scripts/vendor.lock`.
 
 ## Configuration
 
@@ -165,7 +173,7 @@ Conformance is enforced in CI by a contrast unit test (`internal/web/contrast_te
 
 Contributions welcome! Please open a Pull Request.
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) and formats code with `gofmt` and `prettier`.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and formats code with `gofumpt` + `goimports`.
 
 ## License
 
