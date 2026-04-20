@@ -42,7 +42,7 @@ COPY go.mod go.sum package.json bun.lock ./
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     --mount=type=cache,target=/root/.bun/install/cache,sharing=locked \
     go mod download && \
-    bun install
+    bun install --frozen-lockfile
 
 CMD ["sh"]
 
