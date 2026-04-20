@@ -1,7 +1,8 @@
-# golangci-lint configuration for LDAP Manager
-# Comprehensive static analysis and linting configuration
+# golangci-lint v2 configuration for LDAP Manager.
+# Migrated from v1-style schema (incompatible with golangci-lint v2)
+# during Go workflow standardization (netresearch/.github#47).
 
-version: 2
+version: "2"
 
 run:
   timeout: 5m
@@ -10,194 +11,118 @@ run:
 
 output:
   formats:
-    colored-line-number:
+    text:
       path: stdout
-  print-issued-lines: true
-  print-linter-name: true
-
-linters-settings:
-  # Cyclomatic complexity
-  cyclop:
-    max-complexity: 20
-    package-average: 10.0
-    skip-tests: true
-
-  # Duplicate code detection
-  dupl:
-    threshold: 100
-
-  # Error handling
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-    exclude-functions:
-      - (*github.com/gofiber/fiber/v2.Ctx).JSON
-      - (*github.com/gofiber/fiber/v2.Ctx).SendString
-      - (*github.com/gofiber/fiber/v2.Ctx).Redirect
-
-  # Unused parameters
-  funlen:
-    lines: 100
-    statements: 90
-
-  # Cognitive complexity
-  gocognit:
-    min-complexity: 20
-
-  # Line length
-  lll:
-    line-length: 120
-
-  # Misspelled words
-  misspell:
-    locale: US
-
-  # Naked returns
-  nakedret:
-    max-func-lines: 30
-
-  # Dead code
-  unused:
-    check-exported: false
-
-  # Whitespace
-  wsl:
-    strict-append: true
-    allow-assign-and-call: true
-    allow-multiline-assign: true
-    allow-case-traling-whitespace: true
-
-  # Import ordering
-  goimports:
-    local-prefixes: github.com/netresearch/ldap-manager
-
-  # Security
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G107 # URL provided to HTTP request as taint input - acceptable for health checks
-
-  # Code simplification
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - whyNoLint
-      - hugeParam
-
-  # Struct alignment
-  maligned:
-    suggest-new: true
-
-  # Interface compliance
-  interfacer:
-    check-required: true
 
 linters:
-  disable:
-    - funlen # Disabled due to configuration parsing and warmup logic complexity
-    - cyclop # Disabled due to health check branching logic
-
+  default: none
   enable:
-    # Enabled by default
-    - errcheck # Check error handling
-    - govet # Go vet
-    - ineffassign # Detect ineffectual assignments
-    - staticcheck # Staticcheck analysis
-    - unused # Find unused code
+    # Go's built-in static checks
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
 
-    # Additional quality checks
-    - asciicheck # Check for non-ASCII identifiers
-    - bodyclose # Check HTTP response body closes
-    - dupl # Check code duplication
-    - durationcheck # Check for duration multiplication issues
-    - fatcontext # Detect nested context in loops
-    - forcetypeassert # Find forced type assertions
-    - errname # Check error naming conventions
-    - errorlint # Find error handling issues
-    - exhaustive # Check switch statements
-    - copyloopvar # Check loop variable copies (replaces exportloopref)
-    - gochecknoinits # Check for init functions
-    - gocognit # Check cognitive complexity
-    - goconst # Find repeated strings that could be constants
-    - gocritic # Comprehensive Go source code linter
-    # Commented out - duplicated in disable section
-    # - gomnd         # Check magic numbers
-    - gosec # Security analysis
-    - lll # Check line length
-    - makezero # Find slice declarations with non-zero initial length
-    - misspell # Find misspelled words
-    - nakedret # Find naked returns
-    - nilerr # Find incorrect nil error returns
-    - nlreturn # Check newlines before returns
-    - noctx # Find HTTP requests without context
-    - prealloc # Find slice declarations that could be preallocated
-    - predeclared # Find code that shadows predeclared identifiers
-    - revive # Fast configurable linter
-    - rowserrcheck # Check SQL rows.Err
-    - sqlclosecheck # Check SQL Close calls
-    - tparallel # Detect inappropriate usage of t.Parallel
-    - unconvert # Remove unnecessary type conversions
-    - unparam # Find unused function parameters
-    - wastedassign # Find wasted assignments
-    - whitespace # Check whitespace issues
+    # Additional quality gates that were enabled under the v1 config
+    - asciicheck
+    - bodyclose
+    - copyloopvar
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - forcetypeassert
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gosec
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nilerr
+    - nlreturn
+    - noctx
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+
+  # Intentionally not enabled (were disabled under v1):
+  #   - funlen  (parsing/warmup logic is legitimately long)
+  #   - cyclop  (health-check branching is legitimately branchy)
+
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - (*github.com/gofiber/fiber/v2.Ctx).JSON
+        - (*github.com/gofiber/fiber/v2.Ctx).SendString
+        - (*github.com/gofiber/fiber/v2.Ctx).Redirect
+    gocognit:
+      min-complexity: 20
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - whyNoLint
+        - hugeParam
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G107 # URL provided to HTTP request as taint input — acceptable for health checks
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nakedret:
+      max-func-lines: 30
+
+  exclusions:
+    paths:
+      - ".*_templ\\.go$"
+      - bin
+      - node_modules
+    rules:
+      # Generated templ files
+      - path: ".*_templ\\.go$"
+        linters: [typecheck]
+      # go:generate directives can legitimately exceed the line limit
+      - source: "^//go:generate"
+        linters: [lll]
+      # Tests get complexity leeway
+      - path: _test\.go
+        linters: [gocognit, gosec]
+      # main.go entry point
+      - path: main\.go
+        linters: [gocognit]
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/netresearch/ldap-manager
 
 issues:
-  exclude-use-default: false
-  exclude-files:
-    - ".*_templ.go$" # Skip generated templ files
-  exclude-dirs:
-    - bin
-    - node_modules
-  exclude-rules:
-    # Disable specific linters for test files
-    - path: _test\.go
-      linters:
-        - funlen
-        - gocognit
-        - gosec
-        - cyclop
-
-    # Disable for generated files
-    - path: ".*_templ\\.go"
-      linters:
-        - all
-
-    # Allow long lines in generated code
-    - source: "^//go:generate"
-      linters:
-        - lll
-
-    # Ignore complexity in main.go (entry point)
-    - path: main\.go
-      linters:
-        - gocognit
-        - cyclop
-
-    # Ignore complexity warnings for specific functions
-    - linters:
-        - funlen
-      text: "Function 'Parse' is too long"
-    - linters:
-        - funlen
-      text: "Function 'WarmupCache' is too long"
-    - linters:
-        - cyclop
-      text: "calculated cyclomatic complexity for function getReadinessStatus"
-
-  # Maximum issues count per one linter
   max-issues-per-linter: 50
-
-  # Maximum count of issues with the same text
   max-same-issues: 10
-
-  # Show only new issues created after git revision
-  new: false
-
-  # Fix found issues (if supported by linter)
-  fix: false

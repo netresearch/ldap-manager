@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -255,7 +256,7 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 		resp, err := app.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
@@ -277,12 +278,12 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req1 := httptest.NewRequest(http.MethodGet, "/path1", http.NoBody)
+		req1 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/path1", http.NoBody)
 		resp1, err := app.Test(req1)
 		require.NoError(t, err)
 		_ = resp1.Body.Close()
 
-		req2 := httptest.NewRequest(http.MethodGet, "/path2", http.NoBody)
+		req2 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/path2", http.NoBody)
 		resp2, err := app.Test(req2)
 		require.NoError(t, err)
 		_ = resp2.Body.Close()
@@ -300,7 +301,7 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/additional", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/additional", http.NoBody)
 		resp, err := app.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()

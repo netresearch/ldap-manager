@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -88,7 +89,7 @@ func TestHealthHandler(t *testing.T) {
 	app := setupHealthTestApp()
 
 	t.Run("returns health status JSON", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -124,7 +125,7 @@ func TestHealthHandler(t *testing.T) {
 	})
 
 	t.Run("response is JSON content type", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -142,7 +143,7 @@ func TestHealthHandlerNoServiceAccount(t *testing.T) {
 	app := setupHealthTestAppNoServiceAccount()
 
 	t.Run("returns healthy status without service account", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -183,7 +184,7 @@ func TestLivenessHandler(t *testing.T) {
 	app := setupHealthTestApp()
 
 	t.Run("returns alive status", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/live", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/live", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -219,7 +220,7 @@ func TestLivenessHandler(t *testing.T) {
 
 	t.Run("always returns 200 for liveness", func(t *testing.T) {
 		// Liveness probe should always return 200 if app is running
-		req := httptest.NewRequest("GET", "/live", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/live", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -236,7 +237,7 @@ func TestLivenessHandler(t *testing.T) {
 func assertNoServiceAccountStatusEndpoint(t *testing.T, app *App, endpoint, expectedStatus string) {
 	t.Helper()
 
-	req := httptest.NewRequest("GET", endpoint, http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", endpoint, http.NoBody)
 
 	resp, err := app.fiber.Test(req)
 	if err != nil {
@@ -279,7 +280,7 @@ func TestReadinessHandler(t *testing.T) {
 	app := setupHealthTestApp()
 
 	t.Run("returns readiness status JSON", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/ready", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/ready", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
