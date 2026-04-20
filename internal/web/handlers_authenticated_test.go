@@ -391,17 +391,16 @@ func TestCSRFProtectedModifyHandlers(t *testing.T) {
 // never reach.
 //
 // Routes backed by V2 handlers (`/`, `/users`, `/users/:dn`, `/groups`,
-// `/groups/:dn`) render from the in-memory ldap_cache instead of per-request
-// LDAP binds. With no service account configured in this harness the cache is
-// nil, so:
+// `/groups/:dn`, `/computers`, `/computers/:dn`) render from the in-memory
+// ldap_cache instead of per-request LDAP binds. With no service account
+// configured in this harness the cache is nil, so:
 //   - `/` (HomeV2) renders an empty pinned list → 200.
 //   - `/users` (handleUsersV2) renders zero rows → 200.
 //   - `/users/:dn` (handleUserV2) cannot find the target in the cache → 404.
 //   - `/groups` (handleGroupsV2) renders zero rows → 200.
 //   - `/groups/:dn` (handleGroupV2) cannot find the target in the cache → 404.
-//
-// Legacy `/computers*` still binds per-request and fails, so it redirects to
-// /login.
+//   - `/computers` (handleComputersV2) renders zero rows → 200.
+//   - `/computers/:dn` (handleComputerV2) cannot find the target in cache → 404.
 func TestAuthenticatedGETHandlers(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 	swapSessionStore(app)
@@ -421,8 +420,9 @@ func TestAuthenticatedGETHandlers(t *testing.T) {
 		{"/groups", http.StatusOK},
 		// Target group is not in the (nil) cache → 404.
 		{"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"), http.StatusNotFound},
-		{"/computers", http.StatusFound},
-		{"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"), http.StatusFound},
+		{"/computers", http.StatusOK},
+		// Target computer is not in the (nil) cache → 404.
+		{"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"), http.StatusNotFound},
 	}
 
 	for _, tc := range cases {

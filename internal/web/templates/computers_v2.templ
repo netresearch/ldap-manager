@@ -1,0 +1,180 @@
+// internal/web/templates/computers_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+)
+
+// ComputerDrawerVM is the view-model shared by the computer drawer fragment
+// and the full-page computer detail. Populated by App.buildComputerDrawerVM.
+type ComputerDrawerVM struct {
+	Computer    ldap.Computer
+	Pinned      bool
+	OUName      string // plain-text OU name, e.g. "ou=Computers" (for display)
+	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
+}
+
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flash) {
+	@baseV2("Computers") {
+		@topnavV2("/computers")
+
+		<main class="list-page">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Computers</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
+			</header>
+
+			<div class="list-page__filters" data-search-filter>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter computers…"
+					aria-label="Filter computers"
+					data-search-input
+				/>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ clearComputersOUHref() }>
+						ou={ ouFilter } ×
+					</a>
+				}
+			</div>
+
+			<div class="list-page__pane">
+				<ul class="list-rows" data-search-list aria-label="Computers">
+					for _, cp := range computers {
+						@computerRowV2(cp)
+					}
+					if len(computers) == 0 {
+						<li class="list-rows__empty">No computers match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a computer to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+templ computerRowV2(cp ldap.Computer) {
+	<li class="list-row" data-search-item>
+		<a
+			class="list-row__link"
+			href={ computerDetailHref(cp) }
+			hx-get={ computerDrawerFragmentHref(cp) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + cp.CN() }
+		>
+			<span class="list-row__dot" data-enabled={ computerEnabledAttr(cp) }></span>
+			<span class="list-row__primary">{ cp.CN() }</span>
+			<span class="list-row__secondary">{ cp.SAMAccountName }</span>
+			if !cp.Enabled {
+				<span class="list-row__badge">disabled</span>
+			}
+		</a>
+	</li>
+}
+
+templ ComputerFullV2(vm ComputerDrawerVM) {
+	@baseV2(vm.Computer.CN()) {
+		@topnavV2("/computers")
+
+		<main class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="Computer detail">
+					@computerDrawerContents(vm)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+// computerDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside ComputerFullV2.
+templ computerDrawerContents(vm ComputerDrawerVM) {
+	<header
+		class="drawer__head"
+		data-recent-type="computer"
+		data-recent-dn={ vm.Computer.DN() }
+		data-recent-cn={ vm.Computer.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.Computer.CN() }</h2>
+			<p class="drawer__sub">{ vm.Computer.SAMAccountName }</p>
+		</div>
+		@pinStarButton("computer", vm.Computer.DN(), vm.Pinned)
+	</header>
+
+	<p class="drawer__dn">{ vm.Computer.DN() }</p>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Attributes</h3>
+		<dl class="drawer__kv">
+			<dt>Status</dt>
+			<dd>
+				if vm.Computer.Enabled {
+					Enabled
+				} else {
+					Disabled
+				}
+			</dd>
+			if vm.Computer.Description != "" {
+				<dt>Description</dt>
+				<dd>{ vm.Computer.Description }</dd>
+			}
+			if vm.Computer.SAMAccountName != "" {
+				<dt>sAMAccountName</dt>
+				<dd>{ vm.Computer.SAMAccountName }</dd>
+			}
+		</dl>
+	</section>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Pivot</h3>
+		<ul class="drawer__pivots">
+			<li>
+				<a class="drawer__pivot" href={ computerDetailHref(vm.Computer) }>
+					<span>Open full page</span>
+					<span aria-hidden="true">→</span>
+				</a>
+			</li>
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
+						<span>Other computers in { vm.OUName }</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+func computerDetailHref(cp ldap.Computer) templ.SafeURL {
+	return templ.URL("/computers/" + url.PathEscape(cp.DN()))
+}
+
+func computerDrawerFragmentHref(cp ldap.Computer) string {
+	return "/computers/" + url.PathEscape(cp.DN()) + "?fragment=drawer"
+}
+
+func clearComputersOUHref() templ.SafeURL {
+	return templ.URL("/computers")
+}
+
+func computerEnabledAttr(cp ldap.Computer) string {
+	if cp.Enabled {
+		return "true"
+	}
+	return "false"
+}

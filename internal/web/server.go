@@ -291,13 +291,13 @@ func (a *App) setupRoutes() {
 	cacheable.Get("/", a.handleHomeV2)
 	cacheable.Get("/users", a.handleUsersV2)
 	cacheable.Get("/groups", a.handleGroupsV2)
-	cacheable.Get("/computers", a.computersHandler)
+	cacheable.Get("/computers", a.handleComputersV2)
 
 	// Detail pages contain CSRF tokens in forms — must NOT be cached
 	// to avoid serving stale tokens that cause 403 on form submission
 	protected.Get("/users/*", a.handleUserV2)
 	protected.Get("/groups/*", a.handleGroupV2)
-	protected.Get("/computers/*", a.computerHandler)
+	protected.Get("/computers/*", a.handleComputerV2)
 
 	// JSON search index for the command palette (spec §6.1); ETag-cached
 	// in-handler so template-cache middleware is not needed.
