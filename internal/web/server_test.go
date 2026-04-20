@@ -460,9 +460,13 @@ func TestAuthenticatedHandlers_LDAPConnectionFails(t *testing.T) {
 			resp := makeAuthRequest(t, app, path, cookies)
 			defer func() { _ = resp.Body.Close() }()
 
-			// Should either redirect to login (LDAP failure → unauthorized)
-			// or return an error page — NOT panic
-			assert.NotEqual(t, 0, resp.StatusCode)
+			// Should either redirect to login (LDAP failure → unauthorized),
+			// return an error page (404 for "user not found", 500 otherwise),
+			// or render successfully — NOT 0.
+			assert.Contains(t,
+				[]int{http.StatusOK, http.StatusFound, http.StatusNotFound, http.StatusInternalServerError},
+				resp.StatusCode,
+				"unexpected status %d for GET %s", resp.StatusCode, path)
 		})
 	}
 }

@@ -368,8 +368,9 @@ func TestLDAPIntegration_UsersHandler(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/users", cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		// Handler connects to real LDAP — success or error page
-		assert.NotEqual(t, 0, resp.StatusCode)
+		// Handler connects to real LDAP — 200 on success, 302 on redirect
+		// to /login if session LDAP bind fails.
+		assert.Contains(t, []int{http.StatusOK, http.StatusFound}, resp.StatusCode)
 		if resp.StatusCode == http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			assert.Contains(t, resp.Header.Get("Content-Type"), "text/html")
@@ -381,7 +382,7 @@ func TestLDAPIntegration_UsersHandler(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/users?show-disabled=1", cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		assert.NotEqual(t, 0, resp.StatusCode)
+		assert.Contains(t, []int{http.StatusOK, http.StatusFound}, resp.StatusCode)
 	})
 }
 
