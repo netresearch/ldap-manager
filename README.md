@@ -155,6 +155,12 @@ Full documentation is available in [`docs/`](docs/):
 - **[Development Setup](docs/development/setup.md)** - Local environment
 - **[Contributing](docs/development/contributing.md)** - Code standards and workflow
 
+## Accessibility
+
+LDAP Manager's login page conforms to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) Level AAA in *comfortable* density (the default on touch devices, narrow viewports, and under `prefers-reduced-motion`). In *compact* density (the default on desktop), the login page meets Level AA; all AAA success criteria are met except 2.5.5 Target Size (Enhanced), which is a deliberate density-preference trade-off.
+
+Conformance is enforced in CI by a contrast unit test (`internal/web/contrast_test.go`) and an axe-core AAA pass on every E2E run (`internal/e2e/axe_test.go`). Additional routes will be brought under the same guarantee as they migrate in subsequent slices.
+
 ## Contributing
 
 Contributions welcome! Please open a Pull Request.
