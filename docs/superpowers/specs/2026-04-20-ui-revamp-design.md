@@ -62,11 +62,15 @@ After Phase 1, the app is the revamp. Phases 2 and 3 are incremental.
 | Server | Go + Fiber + Templ | **Unchanged** | Fits well. |
 | Base CSS | Tailwind v4 + PostCSS | **Pico CSS v2** (vendored single file) | Classless, built-in dark mode, accessible form defaults, ~10 KB. |
 | Custom CSS | Tailwind `@apply` + custom properties | **One hand-written `app.css`** | Custom-property overrides on Pico. Hybrid theme tokens. |
-| Client interactivity | TypeScript modules | **Alpine.js** (vendored) | Declarative open/close/focus/selection; fits Templ; tiny. |
+| Client interactivity | TypeScript modules | **Alpine.js CSP build** (vendored, introduced in Slice 3) | Declarative open/close/focus/selection; fits Templ; tiny. |
 | Server-driven partials | N/A (full navigations) | **htmx** (vendored) | Partial swap for drawer, list filter, pivots. Native fit with Templ. |
 | Build | bun + tsc + postcss + concurrently + nodemon | **`scripts/vendor.sh`** | Refreshes three pinned static files. Go still builds via `go build`. |
 
 **Shipped size target:** ~30 KB gzipped JS, ~15 KB CSS. Smaller than today's output after Tailwind purge + compiled TS.
+
+> **CSP constraint (discovered during Slice 2 bring-up — 2026-04-20):** the site Content-Security-Policy is `default-src 'self'; script-src 'self'; ...` with **no `unsafe-inline` and no `unsafe-eval`**. Alpine.js' default build evaluates `x-data` and `x-on:*` expression strings dynamically, which requires `unsafe-eval` — incompatible with the site CSP. Phase 1 must use **`@alpinejs/csp`** (the hand-compiled CSP-friendly build), declaring component data via `Alpine.data('name', fn)` in an external JS file rather than inline `x-data="{...}"`. Inline `<script>` tags in templates are similarly forbidden — pre-paint preference initialisation must live in an external JS file loaded synchronously from `<head>`.
+>
+> Consequence for Phase 1 Slice 1–2: Alpine is **not loaded** (the login page doesn't need reactive state; two toggle buttons wire up via a small delegated `click` listener in `/static/js/v2-toggles.js`). Alpine is reintroduced in Slice 3 (command palette, detail drawer) using the CSP build. htmx is loaded from Slice 3 onwards; htmx's `hx-*` attributes are CSP-safe, but `hx-on` handlers rely on dynamic expression evaluation and must be avoided in favour of out-of-band event listeners.
 
 > **Assumption (to verify before implementation):** Alpine.js is still actively maintained in 2026. htmx and Pico CSS confidence is high. The implementation plan MUST verify current version/status of all three before pinning.
 
