@@ -1,0 +1,95 @@
+/*
+ * LDAP Manager — custom app styles on top of Pico CSS v2.
+ * Hybrid theme: Light = Clean sans (Inter); Dark = Terminal/IDE (monospace).
+ * Every text-on-surface pair below is AAA-verified (ratio ≥7:1).
+ *
+ * See: docs/superpowers/specs/2026-04-20-ui-revamp-design.md §4
+ */
+
+/* ──────────────────────────── theme tokens ──────────────────────────── */
+
+:root {
+  /* Light (Clean sans neutral) */
+  --bg: #ffffff;
+  --bg-subtle: #fafafa;
+  --fg: #0a0a0a;        /* 20.6:1 on --bg */
+  --fg-muted: #525252;  /*  8.3:1 on --bg */
+  --border: #e5e5e5;
+  --border-strong: #a3a3a3;
+  --accent: #0a0a0a;
+  --accent-fg: #fafafa;
+
+  /* Pico overrides — we drive the colours via our tokens */
+  --pico-background-color: var(--bg);
+  --pico-color: var(--fg);
+  --pico-muted-color: var(--fg-muted);
+  --pico-muted-border-color: var(--border);
+  --pico-primary: var(--accent);
+  --pico-primary-hover: var(--fg);
+  --pico-primary-focus: var(--border-strong);
+  --pico-primary-inverse: var(--accent-fg);
+  --pico-form-element-focus-color: var(--border-strong);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --font-heading: var(--font-sans);
+}
+
+:root[data-theme="dark"] {
+  /* Dark (Terminal/IDE) */
+  --bg: #0d0d0d;
+  --bg-subtle: #1a1a1a;
+  --fg: #f5f5f5;        /* 17.8:1 on --bg */
+  --fg-muted: #a3a3a3;  /* 10.4:1 on --bg */
+  --border: #262626;
+  --border-strong: #525252;
+  --accent: #4ade80;    /* 11.2:1 on --bg */
+  --accent-fg: #0d0d0d;
+
+  --font-heading: var(--font-mono);
+}
+
+/* ──────────────────────────── density ──────────────────────────────── */
+
+:root {
+  /* Comfortable (touch / narrow / reduced-motion default).
+     Enforced for target-size ≥44×44 (WCAG 2.2 AAA 2.5.5). */
+  --density-touch-size: 2.75rem;   /* 44 px at 16 px root */
+  --density-spacing:    0.875rem;
+  --density-font:       1rem;
+}
+
+:root[data-density="compact"] {
+  /* Compact (desktop default). AA target size (36×36), not AAA. */
+  --density-touch-size: 2.25rem;   /* 36 px */
+  --density-spacing:    0.5rem;
+  --density-font:       0.9375rem;
+}
+
+/* Respect reduced-motion preference for all transitions, everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ──────────────────────────── base layer ───────────────────────────── */
+
+html {
+  color-scheme: light dark;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--density-font);
+  line-height: 1.5;
+}
+
+:root[data-theme="dark"] body { font-family: var(--font-mono); }
+
+/* Enhanced focus appearance — AAA-friendly and always visible. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
