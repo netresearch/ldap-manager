@@ -1,94 +1,38 @@
 package web
 
-// HTTP handlers for user management endpoints.
+// HTTP handlers for user modification endpoints. The read-only list and
+// detail pages are served by the V2 handlers in users_v2_handler.go. This
+// file retains only the POST handler and its helpers, which invalidate the
+// template cache after an LDAP membership change and redirect the user to
+// the V2 detail page.
 
 import (
-	"errors"
 	"net/url"
-	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
-	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
-
-func (a *App) usersHandler(c *fiber.Ctx) error {
-	showDisabled := c.Query("show-disabled", "0") == "1"
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	allUsers, err := userLDAP.FindUsers()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	var users []ldap.User
-	if !showDisabled {
-		for _, u := range allUsers {
-			if u.Enabled {
-				users = append(users, u)
-			}
-		}
-	} else {
-		users = allUsers
-	}
-
-	sort.SliceStable(users, func(i, j int) bool {
-		return users[i].CN() < users[j].CN()
-	})
-
-	// Use template caching with query parameter differentiation
-	return a.templateCache.RenderWithCache(c, templates.Users(users, showDisabled, templates.Flashes()))
-}
-
-func (a *App) userHandler(c *fiber.Ctx) error {
-	userDN, err := url.PathUnescape(c.Params("*"))
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
-	if err != nil {
-		if errors.Is(err, ldap.ErrUserNotFound) {
-			c.Status(fiber.StatusNotFound)
-
-			return a.fourOhFourHandler(c)
-		}
-
-		return handle500(c, err)
-	}
-
-	// Detail pages with CSRF tokens are not cached to avoid stale token issues
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.User(user, unassignedGroups, templates.Flashes(), a.GetCSRFToken(c)).
-		Render(c.UserContext(), c.Response().BodyWriter())
-}
 
 type userModifyForm struct {
 	AddGroup    *string `form:"addgroup"`
 	RemoveGroup *string `form:"removegroup"`
 }
 
-// nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
+// userModifyHandler applies an add/remove-group action and redirects back to
+// the V2 user detail page. Flash messages from the legacy V1 template have
+// been dropped; failures are logged and surfaced via the server log.
+//
+//nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
 func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}
+
+	detailURL := "/users/" + url.PathEscape(userDN)
 
 	form := userModifyForm{}
 	if err := c.BodyParser(&form); err != nil {
@@ -96,7 +40,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	if form.RemoveGroup == nil && form.AddGroup == nil {
-		return c.Redirect("/users/" + url.PathEscape(userDN))
+		return c.Redirect(detailURL)
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -105,64 +49,13 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
-	// Perform the user modification using the logged-in user's LDAP connection
 	if err := a.performUserModification(userLDAP, &form, userDN); err != nil {
 		log.Warn().Err(err).Str("userDN", userDN).Msg("failed to modify user")
-
-		return a.renderUserWithFlash(c, userLDAP, userDN, templates.ErrorFlash("Failed to modify user membership"))
+	} else {
+		a.invalidateTemplateCacheOnModification()
 	}
 
-	// Invalidate template cache after successful modification
-	a.invalidateTemplateCacheOnModification()
-
-	// Render success response
-	return a.renderUserWithFlash(c, userLDAP, userDN, templates.SuccessFlash("Successfully modified user"))
-}
-
-// loadUserDataFromLDAP loads user data directly from an LDAP client connection.
-func (a *App) loadUserDataFromLDAP(userLDAP *ldap.LDAP, userDN string) (*ldap_cache.FullLDAPUser, []ldap.Group, error) {
-	allUsers, err := userLDAP.FindUsers()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	user, err := findUserByDN(allUsers, userDN)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fullUser := ldap_cache.PopulateGroupsForUserFromData(user, groups)
-	sort.SliceStable(fullUser.Groups, func(i, j int) bool {
-		return fullUser.Groups[i].CN() < fullUser.Groups[j].CN()
-	})
-
-	unassignedGroups := filterUnassignedGroups(groups, fullUser)
-	sort.SliceStable(unassignedGroups, func(i, j int) bool {
-		return unassignedGroups[i].CN() < unassignedGroups[j].CN()
-	})
-
-	return fullUser, unassignedGroups, nil
-}
-
-// renderUserWithFlash renders the user page with a flash message using a user LDAP connection.
-func (a *App) renderUserWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, userDN string, flash templates.Flash) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	user, unassignedGroups, err := a.loadUserDataFromLDAP(userLDAP, userDN)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	return templates.User(
-		user, unassignedGroups,
-		templates.Flashes(flash),
-		a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	return c.Redirect(detailURL)
 }
 
 // filterUnassignedGroups returns groups the user is not a member of.

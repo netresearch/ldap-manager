@@ -44,7 +44,6 @@ func buildLoginApp(t *testing.T) *App {
 		sessionStore:  session.New(session.Config{Storage: memory.New(), Expiration: 30 * time.Minute}),
 		templateCache: NewTemplateCache(DefaultTemplateCacheConfig()),
 		fiber:         f,
-		assetManifest: &AssetManifest{Assets: map[string]string{"styles.css": "styles.css"}, StylesCSS: "styles.css"},
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
 	}

@@ -132,18 +132,16 @@ func setupTestApp() (*App, *testLDAPClient) {
 	f.Get("/login", app.loginHandler)
 	f.Get("/logout", app.logoutHandler)
 
-	// Protected routes with authentication middleware - users
-	// Using wildcard (*) to capture DNs with special characters like forward slashes
-	f.Get("/users", app.RequireAuth(), app.usersHandler)
-	f.Get("/users/*", app.RequireAuth(), app.userHandler)
+	// Protected routes with authentication middleware — V2 handlers.
+	// Using wildcard (*) to capture DNs with special characters like forward slashes.
+	f.Get("/users", app.RequireAuth(), app.handleUsersV2)
+	f.Get("/users/*", app.RequireAuth(), app.handleUserV2)
 
-	// Protected routes with authentication middleware - groups
-	f.Get("/groups", app.RequireAuth(), app.groupsHandler)
-	f.Get("/groups/*", app.RequireAuth(), app.groupHandler)
+	f.Get("/groups", app.RequireAuth(), app.handleGroupsV2)
+	f.Get("/groups/*", app.RequireAuth(), app.handleGroupV2)
 
-	// Protected routes with authentication middleware - computers
-	f.Get("/computers", app.RequireAuth(), app.computersHandler)
-	f.Get("/computers/*", app.RequireAuth(), app.computerHandler)
+	f.Get("/computers", app.RequireAuth(), app.handleComputersV2)
+	f.Get("/computers/*", app.RequireAuth(), app.handleComputerV2)
 
 	return app, mockClient
 }

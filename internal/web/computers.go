@@ -1,89 +1,12 @@
 package web
 
-// HTTP handlers for computer management endpoints.
+// HTTP helpers for computer entities. The V2 handlers
+// (computers_v2_handler.go) serve the list and detail routes; this file
+// retains a DN lookup helper used by the cache-backed V2 handler.
 
 import (
-	"net/url"
-	"sort"
-
-	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
-
-	"github.com/netresearch/ldap-manager/internal/ldap_cache"
-	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
-
-func (a *App) computersHandler(c *fiber.Ctx) error {
-	showDisabled := c.Query("show-disabled", "0") == "1"
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	allComputers, err := userLDAP.FindComputers()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	computers := allComputers
-	if !showDisabled {
-		computers = nil
-		for _, comp := range allComputers {
-			if comp.Enabled {
-				computers = append(computers, comp)
-			}
-		}
-	}
-
-	sort.SliceStable(computers, func(i, j int) bool {
-		return computers[i].CN() < computers[j].CN()
-	})
-
-	// Use template caching with query parameter differentiation
-	return a.templateCache.RenderWithCache(c, templates.Computers(computers))
-}
-
-func (a *App) computerHandler(c *fiber.Ctx) error {
-	computerDN, err := url.PathUnescape(c.Params("*"))
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	computers, err := userLDAP.FindComputers()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	computer := findComputerByDN(computers, computerDN)
-	if computer == nil {
-		c.Status(fiber.StatusNotFound)
-
-		return a.fourOhFourHandler(c)
-	}
-
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	fullComputer := ldap_cache.PopulateGroupsForComputerFromData(computer, groups)
-	sort.SliceStable(fullComputer.Groups, func(i, j int) bool {
-		return fullComputer.Groups[i].CN() < fullComputer.Groups[j].CN()
-	})
-
-	// Detail pages are not cached (consistent with user/group detail pages)
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Computer(fullComputer).Render(c.UserContext(), c.Response().BodyWriter())
-}
 
 // findComputerByDN searches for a computer by DN in a slice.
 func findComputerByDN(computers []ldap.Computer, dn string) *ldap.Computer {

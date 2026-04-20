@@ -41,8 +41,7 @@ type App struct {
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
-	assetManifest *AssetManifest // Asset manifest for cache-busted files
-	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
+	rateLimiter   *RateLimiter  // Rate limiter for authentication endpoints
 	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
 	pinnedStore   *PinnedStore   // Per-user pinned-items store (spec §6.5)
 	pinnedDB      *bolt.DB       // Underlying bbolt handle for pinnedStore (nil when in-memory)
@@ -166,17 +165,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 		return nil, fmt.Errorf("init pinned store: %w", err)
 	}
 
-	// Load asset manifest for cache-busted files
-	manifestPath := "internal/web/static/manifest.json"
-	manifest, err := LoadAssetManifest(manifestPath)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to load asset manifest, using defaults")
-		manifest = &AssetManifest{
-			Assets:    map[string]string{"styles.css": "styles.css"},
-			StylesCSS: "styles.css",
-		}
-	}
-
 	a := &App{
 		ldapConfig:    opts.LDAP,
 		ldapOpts:      ldapOpts,
@@ -186,7 +174,6 @@ func NewApp(opts *options.Opts) (*App, error) {
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
 		fiber:         f,
-		assetManifest: manifest,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
 		pinnedStore:   pinnedStore,
@@ -496,56 +483,6 @@ func handle500(c *fiber.Ctx, err error) error {
 	return nil
 }
 
-func (a *App) indexHandler(c *fiber.Ctx) error {
-	// Get authenticated user DN from middleware context
-	userDN, err := RequireUserDN(c)
-	if err != nil {
-		return err
-	}
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	// Get username from middleware context (stored during auth)
-	username, _ := c.Locals("username").(string)
-
-	var user *ldap.User
-
-	if username != "" {
-		user, err = userLDAP.FindUserBySAMAccountName(username)
-		if err != nil {
-			log.Debug().Err(err).Str("username", username).
-				Msg("SAMAccountName lookup failed, falling back to DN search")
-		}
-	}
-
-	// Fall back to finding by DN if lookup by SAMAccountName was not attempted or user not found
-	if user == nil {
-		allUsers, findErr := userLDAP.FindUsers()
-		if findErr != nil {
-			return handle500(c, findErr)
-		}
-
-		user, err = findUserByDN(allUsers, userDN)
-		if err != nil {
-			return handle500(c, err)
-		}
-	}
-
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	fullUser := ldap_cache.PopulateGroupsForUserFromData(user, groups)
-
-	// Use template caching
-	return a.templateCache.RenderWithCache(c, templates.Index(fullUser))
-}
-
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	c.Status(fiber.StatusNotFound)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
@@ -564,11 +501,3 @@ func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 	return ""
 }
 
-// GetStylesPath returns the cache-busted CSS file path from the asset manifest
-func (a *App) GetStylesPath() string {
-	if a.assetManifest != nil {
-		return a.assetManifest.GetStylesPath()
-	}
-
-	return "styles.css"
-}
