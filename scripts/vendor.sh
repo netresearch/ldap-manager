@@ -15,6 +15,13 @@ fi
 fail=0
 while IFS=' ' read -r dest url sha; do
   [[ -z "$dest" || "$dest" == \#* ]] && continue
+  sha="${sha%$'\r'}"
+
+  if [[ -z "$url" || -z "$sha" ]]; then
+    echo "malformed lock line for $dest" >&2
+    fail=1
+    continue
+  fi
 
   abs="$ROOT/$dest"
   mkdir -p "$(dirname "$abs")"
@@ -30,10 +37,12 @@ while IFS=' ' read -r dest url sha; do
     echo "  got:      $got" >&2
     fail=1
     rm -f "$tmp"
+    trap - EXIT
     continue
   fi
 
   mv "$tmp" "$abs"
+  chmod 0644 "$abs"
   trap - EXIT
   echo "  -> $dest"
 done < "$LOCK"
