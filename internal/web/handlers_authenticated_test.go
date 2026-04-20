@@ -389,40 +389,46 @@ func TestCSRFProtectedModifyHandlers(t *testing.T) {
 // list handlers — the session is present but LDAP fails, so handle500 runs.
 // This exercises the post-RequireAuth branches that the unauthenticated tests
 // never reach.
+//
+// The home route `/` is an exception: handleHomeV2 renders directly from the
+// session + ldap_cache (no per-request LDAP bind), so it returns 200 OK here.
 func TestAuthenticatedGETHandlers(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 	swapSessionStore(app)
 
 	cookies := simulatedSession(t, app)
 
-	paths := []string{
-		"/",
-		"/users",
-		"/users?show-disabled=1",
-		"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"),
-		"/groups",
-		"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"),
-		"/computers",
-		"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"),
+	cases := []struct {
+		path       string
+		wantStatus int
+	}{
+		// `/` → HomeV2; renders without an LDAP bind. Expect 200.
+		{"/", http.StatusOK},
+		// All other routes still bind per-request and fail → /login 302.
+		{"/users", http.StatusFound},
+		{"/users?show-disabled=1", http.StatusFound},
+		{"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"), http.StatusFound},
+		{"/groups", http.StatusFound},
+		{"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"), http.StatusFound},
+		{"/computers", http.StatusFound},
+		{"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"), http.StatusFound},
 	}
 
-	for _, p := range paths {
-		t.Run(p, func(t *testing.T) {
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, p, http.NoBody)
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tc.path, http.NoBody)
 			for _, c := range cookies {
 				req.AddCookie(c)
 			}
 
 			resp, err := app.fiber.Test(req, -1) // -1 == no timeout
 			if err != nil {
-				t.Fatalf("%s: %v", p, err)
+				t.Fatalf("%s: %v", tc.path, err)
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			// Post-auth, the LDAP call fails → fiber.StatusUnauthorized
-			// → handle500 → /login redirect. 302 is the expected outcome.
-			if resp.StatusCode != http.StatusFound {
-				t.Errorf("expected 302 redirect after LDAP failure, got %d", resp.StatusCode)
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("expected status %d, got %d", tc.wantStatus, resp.StatusCode)
 			}
 		})
 	}

@@ -34,7 +34,10 @@ templ baseV2(title string) {
 		<body>
 			{ children... }
 			// Deferred: handlers wire up after DOM parse.
+			<script defer src="/static/vendor/htmx.min.js"></script>
 			<script defer src="/static/js/v2-toggles.js"></script>
+			<script defer src="/static/js/v2-palette.js"></script>
+			<script defer src="/static/js/v2-recents.js"></script>
 		</body>
 	</html>
 }

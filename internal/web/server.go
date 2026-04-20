@@ -288,7 +288,7 @@ func (a *App) setupRoutes() {
 
 	// Apply template caching middleware to read-only list endpoints (no CSRF tokens)
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
-	cacheable.Get("/", a.indexHandler)
+	cacheable.Get("/", a.handleHomeV2)
 	cacheable.Get("/users", a.usersHandler)
 	cacheable.Get("/groups", a.groupsHandler)
 	cacheable.Get("/computers", a.computersHandler)
