@@ -628,4 +628,3 @@ func TestLDAPIntegration_GetReadinessStatus(t *testing.T) {
 		})
 	}
 }
-
