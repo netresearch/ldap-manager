@@ -283,9 +283,13 @@ func FuzzCacheConcurrent(f *testing.F) {
 		// Writers
 		for i := range numWriters {
 			go func(id int) {
+				// id is guaranteed 0..9 (numWriters capped at 10 above); convert
+				// via byte to keep the int→rune conversion in a safe range.
+				idByte := byte('A') + byte(id&0x7F)
 				for j := range 5 {
+					jByte := byte('0') + byte(j&0x7F)
 					items := []fuzzCacheable{
-						{dn: dn + "_" + string(rune('A'+id)) + string(rune('0'+j)), data: data},
+						{dn: dn + "_" + string(rune(idByte)) + string(rune(jByte)), data: data},
 					}
 					cache.setAll(items)
 				}

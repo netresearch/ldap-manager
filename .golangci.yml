@@ -1,7 +1,5 @@
 # golangci-lint v2 configuration for LDAP Manager.
-# Reduced to the essential default linters during the v1→v2 migration.
-# Extra linters (dupl, gocritic, gocognit, gosec, lll, nakedret, revive, etc.)
-# are tracked as follow-ups once the baseline issues are fixed.
+# Extended linter set re-enabled after cleanup in #547.
 
 version: "2"
 
@@ -24,10 +22,38 @@ linters:
     - unused
     - copyloopvar
     - noctx
+    - errcheck
+    - dupl
+    - gocritic
+    - gocognit
+    - gosec
+    - lll
+    - nakedret
+    - revive
+    - nlreturn
+    - makezero
+    - wastedassign
 
   settings:
     staticcheck:
       checks: ["all", "-ST1000", "-ST1003", "-ST1020", "-ST1021", "-ST1022"]
+    gocognit:
+      min-complexity: 30
+    lll:
+      line-length: 140
+    nakedret:
+      max-func-lines: 30
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+          disabled: true
+        - name: unused-parameter
+          disabled: true
 
   exclusions:
     paths:
@@ -38,7 +64,16 @@ linters:
       - path: ".*_templ\\.go$"
         linters: [typecheck]
       - path: _test\.go
-        linters: [gocognit, gosec, errcheck, noctx]
+        linters:
+          - gocognit
+          - gosec
+          - errcheck
+          - noctx
+          - dupl
+          - lll
+          - gocritic
+          - revive
+          - nlreturn
 
 formatters:
   enable:
@@ -49,5 +84,5 @@ formatters:
         - github.com/netresearch/ldap-manager
 
 issues:
-  max-issues-per-linter: 50
-  max-same-issues: 10
+  max-issues-per-linter: 0
+  max-same-issues: 0
