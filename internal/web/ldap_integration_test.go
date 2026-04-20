@@ -5,6 +5,7 @@ package web
 // In CI, the "test" job provides OpenLDAP on port 1389 (dc=test,dc=local).
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -260,7 +261,7 @@ func createLDAPAuthSession(t *testing.T, env *ldapIntegrationEnv, store *session
 		return sess.Save()
 	})
 
-	req := httptest.NewRequest("GET", "/set-session", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/set-session", http.NoBody)
 	resp, err := miniApp.Test(req)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
@@ -274,7 +275,7 @@ func createLDAPAuthSession(t *testing.T, env *ldapIntegrationEnv, store *session
 // makeLDAPAuthRequest makes an authenticated GET request to the test app.
 func makeLDAPAuthRequest(t *testing.T, app *App, path string, cookies []*http.Cookie) *http.Response {
 	t.Helper()
-	req := httptest.NewRequest("GET", path, http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
 	}
@@ -290,7 +291,7 @@ func TestLDAPIntegration_HealthEndpoints(t *testing.T) {
 	app, _ := setupLDAPTestApp(t, env)
 
 	t.Run("health returns cache and pool stats", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -303,7 +304,7 @@ func TestLDAPIntegration_HealthEndpoints(t *testing.T) {
 	})
 
 	t.Run("readiness returns ready", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health/ready", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health/ready", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -318,7 +319,7 @@ func TestLDAPIntegration_HealthEndpoints(t *testing.T) {
 	})
 
 	t.Run("liveness returns alive", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/health/live", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/health/live", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -517,7 +518,7 @@ func TestLDAPIntegration_AuthFlow(t *testing.T) {
 	app, _ := setupLDAPTestApp(t, env)
 
 	t.Run("unauthenticated redirects to login", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/users", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/users", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -527,7 +528,7 @@ func TestLDAPIntegration_AuthFlow(t *testing.T) {
 	})
 
 	t.Run("login page renders", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/login", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/login", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -627,4 +628,3 @@ func TestLDAPIntegration_GetReadinessStatus(t *testing.T) {
 		})
 	}
 }
-

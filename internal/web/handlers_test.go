@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -150,7 +151,7 @@ func setupTestApp() (*App, *testLDAPClient) {
 // testRedirectToLogin is a helper to test that a handler redirects unauthenticated requests to login
 func testRedirectToLogin(t *testing.T, app *App, path string) {
 	t.Helper()
-	req := httptest.NewRequest("GET", path, http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 	resp, err := app.fiber.Test(req)
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
@@ -164,7 +165,7 @@ func TestLoginHandlerBasic(t *testing.T) {
 	app, _ := setupTestApp()
 
 	t.Run("shows login form on GET", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/login", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/login", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -196,7 +197,7 @@ func TestUsersHandlerBasic(t *testing.T) {
 	t.Run("supports show-disabled query parameter", func(t *testing.T) {
 		// Test that the route accepts the query parameter
 		// Authentication will redirect, but we verify the route exists
-		req := httptest.NewRequest("GET", "/users?show-disabled=1", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/users?show-disabled=1", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -218,7 +219,7 @@ func TestUserHandlerBasic(t *testing.T) {
 
 	t.Run("accepts URL-encoded DN parameter", func(t *testing.T) {
 		// Verify route accepts URL-encoded parameters
-		req := httptest.NewRequest("GET", "/users/"+userDN, http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/users/"+userDN, http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -239,7 +240,7 @@ func TestGroupsHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("groups list route is registered", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/groups", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/groups", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -262,7 +263,7 @@ func TestGroupHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("accepts URL-encoded DN parameter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/groups/"+groupDN, http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/groups/"+groupDN, http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -275,7 +276,7 @@ func TestGroupHandlerBasic(t *testing.T) {
 
 	t.Run("supports show-disabled query parameter", func(t *testing.T) {
 		path := "/groups/" + groupDN + "?show-disabled=1"
-		req := httptest.NewRequest("GET", path, http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -296,7 +297,7 @@ func TestComputersHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("supports show-disabled query parameter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/computers?show-disabled=1", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/computers?show-disabled=1", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -308,7 +309,7 @@ func TestComputersHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("defaults to hiding disabled computers", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/computers", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/computers", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -329,7 +330,7 @@ func TestComputerHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("accepts URL-encoded DN parameter", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/computers/"+computerDN, http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/computers/"+computerDN, http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -341,7 +342,7 @@ func TestComputerHandlerBasic(t *testing.T) {
 	})
 
 	t.Run("computer detail route is registered", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/computers/"+computerDN, http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/computers/"+computerDN, http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -360,7 +361,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 	app, _ := setupTestApp()
 
 	t.Run("blocks access without session", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/users", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/users", http.NoBody)
 		resp, err := app.fiber.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -378,7 +379,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 
 		for _, path := range protectedPaths {
 			t.Run(path, func(t *testing.T) {
-				req := httptest.NewRequest("GET", path, http.NoBody)
+				req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 				resp, err := app.fiber.Test(req)
 				if err != nil {
 					t.Fatalf("Request failed: %v", err)
@@ -398,7 +399,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 
 		for _, path := range protectedPaths {
 			t.Run(path, func(t *testing.T) {
-				req := httptest.NewRequest("GET", path, http.NoBody)
+				req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 				resp, err := app.fiber.Test(req)
 				if err != nil {
 					t.Fatalf("Request failed: %v", err)
@@ -418,7 +419,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 
 		for _, path := range protectedPaths {
 			t.Run(path, func(t *testing.T) {
-				req := httptest.NewRequest("GET", path, http.NoBody)
+				req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 				resp, err := app.fiber.Test(req)
 				if err != nil {
 					t.Fatalf("Request failed: %v", err)
@@ -493,7 +494,7 @@ func TestRouteRegistration(t *testing.T) {
 				testPath := route.path
 				testPath = strings.Replace(testPath, "*", url.PathEscape("cn=test,ou=users,dc=example,dc=com"), 1)
 
-				req := httptest.NewRequest(route.method, testPath, http.NoBody)
+				req := httptest.NewRequestWithContext(context.Background(), route.method, testPath, http.NoBody)
 				resp, err := app.fiber.Test(req)
 				if err != nil {
 					t.Fatalf("Request failed: %v", err)
@@ -771,7 +772,7 @@ func TestWildcardRouteWithSpecialCharacters(t *testing.T) {
 	for _, dn := range problematicDNS {
 		t.Run("computers/"+dn[:20]+"...", func(t *testing.T) {
 			path := "/computers/" + dn
-			req := httptest.NewRequest("GET", path, http.NoBody)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 			resp, err := app.fiber.Test(req)
 			if err != nil {
 				t.Fatalf("Request failed: %v", err)

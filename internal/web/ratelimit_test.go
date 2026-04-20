@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"io"
 	"net/http/httptest"
 	"testing"
@@ -277,7 +278,7 @@ func TestRateLimiter_Middleware(t *testing.T) {
 			return c.SendString("OK")
 		})
 
-		req := httptest.NewRequest("GET", "/test", nil)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", nil)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("Failed to test app: %v", err)
@@ -314,7 +315,7 @@ func TestRateLimiter_Middleware(t *testing.T) {
 			return c.SendString("OK")
 		})
 
-		req := httptest.NewRequest("GET", "/test", nil)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", nil)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("Failed to test app: %v", err)

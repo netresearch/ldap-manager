@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -114,7 +115,7 @@ func TestRequireAuth_SessionGetError(t *testing.T) {
 	// Enable errors after route registration
 	errStorage.SetShouldError(true)
 
-	req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -134,7 +135,7 @@ func TestRequireAuth_FreshSession(t *testing.T) {
 	})
 
 	// Request without any session cookie - session will be fresh
-	req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -164,7 +165,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	})
 
 	// First set the session with empty DN
-	req1 := httptest.NewRequest(http.MethodGet, "/set-empty-session", http.NoBody)
+	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/set-empty-session", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
 	_ = resp1.Body.Close()
@@ -174,7 +175,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	require.NotEmpty(t, cookies, "Expected session cookie")
 
 	// Now try to access protected route with empty DN session
-	req2 := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 	for _, cookie := range cookies {
 		req2.AddCookie(cookie)
 	}
@@ -210,7 +211,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	})
 
 	// First set the valid session
-	req1 := httptest.NewRequest(http.MethodGet, "/login-test", http.NoBody)
+	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/login-test", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
 	_ = resp1.Body.Close()
@@ -219,7 +220,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	require.NotEmpty(t, cookies)
 
 	// Now access protected route
-	req2 := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 	for _, cookie := range cookies {
 		req2.AddCookie(cookie)
 	}
@@ -252,7 +253,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	})
 
 	// First set the corrupted session
-	req1 := httptest.NewRequest(http.MethodGet, "/corrupt-session", http.NoBody)
+	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/corrupt-session", http.NoBody)
 	resp1, err := app.fiber.Test(req1)
 	require.NoError(t, err)
 	_ = resp1.Body.Close()
@@ -261,7 +262,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	require.NotEmpty(t, cookies)
 
 	// Now try to access protected route
-	req2 := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 	for _, cookie := range cookies {
 		req2.AddCookie(cookie)
 	}
@@ -285,7 +286,7 @@ func TestGetUserDN_NoContext(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -305,7 +306,7 @@ func TestGetUserDN_WithValidContext(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -325,7 +326,7 @@ func TestGetUserDN_WrongType(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -346,7 +347,7 @@ func TestRequireUserDN_Success(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -370,7 +371,7 @@ func TestRequireUserDN_NoContext(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -396,7 +397,7 @@ func TestRequireUserDN_EmptyDN(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -426,7 +427,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 	})
 
 	// Create session first
-	req := httptest.NewRequest(http.MethodGet, "/login-test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/login-test", http.NoBody)
 	resp, err := app.fiber.Test(req)
 	require.NoError(t, err)
 	cookies := resp.Cookies()
@@ -438,7 +439,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 
 	for range 10 {
 		wg.Go(func() {
-			req := httptest.NewRequest(http.MethodGet, "/protected", http.NoBody)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/protected", http.NoBody)
 			for _, cookie := range cookies {
 				req.AddCookie(cookie)
 			}

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -251,7 +252,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	})
 
 	t.Run("GET request returns CSRF token", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test-csrf", nil)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test-csrf", nil)
 		resp, err := f.Test(req)
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
@@ -273,7 +274,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	})
 
 	t.Run("POST without CSRF token returns 403 Forbidden", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/test-csrf", strings.NewReader("data=test"))
+		req := httptest.NewRequestWithContext(context.Background(), "POST", "/test-csrf", strings.NewReader("data=test"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := f.Test(req)
 		if err != nil {
@@ -287,7 +288,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	})
 
 	t.Run("POST with invalid CSRF token returns 403 Forbidden", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/test-csrf", strings.NewReader("csrf_token=invalid-token&data=test"))
+		req := httptest.NewRequestWithContext(context.Background(), "POST", "/test-csrf", strings.NewReader("csrf_token=invalid-token&data=test"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		resp, err := f.Test(req)
 		if err != nil {
@@ -303,7 +304,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	t.Run("POST with valid CSRF token succeeds", func(t *testing.T) {
 		// Step 1: GET to obtain CSRF token and session cookie
 		// With session-based CSRF, the token is stored in the session
-		getReq := httptest.NewRequest("GET", "/test-csrf", nil)
+		getReq := httptest.NewRequestWithContext(context.Background(), "GET", "/test-csrf", nil)
 		getResp, err := f.Test(getReq)
 		if err != nil {
 			t.Fatalf("GET request failed: %v", err)
@@ -329,7 +330,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 		}
 
 		// Step 2: POST with valid CSRF token and all cookies (including session cookie)
-		postReq := httptest.NewRequest("POST", "/test-csrf",
+		postReq := httptest.NewRequestWithContext(context.Background(), "POST", "/test-csrf",
 			strings.NewReader("csrf_token="+csrfToken+"&data=test"))
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

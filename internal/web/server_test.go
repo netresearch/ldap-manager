@@ -144,7 +144,7 @@ func createAuthSession(t *testing.T, _ *App, store *session.Store) []*http.Cooki
 		return sess.Save()
 	})
 
-	req := httptest.NewRequest("GET", "/set-session", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/set-session", http.NoBody)
 	resp, err := miniApp.Test(req)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
@@ -158,7 +158,7 @@ func createAuthSession(t *testing.T, _ *App, store *session.Store) []*http.Cooki
 // makeAuthRequest makes an authenticated GET request with session cookies.
 func makeAuthRequest(t *testing.T, app *App, path string, cookies []*http.Cookie) *http.Response {
 	t.Helper()
-	req := httptest.NewRequest("GET", path, http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", path, http.NoBody)
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
 	}
@@ -186,7 +186,7 @@ func TestHandle500_FiberError(t *testing.T) {
 	})
 
 	t.Run("unauthorized redirects to login", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/unauthorized", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/unauthorized", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -196,7 +196,7 @@ func TestHandle500_FiberError(t *testing.T) {
 	})
 
 	t.Run("not found uses fiber error code", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/not-found", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/not-found", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -205,7 +205,7 @@ func TestHandle500_FiberError(t *testing.T) {
 	})
 
 	t.Run("generic error returns 500", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/generic-error", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/generic-error", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -221,7 +221,7 @@ func TestFourOhFourHandler(t *testing.T) {
 	defer app.templateCache.Stop()
 	f.Use(app.fourOhFourHandler)
 
-	req := httptest.NewRequest("GET", "/nonexistent/path", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/nonexistent/path", http.NoBody)
 	resp, err := f.Test(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
@@ -242,7 +242,7 @@ func TestGetCSRFToken(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req := httptest.NewRequest("GET", "/test", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
@@ -259,7 +259,7 @@ func TestGetCSRFToken(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req := httptest.NewRequest("GET", "/test", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
@@ -276,7 +276,7 @@ func TestGetCSRFToken(t *testing.T) {
 			return c.SendString("ok")
 		})
 
-		req := httptest.NewRequest("GET", "/test", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
@@ -420,7 +420,7 @@ func TestRenderWithCache(t *testing.T) {
 	})
 
 	// First request - cache miss
-	req := httptest.NewRequest("GET", "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 	resp, err := f.Test(req)
 	require.NoError(t, err)
 	firstBody, _ = io.ReadAll(resp.Body)
@@ -430,7 +430,7 @@ func TestRenderWithCache(t *testing.T) {
 	assert.Contains(t, string(firstBody), "hello world")
 
 	// Second request - should be cache hit
-	req = httptest.NewRequest("GET", "/test", http.NoBody)
+	req = httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 	resp, err = f.Test(req)
 	require.NoError(t, err)
 	secondBody, _ = io.ReadAll(resp.Body)
@@ -482,7 +482,7 @@ func TestGetUserLDAP_NoSession(t *testing.T) {
 		return c.SendString("ok")
 	})
 
-	req := httptest.NewRequest("GET", "/test", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 	resp, err := f.Test(req)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
@@ -530,14 +530,14 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 	})
 
 	// Setup session
-	req := httptest.NewRequest("GET", "/setup", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), "GET", "/setup", http.NoBody)
 	resp, err := f.Test(req)
 	require.NoError(t, err)
 	cookies := resp.Cookies()
 	_ = resp.Body.Close()
 
 	// Test with empty credentials
-	req = httptest.NewRequest("GET", "/test", http.NoBody)
+	req = httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
 	for _, c := range cookies {
 		req.AddCookie(c)
 	}

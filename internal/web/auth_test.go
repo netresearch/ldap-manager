@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -189,7 +190,7 @@ func TestLogoutHandler_RedirectsToLogin(t *testing.T) {
 
 // makeSimpleRequest creates a simple HTTP request without cookies.
 func makeSimpleRequest(method, path string) *http.Request {
-	return httptest.NewRequest(method, path, nil)
+	return httptest.NewRequestWithContext(context.Background(), method, path, nil)
 }
 
 func TestFilterUnassignedGroups_Comprehensive(t *testing.T) {
