@@ -1,9 +1,31 @@
 // internal/web/templates/palette_v2.templ
-//
-// STUB: the real palette template + styles land in Task 5. This stub
-// exists only so Task 4's HomeV2 can call @paletteV2() and keep the
-// build clean between commits. Task 5 replaces this file wholesale.
 package templates
 
+// paletteV2 is the ⌘K command palette shell. Body is a native <dialog>
+// so keyboard focus trapping and Esc-to-close come from the browser.
+// Result rendering and keyboard nav live in /static/js/v2-palette.js.
 templ paletteV2() {
+	<dialog id="cmd-palette" class="palette" aria-label="Command palette">
+		<form method="dialog" class="palette__form">
+			<div class="palette__input-row">
+				<span aria-hidden="true" class="palette__icon">⌕</span>
+				<input
+					type="text"
+					class="palette__input"
+					data-palette-input
+					placeholder="Search users, groups, computers…"
+					aria-label="Search"
+					autocomplete="off"
+					spellcheck="false"
+				/>
+				<kbd class="palette__esc">esc</kbd>
+			</div>
+			<ul class="palette__results" role="listbox" aria-label="Results" data-palette-results></ul>
+			<div class="palette__footer">
+				<span><kbd>↵</kbd> open</span>
+				<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+				<span><kbd>esc</kbd> close</span>
+			</div>
+		</form>
+	</dialog>
 }
