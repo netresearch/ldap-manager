@@ -752,6 +752,19 @@ html {
 
 .drawer__kv dd { margin: 0; word-break: break-word; }
 
+/* Links inside drawer attribute values: override Pico's default link color
+ * so contrast on var(--bg-subtle) meets AAA enhanced thresholds (7:1). */
+.drawer__kv dd a {
+    color: var(--fg);
+    text-decoration: underline;
+}
+
+.drawer__kv dd a:hover,
+.drawer__kv dd a:focus-visible {
+    color: var(--fg);
+    text-decoration-thickness: 2px;
+}
+
 .drawer__tags {
     list-style: none;
     margin: 0;

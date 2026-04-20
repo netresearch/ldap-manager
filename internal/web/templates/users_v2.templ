@@ -56,7 +56,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes
 			</div>
 
 			<div class="list-page__pane">
-				<ul class="list-rows" data-search-list role="listbox" aria-label="Users">
+				<ul class="list-rows" data-search-list aria-label="Users">
 					for _, u := range users {
 						@userRowV2(u)
 					}
