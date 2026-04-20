@@ -109,6 +109,12 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	f.Get("/debug/cache", app.RequireAuth(), app.cacheStatsHandler)
 	f.Get("/debug/ldap-pool", app.RequireAuth(), app.poolStatsHandler)
 
+	// Search index — registered without RequireAuth in the test harness so
+	// the shape/ETag tests can exercise the handler directly. Registered
+	// BEFORE the protected Group so the group's middleware is not inherited.
+	// Production wires the same handler inside the protected group (see server.go).
+	f.Get("/api/search-index.json", app.handleSearchIndex)
+
 	protected := f.Group("/", app.RequireAuth())
 	protected.Get("/", app.indexHandler)
 	protected.Get("/users", app.templateCacheMiddleware(), app.usersHandler)

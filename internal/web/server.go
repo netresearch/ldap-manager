@@ -264,6 +264,10 @@ func (a *App) setupRoutes() {
 	protected.Get("/groups/*", a.groupHandler)
 	protected.Get("/computers/*", a.computerHandler)
 
+	// JSON search index for the command palette (spec §6.1); ETag-cached
+	// in-handler so template-cache middleware is not needed.
+	protected.Get("/api/search-index.json", a.handleSearchIndex)
+
 	// POST routes without caching (these invalidate cache)
 	protected.Post("/users/*", a.userModifyHandler)
 	protected.Post("/groups/*", a.groupModifyHandler)
