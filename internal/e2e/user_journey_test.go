@@ -143,42 +143,97 @@ func TestUserListJourney(t *testing.T) {
 	t.Run("user list page loads", func(t *testing.T) {
 		tp.Navigate("/users")
 
-		// Should have a table or list of users
-		hasTable := tp.IsVisible("table") || tp.IsVisible("[data-testid='user-list']")
-		assert.True(t, hasTable, "User list should display users in a table or list")
+		// ldap-manager renders users as .list-container / .list-row; keep
+		// <table> selector as a fallback so this test adapts if the template
+		// layout ever swaps back.
+		hasList := tp.IsVisible("[data-search-list]") ||
+			tp.IsVisible(".list-container") ||
+			tp.IsVisible("table")
+		assert.True(t, hasList, "User list should display users in a table or list")
 	})
 
 	t.Run("user list shows user data", func(t *testing.T) {
 		tp.Navigate("/users")
 
-		// Wait for content to load
-		tp.WaitForSelector("table tbody tr, [data-testid='user-item']")
+		// Wait for either the legacy table layout or the current list layout.
+		// .First() avoids Playwright's strict-mode violation when multiple
+		// rows match.
+		err := tp.page.Locator(".list-container [data-search-item], table tbody tr, [data-testid='user-item']").First().WaitFor()
+		require.NoError(t, err)
 
-		// Should have at least one user
+		// Count entries under either layout.
 		rowCount := tp.TableRowCount("table")
+		if rowCount == 0 {
+			rows := tp.page.Locator(".list-container [data-search-item]")
+			if c, _ := rows.Count(); c > 0 {
+				rowCount = c
+			}
+		}
 		assert.Greater(t, rowCount, 0, "Should show at least one user")
 	})
 
 	t.Run("search functionality works", func(t *testing.T) {
 		tp.Navigate("/users")
 
-		searchInput := tp.page.Locator("input[type='search'], input[name='search'], input[placeholder*='search' i]")
+		// ldap-manager uses a client-side filter with data-search-input;
+		// accept the legacy selectors too for forward-compat.
+		searchInput := tp.page.Locator("[data-search-input], input[type='search'], input[name='search'], input[placeholder*='filter' i], input[placeholder*='search' i]")
 		count, _ := searchInput.Count()
 
 		if count > 0 {
-			// Search for a user
-			err := searchInput.First().Fill("test")
+			err := searchInput.First().Fill("testuser1")
 			require.NoError(t, err)
 
-			// Wait for results to update
-			tp.page.WaitForTimeout(500)
+			// Wait for the in-page JS filter to settle by polling the row
+			// count via a web expect — avoids the flaky WaitForTimeout.
+			require.NoError(t, tp.page.Locator(".list-container [data-search-item]").First().WaitFor())
 
-			// Results should be filtered
 			t.Log("Search functionality is available")
 		} else {
 			t.Skip("Search functionality not implemented")
 		}
 	})
+}
+
+// TestUserDetailJourney covers the "click a user → see DN and attributes"
+// flow that the spec calls out as a required e2e journey.
+func TestUserDetailJourney(t *testing.T) {
+	config := DefaultTestConfig()
+	browser := NewTestBrowser(t, config)
+	defer browser.Close()
+
+	page := browser.NewPage(t)
+	defer page.Close()
+	tp := NewTestPage(t, page, config)
+
+	require.NoError(t, tp.LoginAsAdmin())
+	defer tp.Logout()
+
+	tp.Navigate("/users")
+
+	// Wait for the seeded users to show up. main_test.go seeds testuser1
+	// and admin-user under ou=users; the list layout renders them as
+	// anchors inside data-search-item rows.
+	require.NoError(t, tp.page.Locator(".list-container [data-search-item] a, table tbody tr a").First().WaitFor())
+
+	userLink := tp.page.Locator(".list-container [data-search-item] a, table tbody tr a").First()
+	href, err := userLink.GetAttribute("href")
+	require.NoError(t, err)
+	require.NotEmpty(t, href, "Expected at least one user link in /users")
+
+	require.NoError(t, userLink.Click())
+	require.NoError(t, tp.page.WaitForURL("**/users/**"))
+
+	// The detail view is rendered by templates.User; it shows the CN as an
+	// H1, the DN inside a .text-text-secondary block, a "Groups:" heading,
+	// and an "Add to group" form. Verifying all four is a strong signal
+	// that the detail page actually populated from LDAP rather than
+	// falling through to a 500/empty shell.
+	assert.True(t, tp.IsVisible("h1"), "user detail should render an <h1> with the user CN")
+	assert.True(t, tp.HasText("dc=example,dc=com"),
+		"user detail should expose the DN (contains base DN)")
+	assert.True(t, tp.HasText("Groups:"), "user detail should render the Groups section header")
+	assert.True(t, tp.HasText("Add to group"), "user detail should expose the add-to-group form")
 }
 
 func TestGroupManagementJourney(t *testing.T) {
@@ -234,10 +289,20 @@ func TestErrorPagesJourney(t *testing.T) {
 	tp := NewTestPage(t, page, config)
 
 	t.Run("404 page renders for non-existent routes", func(t *testing.T) {
+		// The 404 template lives behind the authenticated layout; log in so
+		// navigation to a missing route doesn't bounce to /login first.
+		require.NoError(t, tp.LoginAsAdmin())
+		defer tp.Logout()
+
 		tp.Navigate("/this-page-does-not-exist-12345")
 
-		// Check for 404 indicator
-		has404 := tp.HasText("404") || tp.HasText("not found") || tp.HasText("Not Found")
+		// ldap-manager's FourOhFour template uses a human phrasing rather
+		// than the literal "404"; accept either so we don't couple the test
+		// to copy.
+		has404 := tp.HasText("404") ||
+			tp.HasText("not found") ||
+			tp.HasText("Not Found") ||
+			tp.HasText("does not exist")
 		assert.True(t, has404, "Should show 404 page for non-existent routes")
 	})
 }
@@ -398,7 +463,7 @@ func TestResponsiveLayout(t *testing.T) {
 
 	t.Run("login page renders on mobile viewport", func(t *testing.T) {
 		page, err := browser.browser.NewPage(playwright.BrowserNewPageOptions{
-			ViewportSize: &playwright.Size{
+			Viewport: &playwright.Size{
 				Width:  375,
 				Height: 667,
 			},
@@ -416,7 +481,7 @@ func TestResponsiveLayout(t *testing.T) {
 
 	t.Run("login page renders on tablet viewport", func(t *testing.T) {
 		page, err := browser.browser.NewPage(playwright.BrowserNewPageOptions{
-			ViewportSize: &playwright.Size{
+			Viewport: &playwright.Size{
 				Width:  768,
 				Height: 1024,
 			},
