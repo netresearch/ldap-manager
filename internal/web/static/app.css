@@ -197,20 +197,28 @@ html {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
     width: var(--density-touch-size);
     height: var(--density-touch-size);
-    min-width: 2.25rem;
-    min-height: 2.25rem;
+    margin: 0;
+    padding: 0;
     background: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: 0.375rem;
     color: var(--fg);
+    font: inherit;
+    line-height: 1;
+    text-decoration: none;
     cursor: pointer;
 }
 
+.icon-btn:visited { color: var(--fg); }
+
 .icon-btn:hover,
 .icon-btn:focus-visible {
+    color: var(--fg);
     border-color: var(--border-strong);
+    text-decoration: none;
 }
 
 /* ──────────────────────────── footer ─────────────────────────────── */
