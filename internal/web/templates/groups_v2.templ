@@ -23,7 +23,7 @@ type GroupDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
 }
 
-templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash) {
+templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
@@ -64,7 +64,7 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash) {
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 
@@ -86,7 +86,7 @@ templ groupRowV2(g ldap.Group) {
 	</li>
 }
 
-templ GroupFullV2(vm GroupDrawerVM) {
+templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
 	@baseV2(vm.Group.CN()) {
 		@topnavV2("/groups")
 
@@ -98,7 +98,7 @@ templ GroupFullV2(vm GroupDrawerVM) {
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 

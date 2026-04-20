@@ -23,7 +23,7 @@ type UserDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes []Flash) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -71,7 +71,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 
@@ -100,7 +100,7 @@ templ userRowV2(u ldap.User) {
 	</li>
 }
 
-templ UserFullV2(vm UserDrawerVM) {
+templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
 	@baseV2(vm.User.CN()) {
 		@topnavV2("/users")
 
@@ -112,7 +112,7 @@ templ UserFullV2(vm UserDrawerVM) {
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 

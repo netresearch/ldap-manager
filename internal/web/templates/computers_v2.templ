@@ -17,7 +17,7 @@ type ComputerDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
 }
 
-templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flash) {
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Computers") {
 		@topnavV2("/computers")
 
@@ -58,7 +58,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flas
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 
@@ -83,7 +83,7 @@ templ computerRowV2(cp ldap.Computer) {
 	</li>
 }
 
-templ ComputerFullV2(vm ComputerDrawerVM) {
+templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
 	@baseV2(vm.Computer.CN()) {
 		@topnavV2("/computers")
 
@@ -95,7 +95,7 @@ templ ComputerFullV2(vm ComputerDrawerVM) {
 			</div>
 		</main>
 
-		@paletteV2()
+		@paletteV2WithPinned(palettePinned)
 	}
 }
 

@@ -4,8 +4,22 @@ package templates
 // paletteV2 is the ⌘K command palette shell. Body is a native <dialog>
 // so keyboard focus trapping and Esc-to-close come from the browser.
 // Result rendering and keyboard nav live in /static/js/v2-palette.js.
+//
+// Empty-query state is rendered by the JS client-side, seeded from the
+// data-pinned JSON attribute on the dialog element (set by routes that
+// know the user via paletteV2WithPinned). Routes that don't set it see
+// only recents (client-side localStorage).
 templ paletteV2() {
-	<dialog id="cmd-palette" class="palette" aria-label="Command palette">
+	@paletteV2WithPinned(nil)
+}
+
+templ paletteV2WithPinned(pinned []PinnedEntry) {
+	<dialog
+		id="cmd-palette"
+		class="palette"
+		aria-label="Command palette"
+		data-pinned={ pinnedJSON(pinned) }
+	>
 		<form method="dialog" class="palette__form">
 			<div class="palette__input-row">
 				<span aria-hidden="true" class="palette__icon">⌕</span>

@@ -855,3 +855,12 @@ html {
 }
 
 .pin-star--on { color: var(--accent); border-color: var(--accent); }
+
+.palette__group-header {
+    padding: 0.625rem 0.75rem 0.25rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    pointer-events: none;
+}

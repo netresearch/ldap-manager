@@ -69,7 +69,7 @@ func buildOUPivotHref(ou string) string {
 
 // handleUsersV2 renders the new /users list page (spec §6.2).
 func (a *App) handleUsersV2(c *fiber.Ctx) error {
-	_, handled, res := a.resolveViewerDN(c)
+	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
 	}
@@ -86,12 +86,18 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.UsersListV2(users, showDisabled, ouFilter, templates.Flashes()).
+	return templates.UsersListV2(users, showDisabled, ouFilter, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // handleUserV2 renders either the drawer fragment (?fragment=drawer) or the
 // full user detail page at /users/:dn.
+//
+// Each handler dispatches to a different type-specific VM builder and template;
+// unifying into a generic helper would force interface indirection that obscures
+// the type contracts. Kept parallel by convention.
+//
+//nolint:dupl // Intentional structural parallel with handleGroupV2 and handleComputerV2.
 func (a *App) handleUserV2(c *fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
@@ -118,7 +124,7 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
-	return templates.UserFullV2(vm).
+	return templates.UserFullV2(vm, a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

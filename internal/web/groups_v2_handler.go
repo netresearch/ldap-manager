@@ -68,7 +68,7 @@ func buildGroupOUPivotHref(ou string) string {
 
 // handleGroupsV2 renders the new /groups list page (spec §6.2).
 func (a *App) handleGroupsV2(c *fiber.Ctx) error {
-	_, handled, res := a.resolveViewerDN(c)
+	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
 	}
@@ -84,12 +84,18 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, templates.Flashes()).
+	return templates.GroupsListV2(groups, ouFilter, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // handleGroupV2 renders either the drawer fragment (?fragment=drawer) or the
 // full group detail page at /groups/:dn.
+//
+// Each handler dispatches to a different type-specific VM builder and template;
+// unifying into a generic helper would force interface indirection that obscures
+// the type contracts. Kept parallel by convention.
+//
+//nolint:dupl // Intentional structural parallel with handleUserV2 and handleComputerV2.
 func (a *App) handleGroupV2(c *fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
@@ -116,7 +122,7 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
-	return templates.GroupFullV2(vm).
+	return templates.GroupFullV2(vm, a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

@@ -31,7 +31,7 @@
     else dialog.setAttribute("open", "");
     input.value = "";
     focused = -1;
-    renderEmptyState("Type to search.");
+    renderEmptyContent();
     input.focus();
     loadIndex();
   }
@@ -109,6 +109,62 @@
     focused = -1;
   }
 
+  function readPinned() {
+    try {
+      var raw = dialog.getAttribute("data-pinned");
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (_e) { return []; }
+  }
+
+  function readRecents() {
+    try {
+      var raw = localStorage.getItem("ldap-manager:recents:v1");
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (_e) { return []; }
+  }
+
+  function renderEmptyContent() {
+    clearResults();
+
+    var pinned = readPinned();
+    var recents = readRecents();
+
+    if (pinned.length === 0 && recents.length === 0) {
+      var li = document.createElement("li");
+      li.className = "palette__empty";
+      li.textContent = "Type to search.";
+      results.appendChild(li);
+      focused = -1;
+      return;
+    }
+
+    if (pinned.length > 0) {
+      var header = document.createElement("li");
+      header.className = "palette__group-header";
+      header.textContent = "Pinned";
+      results.appendChild(header);
+      for (var i = 0; i < pinned.length; i++) {
+        results.appendChild(buildItem(pinned[i], i === 0));
+      }
+    }
+
+    if (recents.length > 0) {
+      var rh = document.createElement("li");
+      rh.className = "palette__group-header";
+      rh.textContent = "Recent";
+      results.appendChild(rh);
+      for (var j = 0; j < recents.length; j++) {
+        results.appendChild(buildItem(recents[j], pinned.length === 0 && j === 0));
+      }
+    }
+
+    focused = 0;
+  }
+
   // Build one result row using only safe DOM methods.
   function buildItem(entry, isFocused) {
     var li = document.createElement("li");
@@ -148,6 +204,10 @@
   }
 
   function renderQuery(q) {
+    if (q === "") {
+      renderEmptyContent();
+      return;
+    }
     if (!index) return;
 
     var matched = [];
@@ -164,7 +224,7 @@
     clearResults();
 
     if (top.length === 0) {
-      renderEmptyState(q ? "No matches." : "Start typing.");
+      renderEmptyState("No matches.");
       return;
     }
     for (var j = 0; j < top.length; j++) {
