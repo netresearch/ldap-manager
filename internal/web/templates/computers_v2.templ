@@ -17,7 +17,7 @@ type ComputerDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
 }
 
-templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Computers") {
 		@topnavV2("/computers")
 
@@ -42,7 +42,9 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, flashes []Flas
 				}
 			</div>
 
-			<div class="list-page__pane">
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/computers", ous, ouFilter, computerOUHref)
+
 				<ul class="list-rows" data-search-list aria-label="Computers">
 					for _, cp := range computers {
 						@computerRowV2(cp)
@@ -170,6 +172,19 @@ func computerDrawerFragmentHref(cp ldap.Computer) string {
 
 func clearComputersOUHref() templ.SafeURL {
 	return templ.URL("/computers")
+}
+
+// computerOUHref maps an OU value to a /computers URL for the OU rail. An
+// empty value clears the filter.
+func computerOUHref(value string) templ.SafeURL {
+	if value == "" {
+		return templ.URL("/computers")
+	}
+
+	v := url.Values{}
+	v.Set("ou", value)
+
+	return templ.URL("/computers?" + v.Encode())
 }
 
 func computerEnabledAttr(cp ldap.Computer) string {

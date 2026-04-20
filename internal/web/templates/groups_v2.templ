@@ -23,7 +23,7 @@ type GroupDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
 }
 
-templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash, palettePinned []PinnedEntry) {
+templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
@@ -48,7 +48,9 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, flashes []Flash, palett
 				}
 			</div>
 
-			<div class="list-page__pane">
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/groups", ous, ouFilter, groupOUHref)
+
 				<ul class="list-rows" data-search-list aria-label="Groups">
 					for _, g := range groups {
 						@groupRowV2(g)
@@ -171,6 +173,19 @@ func groupDrawerFragmentHref(g ldap.Group) string {
 
 func clearGroupsOUHref() templ.SafeURL {
 	return templ.URL("/groups")
+}
+
+// groupOUHref maps an OU value to a /groups URL for the OU rail. An
+// empty value clears the filter.
+func groupOUHref(value string) templ.SafeURL {
+	if value == "" {
+		return templ.URL("/groups")
+	}
+
+	v := url.Values{}
+	v.Set("ou", value)
+
+	return templ.URL("/groups?" + v.Encode())
 }
 
 // asLdapGroup returns the embedded ldap.Group from a FullLDAPGroup so

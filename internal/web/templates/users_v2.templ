@@ -23,7 +23,7 @@ type UserDrawerVM struct {
 	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -59,7 +59,9 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 				@lastLogonChip(showDisabled, ouFilter, lastLogon, "never", "never logged in")
 			</div>
 
-			<div class="list-page__pane">
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/users", ous, ouFilter, userOUHrefFactory(showDisabled, lastLogon))
+
 				<ul class="list-rows" data-search-list aria-label="Users">
 					for _, u := range users {
 						@userRowV2(u)
@@ -287,6 +289,15 @@ func filterChipClass(on bool) string {
 	}
 
 	return "filter-chip"
+}
+
+// userOUHrefFactory returns an ouHref closure that preserves the active
+// show-disabled and last-logon filters when the user clicks an OU row.
+// Keeps the rail consistent with the main filter chips.
+func userOUHrefFactory(showDisabled bool, lastLogon string) ouHref {
+	return func(value string) templ.SafeURL {
+		return usersFilterHref(showDisabled, value, lastLogon)
+	}
 }
 
 // usersFilterHref composes a /users URL with the supplied combination of

@@ -80,11 +80,12 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 		all = a.ldapCache.FindGroups()
 	}
 
+	ous := distinctImmediateOUsFromGroups(all)
 	groups := filterGroupsByOU(all, ouFilter)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.GroupsListV2(groups, ouFilter, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

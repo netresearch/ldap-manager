@@ -57,15 +57,20 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 
 	ouFilter := c.Query("ou")
 
-	var computers []ldap.Computer
+	var (
+		all       []ldap.Computer
+		computers []ldap.Computer
+	)
 	if a.ldapCache != nil {
-		all := a.ldapCache.FindComputers(true)
+		all = a.ldapCache.FindComputers(true)
 		computers = filterComputersByOU(all, ouFilter)
 	}
 
+	ous := distinctImmediateOUsFromComputers(all)
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.ComputersListV2(computers, ouFilter, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.ComputersListV2(computers, ouFilter, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

@@ -84,12 +84,14 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		all = a.ldapCache.FindUsers(showDisabled)
 	}
 
+	ous := distinctImmediateOUsFromUsers(all)
+
 	users := filterUsersByOU(all, ouFilter)
 	users = filterUsersByLastLogon(users, lastLogon)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.UsersListV2(users, showDisabled, ouFilter, lastLogon, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.UsersListV2(users, showDisabled, ouFilter, lastLogon, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

@@ -592,19 +592,69 @@ html {
     align-items: start;
 }
 
+/* Three-pane: OU rail | list | drawer (Phase 2). */
+.list-page__pane--rail {
+    grid-template-columns: 12rem 1fr 22rem;
+}
+
 .list-page--single .list-page__pane {
     grid-template-columns: minmax(0, 40rem);
     justify-content: center;
 }
 
 @media (max-width: 900px) {
-    .list-page__pane {
+    .list-page__pane,
+    .list-page__pane--rail {
         grid-template-columns: 1fr;
     }
 
     .list-page__pane > .drawer {
         display: none;
     }
+
+    .list-page__rail {
+        display: none;
+    }
+}
+
+/* OU rail — compact sticky nav alongside the list pane. */
+.list-page__rail {
+    padding: 0.5rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    align-self: start;
+    position: sticky;
+    top: calc(var(--density-touch-size) + 1rem);
+    max-height: calc(100dvh - 12rem);
+    overflow: auto;
+}
+
+.list-page__rail-title {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+}
+
+.list-page__rail ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+/* Rail chips span the full column width and read as a list, not a pill row. */
+.list-page__rail-chip {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    word-break: break-word;
 }
 
 /* ──────────────────────────── list rows ────────────────────────────── */
