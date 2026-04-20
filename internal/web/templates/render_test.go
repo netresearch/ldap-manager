@@ -388,6 +388,177 @@ func TestGetNavbarClasses(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
+// failAfterNWriter returns an io.Writer that fails its Nth Write call.
+// Used to exercise the `if WriteString err != nil { return err }` branches
+// scattered throughout every generated templ component.
+type failAfterNWriter struct {
+	calls int
+	fail  int
+}
+
+func (f *failAfterNWriter) Write(p []byte) (int, error) {
+	f.calls++
+	if f.calls >= f.fail {
+		return 0, errors.New("fail")
+	}
+
+	return len(p), nil
+}
+
+// TestRender_WriteErrorPropagation injects a failing writer at several
+// different call counts so different error-handling branches inside the
+// generated templates fire.
+func TestRender_WriteErrorPropagation(t *testing.T) {
+	ctx := context.Background()
+
+	renderers := []struct {
+		name string
+		do   func(w *failAfterNWriter) error
+	}{
+		{"FourOhFour", func(w *failAfterNWriter) error { return FourOhFour("/x").Render(ctx, w) }},
+		{"FourOhThree", func(w *failAfterNWriter) error { return FourOhThree("x").Render(ctx, w) }},
+		{"FiveHundred", func(w *failAfterNWriter) error { return FiveHundred(errors.New("x")).Render(ctx, w) }},
+		{"Login", func(w *failAfterNWriter) error { return Login(nil, "v", "csrf").Render(ctx, w) }},
+		{"Code", func(w *failAfterNWriter) error { return Code("x").Render(ctx, w) }},
+		{"Copyable", func(w *failAfterNWriter) error { return Copyable("x").Render(ctx, w) }},
+		{"ToggleButtons", func(w *failAfterNWriter) error { return ToggleButtons().Render(ctx, w) }},
+		{"Index", func(w *failAfterNWriter) error {
+			u := &ldap_cache.FullLDAPUser{
+				User:   ldap.User{Enabled: true, SAMAccountName: "x", Mail: strPtr("a@b"), Description: "d"},
+				Groups: []ldap.Group{{Members: []string{}}},
+			}
+
+			return Index(u).Render(ctx, w)
+		}},
+		{"Users", func(w *failAfterNWriter) error {
+			return Users([]ldap.User{{Enabled: true, SAMAccountName: "u"}}, false, nil).Render(ctx, w)
+		}},
+		{"Groups", func(w *failAfterNWriter) error {
+			return Groups([]ldap.Group{{Members: []string{"x"}}}).Render(ctx, w)
+		}},
+		{"Computers", func(w *failAfterNWriter) error {
+			return Computers([]ldap.Computer{{Enabled: true, SAMAccountName: "pc$"}}).Render(ctx, w)
+		}},
+	}
+
+	for _, r := range renderers {
+		// Fail on many different Write counts — this spreads across the
+		// many per-string if-error-return branches.
+		for failAt := 1; failAt <= 30; failAt++ {
+			w := &failAfterNWriter{fail: failAt}
+			_ = r.do(w) // errors are expected and fine
+		}
+	}
+
+	// Fuller shapes: detail templates have many more branches.
+	detailRenderers := []func(w *failAfterNWriter) error{
+		func(w *failAfterNWriter) error {
+			fullUser := &ldap_cache.FullLDAPUser{
+				User: ldap.User{
+					Enabled: true, SAMAccountName: "u",
+					Description: "d", Mail: strPtr("a@b"), LastLogon: 133500000000000000,
+				},
+				Groups: []ldap.Group{
+					{Members: []string{}},
+					{Members: []string{"m"}},
+				},
+			}
+
+			return User(fullUser, []ldap.Group{{}}, Flashes(SuccessFlash("ok"), ErrorFlash("bad")), "csrf").Render(context.Background(), w)
+		},
+		func(w *failAfterNWriter) error {
+			fullGroup := &ldap_cache.FullLDAPGroup{
+				Group: ldap.Group{
+					Description: "desc", Members: []string{"m"},
+					MemberOf: []string{"parent"},
+				},
+				Members: []ldap.User{
+					{Enabled: true, SAMAccountName: "u1"},
+					{Enabled: false, SAMAccountName: "u2"},
+				},
+				ParentGroups: []ldap.Group{{Members: []string{}}},
+			}
+
+			return Group(fullGroup, []ldap.User{{SAMAccountName: "other"}}, Flashes(InfoFlash("hi")), "csrf").Render(context.Background(), w)
+		},
+		func(w *failAfterNWriter) error {
+			fullComp := &ldap_cache.FullLDAPComputer{
+				Computer: ldap.Computer{
+					Enabled: true, SAMAccountName: "pc$",
+					Description: "d", DNSHostName: "h.local",
+					OS: "Linux", OSVersion: "5.0", ServicePack: "SP",
+					LastLogon: 133500000000000000,
+				},
+				Groups: []ldap.Group{{Members: []string{"m"}}},
+			}
+
+			return Computer(fullComp).Render(context.Background(), w)
+		},
+	}
+
+	for _, render := range detailRenderers {
+		for failAt := 1; failAt <= 100; failAt++ {
+			w := &failAfterNWriter{fail: failAt}
+			_ = render(w)
+		}
+	}
+
+	// Also hit loggedIn / list via the error-injecting writer.
+	helperRenderers := []func(w *failAfterNWriter) error{
+		func(w *failAfterNWriter) error {
+			return loggedIn("/users", "Users", Flashes(ErrorFlash("boom"))).Render(context.Background(), w)
+		},
+		func(w *failAfterNWriter) error {
+			items := specializeGroups([]ldap.Group{{Members: []string{}}, {Members: []string{"m"}}})
+
+			return list(items).Render(context.Background(), w)
+		},
+		func(w *failAfterNWriter) error {
+			return base("T").Render(context.Background(), w)
+		},
+		func(w *failAfterNWriter) error {
+			return baseWithAssets("T", "/s.css").Render(context.Background(), w)
+		},
+	}
+
+	for _, render := range helperRenderers {
+		for failAt := 1; failAt <= 40; failAt++ {
+			w := &failAfterNWriter{fail: failAt}
+			_ = render(w)
+		}
+	}
+
+	// Icons have a single WriteString call — fail on the first write.
+	iconRenderers := []func(w *failAfterNWriter) error{
+		func(w *failAfterNWriter) error { return homeIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return usersIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return groupIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return laptopIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return logoutIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return lockIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return lockIcon("c1").Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return lockOpenIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return plusIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return rightArrowIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return xIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return sunIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return moonIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return computerDesktopIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return squares2x2Icon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return viewColumnsIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return sparklesIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return copyIcon().Render(context.Background(), w) },
+		func(w *failAfterNWriter) error { return checkIcon().Render(context.Background(), w) },
+	}
+
+	for _, render := range iconRenderers {
+		for failAt := 1; failAt <= 3; failAt++ {
+			w := &failAfterNWriter{fail: failAt}
+			_ = render(w)
+		}
+	}
+}
+
 // TestRender_UnexportedHelpers directly exercises the unexported base*,
 // loggedIn, and list templates so they're attributed coverage independent of
 // the outer page templates that call them.
