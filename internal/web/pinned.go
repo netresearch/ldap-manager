@@ -27,10 +27,12 @@ func NewPinnedStore(db *bolt.DB) (*PinnedStore, error) {
 	}
 	if err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(pinnedBucketName)
+
 		return err
 	}); err != nil {
 		return nil, fmt.Errorf("pinned store: init bucket: %w", err)
 	}
+
 	return &PinnedStore{db: db}, nil
 }
 
@@ -49,11 +51,14 @@ func (s *PinnedStore) List(userDN string) ([]string, error) {
 		if sub == nil {
 			return nil
 		}
+
 		return sub.ForEach(func(k, _ []byte) error {
 			out = append(out, string(bytes.Clone(k)))
+
 			return nil
 		})
 	})
+
 	return out, err
 }
 
@@ -63,6 +68,7 @@ func (s *PinnedStore) Add(userDN, targetDN string) error {
 		return errors.New("pinned: empty user or target DN")
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
+
 	return s.db.Update(func(tx *bolt.Tx) error {
 		top := tx.Bucket(pinnedBucketName)
 		if top == nil {
@@ -72,6 +78,7 @@ func (s *PinnedStore) Add(userDN, targetDN string) error {
 		if err != nil {
 			return fmt.Errorf("pinned: create user bucket: %w", err)
 		}
+
 		return sub.Put([]byte(targetDN), []byte(now))
 	})
 }
@@ -81,6 +88,7 @@ func (s *PinnedStore) Remove(userDN, targetDN string) error {
 	if userDN == "" || targetDN == "" {
 		return errors.New("pinned: empty user or target DN")
 	}
+
 	return s.db.Update(func(tx *bolt.Tx) error {
 		top := tx.Bucket(pinnedBucketName)
 		if top == nil {
@@ -90,6 +98,7 @@ func (s *PinnedStore) Remove(userDN, targetDN string) error {
 		if sub == nil {
 			return nil
 		}
+
 		return sub.Delete([]byte(targetDN))
 	})
 }
@@ -110,7 +119,9 @@ func (s *PinnedStore) IsPinned(userDN, targetDN string) (bool, error) {
 			return nil
 		}
 		pinned = sub.Get([]byte(targetDN)) != nil
+
 		return nil
 	})
+
 	return pinned, err
 }

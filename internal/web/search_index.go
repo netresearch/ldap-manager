@@ -42,6 +42,7 @@ func (a *App) handleSearchIndex(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/json; charset=utf-8")
 	c.Set("ETag", etag)
 	c.Set("Cache-Control", "private, must-revalidate")
+
 	return c.Send(body)
 }
 
@@ -89,6 +90,7 @@ func (a *App) buildSearchIndex() []SearchIndexEntry {
 			Type: "computer", DN: dn, CN: cn, OU: immediateOU(dn),
 		})
 	}
+
 	return out
 }
 
@@ -102,6 +104,7 @@ func immediateOU(dn string) string {
 			for j := 0; j < len(rdn); j++ {
 				if rdn[j] == ',' {
 					end = j
+
 					break
 				}
 			}
@@ -110,5 +113,6 @@ func immediateOU(dn string) string {
 			}
 		}
 	}
+
 	return ""
 }

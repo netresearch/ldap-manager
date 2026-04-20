@@ -36,6 +36,7 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
 	return templates.HomeV2(cn, pinned).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
@@ -51,17 +52,21 @@ func (a *App) pinnedEntriesFor(userDN string) ([]templates.PinnedEntry, error) {
 	for _, dn := range dns {
 		if u, ok := a.lookupUserByDN(dn); ok {
 			out = append(out, templates.PinnedEntry{Type: "user", DN: dn, CN: u.CN()})
+
 			continue
 		}
 		if g, ok := a.lookupGroupByDN(dn); ok {
 			out = append(out, templates.PinnedEntry{Type: "group", DN: dn, CN: g.CN()})
+
 			continue
 		}
 		if cp, ok := a.lookupComputerByDN(dn); ok {
 			out = append(out, templates.PinnedEntry{Type: "computer", DN: dn, CN: cp.CN()})
+
 			continue
 		}
 	}
+
 	return out, nil
 }
 
@@ -77,6 +82,7 @@ func (a *App) lookupUserByDN(dn string) (ldap.User, bool) {
 			return u, true
 		}
 	}
+
 	return ldap.User{}, false
 }
 
@@ -90,6 +96,7 @@ func (a *App) lookupGroupByDN(dn string) (ldap.Group, bool) {
 			return g, true
 		}
 	}
+
 	return ldap.Group{}, false
 }
 
@@ -104,5 +111,6 @@ func (a *App) lookupComputerByDN(dn string) (ldap.Computer, bool) {
 			return cp, true
 		}
 	}
+
 	return ldap.Computer{}, false
 }
