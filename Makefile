@@ -204,6 +204,11 @@ test-mutation:
 test-all: test test-integration
 	@echo "$(GREEN)✅ All tests completed$(RESET)"
 
+## Test Contrast: Run AAA contrast check on app.css tokens
+test-contrast:
+	@echo "$(BLUE)Running AAA contrast check on app.css...$(RESET)"
+	@go test ./internal/web/ -run TestAppCSSContrast -v
+
 ## Lint: Run all linting and static analysis
 lint: lint-go lint-security lint-format lint-complexity
 	@echo "$(GREEN)✓ All linting checks passed$(RESET)"

@@ -12,8 +12,8 @@
   /* Light (Clean sans neutral) */
   --bg: #ffffff;
   --bg-subtle: #fafafa;
-  --fg: #0a0a0a;        /* 20.6:1 on --bg */
-  --fg-muted: #525252;  /*  8.3:1 on --bg */
+  --fg: #0a0a0a;        /* 19.8:1 on --bg */
+  --fg-muted: #525252;  /*  7.8:1 on --bg; 7.5:1 on --bg-subtle */
   --border: #e5e5e5;
   --border-strong: #a3a3a3;
   --accent: #0a0a0a;
@@ -40,7 +40,7 @@
   --bg: #0d0d0d;
   --bg-subtle: #1a1a1a;
   --fg: #f5f5f5;        /* 17.8:1 on --bg */
-  --fg-muted: #a3a3a3;  /* 10.4:1 on --bg */
+  --fg-muted: #a5a5a5;  /*  7.9:1 on --bg; 7.1:1 on --bg-subtle */
   --border: #262626;
   --border-strong: #525252;
   --accent: #4ade80;    /* 11.2:1 on --bg */
