@@ -15,19 +15,20 @@ permissions:
   contents: read
 
 jobs:
-  # Primary quality pipeline. We disable the reusable workflow's
-  # build-test job (including coverage threshold enforcement) because
-  # the reusable workflow has no hook between "go test" and threshold
-  # enforcement, and we need to post-filter *_templ.go lines from
-  # coverage.out. The build-test-coverage job below replaces it.
   go-check:
     uses: netresearch/.github/.github/workflows/go-check.yml@main
     with:
-      enable-build-test: false
       enable-smoke-fast-feedback: true
       enable-fuzz: true
       enable-license-check: true
-      enable-codecov: false
+      enable-codecov: true
+      enable-integration-tests: true
+      # Exclude the auto-generated internal/web/templates package from the
+      # coverage calculation: the *_templ.go files are produced by the templ
+      # CLI and contain many framework-internal defer/error branches that
+      # cannot be reached from unit tests. Authored-code coverage is the
+      # metric that matters for the fleet-wide 80% floor.
+      test-flags: "-race -covermode=atomic -coverprofile=coverage.out -coverpkg=github.com/netresearch/ldap-manager/cmd/...,github.com/netresearch/ldap-manager/internal/ldap_cache/...,github.com/netresearch/ldap-manager/internal/options/...,github.com/netresearch/ldap-manager/internal/retry/...,github.com/netresearch/ldap-manager/internal/version/...,github.com/netresearch/ldap-manager/internal/web"
       setup-bun: true
       pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && bun install --frozen-lockfile && bun run build:assets"
     permissions:
@@ -35,80 +36,3 @@ jobs:
       security-events: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  # Replacement for the reusable workflow's build-test + coverage
-  # enforcement, with post-filtering of generated *_templ.go lines so
-  # authored helpers in internal/web/templates (flash.go,
-  # specializeUsers/Groups/Computers, formatLastLogon, etc.) count
-  # toward the fleet-wide 80% coverage floor, while framework-internal
-  # defer/error branches in the generated templ code do not.
-  build-test-coverage:
-    name: Build & Test (with templ-filtered coverage)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    env:
-      COVERAGE_THRESHOLD: "80"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: latest
-
-      - name: Pre-build (templ + frontend assets)
-        run: |
-          go install github.com/a-h/templ/cmd/templ@latest
-          bun install --frozen-lockfile
-          bun run build:assets
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: go build
-        run: go build -v ./...
-
-      - name: go test (with coverage)
-        run: |
-          go test -v -race -covermode=atomic -coverprofile=coverage.raw.out \
-            -coverpkg=github.com/netresearch/ldap-manager/cmd/...,github.com/netresearch/ldap-manager/internal/ldap_cache/...,github.com/netresearch/ldap-manager/internal/options/...,github.com/netresearch/ldap-manager/internal/retry/...,github.com/netresearch/ldap-manager/internal/version/...,github.com/netresearch/ldap-manager/internal/web/... \
-            ./...
-
-      - name: Filter generated *_templ.go lines from coverage
-        run: |
-          set -euo pipefail
-          # Generated *_templ.go files contain many framework-internal
-          # defer/error branches that unit tests cannot reasonably reach.
-          # Filter them out here so the coverage total reflects only
-          # authored code, including hand-written helpers inside the
-          # internal/web/templates package.
-          grep -v '_templ\.go:' coverage.raw.out > coverage.out
-          echo "Before filter: $(wc -l <coverage.raw.out) lines"
-          echo "After filter:  $(wc -l <coverage.out) lines"
-
-      - name: Enforce coverage threshold
-        env:
-          THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
-        run: |
-          set -euo pipefail
-          TOTAL=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
-          echo "Total coverage (authored code only): ${TOTAL}% (threshold ${THRESHOLD}%)"
-          awk -v t="$THRESHOLD" -v a="$TOTAL" \
-            'BEGIN { if (a+0 < t+0) { printf "::error::Coverage %s%% is below threshold %s%%\n", a, t; exit 1 } }'
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.out
-          flags: unittests
-          fail_ci_if_error: false

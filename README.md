@@ -1,5 +1,8 @@
 # LDAP Manager
 
+[![Template Drift](https://github.com/netresearch/ldap-manager/actions/workflows/check-template-drift.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/check-template-drift.yml)
+[![managed by netresearch/.github templates](https://img.shields.io/badge/template-netresearch%2F.github-2F99A4?logo=github)](https://github.com/netresearch/.github/tree/main/templates/go-app)
+
 <div align="center">
 
 <img src="./internal/web/static/logo.webp" height="256" alt="LDAP Manager Logo">
