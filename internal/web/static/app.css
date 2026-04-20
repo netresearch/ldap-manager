@@ -646,15 +646,29 @@ html {
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
+    width: 100%;
+    align-self: stretch;
 }
 
-/* Rail chips span the full column width and read as a list, not a pill row. */
-.list-page__rail-chip {
+.list-page__rail li {
     width: 100%;
+    margin: 0;
+}
+
+/* Rail chips span the full column width and read as a list, not a pill row.
+   `.filter-chip` is inline-flex so width:100% doesn't fill; upgrade to
+   display:flex to force block-level sizing. No word-break so "All" stays
+   one line; long OU names ellipsize. */
+.list-page__rail-chip {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
     justify-content: flex-start;
     border-radius: 0.25rem;
     font-size: 0.8125rem;
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ──────────────────────────── list rows ────────────────────────────── */
