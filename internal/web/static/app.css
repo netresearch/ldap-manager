@@ -93,3 +93,138 @@ html {
   outline: 2px solid var(--border-strong);
   outline-offset: 2px;
 }
+
+/* ──────────────────────────── layouts ──────────────────────────────── */
+
+.page-center {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.top-right-actions {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+/* ──────────────────────────── login card ──────────────────────────── */
+
+.login-card {
+    width: min(100%, 26rem);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.login-card__logo {
+    display: block;
+    max-width: 12rem;
+    margin: 0 auto 0.5rem;
+}
+
+.login-card label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.login-card input[type="text"],
+.login-card input[type="password"] {
+    width: 100%;
+    min-height: var(--density-touch-size);
+    padding: 0 0.75rem;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    font: inherit;
+}
+
+.login-card input:focus-visible {
+    outline: 2px solid var(--border-strong);
+    outline-offset: 2px;
+    border-color: var(--border-strong);
+}
+
+.login-card button[type="submit"] {
+    width: 100%;
+    min-height: var(--density-touch-size);
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 1px solid var(--accent);
+    border-radius: 0.375rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.login-card button[type="submit"]:hover,
+.login-card button[type="submit"]:focus-visible {
+    background: var(--bg);
+    color: var(--fg);
+}
+
+/* ──────────────────────────── flash ─────────────────────────────── */
+
+.flash {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg);
+}
+
+.flash[role="alert"] {
+    border-color: #dc2626; /* 5.9:1 on white; alert colour only, not text */
+}
+
+:root[data-theme="dark"] .flash[role="alert"] {
+    border-color: #f87171; /* 7.2:1 on #0d0d0d */
+}
+
+/* ──────────────────────────── icon buttons ──────────────────────────── */
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--density-touch-size);
+    height: var(--density-touch-size);
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+    border-color: var(--border-strong);
+}
+
+/* ──────────────────────────── footer ─────────────────────────────── */
+
+.app-footer {
+    margin-top: auto;
+    padding: 1rem 0;
+    color: var(--fg-muted);
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.app-footer a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
