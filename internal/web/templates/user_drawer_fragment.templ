@@ -1,0 +1,15 @@
+// internal/web/templates/user_drawer_fragment.templ
+package templates
+
+// UserDrawerFragment is what /users/:dn?fragment=drawer returns. htmx
+// swaps it into #drawer with innerHTML — no base template, no topnav.
+templ UserDrawerFragment(vm UserDrawerVM) {
+	@userDrawerContents(vm)
+}
+
+// UserDrawerV2 is an alias kept for readability at call-sites that render
+// the drawer inline (e.g. if we ever need it outside UserFullV2 or the
+// fragment wrapper).
+templ UserDrawerV2(vm UserDrawerVM) {
+	@userDrawerContents(vm)
+}

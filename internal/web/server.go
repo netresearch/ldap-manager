@@ -289,13 +289,13 @@ func (a *App) setupRoutes() {
 	// Apply template caching middleware to read-only list endpoints (no CSRF tokens)
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
 	cacheable.Get("/", a.handleHomeV2)
-	cacheable.Get("/users", a.usersHandler)
+	cacheable.Get("/users", a.handleUsersV2)
 	cacheable.Get("/groups", a.groupsHandler)
 	cacheable.Get("/computers", a.computersHandler)
 
 	// Detail pages contain CSRF tokens in forms — must NOT be cached
 	// to avoid serving stale tokens that cause 403 on form submission
-	protected.Get("/users/*", a.userHandler)
+	protected.Get("/users/*", a.handleUserV2)
 	protected.Get("/groups/*", a.groupHandler)
 	protected.Get("/computers/*", a.computerHandler)
 

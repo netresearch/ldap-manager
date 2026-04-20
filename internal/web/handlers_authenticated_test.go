@@ -390,8 +390,15 @@ func TestCSRFProtectedModifyHandlers(t *testing.T) {
 // This exercises the post-RequireAuth branches that the unauthenticated tests
 // never reach.
 //
-// The home route `/` is an exception: handleHomeV2 renders directly from the
-// session + ldap_cache (no per-request LDAP bind), so it returns 200 OK here.
+// Routes backed by V2 handlers (`/`, `/users`, `/users/:dn`) render from the
+// in-memory ldap_cache instead of per-request LDAP binds. With no service
+// account configured in this harness the cache is nil, so:
+//   - `/` (HomeV2) renders an empty pinned list → 200.
+//   - `/users` (handleUsersV2) renders zero rows → 200.
+//   - `/users/:dn` (handleUserV2) cannot find the target in the cache → 404.
+//
+// Legacy `/groups*` and `/computers*` still bind per-request and fail, so
+// they redirect to /login.
 func TestAuthenticatedGETHandlers(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 	swapSessionStore(app)
@@ -402,12 +409,13 @@ func TestAuthenticatedGETHandlers(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		// `/` → HomeV2; renders without an LDAP bind. Expect 200.
+		// V2 routes render from the cache without an LDAP bind.
 		{"/", http.StatusOK},
-		// All other routes still bind per-request and fail → /login 302.
-		{"/users", http.StatusFound},
-		{"/users?show-disabled=1", http.StatusFound},
-		{"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"), http.StatusFound},
+		{"/users", http.StatusOK},
+		{"/users?show-disabled=1", http.StatusOK},
+		// Target user is not in the (nil) cache → 404.
+		{"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"), http.StatusNotFound},
+		// Legacy handlers still bind per-request and fail → /login 302.
 		{"/groups", http.StatusFound},
 		{"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"), http.StatusFound},
 		{"/computers", http.StatusFound},

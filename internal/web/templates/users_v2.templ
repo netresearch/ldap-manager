@@ -1,0 +1,283 @@
+// internal/web/templates/users_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+)
+
+// UserDrawerVM is the view-model shared by the drawer fragment and the
+// full-page user detail. Populated by App.buildUserDrawerVM.
+//
+// User is a FullLDAPUser (not the bare ldap.User) so that the template can
+// range over resolved []ldap.Group tags — the raw ldap.User.Groups is a
+// []string of memberOf DNs which is not enough to render CN/DN links.
+type UserDrawerVM struct {
+	User        *ldap_cache.FullLDAPUser
+	Pinned      bool
+	OUPivotHref string
+}
+
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes []Flash) {
+	@baseV2("Users") {
+		@topnavV2("/users")
+
+		<main class="list-page">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Users</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
+			</header>
+
+			<div class="list-page__filters" data-search-filter>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter users…"
+					aria-label="Filter users"
+					data-search-input
+				/>
+				<a class={ filterChipClass(showDisabled) } href={ toggleDisabledHref(showDisabled, ouFilter) }>
+					if showDisabled {
+						including disabled
+					} else {
+						enabled only
+					}
+				</a>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ clearOUHref(showDisabled) }>
+						ou={ ouFilter } ×
+					</a>
+				}
+			</div>
+
+			<div class="list-page__pane">
+				<ul class="list-rows" data-search-list role="listbox" aria-label="Users">
+					for _, u := range users {
+						@userRowV2(u)
+					}
+					if len(users) == 0 {
+						<li class="list-rows__empty">No users match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a user to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+templ userRowV2(u ldap.User) {
+	<li class="list-row" data-search-item>
+		<a
+			class="list-row__link"
+			href={ userDetailHref(u) }
+			hx-get={ userDrawerFragmentHref(u) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + u.CN() }
+		>
+			if u.Enabled {
+				<span class="list-row__dot" data-enabled="true"></span>
+			} else {
+				<span class="list-row__dot"></span>
+			}
+			<span class="list-row__primary">{ u.CN() }</span>
+			<span class="list-row__secondary">{ u.SAMAccountName }</span>
+			if !u.Enabled {
+				<span class="list-row__badge">disabled</span>
+			}
+		</a>
+	</li>
+}
+
+templ UserFullV2(vm UserDrawerVM) {
+	@baseV2(vm.User.CN()) {
+		@topnavV2("/users")
+
+		<main class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="User detail">
+					@userDrawerContents(vm)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2()
+	}
+}
+
+// userDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside UserFullV2.
+templ userDrawerContents(vm UserDrawerVM) {
+	<header
+		class="drawer__head"
+		data-recent-type="user"
+		data-recent-dn={ vm.User.DN() }
+		data-recent-cn={ vm.User.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.User.CN() }</h2>
+			<p class="drawer__sub">{ vm.User.SAMAccountName }</p>
+		</div>
+		@pinStarButton("user", vm.User.DN(), vm.Pinned)
+	</header>
+
+	<p class="drawer__dn">{ vm.User.DN() }</p>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Attributes</h3>
+		<dl class="drawer__kv">
+			<dt>Status</dt>
+			<dd>
+				if vm.User.Enabled {
+					Enabled
+				} else {
+					Disabled
+				}
+			</dd>
+			if vm.User.Mail != nil && *vm.User.Mail != "" {
+				<dt>Email</dt>
+				<dd><a href={ templ.URL("mailto:" + *vm.User.Mail) }>{ *vm.User.Mail }</a></dd>
+			}
+			if vm.User.Description != "" {
+				<dt>Description</dt>
+				<dd>{ vm.User.Description }</dd>
+			}
+		</dl>
+	</section>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">
+			{ fmt.Sprintf("Groups · %d", len(vm.User.Groups)) }
+		</h3>
+		if len(vm.User.Groups) == 0 {
+			<p class="drawer__empty-inline">None.</p>
+		} else {
+			<ul class="drawer__tags">
+				for _, g := range vm.User.Groups {
+					<li>
+						<a class="drawer__tag" href={ groupDetailHref(g) }>{ g.CN() }</a>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Pivot</h3>
+		<ul class="drawer__pivots">
+			<li>
+				<a class="drawer__pivot" href={ userDetailHref(vm.User.User) }>
+					<span>Open full page</span>
+					<span aria-hidden="true">→</span>
+				</a>
+			</li>
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
+						<span>Other users in { immediateOULabel(vm.OUPivotHref) }</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// pinStarButton renders the pin/unpin toggle as a small form.
+//
+// LIMITATION (Slice 4): the handlers at /pin and /unpin currently return
+// HTTP 204 No Content (see pin_handlers.go). htmx does NOT swap into the
+// target when the response is 204, so clicking the star will roundtrip
+// successfully but the visible star glyph will not flip until the page is
+// reloaded. Slice 4b fixes this by returning the star fragment from the
+// handlers when HX-Request: true.
+templ pinStarButton(entityType, entityDN string, pinned bool) {
+	if pinned {
+		<form hx-post="/unpin" hx-target="closest .drawer__head .pin-star" hx-swap="outerHTML">
+			<input type="hidden" name="target" value={ entityDN }/>
+			<button type="submit" class="pin-star pin-star--on" aria-label={ "Unpin " + entityType } aria-pressed="true">
+				<span aria-hidden="true">★</span>
+			</button>
+		</form>
+	} else {
+		<form hx-post="/pin" hx-target="closest .drawer__head .pin-star" hx-swap="outerHTML">
+			<input type="hidden" name="target" value={ entityDN }/>
+			<button type="submit" class="pin-star" aria-label={ "Pin " + entityType } aria-pressed="false">
+				<span aria-hidden="true">☆</span>
+			</button>
+		</form>
+	}
+}
+
+func userDetailHref(u ldap.User) templ.SafeURL {
+	return templ.URL("/users/" + url.PathEscape(u.DN()))
+}
+
+func userDrawerFragmentHref(u ldap.User) string {
+	return "/users/" + url.PathEscape(u.DN()) + "?fragment=drawer"
+}
+
+func groupDetailHref(g ldap.Group) templ.SafeURL {
+	return templ.URL("/groups/" + url.PathEscape(g.DN()))
+}
+
+func filterChipClass(on bool) string {
+	if on {
+		return "filter-chip filter-chip--on"
+	}
+
+	return "filter-chip"
+}
+
+func toggleDisabledHref(currentShowDisabled bool, ouFilter string) templ.SafeURL {
+	v := url.Values{}
+	if !currentShowDisabled {
+		v.Set("show-disabled", "1")
+	}
+
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	qs := v.Encode()
+	if qs == "" {
+		return templ.URL("/users")
+	}
+
+	return templ.URL("/users?" + qs)
+}
+
+func clearOUHref(showDisabled bool) templ.SafeURL {
+	if showDisabled {
+		return templ.URL("/users?show-disabled=1")
+	}
+
+	return templ.URL("/users")
+}
+
+// immediateOULabel extracts the OU value from a /users?ou=… pivot href so
+// the drawer can render "Other users in <ou>" with a human-readable label.
+func immediateOULabel(ouHref string) string {
+	i := strings.Index(ouHref, "ou=")
+	if i < 0 {
+		return ""
+	}
+
+	rest := ouHref[i+3:]
+	if j := strings.Index(rest, "&"); j >= 0 {
+		return rest[:j]
+	}
+
+	return rest
+}
