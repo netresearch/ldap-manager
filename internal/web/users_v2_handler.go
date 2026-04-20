@@ -37,6 +37,7 @@ func (a *App) buildUserDrawerVM(userDN, viewerDN string) (templates.UserDrawerVM
 	return templates.UserDrawerVM{
 		User:        fullUser,
 		Pinned:      pinned,
+		OUName:      ouFilter,
 		OUPivotHref: buildOUPivotHref(ouFilter),
 	}, true
 }

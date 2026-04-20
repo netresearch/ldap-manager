@@ -4,7 +4,6 @@ package templates
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -20,7 +19,8 @@ import (
 type UserDrawerVM struct {
 	User        *ldap_cache.FullLDAPUser
 	Pinned      bool
-	OUPivotHref string
+	OUName      string // plain-text OU name, e.g. "ou=Users" (for display)
+	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
 }
 
 templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, flashes []Flash) {
@@ -185,7 +185,7 @@ templ userDrawerContents(vm UserDrawerVM) {
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
-						<span>Other users in { immediateOULabel(vm.OUPivotHref) }</span>
+						<span>Other users in { vm.OUName }</span>
 						<span aria-hidden="true">→</span>
 					</a>
 				</li>
@@ -266,18 +266,3 @@ func clearOUHref(showDisabled bool) templ.SafeURL {
 	return templ.URL("/users")
 }
 
-// immediateOULabel extracts the OU value from a /users?ou=… pivot href so
-// the drawer can render "Other users in <ou>" with a human-readable label.
-func immediateOULabel(ouHref string) string {
-	i := strings.Index(ouHref, "ou=")
-	if i < 0 {
-		return ""
-	}
-
-	rest := ouHref[i+3:]
-	if j := strings.Index(rest, "&"); j >= 0 {
-		return rest[:j]
-	}
-
-	return rest
-}
