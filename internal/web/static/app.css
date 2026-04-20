@@ -461,12 +461,19 @@ html {
 }
 
 .palette__item[aria-selected="true"] {
-    background: var(--fg);
-    color: var(--bg);
+    background: var(--accent);
+    color: var(--accent-fg);
 }
 
 .palette__item[aria-selected="true"] .palette__type {
-    background: var(--bg-subtle); color: var(--fg);
+    background: var(--accent-fg);
+    color: var(--accent);
+    border-color: var(--accent-fg);
+}
+
+.palette__item[aria-selected="true"] .palette__ctx {
+    color: var(--accent-fg);
+    opacity: 0.75;
 }
 
 .palette__type {
@@ -502,6 +509,7 @@ html {
     background: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: 0.15rem;
+    color: var(--fg-muted);
 }
 
 /* ──────────────────────────── list page ────────────────────────────── */
