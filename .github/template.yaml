@@ -5,7 +5,12 @@ template: go-app
 intentional-drift:
 - path: .github/workflows/ci.yml
   reason: 'TypeScript/templ frontend assets must be built via bun before go test;
-    requires setup-bun + pre-build-cmd at caller level. Custom test-flags pass
-    -coverpkg to exclude the auto-generated internal/web/templates package from
-    the coverage calculation (its *_templ.go files contain framework-internal
-    defer/error branches unreachable from unit tests).'
+    requires setup-bun + pre-build-cmd at caller level. The reusable go-check
+    workflow has no hook between "go test" and coverage threshold enforcement,
+    so we disable its build-test job and run an inline build-test-coverage job
+    that expands -coverpkg to include internal/web/templates/... and
+    post-filters generated *_templ.go lines from coverage.out before enforcing
+    the 80% threshold. This keeps authored helpers in the templates package
+    (flash.go, specializeUsers/Groups/Computers, formatLastLogon) in the
+    numerator while excluding the framework-internal defer/error branches of
+    generated templ code.'
