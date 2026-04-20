@@ -12,7 +12,12 @@ intentional-drift:
     from coverage.out before enforcing the 80% threshold. This keeps authored helpers
     in the templates package (flash.go, specializeUsers/Groups/Computers, formatLastLogon)
     in the numerator while excluding the framework-internal defer/error branches of
-    generated templ code.
+    generated templ code. Also opts into the reusable workflow's e2e tier
+    (enable-e2e-tests=true, e2e-test-packages=./internal/e2e/...) so the
+    browser-level journeys under internal/e2e/ — bootstrapped via a
+    testcontainers OpenLDAP + Playwright-driven headless Chromium against
+    an in-process ldap-manager listener — run on every PR with coverage
+    uploaded under the "e2e" Codecov flag.
 - path: .github/workflows/container.yml
   reason: "platforms narrowed to linux/amd64,linux/arm64 \u2014 Dockerfile base images\
     \ (oven/bun, golang-alpine) don't publish i386/arm-v6/arm-v7 variants, so a 5-platform\

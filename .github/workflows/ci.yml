@@ -23,6 +23,13 @@ jobs:
       enable-license-check: true
       enable-codecov: true
       enable-integration-tests: true
+      enable-e2e-tests: true
+      # The e2e suite spins up an OpenLDAP testcontainer, installs Playwright
+      # browsers, and starts ldap-manager in-process before driving it via a
+      # headless Chromium. Coverage is reported under the "e2e" Codecov flag
+      # (see .github/codecov.yml) so unit / integration / e2e numbers remain
+      # separable. Only the internal/e2e package is gated by the build tag.
+      e2e-test-packages: "./internal/e2e/..."
       # Exclude the auto-generated internal/web/templates package from the
       # coverage calculation: the *_templ.go files are produced by the templ
       # CLI and contain many framework-internal defer/error branches that
