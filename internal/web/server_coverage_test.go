@@ -27,6 +27,11 @@ import (
 // newAppForCoverage creates a fully-wired *App without any real LDAP
 // connection. Using `readonly-user = ""` skips the ldap.New() call inside
 // NewApp so the test does not attempt to dial a directory server.
+//
+// The returned App is registered with t.Cleanup so its background goroutines
+// (periodicCacheLogging, template-cache cleanup, rate-limiter cleanup) are
+// shut down when the test ends. This prevents goroutine leaks that could
+// cause flakes in -race mode across the test binary's lifetime.
 func newAppForCoverage(t *testing.T) (*App, string) {
 	t.Helper()
 
@@ -62,7 +67,27 @@ func newAppForCoverage(t *testing.T) (*App, string) {
 		t.Fatalf("NewApp failed: %v", err)
 	}
 
+	registerAppShutdown(t, app)
+
 	return app, tmp
+}
+
+// registerAppShutdown arranges for app.Shutdown to run when the test ends,
+// guarding against double-close of app.stopCacheLog when a test also calls
+// Shutdown explicitly. Safe to call once per App.
+func registerAppShutdown(t *testing.T, app *App) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		// Defensive: Shutdown closes stopCacheLog unconditionally. If a test
+		// already called Shutdown, avoid panicking on double-close.
+		defer func() { _ = recover() }()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		_ = app.Shutdown(ctx)
+	})
 }
 
 // chdirToRepoRoot changes the working directory so the "internal/web/static/manifest.json"
@@ -157,7 +182,8 @@ func TestNewApp_WithPersistSessions(t *testing.T) {
 		t.Fatalf("NewApp: %v", err)
 	}
 
-	// Shutdown cleanly so the bbolt file is released.
+	// Shutdown cleanly so the bbolt file is released. registerAppShutdown is
+	// not used here because this test asserts on the Shutdown return value.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -196,6 +222,8 @@ func TestNewApp_TLSSkipVerify(t *testing.T) {
 		t.Fatalf("NewApp with TLSSkipVerify: %v", err)
 	}
 
+	registerAppShutdown(t, app)
+
 	if len(app.ldapOpts) < 2 {
 		t.Errorf("expected at least 2 LDAP opts with TLS skip verify, got %d", len(app.ldapOpts))
 	}
@@ -225,23 +253,30 @@ func TestCreateFiberApp_HasExpectedConfig(t *testing.T) {
 func TestApp_RoutesRegistered(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 
-	// Verify routes respond. Most protected routes redirect to /login because
-	// we have no session; that still proves the route is registered.
+	// Verify routes respond with their expected status codes. Protected routes
+	// redirect to /login (302) because we have no session; that still proves
+	// the route is registered. Health endpoints answer 200 directly.
 	routes := []struct {
-		method string
-		path   string
+		method    string
+		path      string
+		wantCodes []int // accept any of these status codes
 	}{
-		{http.MethodGet, "/"},
-		{http.MethodGet, "/users"},
-		{http.MethodGet, "/groups"},
-		{http.MethodGet, "/computers"},
-		{http.MethodGet, "/login"},
-		{http.MethodGet, "/logout"},
-		{http.MethodGet, "/health"},
-		{http.MethodGet, "/health/ready"},
-		{http.MethodGet, "/health/live"},
-		{http.MethodGet, "/debug/cache"},
-		{http.MethodGet, "/debug/ldap-pool"},
+		// Protected routes without auth → 302 redirect to /login
+		{http.MethodGet, "/", []int{http.StatusFound}},
+		{http.MethodGet, "/users", []int{http.StatusFound}},
+		{http.MethodGet, "/groups", []int{http.StatusFound}},
+		{http.MethodGet, "/computers", []int{http.StatusFound}},
+		{http.MethodGet, "/logout", []int{http.StatusFound}},
+		{http.MethodGet, "/debug/cache", []int{http.StatusFound}},
+		{http.MethodGet, "/debug/ldap-pool", []int{http.StatusFound}},
+		// Login renders the form on GET → 200
+		{http.MethodGet, "/login", []int{http.StatusOK}},
+		// Health endpoints are public and respond 200 when components are healthy,
+		// or 503 when the LDAP cache is not ready (the latter is the default in
+		// this no-service-account test fixture).
+		{http.MethodGet, "/health", []int{http.StatusOK, http.StatusServiceUnavailable}},
+		{http.MethodGet, "/health/ready", []int{http.StatusOK, http.StatusServiceUnavailable}},
+		{http.MethodGet, "/health/live", []int{http.StatusOK, http.StatusServiceUnavailable}},
 	}
 
 	for _, r := range routes {
@@ -254,29 +289,30 @@ func TestApp_RoutesRegistered(t *testing.T) {
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			// A registered route should never return the built-in 404 handler's 404.
-			// (The app's 404 handler still returns 404 for truly unknown paths.)
-			if resp.StatusCode == 0 {
-				t.Errorf("route %s %s: got zero status code", r.method, r.path)
+			if !intInSlice(resp.StatusCode, r.wantCodes) {
+				t.Errorf("route %s %s: got status %d, want one of %v",
+					r.method, r.path, resp.StatusCode, r.wantCodes)
 			}
 		})
 	}
-
-	// Clean shutdown — exercises the shutdown path's periodic-cache-log stop.
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	if err := app.Shutdown(ctx); err != nil {
-		t.Fatalf("Shutdown: %v", err)
-	}
 }
 
-func TestApp_ListenCancelled(t *testing.T) {
+// intInSlice reports whether needle is in haystack.
+func intInSlice(needle int, haystack []int) bool {
+	for _, v := range haystack {
+		if v == needle {
+			return true
+		}
+	}
+
+	return false
+}
+
+func TestApp_ListenGracefulShutdown(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 
-	// Pick an ephemeral port we reserve just to know what Listen will try.
-	// We launch Listen in a goroutine and then Shutdown immediately so it
-	// returns cleanly. The goal is only to cover the Listen() function body.
+	// Reserve an ephemeral port to know what Listen will bind to. Close the
+	// reservation before Listen runs so Listen can claim the port.
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
@@ -285,16 +321,15 @@ func TestApp_ListenCancelled(t *testing.T) {
 	addr := l.Addr().String()
 	_ = l.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
+	// App.Listen forwards to fiber.Listen which does NOT observe the passed
+	// context (see server.go). Graceful shutdown is triggered by Shutdown(),
+	// not by ctx cancellation, so we use a Background context here to avoid
+	// suggesting otherwise.
 	errCh := make(chan error, 1)
-	go func() { errCh <- app.Listen(ctx, addr) }()
+	go func() { errCh <- app.Listen(context.Background(), addr) }()
 
-	// Give Listen a moment to bind; then trigger shutdown via context cancel
-	// and an explicit Shutdown call.
+	// Give Listen a moment to bind, then trigger graceful shutdown.
 	time.Sleep(150 * time.Millisecond)
-
-	cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer shutdownCancel()
@@ -304,10 +339,13 @@ func TestApp_ListenCancelled(t *testing.T) {
 	}
 
 	select {
-	case <-errCh:
-		// Any return value is acceptable; we only care Listen ran.
+	case err := <-errCh:
+		// fiber.Listen returns nil when shut down cleanly.
+		if err != nil {
+			t.Logf("Listen returned err=%v (nil after shutdown is expected)", err)
+		}
 	case <-time.After(2 * time.Second):
-		t.Log("Listen did not return within 2s (nil returned after shutdown is expected)")
+		t.Fatal("Listen did not return within 2s after Shutdown")
 	}
 }
 

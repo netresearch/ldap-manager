@@ -115,8 +115,8 @@ func TestUserModifyHandler_AuthenticatedPaths(t *testing.T) {
 
 		// Without CSRF token → 403. With invalid session/LDAP → 302 (redirect
 		// to /login). Either code path is exercised.
-		if resp.StatusCode == 0 {
-			t.Error("got zero status code")
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -145,8 +145,9 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == 0 {
-			t.Error("got zero status code")
+		// CSRF rejection (403) or redirect to detail page / login (302).
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
 
@@ -166,8 +167,8 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == 0 {
-			t.Error("got zero status code")
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
 
@@ -187,8 +188,8 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == 0 {
-			t.Error("got zero status code")
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -255,12 +256,9 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 	cookies := simulatedSession(t, app)
 
 	// Mount modify handlers behind only RequireAuth (no CSRF) on a bare app
-	// so session-based auth works but CSRF does not block.
+	// so session-based auth works but CSRF does not block. Cookies are attached
+	// per-request below (see postTo); no middleware is needed for that.
 	bare := fiber.New()
-	bare.Use(func(c *fiber.Ctx) error {
-		// Attach the simulated session cookies.
-		return c.Next()
-	})
 	bare.Post("/users/*", app.RequireAuth(), app.userModifyHandler)
 	bare.Post("/groups/*", app.RequireAuth(), app.groupModifyHandler)
 
@@ -423,8 +421,8 @@ func TestAuthenticatedGETHandlers(t *testing.T) {
 
 			// Post-auth, the LDAP call fails → fiber.StatusUnauthorized
 			// → handle500 → /login redirect. 302 is the expected outcome.
-			if resp.StatusCode == 0 {
-				t.Error("zero status")
+			if resp.StatusCode != http.StatusFound {
+				t.Errorf("expected 302 redirect after LDAP failure, got %d", resp.StatusCode)
 			}
 		})
 	}

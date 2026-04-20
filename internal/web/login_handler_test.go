@@ -1,7 +1,9 @@
 package web
 
-// Tests for loginHandler POST paths: invalid credentials, rate-limit block,
-// successful login with regenerated session.
+// Tests for loginHandler POST paths: invalid credentials, empty fields,
+// rate-limit block, and logoutHandler session destruction. A live-bind
+// "success" case is not present here because it requires a real LDAP server;
+// that path is covered by the LDAP integration test suite.
 
 import (
 	"context"

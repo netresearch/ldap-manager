@@ -188,8 +188,11 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == 0 {
-			t.Error("zero status")
+		// On example-server modify failure, handle500 renders the 500 page
+		// (still exercising the target branch). On success it would render
+		// the group detail page (200) or redirect (302).
+		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
+			t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
 		}
 	})
 
@@ -209,8 +212,8 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode == 0 {
-			t.Error("zero status")
+		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
+			t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -251,8 +254,11 @@ func TestListHandlers_ExampleServer(t *testing.T) {
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			if resp.StatusCode == 0 {
-				t.Error("zero status")
+			// Example-server mocked responses render a page (200), redirect to
+			// /login on auth failure (302), or render the 500 page on a
+			// downstream LDAP modify failure. Never 0.
+			if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
+				t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
 			}
 		})
 	}
