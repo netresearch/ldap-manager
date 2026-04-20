@@ -1,0 +1,51 @@
+package templates
+
+// baseV2 is the new-stack shell: Pico + app.css + Alpine + htmx.
+// Renders theme/density attributes so the initialization scripts can
+// apply preferences before first paint.
+//
+// Stable across all Phase 1 slices. Individual pages embed page-specific
+// component styles in their own templ files, not here.
+templ baseV2(title string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light" data-density="compact" x-cloak>
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · LDAP Manager</title>
+
+			<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
+			<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
+			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+			<link rel="manifest" href="/static/site.webmanifest"/>
+
+			<link rel="stylesheet" href="/static/vendor/pico.min.css"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+
+			// Preference initialization: runs before first paint to avoid FOUC.
+			<script>
+				(function () {
+					var coarse = matchMedia('(pointer: coarse)').matches;
+					var narrow = matchMedia('(max-width: 600px)').matches;
+					var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+					var storedTheme = localStorage.getItem('theme');
+					var theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+					document.documentElement.setAttribute('data-theme', theme);
+
+					var storedDensity = localStorage.getItem('density');
+					var autoDensity = (coarse || narrow || reduce) ? 'comfortable' : 'compact';
+					var density = storedDensity || autoDensity;
+					document.documentElement.setAttribute('data-density', density);
+				})();
+			</script>
+
+			// Alpine needs to be loaded defer so x-data directives attach after DOM parse.
+			<script defer src="/static/vendor/alpine.min.js"></script>
+			<script defer src="/static/vendor/htmx.min.js"></script>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
