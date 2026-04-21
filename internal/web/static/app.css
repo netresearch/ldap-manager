@@ -422,13 +422,16 @@ html {
 }
 
 .home__heading {
+    display: block;
     font-size: 0.75rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
-    margin: 0 0 0.5rem;
+    margin: 0 0 0.75rem;
     font-weight: 600;
 }
+
+.home__heading + * { margin-top: 0.5rem; }
 
 .home__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.125rem; }
 
@@ -701,7 +704,10 @@ input[type="text"].list-page__search {
         grid-template-columns: 1fr;
     }
 
-    .list-page__pane > .drawer,
+    /* Hide only the list-view companion drawer. `.drawer--full` is the
+     * main content of the full-page detail view and must stay visible at
+     * all widths — hiding it made F5-on-fragment-URL look empty.  */
+    .list-page__pane > .drawer:not(.drawer--full),
     .list-page__rail {
         display: none;
     }
@@ -1407,4 +1413,94 @@ button.kv-edit__save {
 :root[data-theme="dark"] .filter-chip,
 :root[data-theme="dark"] .drawer__tag {
     border-radius: 0;
+}
+
+/* ───────────── dark mode: lowercase chrome + $ prompts (deep push) ────
+ * Per spec §4.1 Slice 3: "Lowercase convention: top-level nav, page
+ * headings, section labels are lowercase. Body content (user names,
+ * attribute values) preserves authored case."
+ * Real LDAP data (CN, DN, SAMAccountName, group names, emails, descriptions)
+ * stays case-sensitive — only the UI chrome lowercases.
+ */
+
+:root[data-theme="dark"] .topnav__logo,
+:root[data-theme="dark"] .topnav__cmdk,
+:root[data-theme="dark"] .topnav__cmdk-label,
+:root[data-theme="dark"] .topnav-secondary__link,
+:root[data-theme="dark"] .list-page__title,
+:root[data-theme="dark"] .list-page__count,
+:root[data-theme="dark"] .list-page__rail-title,
+:root[data-theme="dark"] .home__heading,
+:root[data-theme="dark"] .home__lede,
+:root[data-theme="dark"] .home__list-empty,
+:root[data-theme="dark"] .home__list-type,
+:root[data-theme="dark"] .drawer__section-title,
+:root[data-theme="dark"] .drawer__kv dt,
+:root[data-theme="dark"] .drawer__empty,
+:root[data-theme="dark"] .drawer__empty-inline,
+:root[data-theme="dark"] .list-rows__empty,
+:root[data-theme="dark"] .filter-chip,
+:root[data-theme="dark"] .list-row__badge,
+:root[data-theme="dark"] .list-row__secondary,
+:root[data-theme="dark"] .palette__group-header,
+:root[data-theme="dark"] .palette__input::placeholder,
+:root[data-theme="dark"] .palette__empty,
+:root[data-theme="dark"] .palette__type,
+:root[data-theme="dark"] .palette__esc,
+:root[data-theme="dark"] .palette__footer,
+:root[data-theme="dark"] .bulk-bar__count,
+:root[data-theme="dark"] .bulk-bar__action,
+:root[data-theme="dark"] .bulk-bar__cancel,
+:root[data-theme="dark"] .drawer__pivot,
+:root[data-theme="dark"] .app-footer,
+:root[data-theme="dark"] label,
+:root[data-theme="dark"] button[type="submit"],
+:root[data-theme="dark"] .list-page__search::placeholder,
+:root[data-theme="dark"] .topnav-secondary__link--active {
+    text-transform: lowercase;
+}
+
+/* $ prompt before the user's greeting in dark mode (keeps the cn after). */
+:root[data-theme="dark"] .home__greet::before {
+    content: "$ ";
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* $ prompt before page titles too. */
+:root[data-theme="dark"] .list-page__title::before {
+    content: "$ ";
+    color: var(--accent);
+    opacity: 0.8;
+}
+
+/* $ prompt before drawer heading for the selected entity. */
+:root[data-theme="dark"] .drawer__head .drawer__title::before {
+    content: "> ";
+    color: var(--accent);
+    opacity: 0.9;
+}
+
+/* # comment marker before section labels (terminal style). */
+:root[data-theme="dark"] .drawer__section-title::before,
+:root[data-theme="dark"] .home__heading::before,
+:root[data-theme="dark"] .list-page__rail-title::before,
+:root[data-theme="dark"] .palette__group-header::before {
+    content: "# ";
+    color: var(--accent);
+    opacity: 0.7;
+}
+
+/* Keep case for real data — explicit unsets. */
+:root[data-theme="dark"] .list-row__primary,
+:root[data-theme="dark"] .drawer__title,
+:root[data-theme="dark"] .drawer__sub,
+:root[data-theme="dark"] .drawer__dn,
+:root[data-theme="dark"] .drawer__kv dd,
+:root[data-theme="dark"] .drawer__tag,
+:root[data-theme="dark"] .home__list-item a,
+:root[data-theme="dark"] .palette__item,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea {
+    text-transform: none;
 }
