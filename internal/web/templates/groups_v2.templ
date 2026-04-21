@@ -95,7 +95,7 @@ templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
 		<main id="main-content" class="list-page list-page--single">
 			<div class="list-page__pane">
 				<aside class="drawer drawer--full" aria-label="Group detail">
-					@groupDrawerContents(vm)
+					@groupDrawerContentsCtx(vm, false)
 				</aside>
 			</div>
 		</main>
@@ -106,7 +106,14 @@ templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
 
 // groupDrawerContents is the shared inner content of the drawer, rendered
 // both inside the fragment response and inside GroupFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Groups" instead to avoid a
+// self-referential link.
 templ groupDrawerContents(vm GroupDrawerVM) {
+	@groupDrawerContentsCtx(vm, true)
+}
+
+templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 	<header
 		class="drawer__head"
 		data-recent-type="group"
@@ -149,12 +156,21 @@ templ groupDrawerContents(vm GroupDrawerVM) {
 	<section class="drawer__section">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
-			<li>
-				<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) }>
-					<span>Open full page</span>
-					<span aria-hidden="true">→</span>
-				</a>
-			</li>
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) }>
+						<span>Open full page</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/groups") }>
+						<span aria-hidden="true">←</span>
+						<span>Back to Groups</span>
+					</a>
+				</li>
+			}
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>

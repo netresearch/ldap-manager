@@ -121,7 +121,7 @@ templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
 		<main id="main-content" class="list-page list-page--single">
 			<div class="list-page__pane">
 				<aside class="drawer drawer--full" aria-label="User detail">
-					@userDrawerContents(vm)
+					@userDrawerContentsCtx(vm, false)
 				</aside>
 			</div>
 		</main>
@@ -132,7 +132,14 @@ templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
 
 // userDrawerContents is the shared inner content of the drawer, rendered
 // both inside the fragment response and inside UserFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Users" instead to avoid a
+// self-referential link.
 templ userDrawerContents(vm UserDrawerVM) {
+	@userDrawerContentsCtx(vm, true)
+}
+
+templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 	<header
 		class="drawer__head"
 		data-recent-type="user"
@@ -190,12 +197,21 @@ templ userDrawerContents(vm UserDrawerVM) {
 	<section class="drawer__section">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
-			<li>
-				<a class="drawer__pivot" href={ userDetailHref(vm.User.User) }>
-					<span>Open full page</span>
-					<span aria-hidden="true">→</span>
-				</a>
-			</li>
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ userDetailHref(vm.User.User) }>
+						<span>Open full page</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/users") }>
+						<span aria-hidden="true">←</span>
+						<span>Back to Users</span>
+					</a>
+				</li>
+			}
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>

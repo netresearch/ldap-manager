@@ -92,7 +92,7 @@ templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
 		<main id="main-content" class="list-page list-page--single">
 			<div class="list-page__pane">
 				<aside class="drawer drawer--full" aria-label="Computer detail">
-					@computerDrawerContents(vm)
+					@computerDrawerContentsCtx(vm, false)
 				</aside>
 			</div>
 		</main>
@@ -103,7 +103,14 @@ templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
 
 // computerDrawerContents is the shared inner content of the drawer, rendered
 // both inside the fragment response and inside ComputerFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Computers" instead to avoid a
+// self-referential link.
 templ computerDrawerContents(vm ComputerDrawerVM) {
+	@computerDrawerContentsCtx(vm, true)
+}
+
+templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 	<header
 		class="drawer__head"
 		data-recent-type="computer"
@@ -144,12 +151,21 @@ templ computerDrawerContents(vm ComputerDrawerVM) {
 	<section class="drawer__section">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
-			<li>
-				<a class="drawer__pivot" href={ computerDetailHref(vm.Computer) }>
-					<span>Open full page</span>
-					<span aria-hidden="true">→</span>
-				</a>
-			</li>
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ computerDetailHref(vm.Computer) }>
+						<span>Open full page</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/computers") }>
+						<span aria-hidden="true">←</span>
+						<span>Back to Computers</span>
+					</a>
+				</li>
+			}
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
