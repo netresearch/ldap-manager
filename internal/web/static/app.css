@@ -362,8 +362,10 @@ html {
 }
 
 .topnav-secondary {
-    display: flex;
-    gap: 0.5rem;
+    /* <details> by default lays out as block with its children stacked;
+     * we reset it to a horizontal bar on wide viewports and only expose
+     * the disclosure affordance on narrow ones (see @media below). */
+    display: block;
     padding: 0.25rem 1rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-subtle);
@@ -371,7 +373,53 @@ html {
     /* Keep the secondary row optically compact while still giving its
      * tap targets a 36-px minimum height (AA) via the links below. */
     min-height: var(--density-touch-size);
+}
+
+.topnav-secondary__links {
+    display: flex;
+    gap: 0.5rem;
     align-items: stretch;
+    min-height: var(--density-touch-size);
+}
+
+/* Remove the default browser disclosure triangle; the summary is hidden
+ * on wide viewports and gets its own hamburger icon on narrow. */
+.topnav-secondary__summary {
+    display: none;
+    list-style: none;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--density-touch-size);
+    padding: 0 0.75rem;
+    color: var(--fg);
+    border-radius: 0.25rem;
+    user-select: none;
+}
+
+.topnav-secondary__summary::-webkit-details-marker { display: none; }
+
+.topnav-secondary__summary-icon {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+    color: var(--fg-muted);
+}
+
+.topnav-secondary__summary-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.topnav-secondary__summary:hover,
+.topnav-secondary__summary:focus-visible {
+    background: var(--bg);
+}
+
+.topnav-secondary__summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .topnav-secondary__link {
@@ -393,6 +441,34 @@ html {
 .topnav-secondary__link--active {
     color: var(--fg);
     font-weight: 600;
+}
+
+/* ≤640 px: collapse the primary nav into a disclosure. The summary
+ * becomes the tap target; the link row reveals itself as a vertical
+ * dropdown when the user expands the <details>. Pure CSS, no JS. */
+@media (max-width: 640px) {
+    .topnav-secondary {
+        padding: 0;
+    }
+    .topnav-secondary__summary {
+        display: inline-flex;
+        padding: 0 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .topnav-secondary:not([open]) .topnav-secondary__links {
+        display: none;
+    }
+    .topnav-secondary[open] .topnav-secondary__links {
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 0.25rem 0.5rem 0.5rem;
+        border-top: 1px solid var(--border);
+    }
+    .topnav-secondary[open] .topnav-secondary__link {
+        padding: 0 0.75rem;
+        width: 100%;
+    }
 }
 
 /* ──────────────────────────── home ────────────────────────────────── */

@@ -46,11 +46,29 @@ templ topnavV2(activePath string) {
 			</span>
 		</a>
 	</header>
-	<nav class="topnav-secondary" aria-label="Primary">
-		<a href="/users" class={ navLinkClass(activePath, "/users") }>Users</a>
-		<a href="/groups" class={ navLinkClass(activePath, "/groups") }>Groups</a>
-		<a href="/computers" class={ navLinkClass(activePath, "/computers") }>Computers</a>
-	</nav>
+	// Primary nav is a native <details> disclosure so the ≤640 px
+	// breakpoint can collapse it into a hamburger without any JS state
+	// machine. On wider viewports the <summary> is CSS-hidden and the
+	// link list is forced visible via author CSS (overriding the UA
+	// <details> display rules); on narrow viewports the <summary>
+	// becomes the tap target that reveals / hides the drawer.
+	<details class="topnav-secondary">
+		<summary class="topnav-secondary__summary" aria-label="Primary navigation menu">
+			<span class="topnav-secondary__summary-icon" aria-hidden="true">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+					<path d="M2.5 4.5h11"></path>
+					<path d="M2.5 8h11"></path>
+					<path d="M2.5 11.5h11"></path>
+				</svg>
+			</span>
+			<span class="topnav-secondary__summary-label">Menu</span>
+		</summary>
+		<nav class="topnav-secondary__links" aria-label="Primary">
+			<a href="/users" class={ navLinkClass(activePath, "/users") }>Users</a>
+			<a href="/groups" class={ navLinkClass(activePath, "/groups") }>Groups</a>
+			<a href="/computers" class={ navLinkClass(activePath, "/computers") }>Computers</a>
+		</nav>
+	</details>
 }
 
 func navLinkClass(activePath, linkPath string) string {
