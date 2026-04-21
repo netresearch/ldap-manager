@@ -4,6 +4,8 @@ package templates
 import (
 	"fmt"
 	"net/url"
+	"strings"
+	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -98,8 +100,12 @@ templ groupRowV2(g ldap.Group) {
 			title={ "View " + g.CN() }
 		>
 			<span class="list-row__dot" data-enabled="true"></span>
-			<span class="list-row__type-icon" aria-hidden="true">
-				@iconGroup()
+			<span class="list-row__type-icon" aria-hidden="true" title={ groupRowKindTitle(g) }>
+				if g.IsSecurity() {
+					@iconShield()
+				} else {
+					@iconGroup()
+				}
 			</span>
 			<span class="list-row__admin-slot" aria-hidden="true"></span>
 			<span class="list-row__primary">{ g.CN() }</span>
@@ -154,10 +160,40 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 
 	<p class="drawer__dn">{ vm.Group.DN() }</p>
 
-	if !inDrawer || vm.Group.Description != "" {
+	if !inDrawer || vm.Group.Scope() != "" || vm.Group.Description != "" || vm.Group.ManagedByDN != "" || vm.Group.WhenCreated > 0 {
 		<section class="drawer__section">
-			<h3 class="drawer__section-title">Description</h3>
-			<p>{ notSetOr(vm.Group.Description) }</p>
+			<h3 class="drawer__section-title">Attributes</h3>
+			<dl class="drawer__kv">
+				if vm.Group.Scope() != "" {
+					<dt>Kind</dt>
+					<dd>
+						{ groupKindLabel(vm.Group) }
+						<span class="drawer__badge">{ vm.Group.Scope() }</span>
+					</dd>
+				}
+				if !inDrawer || vm.Group.Description != "" {
+					<dt>Description</dt>
+					<dd>{ notSetOr(vm.Group.Description) }</dd>
+				}
+				if !inDrawer || vm.Group.ManagedByDN != "" {
+					<dt>Managed by</dt>
+					<dd>
+						if vm.Group.ManagedByDN != "" {
+							<a href={ templ.URL("/users/" + vm.Group.ManagedByDN) } title={ vm.Group.ManagedByDN }>{ groupManagerLabel(vm.Group.ManagedByDN) }</a>
+						} else {
+							(not set)
+						}
+					</dd>
+				}
+				if !inDrawer || vm.Group.WhenCreated > 0 {
+					<dt>Created</dt>
+					<dd>{ formatGroupTimestamp(vm.Group.WhenCreated) }</dd>
+				}
+				if !inDrawer || vm.Group.WhenChanged > 0 {
+					<dt>Modified</dt>
+					<dd>{ formatGroupTimestamp(vm.Group.WhenChanged) }</dd>
+				}
+			</dl>
 		</section>
 	}
 
@@ -286,11 +322,77 @@ func groupDrawerFragmentHref(g ldap.Group) string {
 	return "/groups/" + url.PathEscape(g.DN()) + "?fragment=drawer"
 }
 
+// groupKindLabel returns "Security" / "Distribution" / "Unknown"
+// depending on the bitmask. Non-AD entries with GroupType=0 render as
+// "Unknown" so the label always reads cleanly.
+func groupKindLabel(g *ldap_cache.FullLDAPGroup) string {
+	if g == nil {
+		return "Unknown"
+	}
+
+	switch {
+	case g.IsSecurity():
+		return "Security"
+	case g.IsDistribution():
+		return "Distribution"
+	default:
+		return "Unknown"
+	}
+}
+
+// groupManagerLabel strips the "CN=" prefix from a managedBy DN.
+// Mirrors users_v2.managerLabel.
+func groupManagerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
+}
+
+// formatGroupTimestamp renders a Unix-seconds timestamp, falling back
+// to "(not set)" when absent so the drawer KV row is always readable.
+func formatGroupTimestamp(t int64) string {
+	if t <= 0 {
+		return "(not set)"
+	}
+
+	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+}
+
 // groupEditHref is the POST target for drawer tag remove/add forms. Mirrors
 // userEditHref — shares the existing /groups/<dn> POST route for member
 // modifications dispatched inside groupModifyHandler.
 func groupEditHref(g ldap.Group) string {
 	return "/groups/" + url.PathEscape(g.DN())
+}
+
+// groupRowKindTitle returns a tooltip describing the security /
+// distribution kind + scope so the iconShield vs iconGroup glyph
+// swap on the row has an accessible hover explanation.
+func groupRowKindTitle(g ldap.Group) string {
+	kind := "Group"
+	switch {
+	case g.IsSecurity():
+		kind = "Security group"
+	case g.IsDistribution():
+		kind = "Distribution group"
+	}
+
+	if scope := g.Scope(); scope != "" {
+		return kind + " · " + scope
+	}
+
+	return kind
 }
 
 // groupSearchText concatenates group fields the free-text list filter

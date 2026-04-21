@@ -4,6 +4,7 @@ package templates
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -277,11 +278,59 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 				} else {
 					Disabled
 				}
+				if vm.User.MustChangePassword {
+					<span class="drawer__badge drawer__badge--warn" title="The account must change password at next logon (AD pwdLastSet=0)">must change password</span>
+				}
+				if vm.User.LockoutTime > 0 {
+					<span class="drawer__badge drawer__badge--danger" title={ "Locked at " + formatLastLogonV2(vm.User.LockoutTime) }>locked</span>
+				}
 			</dd>
+			if !inDrawer || vm.User.DisplayName != "" {
+				<dt>Display name</dt>
+				<dd>{ notSetOr(vm.User.DisplayName) }</dd>
+			}
+			if !inDrawer || vm.User.GivenName != "" || vm.User.Surname != "" {
+				<dt>Given / Surname</dt>
+				<dd>{ notSetOr(joinName(vm.User.GivenName, vm.User.Surname)) }</dd>
+			}
 			if !inDrawer || derefString(vm.User.Mail) != "" {
 				<dt>Email</dt>
 				<dd>
 					@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)", vm.CSRFToken)
+				</dd>
+			}
+			if !inDrawer || vm.User.TelephoneNumber != "" {
+				<dt>Phone</dt>
+				<dd>{ notSetOr(vm.User.TelephoneNumber) }</dd>
+			}
+			if !inDrawer || vm.User.Mobile != "" {
+				<dt>Mobile</dt>
+				<dd>{ notSetOr(vm.User.Mobile) }</dd>
+			}
+			if !inDrawer || vm.User.Title != "" {
+				<dt>Title</dt>
+				<dd>{ notSetOr(vm.User.Title) }</dd>
+			}
+			if !inDrawer || vm.User.Department != "" {
+				<dt>Department</dt>
+				<dd>{ notSetOr(vm.User.Department) }</dd>
+			}
+			if !inDrawer || vm.User.Company != "" {
+				<dt>Company</dt>
+				<dd>{ notSetOr(vm.User.Company) }</dd>
+			}
+			if !inDrawer || vm.User.Office != "" {
+				<dt>Office</dt>
+				<dd>{ notSetOr(vm.User.Office) }</dd>
+			}
+			if !inDrawer || vm.User.ManagerDN != "" {
+				<dt>Manager</dt>
+				<dd>
+					if vm.User.ManagerDN != "" {
+						<a href={ templ.URL("/users/" + vm.User.ManagerDN) } title={ vm.User.ManagerDN }>{ managerLabel(vm.User.ManagerDN) }</a>
+					} else {
+						(not set)
+					}
 				</dd>
 			}
 			if !inDrawer || vm.User.Description != "" {
@@ -293,6 +342,22 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			if !inDrawer || vm.User.LastLogon > 0 {
 				<dt>Last logon</dt>
 				<dd>{ formatLastLogonV2(vm.User.LastLogon) }</dd>
+			}
+			if !inDrawer || vm.User.PwdLastSet > 0 {
+				<dt>Password set</dt>
+				<dd>{ formatLastLogonV2(vm.User.PwdLastSet) }</dd>
+			}
+			if !inDrawer || vm.User.AccountExpires != 0 {
+				<dt>Account expires</dt>
+				<dd>{ formatAccountExpires(vm.User.AccountExpires) }</dd>
+			}
+			if !inDrawer || vm.User.WhenCreated > 0 {
+				<dt>Created</dt>
+				<dd>{ formatLastLogonV2(vm.User.WhenCreated) }</dd>
+			}
+			if !inDrawer || vm.User.WhenChanged > 0 {
+				<dt>Modified</dt>
+				<dd>{ formatLastLogonV2(vm.User.WhenChanged) }</dd>
 			}
 		</dl>
 	</section>
@@ -488,6 +553,56 @@ func formatLastLogonV2(timestamp int64) string {
 	}
 
 	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// formatAccountExpires handles the three-value encoding returned by
+// simple-ldap-go's parseAccountExpires: 0 = unset, -1 = never, >0 =
+// real Unix-seconds expiry timestamp.
+func formatAccountExpires(v int64) string {
+	switch {
+	case v < 0:
+		return "Never"
+	case v == 0:
+		return "(not set)"
+	default:
+		return time.Unix(v, 0).Format("2006-01-02 15:04:05")
+	}
+}
+
+// joinName combines givenName + sn into a display-friendly "Given Sn"
+// pair. Returns "" when both are empty.
+func joinName(given, surname string) string {
+	switch {
+	case given == "" && surname == "":
+		return ""
+	case given == "":
+		return surname
+	case surname == "":
+		return given
+	default:
+		return given + " " + surname
+	}
+}
+
+// managerLabel extracts the CN portion of a manager DN for display
+// (e.g. "CN=Alice,OU=…" → "Alice"). Falls back to the full DN when
+// the CN component can't be isolated so the UI still shows something
+// clickable.
+func managerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
 }
 
 // limitGroups caps a user's resolved Groups slice at n entries for drawer

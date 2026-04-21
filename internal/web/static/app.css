@@ -1627,6 +1627,35 @@ input[type="text"].list-page__search {
     border-color: var(--border-strong);
 }
 
+/* Inline badges inside drawer__kv values — used for status flags like
+ * "must change password" (warn) or "locked" (danger). Small uppercase
+ * pills so they read as supplementary metadata, not primary content. */
+.drawer__badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--fg-muted);
+    background: var(--bg);
+}
+
+.drawer__badge--warn {
+    color: #b45309;
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.drawer__badge--danger {
+    color: #b91c1c;
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
 /* Sticky pivots: for drawers with long tag lists (a user in 30 groups,
  * a group with 200 members) the pivot actions would otherwise be buried
  * at the bottom of a long scroll. Pinning to the drawer's bottom keeps

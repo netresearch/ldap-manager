@@ -275,6 +275,24 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 				<dt>Last logon</dt>
 				<dd>{ formatComputerLastLogon(vm.Computer.LastLogon) }</dd>
 			}
+			if !inDrawer || vm.Computer.ManagedByDN != "" {
+				<dt>Managed by</dt>
+				<dd>
+					if vm.Computer.ManagedByDN != "" {
+						<a href={ templ.URL("/users/" + vm.Computer.ManagedByDN) } title={ vm.Computer.ManagedByDN }>{ computerManagerLabel(vm.Computer.ManagedByDN) }</a>
+					} else {
+						(not set)
+					}
+				</dd>
+			}
+			if !inDrawer || vm.Computer.WhenCreated > 0 {
+				<dt>Created</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.WhenCreated) }</dd>
+			}
+			if !inDrawer || vm.Computer.WhenChanged > 0 {
+				<dt>Modified</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.WhenChanged) }</dd>
+			}
 		</dl>
 	</section>
 
@@ -368,6 +386,26 @@ func formatComputerLastLogon(timestamp int64) string {
 	}
 
 	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// computerManagerLabel extracts the CN portion of a managedBy DN.
+// Mirrors users_v2.managerLabel; duplicated here to keep each entity
+// package self-contained.
+func computerManagerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
 }
 
 // computerSearchText concatenates the fields the free-text list filter
