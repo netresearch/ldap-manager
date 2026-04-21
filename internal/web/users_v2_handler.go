@@ -240,6 +240,7 @@ func filterUsersByMemberOf(users []ldap.User, groupDN string, cache *ldap_cache.
 		for _, memberDN := range g.Members {
 			groupMembers[memberDN] = struct{}{}
 		}
+
 		break
 	}
 
