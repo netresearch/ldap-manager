@@ -1271,3 +1271,102 @@ input[type="text"].list-page__search {
     outline-color: var(--accent);
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 30%, transparent);
 }
+
+/* ──────────────── dark mode: deeper terminal personality ─────────────────
+ * Cursor blink on the greeting + palette/home search icons. The `::after`
+ * is a decorative pseudo-element, so it does not leak into the accessible
+ * name. Respects prefers-reduced-motion via the global rule above. */
+@keyframes caret-blink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+:root[data-theme="dark"] .home__greet::after {
+    content: "_";
+    display: inline-block;
+    margin-left: 0.125em;
+    color: var(--accent);
+    animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+:root[data-theme="dark"] .palette__icon,
+:root[data-theme="dark"] .home__search > :first-child,
+:root[data-theme="dark"] .topnav__cmdk > :first-child {
+    animation: caret-blink 1.3s steps(1, end) infinite;
+}
+
+/* Terminal-prompt glyph on list-row and home-list primary text. Decorative
+ * pseudo-element; does not change the accessible name of the link. */
+:root[data-theme="dark"] .list-row__primary::before,
+:root[data-theme="dark"] .home__list-link::before {
+    content: "▸ ";
+    color: var(--accent);
+    opacity: 0.75;
+}
+
+/* Green scan-line style row hover in dark — flat left bar + tinted bg. */
+:root[data-theme="dark"] .list-row__link:hover,
+:root[data-theme="dark"] .list-row__link:focus-visible {
+    background: color-mix(in oklab, var(--accent) 8%, var(--bg-subtle));
+    box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+:root[data-theme="dark"] .home__list-item:hover {
+    background: color-mix(in oklab, var(--accent) 8%, var(--bg-subtle));
+    box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+/* Kbd glyphs in dark take the accent. Covers all inline kbd chips. */
+:root[data-theme="dark"] .topnav__cmdk kbd,
+:root[data-theme="dark"] .home__search kbd,
+:root[data-theme="dark"] .palette__footer kbd,
+:root[data-theme="dark"] .palette__esc {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+    background: var(--bg);
+}
+
+/* Stronger accent on section dividers (drawer separators + topnav border). */
+:root[data-theme="dark"] .drawer__section {
+    border-top-color: color-mix(in oklab, var(--accent) 28%, var(--border));
+}
+
+:root[data-theme="dark"] .topnav {
+    border-bottom-color: color-mix(in oklab, var(--accent) 25%, var(--border));
+}
+
+:root[data-theme="dark"] .topnav-secondary {
+    border-bottom-color: color-mix(in oklab, var(--accent) 18%, var(--border));
+}
+
+/* Flat right-angle corners across the board in dark mode — previously
+ * scoped to a limited set of surfaces, now extended to buttons, chips,
+ * inputs, pin-stars and edit glyphs for a consistent terminal feel. */
+:root[data-theme="dark"] .login-card input,
+:root[data-theme="dark"] .login-card button[type="submit"],
+:root[data-theme="dark"] .flash,
+:root[data-theme="dark"] .filter-chip,
+:root[data-theme="dark"] .drawer__tag,
+:root[data-theme="dark"] .drawer__badge,
+:root[data-theme="dark"] .drawer__pivot,
+:root[data-theme="dark"] .list-row__link,
+:root[data-theme="dark"] .list-row__badge,
+:root[data-theme="dark"] .home__list-item,
+:root[data-theme="dark"] .home__list-type,
+:root[data-theme="dark"] .palette__item,
+:root[data-theme="dark"] .palette__type,
+:root[data-theme="dark"] .palette__footer kbd,
+:root[data-theme="dark"] .palette__esc,
+:root[data-theme="dark"] .pin-star,
+:root[data-theme="dark"] .kv-edit__save,
+:root[data-theme="dark"] .bulk-bar,
+:root[data-theme="dark"] .bulk-bar__action,
+:root[data-theme="dark"] .bulk-bar__cancel {
+    border-radius: 0;
+}
+
+/* Filter-chip is pill-shaped by default; flatten in dark. */
+:root[data-theme="dark"] .filter-chip,
+:root[data-theme="dark"] .drawer__tag {
+    border-radius: 0;
+}
