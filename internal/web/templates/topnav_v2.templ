@@ -11,7 +11,15 @@ type PinnedEntry struct {
 
 // topnavV2 renders the sticky top navigation shared across signed-in
 // routes.
+//
+// The `Skip to main content` link is the first focusable element in the
+// page and is visually hidden until focused, satisfying WCAG 2.4.1
+// (Bypass Blocks) — keyboard users can bypass the top nav / primary nav
+// without tabbing through every header control on every page. Each
+// <main class="list-page"/"home"> in the signed-in routes carries the
+// matching id="main-content" so this link advances focus past the nav.
 templ topnavV2(activePath string) {
+	<a class="skip-link" href="#main-content">Skip to main content</a>
 	<header class="topnav">
 		<a class="topnav__logo" href="/" aria-label="Home">LDAP Manager</a>
 		<span class="topnav__spacer"></span>

@@ -27,7 +27,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 	@baseV2("Users") {
 		@topnavV2("/users")
 
-		<main class="list-page">
+		<main id="main-content" class="list-page">
 			<header class="list-page__head">
 				<h1 class="list-page__title">Users</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
@@ -118,7 +118,7 @@ templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
 	@baseV2(vm.User.CN()) {
 		@topnavV2("/users")
 
-		<main class="list-page list-page--single">
+		<main id="main-content" class="list-page list-page--single">
 			<div class="list-page__pane">
 				<aside class="drawer drawer--full" aria-label="User detail">
 					@userDrawerContents(vm)

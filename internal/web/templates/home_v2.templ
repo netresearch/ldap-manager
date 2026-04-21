@@ -8,7 +8,7 @@ templ HomeV2(userCN string, pinned []PinnedEntry) {
 	@baseV2("Home") {
 		@topnavV2("/")
 
-		<main class="home">
+		<main id="main-content" class="home">
 			<h1 class="home__greet">Hi { userCN } — what are you looking for?</h1>
 			<p class="home__lede">
 				Search users, groups, computers, or run an action.

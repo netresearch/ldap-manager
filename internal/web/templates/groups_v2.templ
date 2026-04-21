@@ -27,7 +27,7 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
-		<main class="list-page">
+		<main id="main-content" class="list-page">
 			<header class="list-page__head">
 				<h1 class="list-page__title">Groups</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
@@ -92,7 +92,7 @@ templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
 	@baseV2(vm.Group.CN()) {
 		@topnavV2("/groups")
 
-		<main class="list-page list-page--single">
+		<main id="main-content" class="list-page list-page--single">
 			<div class="list-page__pane">
 				<aside class="drawer drawer--full" aria-label="Group detail">
 					@groupDrawerContents(vm)
