@@ -1,6 +1,8 @@
 // internal/web/templates/ou_rail.templ — shared OU tree rail (Phase 2).
 package templates
 
+import "strings"
+
 // ouHref maps an OU value (or "" for the all-entities view) to the final
 // templ.SafeURL used by the rail anchor. Each list page supplies a
 // closure that folds its own stacked filters (show-disabled, last-logon)
@@ -31,14 +33,27 @@ templ ouRail(basePath string, ous []string, activeOU string, href ouHref) {
 						<a
 							class={ ouChipClass(ou == activeOU) }
 							href={ href(ou) }
+							title={ ou }
 						>
-							{ ou }
+							{ ouChipLabel(ou) }
 						</a>
 					</li>
 				}
 			</ul>
 		</nav>
 	}
+}
+
+// ouChipLabel strips the "ou=" attribute prefix from a raw RDN so the
+// rail reads as clean OU names under the "OUs" heading — the prefix is
+// redundant context. The raw value is kept as a `title` attribute so
+// the full RDN is still available on hover.
+func ouChipLabel(rdn string) string {
+	if strings.HasPrefix(strings.ToLower(rdn), "ou=") {
+		return rdn[3:]
+	}
+
+	return rdn
 }
 
 // ouChipClass reuses the filter-chip visuals but widens the chip to span

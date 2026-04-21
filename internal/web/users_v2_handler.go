@@ -3,6 +3,7 @@ package web
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -92,6 +93,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
+	adminDNs := adminUserDNs(a.ldapCache)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
@@ -99,9 +101,43 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		users, showDisabled, ouFilter, lastLogon,
 		memberOf, memberOfCN, ous,
 		templates.Flashes(), a.paletteContextFor(viewerDN),
+		adminDNs,
 	)
 
 	return page.Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// adminUserDNs collects the DNs of users that are members of a group
+// whose CN matches a short "privileged" name list (admins, domain
+// admins, enterprise admins — case-insensitive). Returns a set so the
+// list template's check stays O(1) per row. A nil cache yields nil.
+func adminUserDNs(cache *ldap_cache.Manager) map[string]struct{} {
+	if cache == nil {
+		return nil
+	}
+
+	privilegedNames := map[string]struct{}{
+		"admins":            {},
+		"domain admins":     {},
+		"enterprise admins": {},
+		"administrators":    {},
+		"schema admins":     {},
+	}
+
+	out := make(map[string]struct{})
+
+	for _, g := range cache.FindGroups() {
+		cn := strings.ToLower(g.CN())
+		if _, ok := privilegedNames[cn]; !ok {
+			continue
+		}
+
+		for _, memberDN := range g.Members {
+			out[memberDN] = struct{}{}
+		}
+	}
+
+	return out
 }
 
 // lookupGroupCN resolves a group DN to its CN via ldap_cache. Empty DN or

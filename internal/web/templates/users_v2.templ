@@ -25,7 +25,7 @@ type UserDrawerVM struct {
 	CSRFToken   string // current-session CSRF token used by embedded POST forms
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -58,8 +58,8 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 					}
 				</a>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon, memberOfDN) }>
-						ou={ ouFilter } ×
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon, memberOfDN) } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
 					</a>
 				}
 				if memberOfDN != "" {
@@ -82,7 +82,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 
 				<ul class="list-rows" data-search-list aria-label="Users">
 					for _, u := range users {
-						@userRowV2(u)
+						@userRowV2(u, adminDNs)
 					}
 					if len(users) == 0 {
 						<li class="list-rows__empty">No users match.</li>
@@ -99,8 +99,8 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 	}
 }
 
-templ userRowV2(u ldap.User) {
-	<li class="list-row list-row--selectable" data-search-item data-search-text={ userSearchText(u) }>
+templ userRowV2(u ldap.User, adminDNs map[string]struct{}) {
+	<li class={ userRowClass(u) } data-search-item data-search-text={ userSearchText(u) }>
 		<label class="list-row__check-wrap" aria-label={ "Select " + u.CN() }>
 			<input
 				type="checkbox"
@@ -118,21 +118,84 @@ templ userRowV2(u ldap.User) {
 			hx-push-url="true"
 			title={ "View " + u.CN() }
 		>
-			if u.Enabled {
-				<span class="list-row__dot" data-enabled="true"></span>
-			} else {
-				<span class="list-row__dot"></span>
-			}
+			<span
+				class="list-row__dot"
+				data-enabled={ enabledAttr(u.Enabled) }
+				data-recency={ recencyLevel(u.LastLogon) }
+				title={ recencyTitle(u.LastLogon) }
+			></span>
 			<span class="list-row__type-icon" aria-hidden="true">
 				@iconUser()
 			</span>
+			if _, ok := adminDNs[u.DN()]; ok {
+				<span class="list-row__admin" aria-label="Privileged" title="Privileged (member of an admin group)">
+					@iconShield()
+				</span>
+			} else {
+				<span class="list-row__admin-slot" aria-hidden="true"></span>
+			}
 			<span class="list-row__primary">{ u.CN() }</span>
 			<span class="list-row__secondary">{ u.SAMAccountName }</span>
 			if !u.Enabled {
+				<span class="list-row__lock" aria-hidden="true">
+					@iconLock()
+				</span>
 				<span class="list-row__badge">disabled</span>
 			}
 		</a>
 	</li>
+}
+
+// userRowClass returns the row wrapper class. When the user is disabled
+// the row gets a modifier that the CSS uses to dim the content and
+// strike-through the primary name — so a busy list visually separates
+// disabled accounts from active ones at a glance.
+func userRowClass(u ldap.User) string {
+	if u.Enabled {
+		return "list-row list-row--selectable"
+	}
+
+	return "list-row list-row--selectable list-row--disabled"
+}
+
+func enabledAttr(enabled bool) string {
+	if enabled {
+		return "true"
+	}
+
+	return "false"
+}
+
+// recencyLevel buckets a lastLogonTimestamp into a visual tier for the
+// list-row dot. Buckets mirror the last-logon filter chips (24h / 7d /
+// 30d / never).
+func recencyLevel(lastLogon int64) string {
+	if lastLogon <= 0 {
+		return "never"
+	}
+
+	t := time.Unix(lastLogon, 0)
+	now := time.Now()
+	switch {
+	case t.After(now.Add(-24 * time.Hour)):
+		return "fresh"
+	case t.After(now.Add(-7 * 24 * time.Hour)):
+		return "recent"
+	case t.After(now.Add(-30 * 24 * time.Hour)):
+		return "stale"
+	default:
+		return "old"
+	}
+}
+
+// recencyTitle is the tooltip shown on the recency dot — converts the
+// raw timestamp into a human-readable last-seen string.
+func recencyTitle(lastLogon int64) string {
+	if lastLogon <= 0 {
+		return "Never logged in"
+	}
+
+	return "Last logon: " + time.Unix(lastLogon, 0).Format("2006-01-02 15:04")
 }
 
 // userSearchText concatenates the user fields the free-text filter
@@ -289,9 +352,9 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			}
 			if vm.OUPivotHref != "" {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other users in " + vm.OUName } title={ "Other users in " + vm.OUName }>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other users in " + ouChipLabel(vm.OUName) } title={ "Other users in " + vm.OUName }>
 						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
-						<span class="drawer__pivot-text">Other users in { vm.OUName }</span>
+						<span class="drawer__pivot-text">Other users in { ouChipLabel(vm.OUName) }</span>
 					</a>
 				</li>
 			}

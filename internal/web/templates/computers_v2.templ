@@ -4,6 +4,7 @@ package templates
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -46,8 +47,8 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 					data-form-type="other"
 				/>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ clearComputersOUHref() }>
-						ou={ ouFilter } ×
+					<a class="filter-chip filter-chip--on" href={ clearComputersOUHref() } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
 					</a>
 				}
 			</div>
@@ -75,7 +76,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 }
 
 templ computerRowV2(cp ldap.Computer) {
-	<li class="list-row list-row--selectable" data-search-item data-search-text={ computerSearchText(cp) }>
+	<li class={ computerRowClass(cp) } data-search-item data-search-text={ computerSearchText(cp) }>
 		<label class="list-row__check-wrap" aria-label={ "Select " + cp.CN() }>
 			<input
 				type="checkbox"
@@ -93,19 +94,93 @@ templ computerRowV2(cp ldap.Computer) {
 			hx-push-url="true"
 			title={ "View " + cp.CN() }
 		>
-			<span class="list-row__dot" data-enabled={ computerEnabledAttr(cp) }></span>
-			<span class="list-row__type-icon" aria-hidden="true">
-				@iconComputer()
+			<span
+				class="list-row__dot"
+				data-enabled={ computerEnabledAttr(cp) }
+				data-recency={ recencyLevel(cp.LastLogon) }
+				title={ recencyTitle(cp.LastLogon) }
+			></span>
+			<span class="list-row__type-icon" aria-hidden="true" title={ cp.OS }>
+				@osIcon(cp.OS)
 			</span>
+			<span class="list-row__admin-slot" aria-hidden="true"></span>
 			<span class="list-row__primary">{ cp.CN() }</span>
-			if cp.SAMAccountName != "" && cp.SAMAccountName != cp.CN() {
+			if osSummary(cp.OS, cp.OSVersion) != "" {
+				<span class="list-row__secondary">{ osSummary(cp.OS, cp.OSVersion) }</span>
+			} else if cp.SAMAccountName != "" && cp.SAMAccountName != cp.CN() {
 				<span class="list-row__secondary">{ cp.SAMAccountName }</span>
 			}
 			if !cp.Enabled {
+				<span class="list-row__lock" aria-hidden="true">
+					@iconLock()
+				</span>
 				<span class="list-row__badge">disabled</span>
 			}
 		</a>
 	</li>
+}
+
+// computerRowClass applies the list-row--disabled modifier the same way
+// the user row does — dims the row and strike-throughs the CN for
+// disabled machines.
+func computerRowClass(cp ldap.Computer) string {
+	if cp.Enabled {
+		return "list-row list-row--selectable"
+	}
+
+	return "list-row list-row--selectable list-row--disabled"
+}
+
+// osKind bucketises a raw operatingSystem string into a family key the
+// template uses to pick a glyph. Keeps the matching lenient so minor
+// spelling variations still classify ("Windows Server 2022", "Windows
+// 11 Pro", "Ubuntu 22.04" all resolve sensibly).
+func osKind(os string) string {
+	low := strings.ToLower(os)
+	switch {
+	case low == "":
+		return ""
+	case strings.Contains(low, "windows"):
+		return "windows"
+	case strings.Contains(low, "mac") || strings.Contains(low, "os x") || strings.Contains(low, "darwin"):
+		return "mac"
+	case strings.Contains(low, "linux") || strings.Contains(low, "ubuntu") || strings.Contains(low, "debian") ||
+		strings.Contains(low, "centos") || strings.Contains(low, "fedora") || strings.Contains(low, "red hat") ||
+		strings.Contains(low, "rhel") || strings.Contains(low, "suse") || strings.Contains(low, "alpine"):
+		return "linux"
+	default:
+		return ""
+	}
+}
+
+templ osIcon(os string) {
+	switch osKind(os) {
+		case "windows":
+			@iconOSWindows()
+		case "mac":
+			@iconOSApple()
+		case "linux":
+			@iconOSLinux()
+		default:
+			@iconComputer()
+	}
+}
+
+// osSummary combines the OS family name and version into a compact
+// secondary label: "Windows 11 Pro 10.0.22621", "Ubuntu 22.04", etc.
+// Falls back to the raw OS string when no version is known. Empty when
+// neither is populated.
+func osSummary(os, osVersion string) string {
+	switch {
+	case os == "" && osVersion == "":
+		return ""
+	case os == "":
+		return osVersion
+	case osVersion == "":
+		return os
+	default:
+		return os + " · " + osVersion
+	}
 }
 
 templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
@@ -226,9 +301,9 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 			}
 			if vm.OUPivotHref != "" {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other computers in " + vm.OUName } title={ "Other computers in " + vm.OUName }>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other computers in " + ouChipLabel(vm.OUName) } title={ "Other computers in " + vm.OUName }>
 						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
-						<span class="drawer__pivot-text">Other computers in { vm.OUName }</span>
+						<span class="drawer__pivot-text">Other computers in { ouChipLabel(vm.OUName) }</span>
 					</a>
 				</li>
 			}

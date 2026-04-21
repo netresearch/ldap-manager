@@ -1234,7 +1234,17 @@ input[type="text"].list-page__search {
 
 .list-row__link {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    /* Columns, fixed positions so optional markers (admin shield,
+     * trailing lock/count/badge) don't shift CN placement row-to-row:
+     *   1: recency/enabled dot
+     *   2: type icon
+     *   3: privileged shield slot (empty for non-admin rows)
+     *   4: primary (CN) — 1fr, ellipsis-truncating
+     *   5: secondary (sAM / OS / description)
+     *   6: trailing slot 1 (lock for disabled, count pill for groups)
+     *   7: trailing slot 2 (disabled badge)
+     */
+    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto;
     gap: 0.625rem;
     align-items: center;
     padding: 0.5rem 0.875rem;
@@ -1244,6 +1254,15 @@ input[type="text"].list-page__search {
     font: inherit;
     min-height: var(--density-touch-size);
     min-width: 0;
+}
+
+/* Always reserve the admin-shield column so CN starts at a consistent
+ * left edge whether the row is privileged or not. Width matches the
+ * shield glyph (0.875rem). */
+.list-row__link .list-row__admin-slot {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex: 0 0 auto;
 }
 
 .list-row__link:hover,
@@ -1303,6 +1322,56 @@ input[type="text"].list-page__search {
     background: var(--accent);
 }
 
+/* Recency dot — data-recency is set by the row template from lastLogon.
+ *   fresh  ≤ 24h  → accent (green/bright)
+ *   recent ≤ 7d   → amber (#f59e0b)
+ *   stale  ≤ 30d  → muted grey
+ *   old    > 30d  → faint grey
+ *   never  = 0    → hollow ring
+ * Placed after the [data-enabled="true"] rule so recency signal can
+ * override the "enabled" default color when useful. */
+.list-row__dot[data-recency="fresh"]  { background: #16a34a; }
+.list-row__dot[data-recency="recent"] { background: #f59e0b; }
+.list-row__dot[data-recency="stale"]  { background: var(--fg-muted); opacity: 0.7; }
+.list-row__dot[data-recency="old"]    { background: var(--fg-muted); opacity: 0.4; }
+.list-row__dot[data-recency="never"]  {
+    background: transparent;
+    border: 1px dashed var(--fg-muted);
+    width: 0.625rem;
+    height: 0.625rem;
+}
+
+/* Disabled row: dim the whole link + strike the primary text. The
+ * trailing "disabled" badge + padlock glyph also call it out. */
+.list-row--disabled .list-row__link { opacity: 0.6; }
+.list-row--disabled .list-row__primary { text-decoration: line-through; }
+
+.list-row__lock {
+    display: inline-flex;
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--fg-muted);
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.list-row__lock svg { width: 100%; height: 100%; display: block; }
+
+/* Admin/privileged shield — small gold-tinted glyph that rides beside
+ * the type icon so a quick row scan identifies privileged users. */
+.list-row__admin {
+    display: inline-flex;
+    width: 0.875rem;
+    height: 0.875rem;
+    color: #d97706;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.list-row__admin svg { width: 100%; height: 100%; display: block; }
+
 /* Primary name text: truncate with an ellipsis rather than wrap, so a
  * long CN / sAMAccountName doesn't break the grid row height and keep
  * the dense list rhythm. min-width:0 lets a grid/flex child shrink
@@ -1332,6 +1401,22 @@ input[type="text"].list-page__search {
     border: 1px solid var(--border);
     border-radius: 0.25rem;
     color: var(--fg-muted);
+}
+
+/* Right-aligned tabular count pill for group rows (or any list row that
+ * wants a numeric summary). tabular-nums keeps digits aligned so a
+ * column of row counts scans neatly. */
+.list-row__count {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--fg-muted);
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-subtle);
+    min-width: 2rem;
+    text-align: center;
+    flex: 0 0 auto;
 }
 
 /* ──────────────────────────── drawer ───────────────────────────────── */

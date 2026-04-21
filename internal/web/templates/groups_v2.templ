@@ -50,8 +50,8 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 					data-form-type="other"
 				/>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ clearGroupsOUHref() }>
-						ou={ ouFilter } ×
+					<a class="filter-chip filter-chip--on" href={ clearGroupsOUHref() } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
 					</a>
 				}
 			</div>
@@ -101,8 +101,14 @@ templ groupRowV2(g ldap.Group) {
 			<span class="list-row__type-icon" aria-hidden="true">
 				@iconGroup()
 			</span>
+			<span class="list-row__admin-slot" aria-hidden="true"></span>
 			<span class="list-row__primary">{ g.CN() }</span>
-			<span class="list-row__secondary">{ fmt.Sprintf("%d members", len(g.Members)) }</span>
+			if g.Description != "" {
+				<span class="list-row__secondary">{ g.Description }</span>
+			}
+			<span class="list-row__count" title={ fmt.Sprintf("%d members", len(g.Members)) }>
+				{ fmt.Sprintf("%d", len(g.Members)) }
+			</span>
 		</a>
 	</li>
 }
@@ -233,9 +239,9 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 			}
 			if vm.OUPivotHref != "" {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other groups in " + vm.OUName } title={ "Other groups in " + vm.OUName }>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other groups in " + ouChipLabel(vm.OUName) } title={ "Other groups in " + vm.OUName }>
 						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
-						<span class="drawer__pivot-text">Other groups in { vm.OUName }</span>
+						<span class="drawer__pivot-text">Other groups in { ouChipLabel(vm.OUName) }</span>
 					</a>
 				</li>
 			}
