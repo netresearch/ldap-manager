@@ -70,6 +70,8 @@ func (a *App) handleUserV2Edit(c *fiber.Ctx, userDN, field, value string) error 
 		return c.Status(fiber.StatusNotFound).SendString("user not found")
 	}
 
+	vm.CSRFToken = a.GetCSRFToken(c)
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	// When htmx requested the edit we return the fresh drawer fragment. For a

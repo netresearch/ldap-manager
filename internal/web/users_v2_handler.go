@@ -128,6 +128,8 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
+	vm.CSRFToken = a.GetCSRFToken(c)
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	// Only honour ?fragment=drawer for actual htmx requests. A plain reload

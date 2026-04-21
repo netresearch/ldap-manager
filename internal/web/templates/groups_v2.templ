@@ -21,6 +21,7 @@ type GroupDrawerVM struct {
 	Pinned      bool
 	OUName      string // plain-text OU name, e.g. "ou=Groups" (for display)
 	OUPivotHref string // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
+	CSRFToken   string // current-session CSRF token used by embedded POST forms
 }
 
 templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -124,7 +125,7 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 			<h2 class="drawer__title">{ vm.Group.CN() }</h2>
 			<p class="drawer__sub">{ fmt.Sprintf("%d members", len(vm.Group.Members)) }</p>
 		</div>
-		@pinStarButton("group", vm.Group.DN(), vm.Pinned)
+		@pinStarButton("group", vm.Group.DN(), vm.Pinned, vm.CSRFToken)
 	</header>
 
 	<p class="drawer__dn">{ vm.Group.DN() }</p>

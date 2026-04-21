@@ -70,7 +70,8 @@ func (a *App) togglePin(c *fiber.Ctx, add bool) error {
 			entityType = "item"
 		}
 
-		return templates.PinStarFragment(entityType, target, add).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.PinStarFragment(entityType, target, add, a.GetCSRFToken(c)).
+			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

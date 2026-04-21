@@ -21,6 +21,7 @@ type UserDrawerVM struct {
 	Pinned      bool
 	OUName      string // plain-text OU name, e.g. "ou=Users" (for display)
 	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
+	CSRFToken   string // current-session CSRF token used by embedded POST forms
 }
 
 templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -150,7 +151,7 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			<h2 class="drawer__title">{ vm.User.CN() }</h2>
 			<p class="drawer__sub">{ vm.User.SAMAccountName }</p>
 		</div>
-		@pinStarButton("user", vm.User.DN(), vm.Pinned)
+		@pinStarButton("user", vm.User.DN(), vm.Pinned, vm.CSRFToken)
 	</header>
 
 	<p class="drawer__dn">{ vm.User.DN() }</p>
@@ -168,11 +169,11 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			</dd>
 			<dt>Email</dt>
 			<dd>
-				@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)")
+				@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)", vm.CSRFToken)
 			</dd>
 			<dt>Description</dt>
 			<dd>
-				@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)")
+				@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)", vm.CSRFToken)
 			</dd>
 		</dl>
 	</section>
@@ -230,13 +231,14 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 // fragment response into the surrounding #drawer. When no #drawer exists
 // (full-page user detail), htmx still succeeds and the new fragment
 // replaces the detail drawer contents via the `closest .drawer` target.
-templ userKVEdit(u ldap.User, field, inputType, value, placeholder string) {
+templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken string) {
 	<form
 		class="kv-edit"
 		hx-post={ userEditHref(u) }
 		hx-target="closest .drawer"
 		hx-swap="innerHTML"
 	>
+		<input type="hidden" name="csrf_token" value={ csrfToken }/>
 		<input type="hidden" name="field" value={ field }/>
 		<input
 			class="kv-edit__input"
@@ -260,16 +262,19 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder string) {
 // to parse the DN. hx-swap="outerHTML" on the <form> gives a stable target
 // whether the initial markup was a <form> (unpinned → pinned) or the
 // swapped-in response (pinned → unpinned).
-templ pinStarButton(entityType, entityDN string, pinned bool) {
-	@PinStarFragment(entityType, entityDN, pinned)
+templ pinStarButton(entityType, entityDN string, pinned bool, csrfToken string) {
+	@PinStarFragment(entityType, entityDN, pinned, csrfToken)
 }
 
 // PinStarFragment is the exported partial used both by detail pages (via
 // pinStarButton) and by the pin/unpin handlers when responding to an
-// HX-Request roundtrip.
-templ PinStarFragment(entityType, entityDN string, pinned bool) {
+// HX-Request roundtrip. The csrfToken argument is injected into every
+// form so the Fiber CSRF middleware (KeyLookup form:csrf_token) accepts
+// the htmx-driven POST; without it every click 403s.
+templ PinStarFragment(entityType, entityDN string, pinned bool, csrfToken string) {
 	if pinned {
 		<form class="pin-star-form" hx-post="/unpin" hx-target="this" hx-swap="outerHTML">
+			<input type="hidden" name="csrf_token" value={ csrfToken }/>
 			<input type="hidden" name="target" value={ entityDN }/>
 			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star pin-star--on" aria-label={ "Unpin " + entityType } aria-pressed="true">
@@ -278,6 +283,7 @@ templ PinStarFragment(entityType, entityDN string, pinned bool) {
 		</form>
 	} else {
 		<form class="pin-star-form" hx-post="/pin" hx-target="this" hx-swap="outerHTML">
+			<input type="hidden" name="csrf_token" value={ csrfToken }/>
 			<input type="hidden" name="target" value={ entityDN }/>
 			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star" aria-label={ "Pin " + entityType } aria-pressed="false">

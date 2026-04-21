@@ -15,6 +15,7 @@ type ComputerDrawerVM struct {
 	Pinned      bool
 	OUName      string // plain-text OU name, e.g. "ou=Computers" (for display)
 	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
+	CSRFToken   string // current-session CSRF token used by embedded POST forms
 }
 
 templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -121,7 +122,7 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 			<h2 class="drawer__title">{ vm.Computer.CN() }</h2>
 			<p class="drawer__sub">{ vm.Computer.SAMAccountName }</p>
 		</div>
-		@pinStarButton("computer", vm.Computer.DN(), vm.Pinned)
+		@pinStarButton("computer", vm.Computer.DN(), vm.Pinned, vm.CSRFToken)
 	</header>
 
 	<p class="drawer__dn">{ vm.Computer.DN() }</p>

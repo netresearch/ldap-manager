@@ -122,6 +122,8 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
+	vm.CSRFToken = a.GetCSRFToken(c)
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
