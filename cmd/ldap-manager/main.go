@@ -26,12 +26,18 @@ const (
 	defaultPort        = "3000"
 )
 
-// Build-injected version metadata. Populated by release.yml's ldflags
-// (`-X main.version=<tag>`, `-X main.build=<commit-sha>`,
-// `-X main.buildTime=<commit-timestamp>`); forwarded into
-// internal/version at init() so FormatVersion() / the `version`
-// subcommand report the release info without requiring each repo to
-// invent its own ldflag target-path convention.
+// Build-injected version metadata:
+//
+//	version   <- release.yml ldflags: -X main.version=<tag>
+//	build     <- release.yml ldflags: -X main.build=<commit-sha>
+//	buildTime <- build-go-attest.yml's auto-build-timestamp step
+//	             (ISO-8601 from `git show -s --format=%cI HEAD`);
+//	             works for tag push AND workflow_dispatch backfills
+//	             because it reads git, not github.event.head_commit.
+//
+// Forwarded into internal/version at init() so FormatVersion() / the
+// `version` subcommand report the release info without requiring each
+// repo to invent its own ldflag target-path convention.
 var (
 	version   = ""
 	build     = ""

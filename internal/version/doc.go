@@ -10,12 +10,20 @@
 // # Build-Time Injection (template-driven)
 //
 // Release builds use the shared go-app release pipeline
-// (netresearch/.github/templates/go-app/.github/workflows/release.yml),
-// which passes these ldflags to every matrix entry:
+// (netresearch/.github/templates/go-app/.github/workflows/release.yml).
+// Release metadata lands in package main via two reusable mechanisms:
+//
+//   - The release.yml ldflags input:
 //
 //	-X main.version=<tag>
 //	-X main.build=<commit-sha>
-//	-X main.buildTime=<commit-timestamp>
+//
+//   - The build-go-attest.yml `auto-build-timestamp` input (enabled by
+//     the release template), which after checkout runs
+//     `git show -s --format=%cI HEAD` and appends
+//     `-X main.buildTime=<ISO-8601>` to the effective ldflags. Works on
+//     tag pushes and workflow_dispatch backfills alike because it reads
+//     git directly instead of `github.event.head_commit.timestamp`.
 //
 // cmd/ldap-manager/main.go declares matching package-level string
 // variables named version, build, and buildTime and calls
