@@ -35,10 +35,29 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 		cn = u.CN()
 	}
 
+	var usersCount, groupsCount, computersCount int
+	if a.ldapCache != nil {
+		usersCount = len(a.ldapCache.FindUsers(true))
+		groupsCount = len(a.ldapCache.FindGroups())
+		computersCount = len(a.ldapCache.FindComputers(true))
+	}
+
+	vm := templates.HomeVM{
+		UserCN:         cn,
+		UserDN:         userDN,
+		Pinned:         pinned,
+		CSRFToken:      a.GetCSRFToken(c),
+		Server:         a.ldapConfig.Server,
+		BaseDN:         a.ldapConfig.BaseDN,
+		IsAD:           a.ldapConfig.IsActiveDirectory,
+		UsersCount:     usersCount,
+		GroupsCount:    groupsCount,
+		ComputersCount: computersCount,
+	}
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.HomeV2(cn, pinned, a.GetCSRFToken(c)).
-		Render(c.UserContext(), c.Response().BodyWriter())
+	return templates.HomeV2(vm).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // pinnedEntriesFor hydrates DN strings from PinnedStore into PinnedEntry
