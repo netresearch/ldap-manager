@@ -290,9 +290,11 @@ func (a *App) setupRoutes() {
 	// in-handler so template-cache middleware is not needed.
 	protected.Get("/api/search-index.json", a.handleSearchIndex)
 
-	// Bulk user actions (Phase 3) — registered BEFORE the /users/* wildcard
-	// POST so Fiber matches the exact /users/bulk path first.
+	// Bulk actions (Phase 3 + 4) — registered BEFORE each /<kind>/* wildcard
+	// POST so Fiber matches the exact /<kind>/bulk path first.
 	protected.Post("/users/bulk", a.handleBulkUsers)
+	protected.Post("/groups/bulk", a.handleBulkGroups)
+	protected.Post("/computers/bulk", a.handleBulkComputers)
 
 	// POST routes without caching (these invalidate cache)
 	protected.Post("/users/*", a.userModifyHandler)
