@@ -141,13 +141,17 @@ html {
 .login-card input[type="text"],
 .login-card input[type="password"] {
     width: 100%;
+    height: var(--density-touch-size);
     min-height: var(--density-touch-size);
+    margin: 0;
     padding: 0 0.75rem;
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
     border-radius: 0.375rem;
     font: inherit;
+    line-height: 1;
+    box-sizing: border-box;
 }
 
 .login-card input:focus-visible {
@@ -285,14 +289,21 @@ html {
 .topnav__spacer { flex: 1; }
 
 .topnav__cmdk {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.25rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-sizing: border-box;
+    height: var(--density-touch-size);
+    margin: 0;
+    padding: 0 0.75rem;
     background: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     color: var(--fg-muted);
     cursor: pointer;
     font: inherit;
+    line-height: 1;
 }
 
 .topnav__cmdk-label { font-size: 0.875rem; }
@@ -576,15 +587,26 @@ html {
     flex-wrap: wrap;
 }
 
-.list-page__search {
+/* Higher specificity (input[type="search"].list-page__search) required to
+ * defeat Pico's own input[type="search"] rule which sets vertical padding
+ * and a left-padded magnifier background — both push the element above
+ * our 44/36-px touch target and misalign it with the filter chips. */
+.list-page__search,
+input[type="search"].list-page__search,
+input[type="text"].list-page__search {
     flex: 1 1 20rem;
+    height: var(--density-touch-size);
     min-height: var(--density-touch-size);
+    margin: 0;
     padding: 0 0.75rem;
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
     border-radius: 0.375rem;
     font: inherit;
+    line-height: 1;
+    box-sizing: border-box;
+    background-image: none;
 }
 
 .filter-chip {
@@ -980,6 +1002,7 @@ html {
 /* The pin-star lives inside an htmx <form>; make the form a flex-container
  * so its auto-sizing in a grid track doesn't clip the button below its
  * declared min-width/min-height (WCAG 2.5.5 AAA 44x44 target). */
+.pin-star-form,
 .drawer__head form:has(.pin-star),
 .list-row form:has(.pin-star) {
     display: inline-flex;
@@ -1237,14 +1260,3 @@ html {
 /* Status line "Enabled" in drawer takes the accent in dark. */
 :root[data-theme="dark"] .drawer__kv dt {
     color: var(--accent);
-    opacity: 0.85;
-}
-
-/* Soft green border pulse on focused form inputs in dark. */
-:root[data-theme="dark"] .login-card input:focus-visible,
-:root[data-theme="dark"] .list-page__search:focus-visible,
-:root[data-theme="dark"] .palette__input:focus-visible {
-    border-color: var(--accent);
-    outline-color: var(--accent);
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 30%, transparent);
-}
