@@ -72,12 +72,17 @@ templ iconTheme() {
 	</svg>
 }
 
-// iconDensity — two-lines-vs-three, signifying comfortable/compact.
+// iconDensity — visible rows with their spacing varying from top to
+// bottom, unambiguously depicting "change how tightly things stack".
+// Distinct from a 3-line "hamburger" (which evokes a dropdown menu)
+// because the rows are rendered as short filled rectangles (not
+// page-wide lines) and their vertical spacing is deliberately uneven.
 templ iconDensity() {
-	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false">
-		<path d="M3 4h10"></path>
-		<path d="M3 8h10"></path>
-		<path d="M3 12h10"></path>
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+		<rect x="3" y="2.5"  width="10" height="1.5" rx="0.5"></rect>
+		<rect x="3" y="5.75" width="10" height="1.5" rx="0.5"></rect>
+		<rect x="3" y="9.5"  width="10" height="1.5" rx="0.5"></rect>
+		<rect x="3" y="13.5" width="10" height="1.5" rx="0.5"></rect>
 	</svg>
 }
 

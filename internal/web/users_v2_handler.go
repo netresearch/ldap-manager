@@ -78,6 +78,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	showDisabled := c.Query("show-disabled") == "1"
 	ouFilter := c.Query("ou")
 	lastLogon := c.Query("last-logon")
+	memberOf := c.Query("memberOf")
 
 	var all []ldap.User
 	if a.ldapCache != nil {
@@ -88,6 +89,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 
 	users := filterUsersByOU(all, ouFilter)
 	users = filterUsersByLastLogon(users, lastLogon)
+	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
@@ -212,6 +214,42 @@ func filterUsersByOU(users []ldap.User, ou string) []ldap.User {
 	out := make([]ldap.User, 0, len(users))
 	for _, u := range users {
 		if immediateOU(u.DN()) == ou {
+			out = append(out, u)
+		}
+	}
+
+	return out
+}
+
+// filterUsersByMemberOf narrows to users belonging to groupDN. Looks up the
+// target group from the cache and keeps only users whose DN appears in that
+// group's member list. Empty groupDN is a no-op; missing group is a no-op
+// (better UX than dropping everything to zero with no feedback).
+func filterUsersByMemberOf(users []ldap.User, groupDN string, cache *ldap_cache.Manager) []ldap.User {
+	if groupDN == "" || cache == nil {
+		return users
+	}
+
+	var groupMembers map[string]struct{}
+	for _, g := range cache.FindGroups() {
+		if g.DN() != groupDN {
+			continue
+		}
+
+		groupMembers = make(map[string]struct{}, len(g.Members))
+		for _, memberDN := range g.Members {
+			groupMembers[memberDN] = struct{}{}
+		}
+		break
+	}
+
+	if groupMembers == nil {
+		return users
+	}
+
+	out := make([]ldap.User, 0, len(groupMembers))
+	for _, u := range users {
+		if _, ok := groupMembers[u.DN()]; ok {
 			out = append(out, u)
 		}
 	}

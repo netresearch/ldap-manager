@@ -163,12 +163,22 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 			<p class="drawer__empty-inline">No members.</p>
 		} else {
 			<ul class="drawer__tags">
-				for _, u := range vm.Group.Members {
+				for _, u := range limitMembers(vm.Group.Members, 20) {
 					<li>
-						<a class="drawer__tag" href={ userDetailHref(u) }>{ u.CN() }</a>
+						<a class="drawer__tag drawer__tag--link" href={ userDetailHref(u) } title={ "Open " + u.CN() }>
+							<span>{ u.CN() }</span>
+							<span aria-hidden="true" class="drawer__tag-arrow">→</span>
+						</a>
 					</li>
 				}
 			</ul>
+			if len(vm.Group.Members) > 20 {
+				<p class="drawer__empty-inline">
+					<a class="drawer__pivot-inline" href={ membersListHref(asLdapGroup(vm.Group)) }>
+						+ { fmt.Sprintf("%d", len(vm.Group.Members) - 20) } more — open as user list →
+					</a>
+				</p>
+			}
 		}
 	</section>
 
@@ -198,8 +208,37 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 					</a>
 				</li>
 			}
+			if len(vm.Group.Members) > 0 {
+				<li>
+					<a class="drawer__pivot" href={ membersListHref(asLdapGroup(vm.Group)) }>
+						<span>{ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) }</span>
+						<span aria-hidden="true">→</span>
+					</a>
+				</li>
+			}
 		</ul>
 	</section>
+}
+
+// limitMembers returns at most n members. Rendering hundreds of tags in a
+// drawer would dominate the viewport and hurt scroll performance; we truncate
+// and surface a "view all" pivot that takes the user to the filtered /users list.
+func limitMembers(members []ldap.User, n int) []ldap.User {
+	if len(members) <= n {
+		return members
+	}
+
+	return members[:n]
+}
+
+// membersListHref points at /users?memberOf=<group-dn> so the user can see
+// every member of this group in the full Users list (pagination, filtering,
+// bulk actions all available there).
+func membersListHref(g ldap.Group) templ.SafeURL {
+	v := url.Values{}
+	v.Set("memberOf", g.DN())
+
+	return templ.URL("/users?" + v.Encode())
 }
 
 func groupDrawerFragmentHref(g ldap.Group) string {
