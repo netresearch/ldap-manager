@@ -77,11 +77,14 @@ jobs:
       # version package (ofelia uses main.* directly; ldap-manager
       # forwards into internal/version.*). Empty values are a silent
       # no-op for repos that don't declare the corresponding var.
+      # main.buildTime is injected via auto-build-timestamp (below)
+      # so it stays populated on workflow_dispatch backfills where
+      # github.event.head_commit is absent.
       ldflags: >-
         -s -w
         -X main.version=${{ needs.create-release.outputs.tag }}
         -X main.build=${{ needs.create-release.outputs.sha }}
-        -X main.buildTime=${{ github.event.head_commit.timestamp }}
+      auto-build-timestamp: true
       ref: ${{ needs.create-release.outputs.tag }}
       release-tag: ${{ needs.create-release.outputs.tag }}
       sbom: true
