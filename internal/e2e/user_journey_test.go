@@ -155,16 +155,16 @@ func TestUserListJourney(t *testing.T) {
 	t.Run("user list shows user data", func(t *testing.T) {
 		tp.Navigate("/users")
 
-		// Wait for either the legacy table layout or the current list layout.
-		// .First() avoids Playwright's strict-mode violation when multiple
-		// rows match.
-		err := tp.page.Locator(".list-container [data-search-item], table tbody tr, [data-testid='user-item']").First().WaitFor()
+		// Users V2 renders rows as .list-rows [data-search-item]; keep the
+		// legacy selectors as a fallback for forward/backward compat.
+		rowsSel := ".list-rows [data-search-item], .list-container [data-search-item], table tbody tr, [data-testid='user-item']"
+		err := tp.page.Locator(rowsSel).First().WaitFor()
 		require.NoError(t, err)
 
 		// Count entries under either layout.
 		rowCount := tp.TableRowCount("table")
 		if rowCount == 0 {
-			rows := tp.page.Locator(".list-container [data-search-item]")
+			rows := tp.page.Locator(".list-rows [data-search-item], .list-container [data-search-item]")
 			if c, _ := rows.Count(); c > 0 {
 				rowCount = c
 			}
@@ -186,7 +186,7 @@ func TestUserListJourney(t *testing.T) {
 
 			// Wait for the in-page JS filter to settle by polling the row
 			// count via a web expect — avoids the flaky WaitForTimeout.
-			require.NoError(t, tp.page.Locator(".list-container [data-search-item]").First().WaitFor())
+			require.NoError(t, tp.page.Locator(".list-rows [data-search-item], .list-container [data-search-item]").First().WaitFor())
 
 			t.Log("Search functionality is available")
 		} else {
@@ -212,11 +212,13 @@ func TestUserDetailJourney(t *testing.T) {
 	tp.Navigate("/users")
 
 	// Wait for the seeded users to show up. main_test.go seeds testuser1
-	// and admin-user under ou=users; the list layout renders them as
-	// anchors inside data-search-item rows.
-	require.NoError(t, tp.page.Locator(".list-container [data-search-item] a, table tbody tr a").First().WaitFor())
+	// and admin-user under ou=users; the V2 list layout renders them as
+	// anchors inside .list-rows [data-search-item] rows (legacy selectors
+	// retained for forward-compat).
+	rowsSel := ".list-rows [data-search-item] a, .list-container [data-search-item] a, table tbody tr a"
+	require.NoError(t, tp.page.Locator(rowsSel).First().WaitFor())
 
-	userLink := tp.page.Locator(".list-container [data-search-item] a, table tbody tr a").First()
+	userLink := tp.page.Locator(rowsSel).First()
 	href, err := userLink.GetAttribute("href")
 	require.NoError(t, err)
 	require.NotEmpty(t, href, "Expected at least one user link in /users")
@@ -224,16 +226,29 @@ func TestUserDetailJourney(t *testing.T) {
 	require.NoError(t, userLink.Click())
 	require.NoError(t, tp.page.WaitForURL("**/users/**"))
 
-	// The detail view is rendered by templates.User; it shows the CN as an
-	// H1, the DN inside a .text-text-secondary block, a "Groups:" heading,
-	// and an "Add to group" form. Verifying all four is a strong signal
-	// that the detail page actually populated from LDAP rather than
-	// falling through to a 500/empty shell.
-	assert.True(t, tp.IsVisible("h1"), "user detail should render an <h1> with the user CN")
+	// V2 detail renders: drawer__title <h2> with CN, drawer__dn with DN,
+	// a "Groups · N" section header, and an "Attributes" section. Verify
+	// the shell populated from LDAP and not fell through to an empty
+	// template / 500.
+	// Use .First() — V2 full-page detail has both an h1 (site title via
+	// the shell) and an h2.drawer__title (the CN); strict-mode-safe.
+	hasHeading := false
+	for _, sel := range []string{"h2.drawer__title", "h1", "h2"} {
+		if visible, err := tp.page.Locator(sel).First().IsVisible(); err == nil && visible {
+			hasHeading = true
+			break
+		}
+	}
+	assert.True(t, hasHeading, "user detail should render a top heading with the user CN")
 	assert.True(t, tp.HasText("dc=example,dc=com"),
 		"user detail should expose the DN (contains base DN)")
-	assert.True(t, tp.HasText("Groups:"), "user detail should render the Groups section header")
-	assert.True(t, tp.HasText("Add to group"), "user detail should expose the add-to-group form")
+	// V2 uses "Groups · N" (middle dot); legacy used "Groups:". Either is OK.
+	hasGroups := tp.HasText("Groups ·") || tp.HasText("Groups:") || tp.HasText("GROUPS ·")
+	assert.True(t, hasGroups, "user detail should render the Groups section header")
+	// V2 uses inline-edit kv forms for email/description; legacy had the
+	// "Add to group" form. Either signals a populated detail view.
+	hasForm := tp.HasText("Add to group") || tp.IsVisible(".kv-edit") || tp.IsVisible(".drawer__kv")
+	assert.True(t, hasForm, "user detail should expose an editable section")
 }
 
 func TestGroupManagementJourney(t *testing.T) {
@@ -323,9 +338,18 @@ func TestNavigationJourney(t *testing.T) {
 	t.Run("navigation menu is visible", func(t *testing.T) {
 		tp.Navigate("/")
 
-		// Should have navigation
-		hasNav := tp.IsVisible("nav") || tp.IsVisible("[role='navigation']") ||
-			tp.IsVisible(".navbar") || tp.IsVisible(".nav")
+		// Should have navigation. Use .first to avoid strict-mode locator
+		// violations on pages that legitimately render multiple <nav>
+		// regions (topnav_v2 contributes a header <nav> + the primary nav).
+		hasNav := false
+		for _, sel := range []string{"nav", "[role='navigation']", ".navbar", ".nav", ".topnav-secondary", ".topnav"} {
+			loc := tp.page.Locator(sel).First()
+			if visible, err := loc.IsVisible(); err == nil && visible {
+				hasNav = true
+
+				break
+			}
+		}
 		assert.True(t, hasNav, "Navigation should be visible when authenticated")
 	})
 
