@@ -41,6 +41,13 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 					placeholder="Filter groups…"
 					aria-label="Filter groups"
 					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
 				/>
 				if ouFilter != "" {
 					<a class="filter-chip filter-chip--on" href={ clearGroupsOUHref() }>

@@ -35,6 +35,13 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 					placeholder="Filter computers…"
 					aria-label="Filter computers"
 					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
 				/>
 				if ouFilter != "" {
 					<a class="filter-chip filter-chip--on" href={ clearComputersOUHref() }>

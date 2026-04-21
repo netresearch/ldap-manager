@@ -41,6 +41,13 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 					placeholder="Filter users…"
 					aria-label="Filter users"
 					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
 				/>
 				<a class={ filterChipClass(showDisabled) } href={ usersFilterHref(!showDisabled, ouFilter, lastLogon) }>
 					if showDisabled {
@@ -247,6 +254,13 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken st
 			value={ value }
 			placeholder={ placeholder }
 			aria-label={ field }
+			autocomplete="off"
+			autocorrect="off"
+			autocapitalize="off"
+			spellcheck="false"
+			data-1p-ignore
+			data-lpignore="true"
+			data-form-type="other"
 		/>
 		<button class="kv-edit__save" type="submit" aria-label={ "Save " + field }>
 			<span aria-hidden="true">✓</span>
