@@ -17,8 +17,8 @@
 //	-X main.build=<commit-sha>
 //	-X main.buildTime=<commit-timestamp>
 //
-// cmd/ldap-manager/main.go declares matching package-level variables
-// (`var version, build, buildTime string`) and calls
+// cmd/ldap-manager/main.go declares matching package-level string
+// variables named version, build, and buildTime and calls
 // forwardBuildMetadata() at init() time to copy their values into
 // Version, CommitHash, and BuildTimestamp here. The indirection keeps
 // the fleet ldflag convention (`main.*`) uniform across every go-app
