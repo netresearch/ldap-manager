@@ -15,8 +15,8 @@
 //
 //   - The release.yml ldflags input:
 //
-//	-X main.version=<tag>
-//	-X main.build=<commit-sha>
+//     -X main.version=<tag>
+//     -X main.build=<commit-sha>
 //
 //   - The build-go-attest.yml `auto-build-timestamp` input (enabled by
 //     the release template), which after checkout runs
