@@ -421,6 +421,12 @@ html {
     .home__blocks { grid-template-columns: 1fr; }
 }
 
+/* Pico applies `nav { display: flex }` by default — override for the home
+   blocks so h2 + ul stack vertically instead of sitting side-by-side. */
+.home__blocks > nav {
+    display: block;
+}
+
 .home__heading {
     display: block;
     font-size: 0.75rem;
