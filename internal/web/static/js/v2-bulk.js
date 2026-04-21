@@ -1,11 +1,18 @@
 /*
- * Bulk-select toolbar for the /users list (Phase 3).
+ * Bulk-select toolbar for the V2 list pages (Phase 3 + 4).
  *
  * Wires up:
  *   - data-bulk checkboxes → maintain a Set of selected DNs.
- *   - Floating .bulk-bar → shows count + Add-to-group + Cancel.
- *   - Add-to-group → prompts for a group DN, then submits a hidden form
- *     carrying target_dn[] + group_dn to POST /users/bulk?action=add-to-group.
+ *   - Floating .bulk-bar → shows count + scope-appropriate action buttons.
+ *   - Actions per scope:
+ *       users:     Add to group…, Remove from group…, Delete, Cancel
+ *       groups:    Add members…, Delete, Cancel
+ *       computers: Disable, Delete, Cancel
+ *
+ * The scope comes from `[data-bulk-scope]` on <main> (emitted by the list
+ * templates). If no scope is declared we fall back to the users action set —
+ * that keeps the toolbar working on any legacy page that hasn't been
+ * migrated.
  *
  * CSP-clean: no inline scripts, no innerHTML with dynamic strings. All DOM
  * construction uses createElement + textContent so arbitrary DNs can never
@@ -16,9 +23,47 @@
 
   var selected = new Set();
   var bar = null;
+  var scope = null; // detected lazily, first time updateBar() runs
+
+  // Per-scope action tables. Each entry is { label, onClick, dangerous }.
+  // dangerous → rendered with the cancel-button color + a confirm() prompt.
+  function detectScope() {
+    var m = document.querySelector("main[data-bulk-scope]");
+    if (m) return m.getAttribute("data-bulk-scope");
+    return "users";
+  }
+
+  function entityNoun(s) {
+    if (s === "groups") return "group";
+    if (s === "computers") return "computer";
+    return "user";
+  }
+
+  function buildActions(currentScope) {
+    if (currentScope === "groups") {
+      return [
+        { label: "Add members\u2026", onClick: openAddMembers, danger: false },
+        { label: "Delete groups", onClick: openDeleteGroups, danger: true },
+      ];
+    }
+    if (currentScope === "computers") {
+      return [
+        { label: "Disable", onClick: openDisableComputers, danger: true },
+        { label: "Delete", onClick: openDeleteComputers, danger: true },
+      ];
+    }
+    return [
+      { label: "Add to group\u2026", onClick: openAddToGroup, danger: false },
+      { label: "Remove from group\u2026", onClick: openRemoveFromGroup, danger: false },
+      { label: "Disable", onClick: openDisableUsers, danger: true },
+      { label: "Delete", onClick: openDeleteUsers, danger: true },
+    ];
+  }
 
   function ensureBar() {
     if (bar) return bar;
+
+    scope = detectScope();
 
     bar = document.createElement("div");
     bar.className = "bulk-bar";
@@ -30,12 +75,18 @@
     count.className = "bulk-bar__count";
     bar.appendChild(count);
 
-    var addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.className = "bulk-bar__action";
-    addBtn.textContent = "Add to group\u2026";
-    addBtn.addEventListener("click", openAddToGroup);
-    bar.appendChild(addBtn);
+    var actions = buildActions(scope);
+    for (var i = 0; i < actions.length; i++) {
+      var def = actions[i];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = def.danger
+        ? "bulk-bar__cancel bulk-bar__action"
+        : "bulk-bar__action";
+      btn.textContent = def.label;
+      btn.addEventListener("click", def.onClick);
+      bar.appendChild(btn);
+    }
 
     var cancelBtn = document.createElement("button");
     cancelBtn.type = "button";
@@ -55,7 +106,9 @@
     bar.hidden = n === 0;
     var countEl = bar.querySelector(".bulk-bar__count");
     if (countEl) {
-      countEl.textContent = n + (n === 1 ? " user selected" : " users selected");
+      var noun = entityNoun(scope);
+      countEl.textContent =
+        n + " " + (n === 1 ? noun : noun + "s") + " selected";
     }
   }
 
@@ -68,27 +121,26 @@
     updateBar();
   }
 
-  function openAddToGroup() {
+  // submitForm constructs a POST form with `target_dn[]` + any extra hidden
+  // fields and submits it. Used by every scope's handler.
+  function submitForm(action, extras) {
     if (selected.size === 0) return;
-
-    var g = window.prompt(
-      "Group DN to add the selected users to:\n" +
-        "(e.g. cn=admins,ou=groups,dc=example,dc=com)"
-    );
-    if (g === null) return;
-    g = g.trim();
-    if (g === "") return;
 
     var form = document.createElement("form");
     form.method = "post";
-    form.action = "/users/bulk?action=add-to-group";
+    form.action = action;
     form.style.display = "none";
 
-    var groupInput = document.createElement("input");
-    groupInput.type = "hidden";
-    groupInput.name = "group_dn";
-    groupInput.value = g;
-    form.appendChild(groupInput);
+    if (extras) {
+      for (var name in extras) {
+        if (!Object.prototype.hasOwnProperty.call(extras, name)) continue;
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = extras[name];
+        form.appendChild(input);
+      }
+    }
 
     selected.forEach(function (dn) {
       var i = document.createElement("input");
@@ -100,6 +152,129 @@
 
     document.body.appendChild(form);
     form.submit();
+  }
+
+  // ─── users actions ──────────────────────────────────────────────────
+
+  function openAddToGroup() {
+    if (selected.size === 0) return;
+
+    var g = window.prompt(
+      "Group DN to add the selected users to:\n" +
+        "(e.g. cn=admins,ou=groups,dc=example,dc=com)"
+    );
+    if (g === null) return;
+    g = g.trim();
+    if (g === "") return;
+
+    submitForm("/users/bulk?action=add-to-group", { group_dn: g });
+  }
+
+  function openRemoveFromGroup() {
+    if (selected.size === 0) return;
+
+    var g = window.prompt(
+      "Group DN to remove the selected users from:\n" +
+        "(e.g. cn=admins,ou=groups,dc=example,dc=com)"
+    );
+    if (g === null) return;
+    g = g.trim();
+    if (g === "") return;
+
+    submitForm("/users/bulk?action=remove-from-group", { group_dn: g });
+  }
+
+  function openDisableUsers() {
+    if (selected.size === 0) return;
+
+    if (
+      !window.confirm(
+        "Disable " +
+          selected.size +
+          " user(s)? (Note: not yet implemented — will return 501)"
+      )
+    )
+      return;
+
+    submitForm("/users/bulk?action=disable", null);
+  }
+
+  function openDeleteUsers() {
+    if (selected.size === 0) return;
+
+    if (
+      !window.confirm(
+        "Delete " +
+          selected.size +
+          " user(s)? This cannot be undone."
+      )
+    )
+      return;
+
+    submitForm("/users/bulk?action=delete", null);
+  }
+
+  // ─── groups actions ─────────────────────────────────────────────────
+
+  function openAddMembers() {
+    if (selected.size === 0) return;
+
+    var u = window.prompt(
+      "User DN to add as a member to the selected groups:\n" +
+        "(e.g. cn=alice,ou=users,dc=example,dc=com)"
+    );
+    if (u === null) return;
+    u = u.trim();
+    if (u === "") return;
+
+    submitForm("/groups/bulk?action=add-members", { user_dn: u });
+  }
+
+  function openDeleteGroups() {
+    if (selected.size === 0) return;
+
+    if (
+      !window.confirm(
+        "Delete " +
+          selected.size +
+          " group(s)? (Note: not yet implemented — will return 501)"
+      )
+    )
+      return;
+
+    submitForm("/groups/bulk?action=delete", null);
+  }
+
+  // ─── computers actions ──────────────────────────────────────────────
+
+  function openDisableComputers() {
+    if (selected.size === 0) return;
+
+    if (
+      !window.confirm(
+        "Disable " +
+          selected.size +
+          " computer(s)? (Note: not yet implemented — will return 501)"
+      )
+    )
+      return;
+
+    submitForm("/computers/bulk?action=disable", null);
+  }
+
+  function openDeleteComputers() {
+    if (selected.size === 0) return;
+
+    if (
+      !window.confirm(
+        "Delete " +
+          selected.size +
+          " computer(s)? (Note: not yet implemented — will return 501)"
+      )
+    )
+      return;
+
+    submitForm("/computers/bulk?action=delete", null);
   }
 
   document.addEventListener("change", function (ev) {

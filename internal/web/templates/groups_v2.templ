@@ -28,7 +28,7 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
-		<main id="main-content" class="list-page">
+		<main id="main-content" class="list-page" data-bulk-scope="groups">
 			<header class="list-page__head">
 				<h1 class="list-page__title">Groups</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
@@ -72,7 +72,15 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 }
 
 templ groupRowV2(g ldap.Group) {
-	<li class="list-row" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item>
+		<label class="list-row__check-wrap" aria-label={ "Select " + g.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ g.DN() }
+			/>
+		</label>
 		<a
 			class="list-row__link"
 			href={ groupDetailHref(g) }

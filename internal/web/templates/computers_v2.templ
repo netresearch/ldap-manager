@@ -22,7 +22,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 	@baseV2("Computers") {
 		@topnavV2("/computers")
 
-		<main id="main-content" class="list-page">
+		<main id="main-content" class="list-page" data-bulk-scope="computers">
 			<header class="list-page__head">
 				<h1 class="list-page__title">Computers</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
@@ -66,7 +66,15 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 }
 
 templ computerRowV2(cp ldap.Computer) {
-	<li class="list-row" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item>
+		<label class="list-row__check-wrap" aria-label={ "Select " + cp.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ cp.DN() }
+			/>
+		</label>
 		<a
 			class="list-row__link"
 			href={ computerDetailHref(cp) }

@@ -28,7 +28,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 	@baseV2("Users") {
 		@topnavV2("/users")
 
-		<main id="main-content" class="list-page">
+		<main id="main-content" class="list-page" data-bulk-scope="users">
 			<header class="list-page__head">
 				<h1 class="list-page__title">Users</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
