@@ -57,6 +57,30 @@
   --density-touch-size: 2.75rem;   /* 44 px at 16 px root */
   --density-spacing:    0.875rem;
   --density-font:       1rem;
+
+  /* Vertical-rhythm scale — every gap, margin and padding that grows
+     with density should use one of these (not hard-coded rems). */
+  --space-0: calc(var(--density-spacing) * 0.25); /* 3.5/2 px */
+  --space-1: calc(var(--density-spacing) * 0.5);  /* 7/4 px */
+  --space-2: var(--density-spacing);              /* 14/8 px */
+  --space-3: calc(var(--density-spacing) * 1.5);  /* 21/12 px */
+  --space-4: calc(var(--density-spacing) * 2);    /* 28/16 px */
+  --space-5: calc(var(--density-spacing) * 3);    /* 42/24 px */
+
+  /* Border-radius scale. Dark theme flattens these via overrides below. */
+  --radius-sm:   0.25rem;
+  --radius-md:   0.375rem;
+  --radius-lg:   0.5rem;
+  --radius-xl:   0.75rem;
+  --radius-pill: 999px;
+}
+
+:root[data-theme="dark"] {
+  --radius-sm:   0;
+  --radius-md:   0;
+  --radius-lg:   2px;
+  --radius-xl:   2px;
+  --radius-pill: 0;
 }
 
 :root[data-density="compact"] {
@@ -1079,16 +1103,23 @@ input[type="text"].list-page__search {
     margin: 0;
 }
 
-.kv-edit__input {
-    flex: 1;
+.kv-edit__input,
+input.kv-edit__input {
+    flex: 1 1 auto;
     min-width: 0;
-    padding: 0.25rem 0.5rem;
+    width: auto;
+    height: var(--density-touch-size);
+    margin: 0;
+    padding: 0 0.5rem;
     background: var(--bg);
     border: 1px solid transparent;
     border-radius: 0.25rem;
     color: var(--fg);
     font: inherit;
     font-size: 0.875rem;
+    line-height: 1;
+    box-sizing: border-box;
+    background-image: none;
 }
 
 .kv-edit__input:hover {
@@ -1105,16 +1136,23 @@ input[type="text"].list-page__search {
     font-style: italic;
 }
 
-.kv-edit__save {
+.kv-edit__save,
+button.kv-edit__save {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
     /* Match comfortable-density touch target (WCAG 2.5.5 AAA 44x44).
-     * Compact mode falls back to 36x36 which still clears AA 24x24. */
+     * Compact mode falls back to 36x36 which still clears AA 24x24.
+     * Upgrade specificity with button.kv-edit__save so Pico's default
+     * button rule (width: auto, width: 100% in flex) cannot steal the
+     * whole flex track and squeeze the input to zero. */
+    flex: 0 0 var(--density-touch-size);
     width: var(--density-touch-size);
     min-width: var(--density-touch-size);
     height: var(--density-touch-size);
     min-height: var(--density-touch-size);
+    margin: 0;
     padding: 0;
     border: 1px solid var(--border);
     background: var(--bg-subtle);
