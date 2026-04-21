@@ -166,6 +166,18 @@ templ osIcon(os string) {
 	}
 }
 
+// notSetOr returns s when non-empty, else the universal empty-state
+// placeholder used by full-page detail views. Kept generic so the same
+// helper reads across user/group/computer templates without importing
+// each other.
+func notSetOr(s string) string {
+	if s == "" {
+		return "(not set)"
+	}
+
+	return s
+}
+
 // osSummary combines the OS family name and version into a compact
 // secondary label: "Windows 11 Pro 10.0.22621", "Ubuntu 22.04", etc.
 // Falls back to the raw OS string when no version is known. Empty when
@@ -235,51 +247,55 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 					Disabled
 				}
 			</dd>
-			if vm.Computer.Description != "" {
+			if !inDrawer || vm.Computer.Description != "" {
 				<dt>Description</dt>
-				<dd>{ vm.Computer.Description }</dd>
+				<dd>{ notSetOr(vm.Computer.Description) }</dd>
 			}
-			if vm.Computer.SAMAccountName != "" && vm.Computer.SAMAccountName != vm.Computer.CN() {
+			if !inDrawer || (vm.Computer.SAMAccountName != "" && vm.Computer.SAMAccountName != vm.Computer.CN()) {
 				<dt>sAMAccountName</dt>
-				<dd>{ vm.Computer.SAMAccountName }</dd>
+				<dd>{ notSetOr(vm.Computer.SAMAccountName) }</dd>
 			}
-			if vm.Computer.DNSHostName != "" {
+			if !inDrawer || vm.Computer.DNSHostName != "" {
 				<dt>DNS hostname</dt>
-				<dd>{ vm.Computer.DNSHostName }</dd>
+				<dd>{ notSetOr(vm.Computer.DNSHostName) }</dd>
 			}
-			if vm.Computer.OS != "" {
+			if !inDrawer || vm.Computer.OS != "" {
 				<dt>OS</dt>
-				<dd>{ vm.Computer.OS }</dd>
+				<dd>{ notSetOr(vm.Computer.OS) }</dd>
 			}
-			if vm.Computer.OSVersion != "" {
+			if !inDrawer || vm.Computer.OSVersion != "" {
 				<dt>OS version</dt>
-				<dd>{ vm.Computer.OSVersion }</dd>
+				<dd>{ notSetOr(vm.Computer.OSVersion) }</dd>
 			}
-			if vm.Computer.ServicePack != "" {
+			if !inDrawer || vm.Computer.ServicePack != "" {
 				<dt>Service pack</dt>
-				<dd>{ vm.Computer.ServicePack }</dd>
+				<dd>{ notSetOr(vm.Computer.ServicePack) }</dd>
 			}
-			<dt>Last logon</dt>
-			<dd>{ formatComputerLastLogon(vm.Computer.LastLogon) }</dd>
+			if !inDrawer || vm.Computer.LastLogon > 0 {
+				<dt>Last logon</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.LastLogon) }</dd>
+			}
 		</dl>
 	</section>
 
-	<section class="drawer__section">
-		<h3 class="drawer__section-title">
-			{ fmt.Sprintf("Groups · %d", len(vm.Groups)) }
-		</h3>
-		if len(vm.Groups) == 0 {
-			<p class="drawer__empty-inline">None.</p>
-		} else {
-			<ul class="drawer__tags">
-				for _, g := range vm.Groups {
-					<li class="drawer__tag-row">
-						<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
-					</li>
-				}
-			</ul>
-		}
-	</section>
+	if !inDrawer || len(vm.Groups) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Groups · %d", len(vm.Groups)) }
+			</h3>
+			if len(vm.Groups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, g := range vm.Groups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
 
 	<section class="drawer__section drawer__section--pivots">
 		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>

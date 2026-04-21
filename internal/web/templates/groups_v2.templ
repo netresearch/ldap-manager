@@ -154,25 +154,29 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 
 	<p class="drawer__dn">{ vm.Group.DN() }</p>
 
-	if vm.Group.Description != "" {
+	if !inDrawer || vm.Group.Description != "" {
 		<section class="drawer__section">
 			<h3 class="drawer__section-title">Description</h3>
-			<p>{ vm.Group.Description }</p>
+			<p>{ notSetOr(vm.Group.Description) }</p>
 		</section>
 	}
 
-	if len(vm.Group.ParentGroups) > 0 {
+	if !inDrawer || len(vm.Group.ParentGroups) > 0 {
 		<section class="drawer__section">
 			<h3 class="drawer__section-title">
 				{ fmt.Sprintf("Parent groups · %d", len(vm.Group.ParentGroups)) }
 			</h3>
-			<ul class="drawer__tags">
-				for _, pg := range vm.Group.ParentGroups {
-					<li class="drawer__tag-row">
-						<a class="drawer__tag" href={ groupDetailHref(pg) } title={ pg.DN() }>{ pg.CN() }</a>
-					</li>
-				}
-			</ul>
+			if len(vm.Group.ParentGroups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, pg := range vm.Group.ParentGroups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(pg) } title={ pg.DN() }>{ pg.CN() }</a>
+						</li>
+					}
+				</ul>
+			}
 		</section>
 	}
 

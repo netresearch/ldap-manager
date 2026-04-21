@@ -278,16 +278,22 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 					Disabled
 				}
 			</dd>
-			<dt>Email</dt>
-			<dd>
-				@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)", vm.CSRFToken)
-			</dd>
-			<dt>Description</dt>
-			<dd>
-				@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)", vm.CSRFToken)
-			</dd>
-			<dt>Last logon</dt>
-			<dd>{ formatLastLogonV2(vm.User.LastLogon) }</dd>
+			if !inDrawer || derefString(vm.User.Mail) != "" {
+				<dt>Email</dt>
+				<dd>
+					@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)", vm.CSRFToken)
+				</dd>
+			}
+			if !inDrawer || vm.User.Description != "" {
+				<dt>Description</dt>
+				<dd>
+					@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)", vm.CSRFToken)
+				</dd>
+			}
+			if !inDrawer || vm.User.LastLogon > 0 {
+				<dt>Last logon</dt>
+				<dd>{ formatLastLogonV2(vm.User.LastLogon) }</dd>
+			}
 		</dl>
 	</section>
 
