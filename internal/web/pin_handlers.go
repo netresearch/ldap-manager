@@ -62,7 +62,7 @@ func (a *App) togglePin(c *fiber.Ctx, add bool) error {
 		if c.Query("context") == "home" {
 			pinned, _ := a.pinnedEntriesFor(userDN)
 
-			return templates.PinnedBlock(pinned).Render(c.UserContext(), c.Response().BodyWriter())
+			return templates.PinnedBlock(pinned, a.GetCSRFToken(c)).Render(c.UserContext(), c.Response().BodyWriter())
 		}
 
 		entityType := c.FormValue("type")

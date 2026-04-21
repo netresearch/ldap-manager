@@ -4,7 +4,7 @@ package templates
 // HomeV2 is the signed-in home page. Greeting + prominent search entry
 // (opens the palette) + pinned (server-driven, htmx-swap) + recents
 // (client-side, populated by v2-recents.js).
-templ HomeV2(userCN string, pinned []PinnedEntry) {
+templ HomeV2(userCN string, pinned []PinnedEntry, csrfToken string) {
 	@baseV2("Home") {
 		@topnavV2("/")
 
@@ -26,7 +26,7 @@ templ HomeV2(userCN string, pinned []PinnedEntry) {
 			<section class="home__blocks">
 				<nav aria-label="Pinned" id="pinned-block">
 					<h2 class="home__heading">Pinned</h2>
-					@pinnedFragment(pinned)
+					@pinnedFragment(pinned, csrfToken)
 				</nav>
 
 				<nav aria-label="Recent" id="recents-block" data-recents>

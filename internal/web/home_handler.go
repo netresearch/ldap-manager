@@ -37,7 +37,7 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.HomeV2(cn, pinned).
+	return templates.HomeV2(cn, pinned, a.GetCSRFToken(c)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

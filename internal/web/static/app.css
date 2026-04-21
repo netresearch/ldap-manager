@@ -221,13 +221,19 @@ html {
 
 /* ──────────────────────────── icon buttons ──────────────────────────── */
 
-.icon-btn {
+/* The doubled-class selector (`.icon-btn.icon-btn`) boosts specificity
+ * to (0,2,0), overruling Pico's `button[type="submit"] { width: 100% }`
+ * (0,1,1). Without it the unpin star in `<form><button type="submit">`
+ * collapses to glyph-width (18 px) — below WCAG 2.2 AA 24 × 24. */
+.icon-btn,
+.icon-btn.icon-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
     width: var(--density-touch-size);
     height: var(--density-touch-size);
+    min-width: var(--density-touch-size);
     margin: 0;
     padding: 0;
     background: var(--bg-subtle);
@@ -590,7 +596,11 @@ summary.topnav-secondary__summary:focus-visible {
     grid-template-columns: auto 1fr auto;
     grid-template-rows: auto;
     grid-auto-rows: 0;
-    gap: 0.625rem;
+    /* Explicit column-gap + row-gap 0 avoids inheriting Pico's grid
+     * row-gap (0.625rem), which otherwise stretches the li by ~9 px
+     * between the real row and the collapsed phantom row 2. */
+    column-gap: 0.625rem;
+    row-gap: 0;
     align-items: center;
     padding: 0.4375rem 0.625rem;
     border-radius: 0.25rem;
@@ -600,9 +610,12 @@ summary.topnav-secondary__summary:focus-visible {
 
 /* Pin each child of the pinned-item row to an explicit grid cell so
  * Pico's form/button styling can't shuffle placement — auto-placement
- * was mis-ordering the form (col 1) and forcing a second row. */
+ * was mis-ordering the form (col 1) and forcing a second row. Also
+ * zero out the nav-li anchor margin Pico injects (see .list-page__rail
+ * for the same trick); otherwise negative vertical margin on the <a>
+ * made the grid row over-tall. */
 .home__list-item > .home__list-type-icon { grid-column: 1; grid-row: 1; }
-.home__list-item > .home__list-link      { grid-column: 2; grid-row: 1; }
+.home__list-item > .home__list-link      { grid-column: 2; grid-row: 1; margin: 0; }
 .home__list-item > form                  { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; margin: 0; padding: 0; }
 
 .home__list-type {
@@ -617,6 +630,10 @@ summary.topnav-secondary__summary:focus-visible {
 }
 
 .home__list-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--density-touch-size);
+    line-height: 1.2;
     color: var(--fg);
     text-decoration: none;
     min-width: 0;

@@ -3,14 +3,17 @@ package templates
 
 // PinnedBlock is the exported nav wrapper that htmx targets on unpin
 // from the home page. Re-uses pinnedFragment for the inner list.
-templ PinnedBlock(pinned []PinnedEntry) {
+// csrfToken is threaded into each unpin <form>; without it Fiber's
+// CSRF middleware (KeyLookup form:csrf_token) 403s the request and
+// the star click appears to do nothing.
+templ PinnedBlock(pinned []PinnedEntry, csrfToken string) {
 	<nav aria-label="Pinned" id="pinned-block">
 		<h2 class="home__heading">Pinned</h2>
-		@pinnedFragment(pinned)
+		@pinnedFragment(pinned, csrfToken)
 	</nav>
 }
 
-templ pinnedFragment(pinned []PinnedEntry) {
+templ pinnedFragment(pinned []PinnedEntry, csrfToken string) {
 	<ul class="home__list" data-pinned-list>
 		if len(pinned) == 0 {
 			<li class="home__list-empty">Nothing pinned. Open any detail page and click the star.</li>
@@ -25,6 +28,7 @@ templ pinnedFragment(pinned []PinnedEntry) {
 						hx-post="/unpin?context=home"
 						hx-target="#pinned-block"
 						hx-swap="outerHTML">
+						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="target" value={ p.DN }/>
 						<input type="hidden" name="type" value={ p.Type }/>
 						<button type="submit" class="icon-btn icon-btn--remove" aria-label={ "Unpin " + p.CN }>
