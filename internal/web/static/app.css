@@ -581,7 +581,9 @@ summary.topnav-secondary__summary:focus-visible {
 
 .home__list-item {
     display: grid;
-    grid-template-columns: auto auto 1fr auto;
+    /* icon (auto) · cn (1fr, ellipsis-truncating) · trailing action (auto)
+     * — matches the list-row rhythm so home/list pages feel unified. */
+    grid-template-columns: auto 1fr auto;
     gap: 0.625rem;
     align-items: center;
     padding: 0.4375rem 0.625rem;
@@ -601,7 +603,14 @@ summary.topnav-secondary__summary:focus-visible {
     border-radius: 0.25rem;
 }
 
-.home__list-link { color: var(--fg); text-decoration: none; }
+.home__list-link {
+    color: var(--fg);
+    text-decoration: none;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .home__list-link:hover,
 .home__list-link:focus-visible { text-decoration: underline; }
 
@@ -1089,11 +1098,25 @@ input[type="text"].list-page__search {
     background: var(--accent);
 }
 
-.list-row__primary { font-weight: 500; }
+/* Primary name text: truncate with an ellipsis rather than wrap, so a
+ * long CN / sAMAccountName doesn't break the grid row height and keep
+ * the dense list rhythm. min-width:0 lets a grid/flex child shrink
+ * below its content box so text-overflow actually activates. */
+.list-row__primary {
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .list-row__secondary {
     color: var(--fg-muted);
     font-size: 0.875rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .list-row__badge {

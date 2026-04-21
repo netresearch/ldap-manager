@@ -20,7 +20,6 @@ templ pinnedFragment(pinned []PinnedEntry) {
 					<span class="home__list-type-icon" aria-hidden="true">
 						@iconForEntity(p.Type)
 					</span>
-					<span class="home__list-type">{ p.Type }</span>
 					<a class="home__list-link" href={ pinnedHref(p) }>{ p.CN }</a>
 					<form action="/unpin" method="post"
 						hx-post="/unpin?context=home"
