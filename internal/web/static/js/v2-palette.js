@@ -9,9 +9,65 @@
  *   - Keyboard: ↑/↓ change aria-selected, Enter navigates.
  *
  * CSP-safe — no inline code, no eval, no innerHTML with user content.
+ * Type icons are built with createElementNS from a static spec so the SVG
+ * markup never touches innerHTML at all. The shapes mirror
+ * internal/web/templates/icons.templ (iconUser / iconGroup / iconComputer)
+ * so list rows and palette rows share the same glyph vocabulary.
  */
 (function () {
   "use strict";
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Static icon specs. Each entry is a list of SVG child elements with
+  // fixed attribute values — no user data, no interpolation. Mirrors the
+  // server-side templates in icons.templ.
+  var ICON_SPECS = {
+    user: [
+      { tag: "circle", attrs: { cx: "8", cy: "5.5", r: "2.75" } },
+      { tag: "path",   attrs: { d: "M2.5 13.5c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4" } }
+    ],
+    group: [
+      { tag: "circle", attrs: { cx: "6", cy: "6", r: "2.25" } },
+      { tag: "circle", attrs: { cx: "11.5", cy: "5", r: "1.75" } },
+      { tag: "path",   attrs: { d: "M1.5 13c0-2.2 2-3.5 4.5-3.5s4.5 1.3 4.5 3.5" } },
+      { tag: "path",   attrs: { d: "M11 9.5c2 0 3.5 1 3.5 3" } }
+    ],
+    computer: [
+      { tag: "rect", attrs: { x: "2", y: "3", width: "12", height: "8", rx: "1" } },
+      { tag: "path", attrs: { d: "M6 14h4" } },
+      { tag: "path", attrs: { d: "M8 11v3" } }
+    ]
+  };
+
+  // buildIconSVG returns a freshly-built <svg> element for the given
+  // entity kind, or null if the kind is unknown (callers fall back to a
+  // text badge). All attribute values are literal constants — no user
+  // data ever reaches the DOM through this path.
+  function buildIconSVG(kind) {
+    var spec = ICON_SPECS[kind];
+    if (!spec) return null;
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.5");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    for (var i = 0; i < spec.length; i++) {
+      var child = document.createElementNS(SVG_NS, spec[i].tag);
+      var attrs = spec[i].attrs;
+      for (var key in attrs) {
+        if (Object.prototype.hasOwnProperty.call(attrs, key)) {
+          child.setAttribute(key, attrs[key]);
+        }
+      }
+      svg.appendChild(child);
+    }
+    return svg;
+  }
 
   var dialog = document.getElementById("cmd-palette");
   if (!dialog) return;
@@ -173,9 +229,20 @@
     li.setAttribute("data-href", hrefFor(entry));
     li.setAttribute("aria-selected", isFocused ? "true" : "false");
 
-    var type = document.createElement("span");
-    type.className = "palette__type";
-    type.textContent = entry.type;
+    // Type indicator: icon for known kinds (user/group/computer), text
+    // badge fallback for anything else so callers never hit a blank cell.
+    var type;
+    var iconSVG = buildIconSVG(entry.type);
+    if (iconSVG) {
+      type = document.createElement("span");
+      type.className = "palette__type-icon";
+      type.setAttribute("aria-hidden", "true");
+      type.appendChild(iconSVG);
+    } else {
+      type = document.createElement("span");
+      type.className = "palette__type";
+      type.textContent = entry.type || "";
+    }
 
     var name = document.createElement("span");
     var nameText = document.createElement("span");

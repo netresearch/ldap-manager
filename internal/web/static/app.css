@@ -586,6 +586,12 @@ html {
     border-color: var(--accent-fg);
 }
 
+/* When a row is selected, the JS-built type icon inherits the accent
+ * foreground so the glyph stays legible against the coloured background. */
+.palette__item[aria-selected="true"] .palette__type-icon {
+    color: var(--accent-fg);
+}
+
 .palette__item[aria-selected="true"] .palette__ctx {
     color: var(--accent-fg);
     opacity: 0.75;
