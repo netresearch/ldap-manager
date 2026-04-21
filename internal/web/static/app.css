@@ -949,7 +949,13 @@ input[type="text"].list-page__search {
     font-weight: 600;
 }
 
-.list-page__rail ul {
+/* Also target :first-of-type/:last-of-type — Pico applies negative
+ * horizontal margins to `nav ul:first-of-type` / `:last-of-type` with
+ * specificity that beats a plain descendant selector; we match the
+ * same pseudo-classes to win. */
+.list-page__rail ul,
+.list-page__rail ul:first-of-type,
+.list-page__rail ul:last-of-type {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -972,11 +978,15 @@ input[type="text"].list-page__search {
 /* Rail chips span the full column width and read as a list, not a pill row.
    `.filter-chip` is inline-flex so width:100% doesn't fill; upgrade to
    display:flex to force block-level sizing. No word-break so "All" stays
-   one line; long OU names ellipsize. */
+   one line; long OU names ellipsize.
+   `margin: 0` is REQUIRED: Pico ships `nav li :where(a, [role="link"])`
+   with a negative margin that made the chips bleed past the rail's
+   left/right padding. */
 .list-page__rail-chip {
     display: flex;
     width: 100%;
     box-sizing: border-box;
+    margin: 0;
     justify-content: flex-start;
     border-radius: 0.25rem;
     font-size: 0.8125rem;
