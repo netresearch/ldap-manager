@@ -75,7 +75,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 }
 
 templ computerRowV2(cp ldap.Computer) {
-	<li class="list-row list-row--selectable" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item data-search-text={ computerSearchText(cp) }>
 		<label class="list-row__check-wrap" aria-label={ "Select " + cp.CN() }>
 			<input
 				type="checkbox"
@@ -277,4 +277,26 @@ func formatComputerLastLogon(timestamp int64) string {
 	}
 
 	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// computerSearchText concatenates the fields the free-text list filter
+// should match on — CN is visible in the row; sAMAccountName, DNS host,
+// OS, description and DN aren't, but they're legitimate search targets.
+func computerSearchText(cp ldap.Computer) string {
+	parts := []string{cp.CN(), cp.SAMAccountName, cp.DNSHostName, cp.OS, cp.OSVersion, cp.Description, cp.DN()}
+	out := ""
+
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
 }

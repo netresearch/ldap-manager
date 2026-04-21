@@ -34,8 +34,14 @@
             var visible = 0;
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
-                var text = (item.textContent || "").toLowerCase();
-                var matches = query === "" || text.indexOf(query) !== -1;
+                // Prefer data-search-text when present — rows use it to
+                // include hidden fields like email, sAMAccountName, and
+                // description so the filter matches attributes that
+                // aren't displayed on the row itself. Falls back to the
+                // row's textContent for rows without the attribute.
+                var haystack = item.getAttribute("data-search-text") || item.textContent || "";
+                haystack = haystack.toLowerCase();
+                var matches = query === "" || haystack.indexOf(query) !== -1;
                 item.hidden = !matches;
                 if (matches) visible++;
             }

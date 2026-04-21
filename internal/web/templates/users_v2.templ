@@ -100,7 +100,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 }
 
 templ userRowV2(u ldap.User) {
-	<li class="list-row list-row--selectable" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item data-search-text={ userSearchText(u) }>
 		<label class="list-row__check-wrap" aria-label={ "Select " + u.CN() }>
 			<input
 				type="checkbox"
@@ -133,6 +133,34 @@ templ userRowV2(u ldap.User) {
 			}
 		</a>
 	</li>
+}
+
+// userSearchText concatenates the user fields the free-text filter
+// should match on — CN and sAMAccountName are already visible in the
+// row, email and description are hidden but still worth searching.
+// Whitespace-joined so the JS `includes` check finds sub-strings in any
+// field. DN is intentionally included so operators can paste a partial
+// DN into the filter.
+func userSearchText(u ldap.User) string {
+	parts := []string{u.CN(), u.SAMAccountName, u.Description, u.DN()}
+	if u.Mail != nil {
+		parts = append(parts, *u.Mail)
+	}
+
+	out := ""
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
 }
 
 templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {

@@ -79,7 +79,7 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 }
 
 templ groupRowV2(g ldap.Group) {
-	<li class="list-row list-row--selectable" data-search-item>
+	<li class="list-row list-row--selectable" data-search-item data-search-text={ groupSearchText(g) }>
 		<label class="list-row__check-wrap" aria-label={ "Select " + g.CN() }>
 			<input
 				type="checkbox"
@@ -281,6 +281,29 @@ func groupDrawerFragmentHref(g ldap.Group) string {
 // modifications dispatched inside groupModifyHandler.
 func groupEditHref(g ldap.Group) string {
 	return "/groups/" + url.PathEscape(g.DN())
+}
+
+// groupSearchText concatenates group fields the free-text list filter
+// should match on. CN is already visible; description and DN aren't,
+// but operators often paste a partial DN or remember a description
+// fragment to find a group fast.
+func groupSearchText(g ldap.Group) string {
+	parts := []string{g.CN(), g.Description, g.DN()}
+	out := ""
+
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
 }
 
 func clearGroupsOUHref() templ.SafeURL {

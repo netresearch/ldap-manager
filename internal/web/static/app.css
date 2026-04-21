@@ -1343,13 +1343,28 @@ input[type="text"].list-page__search {
     padding: 1rem;
     /* Drawer owns its own scroll axis inside the fixed-viewport pane so a
      * long detail (big group with many members) can scroll without the
-     * list or rail moving. */
-    align-self: stretch;
-    height: 100%;
+     * list or rail moving. `align-self: start` (not stretch) lets the
+     * drawer hug its content height when the detail is short — avoids
+     * the empty bottom gap that otherwise looks like dead scroll space.
+     * `max-height: 100%` still caps it so overflow kicks in when the
+     * detail is tall.
+     *
+     * `scrollbar-gutter: stable` keeps a constant gutter whether or not
+     * the vertical scrollbar is visible, so the inner content width does
+     * NOT jump between a group with 2 members (no scroll) and one with
+     * 200 members (scroll) — which previously made rows reflow and kv
+     * labels shift. */
+    align-self: start;
+    max-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
+    /* `both-edges` reserves a symmetric gutter on the left and right
+     * even when the scrollbar isn't visible, so (a) the inner content
+     * width doesn't jump when scroll appears and (b) the sticky pivot
+     * section paints symmetrically aligned with the content instead of
+     * leaving a lopsided gap beside the scrollbar. */
+    scrollbar-gutter: stable both-edges;
     min-width: 0;
-    min-height: 0;
 }
 
 /* All drawer children stay within bounds — no horizontal scroll ever. */
@@ -1529,19 +1544,24 @@ input[type="text"].list-page__search {
 
 /* Sticky pivots: for drawers with long tag lists (a user in 30 groups,
  * a group with 200 members) the pivot actions would otherwise be buried
- * at the bottom of a long scroll. Pinning to the bottom keeps them one
- * click away without requiring a layout restructure. */
+ * at the bottom of a long scroll. Pinning to the drawer's bottom keeps
+ * them one click away.
+ *
+ * Layout note: NO negative margins — the drawer already has vertical
+ * scroll and a vertical scrollbar on the right, so breaking out of the
+ * padding with `margin-inline: -1rem` left an asymmetric gap. Instead
+ * we keep the section inside the drawer's padding and draw the
+ * "separator" visually via a box-shadow on top. The sticky offset is
+ * `bottom: 0` (aligned with the drawer's inner padding) so there's no
+ * hanging artefact below the pivot row. */
 .drawer__section--pivots {
     position: sticky;
-    bottom: -1rem;
-    margin-left: -1rem;
-    margin-right: -1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-bottom: 1rem;
+    bottom: 0;
     background: var(--bg-subtle);
-    /* Soft divider so users can see the pivot bar is separate from the
-     * scrolling detail above — not a sharp border that would look heavy. */
+    /* Pull the sticky bar up into the border-box by the drawer's own
+     * bottom padding so it sits flush with the drawer border. */
+    margin-bottom: -1rem;
+    padding-bottom: 1rem;
     box-shadow: 0 -0.5rem 0.75rem -0.5rem rgb(0 0 0 / 0.08);
 }
 
