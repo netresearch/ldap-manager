@@ -214,36 +214,36 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 	</section>
 
 	<section class="drawer__section drawer__section--pivots">
-		<h3 class="drawer__section-title">Pivot</h3>
+		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
 		<ul class="drawer__pivots">
 			if inDrawer {
 				<li>
-					<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) }>
-						<span>Open full page</span>
-						<span aria-hidden="true">→</span>
+					<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) } aria-label="Open full page" title="Open full page">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconOpenExternal()</span>
+						<span class="drawer__pivot-text">Open full page</span>
 					</a>
 				</li>
 			} else {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL("/groups") }>
-						<span aria-hidden="true">←</span>
-						<span>Back to Groups</span>
+					<a class="drawer__pivot" href={ templ.URL("/groups") } aria-label="Back to Groups" title="Back to Groups">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowLeft()</span>
+						<span class="drawer__pivot-text">Back to Groups</span>
 					</a>
 				</li>
 			}
 			if vm.OUPivotHref != "" {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
-						<span>Other groups in { vm.OUName }</span>
-						<span aria-hidden="true">→</span>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other groups in " + vm.OUName } title={ "Other groups in " + vm.OUName }>
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
+						<span class="drawer__pivot-text">Other groups in { vm.OUName }</span>
 					</a>
 				</li>
 			}
 			if len(vm.Group.Members) > 0 {
 				<li>
-					<a class="drawer__pivot" href={ membersListHref(asLdapGroup(vm.Group)) }>
-						<span>{ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) }</span>
-						<span aria-hidden="true">→</span>
+					<a class="drawer__pivot" href={ membersListHref(asLdapGroup(vm.Group)) } aria-label={ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) } title="View all members">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconList()</span>
+						<span class="drawer__pivot-text">{ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) }</span>
 					</a>
 				</li>
 			}

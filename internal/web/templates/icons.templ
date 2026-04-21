@@ -113,6 +113,40 @@ templ iconCheck() {
 	</svg>
 }
 
+// iconArrowLeft / iconArrowRight — used for compact-mode pivot actions
+// where the label is aria-only and the glyph carries the meaning.
+templ iconArrowLeft() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<path d="M10.5 3l-5 5 5 5"></path>
+		<path d="M5.5 8h8"></path>
+	</svg>
+}
+
+templ iconArrowRight() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<path d="M5.5 3l5 5-5 5"></path>
+		<path d="M2.5 8h8"></path>
+	</svg>
+}
+
+// iconList — stacked lines for "view all as table/list" pivots.
+templ iconList() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<path d="M3 4.5h10"></path>
+		<path d="M3 8h10"></path>
+		<path d="M3 11.5h10"></path>
+	</svg>
+}
+
+// iconOpenExternal — arrow out of a square for "open full page" pivot.
+templ iconOpenExternal() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<path d="M9 2.5h4.5V7"></path>
+		<path d="M13 3l-6 6"></path>
+		<path d="M7 2.5h-3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3"></path>
+	</svg>
+}
+
 // iconForEntity dispatches to the appropriate glyph for a UI "type"
 // string: "user", "group", or "computer". Unknown values fall back to a
 // neutral dot so callers never crash on a typo.

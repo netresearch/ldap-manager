@@ -242,28 +242,28 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 	</section>
 
 	<section class="drawer__section drawer__section--pivots">
-		<h3 class="drawer__section-title">Pivot</h3>
+		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
 		<ul class="drawer__pivots">
 			if inDrawer {
 				<li>
-					<a class="drawer__pivot" href={ userDetailHref(vm.User.User) }>
-						<span>Open full page</span>
-						<span aria-hidden="true">→</span>
+					<a class="drawer__pivot" href={ userDetailHref(vm.User.User) } aria-label="Open full page" title="Open full page">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconOpenExternal()</span>
+						<span class="drawer__pivot-text">Open full page</span>
 					</a>
 				</li>
 			} else {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL("/users") }>
-						<span aria-hidden="true">←</span>
-						<span>Back to Users</span>
+					<a class="drawer__pivot" href={ templ.URL("/users") } aria-label="Back to Users" title="Back to Users">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowLeft()</span>
+						<span class="drawer__pivot-text">Back to Users</span>
 					</a>
 				</li>
 			}
 			if vm.OUPivotHref != "" {
 				<li>
-					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) }>
-						<span>Other users in { vm.OUName }</span>
-						<span aria-hidden="true">→</span>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other users in " + vm.OUName } title={ "Other users in " + vm.OUName }>
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
+						<span class="drawer__pivot-text">Other users in { vm.OUName }</span>
 					</a>
 				</li>
 			}
