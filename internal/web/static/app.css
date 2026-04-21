@@ -710,12 +710,28 @@ input[type="text"].list-page__search {
         grid-template-columns: 1fr;
     }
 
-    /* Hide only the list-view companion drawer. `.drawer--full` is the
-     * main content of the full-page detail view and must stay visible at
-     * all widths — hiding it made F5-on-fragment-URL look empty.  */
-    .list-page__pane > .drawer:not(.drawer--full),
+    /* On narrow viewports the list + drawer stack vertically. The OU rail
+     * hides (not useful without horizontal space). The drawer stays
+     * visible because htmx swaps content into it on row click — hiding
+     * it would mean the user clicks and sees "nothing happen". */
     .list-page__rail {
         display: none;
+    }
+
+    /* Drawer moves below the list and drops its sticky positioning
+     * (sticky needs a scrolling ancestor that narrow layouts don't
+     * provide). */
+    .list-page__pane > .drawer {
+        position: static;
+        max-height: none;
+        margin-top: 1rem;
+    }
+
+    /* Keep the "Select a user to see details" placeholder from taking
+     * vertical space before the user interacts. */
+    .list-page__pane > .drawer:not(.drawer--full):has(> .drawer__empty:only-child) {
+        min-height: 0;
+        padding: 0.5rem;
     }
 }
 
