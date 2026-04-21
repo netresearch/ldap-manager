@@ -107,7 +107,7 @@ templ computerRowV2(cp ldap.Computer) {
 }
 
 templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
-	@baseV2(vm.Computer.CN()) {
+	@baseV2PageScroll(vm.Computer.CN()) {
 		@topnavV2("/computers")
 
 		<main id="main-content" class="list-page list-page--single">

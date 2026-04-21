@@ -108,6 +108,30 @@ html {
   font-family: var(--font-sans);
   font-size: var(--density-font);
   line-height: 1.5;
+  /* Cap the viewport so the panes below own the vertical scroll: topnav +
+   * secondary nav pinned at the top, list-page fills the remainder with
+   * inner scroll panes. Pages that aren't list-page (login, home, full
+   * detail) opt back into body scroll via `body.has-page-scroll`. */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.has-page-scroll {
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+body.has-page-scroll > :where(main, .home, .list-page) {
+  flex: 0 0 auto;
 }
 
 :root[data-theme="dark"] body { font-family: var(--font-mono); }
@@ -797,8 +821,16 @@ summary.topnav-secondary__summary:focus-visible {
 
 .list-page {
     max-width: 72rem;
-    margin: 1.5rem auto;
-    padding: 0 1rem;
+    width: 100%;
+    margin: 1.5rem auto 0;
+    padding: 0 1rem 1.5rem;
+    /* Fill the remaining viewport so the inner pane can own the scroll.
+     * The margin-top/bottom + padding-bottom provide a little breathing
+     * room without stealing viewport from the panes. */
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .list-page__head {
@@ -883,18 +915,23 @@ input[type="text"].list-page__search {
     border-color: var(--fg);
 }
 
-/* Two-pane: list | drawer */
+/* Two-pane: list | drawer. align-items: stretch + min-height: 0 makes
+ * each column take the pane's height and, crucially, allows the inner
+ * overflow containers to clip (without min-height: 0 grid tracks refuse
+ * to shrink below their intrinsic size, and overflow never triggers). */
 .list-page__pane {
     display: grid;
-    grid-template-columns: 1fr 22rem;
+    grid-template-columns: minmax(0, 1fr) 22rem;
     gap: 1rem;
-    align-items: start;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 /* Three-pane: OU rail | list | drawer (Phase 2). 10rem rail keeps the
  * OU chips comfortably legible without stealing width from the list. */
 .list-page__pane--rail {
-    grid-template-columns: 10rem 1fr 22rem;
+    grid-template-columns: 10rem minmax(0, 1fr) 22rem;
 }
 
 .list-page--single .list-page__pane {
@@ -905,19 +942,28 @@ input[type="text"].list-page__search {
 /* OU rail — compact sticky nav alongside the list pane.
  * Generous inner padding so chips don't run into the container border,
  * and a visible gap between chips. */
+/* Desktop-app layout: the rail, list and drawer each own their scroll.
+ * The body is `overflow: hidden` (see base layer) so there's no page
+ * scrollbar competing with the panes. Each pane is clipped by the
+ * list-page__pane grid row so it can scroll without the outer layout
+ * growing. */
 .list-page__rail {
     display: flex;
     flex-direction: column;
+    /* Pico ships `nav { justify-content: space-between }`, which for a
+     * 2-child rail (heading + ul) would push the chip list to the bottom
+     * of the tall pane. Anchor children at the top instead. */
+    justify-content: flex-start;
     padding: 0.75rem 0.625rem;
     gap: 0.375rem;
     background: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
-    align-self: start;
-    position: sticky;
-    top: calc(var(--density-touch-size) + 1rem);
-    max-height: calc(100dvh - 12rem);
-    overflow: auto;
+    align-self: stretch;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* Collapse rail + drawer into a single-column list on narrow viewports.
@@ -1021,8 +1067,15 @@ input[type="text"].list-page__search {
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
-    max-height: calc(100dvh - 12rem);
-    overflow: auto;
+    /* Independent scroll: list owns its vertical scroll so long user/group
+     * lists scroll without pushing the drawer or rail. min-height: 0 is
+     * REQUIRED so this flex child can actually shrink below its intrinsic
+     * content height — otherwise overflow never kicks in. */
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .list-rows__empty {
@@ -1039,8 +1092,11 @@ input[type="text"].list-page__search {
  * row click still follows the href — selection is intentional and discrete. */
 .list-row--selectable {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
+    /* Without the min-width, a long CN pushes past the grid column and
+     * makes .list-rows overflow horizontally. */
+    min-width: 0;
 }
 
 .list-row__check-wrap {
@@ -1071,7 +1127,7 @@ input[type="text"].list-page__search {
 
 .list-row__link {
     display: grid;
-    grid-template-columns: auto auto 1fr auto auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
     gap: 0.625rem;
     align-items: center;
     padding: 0.5rem 0.875rem;
@@ -1080,6 +1136,7 @@ input[type="text"].list-page__search {
     text-decoration: none;
     font: inherit;
     min-height: var(--density-touch-size);
+    min-width: 0;
 }
 
 .list-row__link:hover,
@@ -1177,12 +1234,15 @@ input[type="text"].list-page__search {
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     padding: 1rem;
-    position: sticky;
-    top: calc(var(--density-touch-size) + 1rem);
-    max-height: calc(100dvh - var(--density-touch-size) - 2rem);
+    /* Drawer owns its own scroll axis inside the fixed-viewport pane so a
+     * long detail (big group with many members) can scroll without the
+     * list or rail moving. */
+    align-self: stretch;
+    height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
     min-width: 0;
+    min-height: 0;
 }
 
 /* All drawer children stay within bounds — no horizontal scroll ever. */
@@ -1259,10 +1319,14 @@ input[type="text"].list-page__search {
 
 .drawer__kv {
     display: grid;
-    grid-template-columns: 6rem 1fr;
-    gap: 0.25rem 0.75rem;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    gap: 0.5rem 0.75rem;
     margin: 0;
     font-size: 0.875rem;
+    /* center dt + dd within each row: editable fields are taller than
+     * plain-text labels; without this the label sits at the top of the
+     * row and looks disconnected from the input. */
+    align-items: center;
 }
 
 .drawer__kv dt { color: var(--fg-muted); }
@@ -1287,22 +1351,72 @@ input[type="text"].list-page__search {
     margin: 0;
     padding: 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 0.25rem;
 }
 
+/* Each tag row pairs the group link with a × remove button, so the
+ * single-element equivalent of the bulk "remove from group" works from
+ * inside the drawer. Button + link form one horizontal strip at the
+ * touch-target height. */
+.drawer__tag-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: var(--density-touch-size);
+}
+
 .drawer__tag {
-    display: inline-block;
-    padding: 0.1rem 0.5rem;
+    /* Tap-target parity with other row actions: min-height follows the
+     * density token (36 px compact, 44 px comfortable = WCAG AAA). */
+    display: inline-flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: var(--density-touch-size);
+    padding: 0 0.75rem;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 0.375rem;
     color: var(--fg);
     text-decoration: none;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .drawer__tag:hover, .drawer__tag:focus-visible {
+    border-color: var(--border-strong);
+}
+
+.drawer__tag-remove-form {
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+}
+
+.drawer__tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--density-touch-size);
+    height: var(--density-touch-size);
+    min-width: var(--density-touch-size);
+    padding: 0;
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.drawer__tag-remove:hover,
+.drawer__tag-remove:focus-visible {
+    color: var(--fg);
     border-color: var(--border-strong);
 }
 

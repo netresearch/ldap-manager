@@ -24,7 +24,7 @@ type UserDrawerVM struct {
 	CSRFToken   string // current-session CSRF token used by embedded POST forms
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -49,7 +49,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 					data-lpignore="true"
 					data-form-type="other"
 				/>
-				<a class={ filterChipClass(showDisabled) } href={ usersFilterHref(!showDisabled, ouFilter, lastLogon) }>
+				<a class={ filterChipClass(showDisabled) } href={ usersFilterHref(!showDisabled, ouFilter, lastLogon, memberOfDN) }>
 					if showDisabled {
 						including disabled
 					} else {
@@ -57,18 +57,27 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 					}
 				</a>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon) }>
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon, memberOfDN) }>
 						ou={ ouFilter } ×
 					</a>
 				}
-				@lastLogonChip(showDisabled, ouFilter, lastLogon, "24h", "last 24h")
-				@lastLogonChip(showDisabled, ouFilter, lastLogon, "7d", "last 7d")
-				@lastLogonChip(showDisabled, ouFilter, lastLogon, "30d", "last 30d")
-				@lastLogonChip(showDisabled, ouFilter, lastLogon, "never", "never logged in")
+				if memberOfDN != "" {
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, lastLogon, "") } title={ memberOfDN }>
+						if memberOfCN != "" {
+							member of { memberOfCN } ×
+						} else {
+							member of group ×
+						}
+					</a>
+				}
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "24h", "last 24h")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "7d", "last 7d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "30d", "last 30d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "never", "never logged in")
 			</div>
 
 			<div class={ listPanePaneClass(ous) }>
-				@ouRail("/users", ous, ouFilter, userOUHrefFactory(showDisabled, lastLogon))
+				@ouRail("/users", ous, ouFilter, userOUHrefFactory(showDisabled, lastLogon, memberOfDN))
 
 				<ul class="list-rows" data-search-list aria-label="Users">
 					for _, u := range users {
@@ -126,7 +135,7 @@ templ userRowV2(u ldap.User) {
 }
 
 templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
-	@baseV2(vm.User.CN()) {
+	@baseV2PageScroll(vm.User.CN()) {
 		@topnavV2("/users")
 
 		<main id="main-content" class="list-page list-page--single">
@@ -197,8 +206,27 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 		} else {
 			<ul class="drawer__tags">
 				for _, g := range vm.User.Groups {
-					<li>
-						<a class="drawer__tag" href={ groupDetailHref(g) }>{ g.CN() }</a>
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
+						<form
+							class="drawer__tag-remove-form"
+							method="post"
+							action={ templ.SafeURL(userEditHref(vm.User.User)) }
+							hx-post={ userEditHref(vm.User.User) }
+							hx-target="closest .drawer"
+							hx-swap="innerHTML"
+						>
+							<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+							<input type="hidden" name="removegroup" value={ g.DN() }/>
+							<button
+								type="submit"
+								class="drawer__tag-remove"
+								aria-label={ "Remove " + vm.User.CN() + " from " + g.CN() }
+								title={ "Remove from " + g.CN() }
+							>
+								×
+							</button>
+						</form>
 					</li>
 				}
 			</ul>
@@ -354,18 +382,18 @@ func filterChipClass(on bool) string {
 }
 
 // userOUHrefFactory returns an ouHref closure that preserves the active
-// show-disabled and last-logon filters when the user clicks an OU row.
-// Keeps the rail consistent with the main filter chips.
-func userOUHrefFactory(showDisabled bool, lastLogon string) ouHref {
+// show-disabled, last-logon, and memberOf filters when the user clicks an
+// OU row. Keeps the rail consistent with the main filter chips.
+func userOUHrefFactory(showDisabled bool, lastLogon, memberOfDN string) ouHref {
 	return func(value string) templ.SafeURL {
-		return usersFilterHref(showDisabled, value, lastLogon)
+		return usersFilterHref(showDisabled, value, lastLogon, memberOfDN)
 	}
 }
 
 // usersFilterHref composes a /users URL with the supplied combination of
 // filters. Empty / zero values are omitted so we keep the URL short and
 // symmetric with the default view.
-func usersFilterHref(showDisabled bool, ouFilter, lastLogon string) templ.SafeURL {
+func usersFilterHref(showDisabled bool, ouFilter, lastLogon, memberOfDN string) templ.SafeURL {
 	v := url.Values{}
 
 	if showDisabled {
@@ -380,6 +408,10 @@ func usersFilterHref(showDisabled bool, ouFilter, lastLogon string) templ.SafeUR
 		v.Set("last-logon", lastLogon)
 	}
 
+	if memberOfDN != "" {
+		v.Set("memberOf", memberOfDN)
+	}
+
 	qs := v.Encode()
 	if qs == "" {
 		return templ.URL("/users")
@@ -391,14 +423,14 @@ func usersFilterHref(showDisabled bool, ouFilter, lastLogon string) templ.SafeUR
 // lastLogonChip renders one of the four last-logon filter chips. Clicking
 // the active chip clears the filter (by emitting the "" value); clicking
 // an inactive chip switches to that window. The filter stacks with the
-// show-disabled and ou filters via usersFilterHref.
-templ lastLogonChip(showDisabled bool, ouFilter, active, value, label string) {
+// show-disabled, ou and memberOf filters via usersFilterHref.
+templ lastLogonChip(showDisabled bool, ouFilter, active, memberOfDN, value, label string) {
 	if value == active {
-		<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, "") }>
+		<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, "", memberOfDN) }>
 			{ label } ×
 		</a>
 	} else {
-		<a class="filter-chip" href={ usersFilterHref(showDisabled, ouFilter, value) }>
+		<a class="filter-chip" href={ usersFilterHref(showDisabled, ouFilter, value, memberOfDN) }>
 			{ label }
 		</a>
 	}

@@ -108,7 +108,7 @@ templ groupRowV2(g ldap.Group) {
 }
 
 templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
-	@baseV2(vm.Group.CN()) {
+	@baseV2PageScroll(vm.Group.CN()) {
 		@topnavV2("/groups")
 
 		<main id="main-content" class="list-page list-page--single">
@@ -164,11 +164,27 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 		} else {
 			<ul class="drawer__tags">
 				for _, u := range limitMembers(vm.Group.Members, 20) {
-					<li>
-						<a class="drawer__tag drawer__tag--link" href={ userDetailHref(u) } title={ "Open " + u.CN() }>
-							<span>{ u.CN() }</span>
-							<span aria-hidden="true" class="drawer__tag-arrow">→</span>
-						</a>
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ userDetailHref(u) } title={ u.DN() }>{ u.CN() }</a>
+						<form
+							class="drawer__tag-remove-form"
+							method="post"
+							action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+							hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+							hx-target="closest .drawer"
+							hx-swap="innerHTML"
+						>
+							<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+							<input type="hidden" name="removeuser" value={ u.DN() }/>
+							<button
+								type="submit"
+								class="drawer__tag-remove"
+								aria-label={ "Remove " + u.CN() + " from " + vm.Group.CN() }
+								title={ "Remove " + u.CN() }
+							>
+								×
+							</button>
+						</form>
 					</li>
 				}
 			</ul>
@@ -243,6 +259,13 @@ func membersListHref(g ldap.Group) templ.SafeURL {
 
 func groupDrawerFragmentHref(g ldap.Group) string {
 	return "/groups/" + url.PathEscape(g.DN()) + "?fragment=drawer"
+}
+
+// groupEditHref is the POST target for drawer tag remove/add forms. Mirrors
+// userEditHref — shares the existing /groups/<dn> POST route for member
+// modifications dispatched inside groupModifyHandler.
+func groupEditHref(g ldap.Group) string {
+	return "/groups/" + url.PathEscape(g.DN())
 }
 
 func clearGroupsOUHref() templ.SafeURL {

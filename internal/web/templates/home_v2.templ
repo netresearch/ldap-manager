@@ -5,7 +5,7 @@ package templates
 // (opens the palette) + pinned (server-driven, htmx-swap) + recents
 // (client-side, populated by v2-recents.js).
 templ HomeV2(userCN string, pinned []PinnedEntry, csrfToken string) {
-	@baseV2("Home") {
+	@baseV2PageScroll("Home") {
 		@topnavV2("/")
 
 		<main id="main-content" class="home">

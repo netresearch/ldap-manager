@@ -91,10 +91,34 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users = filterUsersByLastLogon(users, lastLogon)
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 
+	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
+
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.UsersListV2(users, showDisabled, ouFilter, lastLogon, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
-		Render(c.UserContext(), c.Response().BodyWriter())
+	page := templates.UsersListV2(
+		users, showDisabled, ouFilter, lastLogon,
+		memberOf, memberOfCN, ous,
+		templates.Flashes(), a.paletteContextFor(viewerDN),
+	)
+
+	return page.Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// lookupGroupCN resolves a group DN to its CN via ldap_cache. Empty DN or
+// cache miss both return "" — callers can still render a generic "member
+// of group" label when only the DN is known.
+func lookupGroupCN(groupDN string, cache *ldap_cache.Manager) string {
+	if groupDN == "" || cache == nil {
+		return ""
+	}
+
+	for _, g := range cache.FindGroups() {
+		if g.DN() == groupDN {
+			return g.CN()
+		}
+	}
+
+	return ""
 }
 
 // handleUserV2 renders either the drawer fragment (?fragment=drawer) or the

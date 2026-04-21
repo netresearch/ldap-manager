@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 type userModifyForm struct {
@@ -64,6 +65,24 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 		log.Warn().Err(err).Str("userDN", userDN).Msg("failed to modify user")
 	} else {
 		a.invalidateTemplateCacheOnModification()
+	}
+
+	// htmx-driven add/remove (from the drawer tag buttons) expects the
+	// refreshed drawer contents back so the tag list can swap in place;
+	// a redirect would navigate away from the list/drawer context.
+	if c.Get("HX-Request") == "true" {
+		viewerDN := GetUserDN(c)
+
+		vm, ok := a.buildUserDrawerVM(userDN, viewerDN)
+		if !ok {
+			return c.Redirect(detailURL)
+		}
+
+		vm.CSRFToken = a.GetCSRFToken(c)
+
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.UserDrawerFragment(vm).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	return c.Redirect(detailURL)

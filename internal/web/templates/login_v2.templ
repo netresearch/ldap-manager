@@ -5,7 +5,7 @@ package templates
 // density toggles delegate to /static/js/v2-toggles.js (CSP-safe — no
 // inline handlers).
 templ LoginV2(flashes []Flash, version, csrfToken string) {
-	@baseV2("Login") {
+	@baseV2PageScroll("Login") {
 		<div class="top-right-actions">
 			@themeToggleV2()
 			@densityToggleV2()

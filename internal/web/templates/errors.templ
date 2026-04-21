@@ -5,7 +5,7 @@ package templates
 // a headline and a link back to /.
 
 templ FourOhFour(path string) {
-	@baseV2("404") {
+	@baseV2PageScroll("404") {
 		<main class="page-center">
 			<article class="error-card" role="alert">
 				<h1>Page not found</h1>
@@ -17,7 +17,7 @@ templ FourOhFour(path string) {
 }
 
 templ FourOhThree(message string) {
-	@baseV2("403") {
+	@baseV2PageScroll("403") {
 		<main class="page-center">
 			<article class="error-card" role="alert">
 				<h1>Access forbidden</h1>
@@ -29,7 +29,7 @@ templ FourOhThree(message string) {
 }
 
 templ FiveHundred(err error) {
-	@baseV2("Error") {
+	@baseV2PageScroll("Error") {
 		<main class="page-center">
 			<article class="error-card" role="alert">
 				<h1>An error occurred</h1>

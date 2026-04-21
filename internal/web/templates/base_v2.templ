@@ -11,7 +11,13 @@ package templates
 //
 // Stable across all Phase 1 slices. Individual pages embed page-specific
 // component styles in their own templ files, not here.
-templ baseV2(title string) {
+//
+// The `pageScroll` argument picks between the fixed-viewport list/detail
+// shell (body clipped, inner panes scroll) and the normal document shell
+// (body scrolls). Home + login + full-detail views use pageScroll=true so
+// long content flows normally; list pages use false to keep the 3-pane
+// desktop-app feel where only the rail/list/drawer own the scroll.
+templ baseV2Shell(title string, pageScroll bool) {
 	<!DOCTYPE html>
 	<html lang="en" data-theme="light" data-density="compact">
 		<head>
@@ -31,7 +37,7 @@ templ baseV2(title string) {
 			// matching data-* attributes are in place before first layout.
 			<script src="/static/js/v2-preferences-init.js"></script>
 		</head>
-		<body>
+		<body class={ bodyClass(pageScroll) }>
 			{ children... }
 			// Deferred: handlers wire up after DOM parse.
 			<script defer src="/static/vendor/htmx.min.js"></script>
@@ -40,6 +46,30 @@ templ baseV2(title string) {
 			<script defer src="/static/js/v2-recents.js"></script>
 			<script defer src="/static/js/v2-drawer.js"></script>
 			<script defer src="/static/js/v2-bulk.js"></script>
+			<script defer src="/static/js/v2-search-filter.js"></script>
 		</body>
 	</html>
+}
+
+// baseV2 wraps the fixed-viewport shell — list pages use this so the
+// rail/list/drawer each own their vertical scroll, not the document.
+templ baseV2(title string) {
+	@baseV2Shell(title, false) {
+		{ children... }
+	}
+}
+
+// baseV2PageScroll wraps the document-scroll shell — home, login, and
+// full-page detail views use this so long content flows normally.
+templ baseV2PageScroll(title string) {
+	@baseV2Shell(title, true) {
+		{ children... }
+	}
+}
+
+func bodyClass(pageScroll bool) string {
+	if pageScroll {
+		return "has-page-scroll"
+	}
+	return ""
 }

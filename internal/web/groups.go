@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 type groupModifyForm struct {
@@ -51,6 +52,21 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		log.Warn().Err(err).Str("groupDN", groupDN).Msg("failed to modify group")
 	} else {
 		a.invalidateTemplateCacheOnModification()
+	}
+
+	if c.Get("HX-Request") == "true" {
+		viewerDN := GetUserDN(c)
+
+		vm, ok := a.buildGroupDrawerVM(groupDN, viewerDN)
+		if !ok {
+			return c.Redirect(detailURL)
+		}
+
+		vm.CSRFToken = a.GetCSRFToken(c)
+
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.GroupDrawerFragment(vm).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	return c.Redirect(detailURL)
