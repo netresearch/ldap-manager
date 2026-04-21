@@ -254,23 +254,32 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder string) {
 
 // pinStarButton renders the pin/unpin toggle as a small form.
 //
-// LIMITATION (Slice 4): the handlers at /pin and /unpin currently return
-// HTTP 204 No Content (see pin_handlers.go). htmx does NOT swap into the
-// target when the response is 204, so clicking the star will roundtrip
-// successfully but the visible star glyph will not flip until the page is
-// reloaded. Slice 4b fixes this by returning the star fragment from the
-// handlers when HX-Request: true.
+// The handlers at /pin and /unpin return this component's outer <form> on
+// HX-Request so htmx can swap the star glyph in place. A hidden input
+// carries the entity `type` so the handler can re-render without having
+// to parse the DN. hx-swap="outerHTML" on the <form> gives a stable target
+// whether the initial markup was a <form> (unpinned → pinned) or the
+// swapped-in response (pinned → unpinned).
 templ pinStarButton(entityType, entityDN string, pinned bool) {
+	@PinStarFragment(entityType, entityDN, pinned)
+}
+
+// PinStarFragment is the exported partial used both by detail pages (via
+// pinStarButton) and by the pin/unpin handlers when responding to an
+// HX-Request roundtrip.
+templ PinStarFragment(entityType, entityDN string, pinned bool) {
 	if pinned {
-		<form hx-post="/unpin" hx-target="closest .drawer__head .pin-star" hx-swap="outerHTML">
+		<form class="pin-star-form" hx-post="/unpin" hx-target="this" hx-swap="outerHTML">
 			<input type="hidden" name="target" value={ entityDN }/>
+			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star pin-star--on" aria-label={ "Unpin " + entityType } aria-pressed="true">
 				<span aria-hidden="true">★</span>
 			</button>
 		</form>
 	} else {
-		<form hx-post="/pin" hx-target="closest .drawer__head .pin-star" hx-swap="outerHTML">
+		<form class="pin-star-form" hx-post="/pin" hx-target="this" hx-swap="outerHTML">
 			<input type="hidden" name="target" value={ entityDN }/>
+			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star" aria-label={ "Pin " + entityType } aria-pressed="false">
 				<span aria-hidden="true">☆</span>
 			</button>

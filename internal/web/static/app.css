@@ -1260,3 +1260,14 @@ input[type="text"].list-page__search {
 /* Status line "Enabled" in drawer takes the accent in dark. */
 :root[data-theme="dark"] .drawer__kv dt {
     color: var(--accent);
+    opacity: 0.85;
+}
+
+/* Soft green border pulse on focused form inputs in dark. */
+:root[data-theme="dark"] .login-card input:focus-visible,
+:root[data-theme="dark"] .list-page__search:focus-visible,
+:root[data-theme="dark"] .palette__input:focus-visible {
+    border-color: var(--accent);
+    outline-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 30%, transparent);
+}

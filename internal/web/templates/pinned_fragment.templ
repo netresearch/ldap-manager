@@ -1,6 +1,15 @@
 // internal/web/templates/pinned_fragment.templ
 package templates
 
+// PinnedBlock is the exported nav wrapper that htmx targets on unpin
+// from the home page. Re-uses pinnedFragment for the inner list.
+templ PinnedBlock(pinned []PinnedEntry) {
+	<nav aria-label="Pinned" id="pinned-block">
+		<h2 class="home__heading">Pinned</h2>
+		@pinnedFragment(pinned)
+	</nav>
+}
+
 templ pinnedFragment(pinned []PinnedEntry) {
 	<ul class="home__list" data-pinned-list>
 		if len(pinned) == 0 {
@@ -11,10 +20,11 @@ templ pinnedFragment(pinned []PinnedEntry) {
 					<span class="home__list-type">{ p.Type }</span>
 					<a class="home__list-link" href={ pinnedHref(p) }>{ p.CN }</a>
 					<form action="/unpin" method="post"
-						hx-post="/unpin"
+						hx-post="/unpin?context=home"
 						hx-target="#pinned-block"
 						hx-swap="outerHTML">
 						<input type="hidden" name="target" value={ p.DN }/>
+						<input type="hidden" name="type" value={ p.Type }/>
 						<button type="submit" class="icon-btn icon-btn--remove" aria-label={ "Unpin " + p.CN }>
 							<span aria-hidden="true">★</span>
 						</button>
