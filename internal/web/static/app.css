@@ -379,12 +379,18 @@ html {
     display: flex;
     gap: 0.5rem;
     align-items: stretch;
+    /* Pico applies justify-content: space-between to bare <nav>; we want
+     * the links to pack left instead of stretching edge-to-edge. */
+    justify-content: flex-start;
     min-height: var(--density-touch-size);
 }
 
 /* Remove the default browser disclosure triangle; the summary is hidden
- * on wide viewports and gets its own hamburger icon on narrow. */
-.topnav-secondary__summary {
+ * on wide viewports (using higher specificity to beat UA defaults) and
+ * gets its own hamburger icon on narrow. The details element hides its
+ * non-summary children via `content-visibility: hidden` when closed, so
+ * we explicitly force the link row visible on desktop too. */
+summary.topnav-secondary__summary {
     display: none;
     list-style: none;
     cursor: pointer;
@@ -397,7 +403,32 @@ html {
     user-select: none;
 }
 
-.topnav-secondary__summary::-webkit-details-marker { display: none; }
+summary.topnav-secondary__summary::-webkit-details-marker { display: none; }
+summary.topnav-secondary__summary::marker { content: ""; }
+/* Pico injects a chevron ::after on every details summary — hide it
+ * here; our hamburger icon inside the summary is the affordance. */
+details.topnav-secondary > summary.topnav-secondary__summary::after {
+    display: none;
+    content: none;
+    background-image: none;
+}
+
+/* On desktop the <details> is effectively always-open regardless of the
+ * [open] attribute: we unhide the content that the UA would otherwise
+ * collapse. Modern Chromium / WebKit hide the non-summary content via
+ * the ::details-content pseudo-element (content-visibility: hidden in
+ * the UA sheet), so override there first. The Firefox / older-WebKit
+ * fallback toggles display on the children directly, which we fix by
+ * forcing the <ul>/<nav> inside the details to render even when the
+ * parent is closed. */
+.topnav-secondary::details-content {
+    content-visibility: visible;
+    display: block;
+}
+
+.topnav-secondary .topnav-secondary__links {
+    content-visibility: visible;
+}
 
 .topnav-secondary__summary-icon {
     display: inline-flex;
@@ -412,12 +443,12 @@ html {
     display: block;
 }
 
-.topnav-secondary__summary:hover,
-.topnav-secondary__summary:focus-visible {
+summary.topnav-secondary__summary:hover,
+summary.topnav-secondary__summary:focus-visible {
     background: var(--bg);
 }
 
-.topnav-secondary__summary:focus-visible {
+summary.topnav-secondary__summary:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -450,11 +481,14 @@ html {
     .topnav-secondary {
         padding: 0;
     }
-    .topnav-secondary__summary {
+    summary.topnav-secondary__summary {
         display: inline-flex;
         padding: 0 1rem;
         width: 100%;
         box-sizing: border-box;
+    }
+    .topnav-secondary:not([open])::details-content {
+        content-visibility: hidden;
     }
     .topnav-secondary:not([open]) .topnav-secondary__links {
         display: none;
