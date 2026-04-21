@@ -24,18 +24,26 @@ templ topnavV2(activePath string) {
 		<a class="topnav__logo" href="/" aria-label="Home">LDAP Manager</a>
 		<span class="topnav__spacer"></span>
 		<button type="button" class="topnav__cmdk" data-open-palette aria-label="Open command palette">
-			<span aria-hidden="true">⌕</span>
+			<span class="topnav__cmdk-icon" aria-hidden="true">
+				@iconSearch()
+			</span>
 			<span class="topnav__cmdk-label">Search</span>
 			<kbd>⌘K</kbd>
 		</button>
 		<button type="button" class="icon-btn" data-toggle="theme" aria-label="Toggle theme">
-			<span aria-hidden="true">◐</span>
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconTheme()
+			</span>
 		</button>
 		<button type="button" class="icon-btn" data-toggle="density" aria-label="Toggle density">
-			<span aria-hidden="true">⇥</span>
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconDensity()
+			</span>
 		</button>
 		<a class="icon-btn" href="/logout" aria-label="Log out">
-			<span aria-hidden="true">↗</span>
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconLogout()
+			</span>
 		</a>
 	</header>
 	<nav class="topnav-secondary" aria-label="Primary">

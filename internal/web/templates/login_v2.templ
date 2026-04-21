@@ -66,12 +66,16 @@ templ LoginV2(flashes []Flash, version, csrfToken string) {
 
 templ themeToggleV2() {
 	<button type="button" class="icon-btn" data-toggle="theme" aria-label="Toggle theme">
-		<span aria-hidden="true">◐</span>
+		<span class="icon-btn__glyph" aria-hidden="true">
+			@iconTheme()
+		</span>
 	</button>
 }
 
 templ densityToggleV2() {
 	<button type="button" class="icon-btn" data-toggle="density" aria-label="Toggle density">
-		<span aria-hidden="true">⇥</span>
+		<span class="icon-btn__glyph" aria-hidden="true">
+			@iconDensity()
+		</span>
 	</button>
 }

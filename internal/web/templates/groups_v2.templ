@@ -98,6 +98,9 @@ templ groupRowV2(g ldap.Group) {
 			title={ "View " + g.CN() }
 		>
 			<span class="list-row__dot" data-enabled="true"></span>
+			<span class="list-row__type-icon" aria-hidden="true">
+				@iconGroup()
+			</span>
 			<span class="list-row__primary">{ g.CN() }</span>
 			<span class="list-row__secondary">{ fmt.Sprintf("%d members", len(g.Members)) }</span>
 		</a>

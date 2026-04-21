@@ -113,6 +113,9 @@ templ userRowV2(u ldap.User) {
 			} else {
 				<span class="list-row__dot"></span>
 			}
+			<span class="list-row__type-icon" aria-hidden="true">
+				@iconUser()
+			</span>
 			<span class="list-row__primary">{ u.CN() }</span>
 			<span class="list-row__secondary">{ u.SAMAccountName }</span>
 			if !u.Enabled {
@@ -263,7 +266,9 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken st
 			data-form-type="other"
 		/>
 		<button class="kv-edit__save" type="submit" aria-label={ "Save " + field }>
-			<span aria-hidden="true">✓</span>
+			<span class="kv-edit__save-glyph" aria-hidden="true">
+				@iconCheck()
+			</span>
 		</button>
 	</form>
 }
@@ -292,7 +297,9 @@ templ PinStarFragment(entityType, entityDN string, pinned bool, csrfToken string
 			<input type="hidden" name="target" value={ entityDN }/>
 			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star pin-star--on" aria-label={ "Unpin " + entityType } aria-pressed="true">
-				<span aria-hidden="true">★</span>
+				<span class="pin-star__glyph" aria-hidden="true">
+					@iconStarFilled()
+				</span>
 			</button>
 		</form>
 	} else {
@@ -301,7 +308,9 @@ templ PinStarFragment(entityType, entityDN string, pinned bool, csrfToken string
 			<input type="hidden" name="target" value={ entityDN }/>
 			<input type="hidden" name="type" value={ entityType }/>
 			<button type="submit" class="pin-star" aria-label={ "Pin " + entityType } aria-pressed="false">
-				<span aria-hidden="true">☆</span>
+				<span class="pin-star__glyph" aria-hidden="true">
+					@iconStarOutline()
+				</span>
 			</button>
 		</form>
 	}

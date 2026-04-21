@@ -92,6 +92,9 @@ templ computerRowV2(cp ldap.Computer) {
 			title={ "View " + cp.CN() }
 		>
 			<span class="list-row__dot" data-enabled={ computerEnabledAttr(cp) }></span>
+			<span class="list-row__type-icon" aria-hidden="true">
+				@iconComputer()
+			</span>
 			<span class="list-row__primary">{ cp.CN() }</span>
 			<span class="list-row__secondary">{ cp.SAMAccountName }</span>
 			if !cp.Enabled {

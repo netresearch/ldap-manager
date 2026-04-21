@@ -22,7 +22,9 @@ templ paletteV2WithPinned(pinned []PinnedEntry) {
 	>
 		<form method="dialog" class="palette__form">
 			<div class="palette__input-row">
-				<span aria-hidden="true" class="palette__icon">⌕</span>
+				<span aria-hidden="true" class="palette__icon">
+					@iconSearch()
+				</span>
 				<input
 					type="text"
 					class="palette__input"

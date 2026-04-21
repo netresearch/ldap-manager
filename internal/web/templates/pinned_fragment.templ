@@ -17,6 +17,9 @@ templ pinnedFragment(pinned []PinnedEntry) {
 		} else {
 			for _, p := range pinned {
 				<li class="home__list-item">
+					<span class="home__list-type-icon" aria-hidden="true">
+						@iconForEntity(p.Type)
+					</span>
 					<span class="home__list-type">{ p.Type }</span>
 					<a class="home__list-link" href={ pinnedHref(p) }>{ p.CN }</a>
 					<form action="/unpin" method="post"
@@ -26,7 +29,9 @@ templ pinnedFragment(pinned []PinnedEntry) {
 						<input type="hidden" name="target" value={ p.DN }/>
 						<input type="hidden" name="type" value={ p.Type }/>
 						<button type="submit" class="icon-btn icon-btn--remove" aria-label={ "Unpin " + p.CN }>
-							<span aria-hidden="true">★</span>
+							<span class="icon-btn__glyph" aria-hidden="true">
+								@iconStarFilled()
+							</span>
 						</button>
 					</form>
 				</li>
