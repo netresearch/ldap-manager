@@ -27,8 +27,22 @@ func (a *App) buildComputerDrawerVM(computerDN, viewerDN string) (templates.Comp
 
 	ouName := immediateOU(computerDN)
 
+	var groups []ldap.Group
+	if a.ldapCache != nil {
+		for _, g := range a.ldapCache.FindGroups() {
+			for _, memberDN := range computer.Groups {
+				if g.DN() == memberDN {
+					groups = append(groups, g)
+
+					break
+				}
+			}
+		}
+	}
+
 	return templates.ComputerDrawerVM{
 		Computer:    computer,
+		Groups:      groups,
 		Pinned:      pinned,
 		OUName:      ouName,
 		OUPivotHref: buildComputerOUPivotHref(ouName),

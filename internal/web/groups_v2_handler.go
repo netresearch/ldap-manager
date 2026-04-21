@@ -42,15 +42,21 @@ func (a *App) buildGroupDrawerVM(groupDN, viewerDN string) (templates.GroupDrawe
 }
 
 // populateMembersForGroup resolves the group's Members DN list into a
-// FullLDAPGroup with []ldap.User. When the cache is nil the result has an
-// empty member slice.
+// FullLDAPGroup with []ldap.User, and additionally resolves its MemberOf
+// list into ParentGroups. When the cache is nil the result has both
+// slices empty.
 func (a *App) populateMembersForGroup(group *ldap.Group) *ldap_cache.FullLDAPGroup {
-	var users []ldap.User
+	var (
+		users  []ldap.User
+		groups []ldap.Group
+	)
+
 	if a.ldapCache != nil {
 		users = a.ldapCache.FindUsers(true)
+		groups = a.ldapCache.FindGroups()
 	}
 
-	return ldap_cache.PopulateMembersForGroupFromData(group, users)
+	return ldap_cache.PopulateUsersForGroupFromData(group, users, groups, true)
 }
 
 // buildGroupOUPivotHref returns a `/groups?ou=…` pivot link. Empty string

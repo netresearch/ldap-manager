@@ -4,6 +4,7 @@ package templates
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -194,6 +195,8 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			<dd>
 				@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)", vm.CSRFToken)
 			</dd>
+			<dt>Last logon</dt>
+			<dd>{ formatLastLogonV2(vm.User.LastLogon) }</dd>
 		</dl>
 	</section>
 
@@ -205,7 +208,7 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 			<p class="drawer__empty-inline">None.</p>
 		} else {
 			<ul class="drawer__tags">
-				for _, g := range vm.User.Groups {
+				for _, g := range limitGroups(vm.User.Groups, 20) {
 					<li class="drawer__tag-row">
 						<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
 						<form
@@ -230,10 +233,15 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 					</li>
 				}
 			</ul>
+			if len(vm.User.Groups) > 20 {
+				<p class="drawer__empty-inline">
+					+ { fmt.Sprintf("%d", len(vm.User.Groups) - 20) } more groups
+				</p>
+			}
 		}
 	</section>
 
-	<section class="drawer__section">
+	<section class="drawer__section drawer__section--pivots">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
 			if inDrawer {
@@ -275,6 +283,10 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken st
 		hx-post={ userEditHref(u) }
 		hx-target="closest .drawer"
 		hx-swap="innerHTML"
+		autocomplete="off"
+		data-bwignore
+		data-lpignore="true"
+		data-1p-ignore
 	>
 		<input type="hidden" name="csrf_token" value={ csrfToken }/>
 		<input type="hidden" name="field" value={ field }/>
@@ -291,6 +303,7 @@ templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken st
 			spellcheck="false"
 			data-1p-ignore
 			data-lpignore="true"
+			data-bwignore
 			data-form-type="other"
 		/>
 		<button class="kv-edit__save" type="submit" aria-label={ "Save " + field }>
@@ -367,6 +380,28 @@ func derefString(p *string) string {
 	}
 
 	return *p
+}
+
+// formatLastLogonV2 formats an int64 lastLogonTimestamp (unix seconds) as
+// a local-time ISO-like string. Zero / negative values are shown as
+// "Never" so the drawer row still appears but reads as empty-state.
+func formatLastLogonV2(timestamp int64) string {
+	if timestamp <= 0 {
+		return "Never"
+	}
+
+	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// limitGroups caps a user's resolved Groups slice at n entries for drawer
+// rendering. Mirrors limitMembers in groups_v2.templ — the same reasoning
+// applies (hundreds of tags swamp the viewport).
+func limitGroups(groups []ldap.Group, n int) []ldap.Group {
+	if len(groups) <= n {
+		return groups
+	}
+
+	return groups[:n]
 }
 
 func groupDetailHref(g ldap.Group) templ.SafeURL {

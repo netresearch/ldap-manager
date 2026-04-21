@@ -1420,6 +1420,24 @@ input[type="text"].list-page__search {
     border-color: var(--border-strong);
 }
 
+/* Sticky pivots: for drawers with long tag lists (a user in 30 groups,
+ * a group with 200 members) the pivot actions would otherwise be buried
+ * at the bottom of a long scroll. Pinning to the bottom keeps them one
+ * click away without requiring a layout restructure. */
+.drawer__section--pivots {
+    position: sticky;
+    bottom: -1rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 1rem;
+    background: var(--bg-subtle);
+    /* Soft divider so users can see the pivot bar is separate from the
+     * scrolling detail above — not a sharp border that would look heavy. */
+    box-shadow: 0 -0.5rem 0.75rem -0.5rem rgb(0 0 0 / 0.08);
+}
+
 .drawer__pivots {
     list-style: none;
     margin: 0;

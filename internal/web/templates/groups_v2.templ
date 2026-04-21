@@ -155,6 +155,21 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 		</section>
 	}
 
+	if len(vm.Group.ParentGroups) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Parent groups · %d", len(vm.Group.ParentGroups)) }
+			</h3>
+			<ul class="drawer__tags">
+				for _, pg := range vm.Group.ParentGroups {
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ groupDetailHref(pg) } title={ pg.DN() }>{ pg.CN() }</a>
+					</li>
+				}
+			</ul>
+		</section>
+	}
+
 	<section class="drawer__section">
 		<h3 class="drawer__section-title">
 			{ fmt.Sprintf("Members · %d", len(vm.Group.Members)) }
@@ -198,7 +213,7 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 		}
 	</section>
 
-	<section class="drawer__section">
+	<section class="drawer__section drawer__section--pivots">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
 			if inDrawer {

@@ -4,6 +4,7 @@ package templates
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 )
@@ -12,6 +13,7 @@ import (
 // and the full-page computer detail. Populated by App.buildComputerDrawerVM.
 type ComputerDrawerVM struct {
 	Computer    ldap.Computer
+	Groups      []ldap.Group // resolved parent groups for the Groups drawer section
 	Pinned      bool
 	OUName      string // plain-text OU name, e.g. "ou=Computers" (for display)
 	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
@@ -162,14 +164,49 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 				<dt>Description</dt>
 				<dd>{ vm.Computer.Description }</dd>
 			}
-			if vm.Computer.SAMAccountName != "" {
+			if vm.Computer.SAMAccountName != "" && vm.Computer.SAMAccountName != vm.Computer.CN() {
 				<dt>sAMAccountName</dt>
 				<dd>{ vm.Computer.SAMAccountName }</dd>
 			}
+			if vm.Computer.DNSHostName != "" {
+				<dt>DNS hostname</dt>
+				<dd>{ vm.Computer.DNSHostName }</dd>
+			}
+			if vm.Computer.OS != "" {
+				<dt>OS</dt>
+				<dd>{ vm.Computer.OS }</dd>
+			}
+			if vm.Computer.OSVersion != "" {
+				<dt>OS version</dt>
+				<dd>{ vm.Computer.OSVersion }</dd>
+			}
+			if vm.Computer.ServicePack != "" {
+				<dt>Service pack</dt>
+				<dd>{ vm.Computer.ServicePack }</dd>
+			}
+			<dt>Last logon</dt>
+			<dd>{ formatComputerLastLogon(vm.Computer.LastLogon) }</dd>
 		</dl>
 	</section>
 
 	<section class="drawer__section">
+		<h3 class="drawer__section-title">
+			{ fmt.Sprintf("Groups · %d", len(vm.Groups)) }
+		</h3>
+		if len(vm.Groups) == 0 {
+			<p class="drawer__empty-inline">None.</p>
+		} else {
+			<ul class="drawer__tags">
+				for _, g := range vm.Groups {
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+
+	<section class="drawer__section drawer__section--pivots">
 		<h3 class="drawer__section-title">Pivot</h3>
 		<ul class="drawer__pivots">
 			if inDrawer {
@@ -229,4 +266,15 @@ func computerEnabledAttr(cp ldap.Computer) string {
 		return "true"
 	}
 	return "false"
+}
+
+// formatComputerLastLogon mirrors formatLastLogonV2 — kept separate so the
+// computers package doesn't import users_v2 (and vice versa). Unix seconds
+// in, local-time string out.
+func formatComputerLastLogon(timestamp int64) string {
+	if timestamp <= 0 {
+		return "Never"
+	}
+
+	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
 }
