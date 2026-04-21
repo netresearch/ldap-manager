@@ -377,11 +377,12 @@ html {
 
 .topnav-secondary__links {
     display: flex;
-    gap: 0.5rem;
+    gap: 1.5rem;
     align-items: stretch;
-    /* Pico applies justify-content: space-between to bare <nav>; we want
-     * the links to pack left instead of stretching edge-to-edge. */
-    justify-content: flex-start;
+    /* Center the primary nav tabs so they form a balanced cluster across
+     * the full-width bar; flex-start made the three links hug the left
+     * edge with empty space to the right, which read as unfinished. */
+    justify-content: center;
     min-height: var(--density-touch-size);
 }
 
@@ -577,13 +578,18 @@ summary.topnav-secondary__summary:focus-visible {
 
 .home__heading + * { margin-top: 0.5rem; }
 
-.home__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.125rem; }
+/* align-items:stretch (the flex default) is necessary because Pico sets
+ * align-items:center on nav/list elements — without the explicit reset
+ * each <li> shrinks to its content width and the 3-col grid wraps. */
+.home__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.125rem; align-items: stretch; }
 
 .home__list-item {
     display: grid;
     /* icon (auto) · cn (1fr, ellipsis-truncating) · trailing action (auto)
      * — matches the list-row rhythm so home/list pages feel unified. */
     grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto;
+    grid-auto-rows: 0;
     gap: 0.625rem;
     align-items: center;
     padding: 0.4375rem 0.625rem;
@@ -591,6 +597,13 @@ summary.topnav-secondary__summary:focus-visible {
 }
 
 .home__list-item:hover { background: var(--bg-subtle); }
+
+/* Pin each child of the pinned-item row to an explicit grid cell so
+ * Pico's form/button styling can't shuffle placement — auto-placement
+ * was mis-ordering the form (col 1) and forcing a second row. */
+.home__list-item > .home__list-type-icon { grid-column: 1; grid-row: 1; }
+.home__list-item > .home__list-link      { grid-column: 2; grid-row: 1; }
+.home__list-item > form                  { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; margin: 0; padding: 0; }
 
 .home__list-type {
     font-size: 0.625rem;
@@ -861,9 +874,10 @@ input[type="text"].list-page__search {
     align-items: start;
 }
 
-/* Three-pane: OU rail | list | drawer (Phase 2). */
+/* Three-pane: OU rail | list | drawer (Phase 2). 10rem rail keeps the
+ * OU chips comfortably legible without stealing width from the list. */
 .list-page__pane--rail {
-    grid-template-columns: 12rem 1fr 22rem;
+    grid-template-columns: 10rem 1fr 22rem;
 }
 
 .list-page--single .list-page__pane {

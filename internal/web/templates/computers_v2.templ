@@ -96,7 +96,9 @@ templ computerRowV2(cp ldap.Computer) {
 				@iconComputer()
 			</span>
 			<span class="list-row__primary">{ cp.CN() }</span>
-			<span class="list-row__secondary">{ cp.SAMAccountName }</span>
+			if cp.SAMAccountName != "" && cp.SAMAccountName != cp.CN() {
+				<span class="list-row__secondary">{ cp.SAMAccountName }</span>
+			}
 			if !cp.Enabled {
 				<span class="list-row__badge">disabled</span>
 			}
