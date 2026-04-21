@@ -108,12 +108,18 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 	// DN exactly as the client sent it.
 	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("invalid dn")
+		c.Status(fiber.StatusBadRequest)
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	vm, ok := a.buildGroupDrawerVM(groupDN, viewerDN)
 	if !ok {
-		return c.Status(fiber.StatusNotFound).SendString("group not found")
+		c.Status(fiber.StatusNotFound)
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
