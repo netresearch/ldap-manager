@@ -563,13 +563,15 @@ html {
 .filter-chip {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.75rem;
+    min-height: var(--density-touch-size);
+    padding: 0 0.875rem;
     border: 1px solid var(--border);
     border-radius: 999px;
     color: var(--fg-muted);
     text-decoration: none;
     font-size: 0.875rem;
     background: var(--bg);
+    white-space: nowrap;
 }
 
 .filter-chip:hover,
@@ -619,6 +621,8 @@ html {
 
 /* OU rail — compact sticky nav alongside the list pane. */
 .list-page__rail {
+    display: flex;
+    flex-direction: column;
     padding: 0.5rem;
     background: var(--bg-subtle);
     border: 1px solid var(--border);
@@ -631,11 +635,14 @@ html {
 }
 
 .list-page__rail-title {
+    display: block;
+    width: 100%;
     font-size: 0.6875rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
-    margin: 0 0 0.5rem;
+    margin: 0 0 0.625rem;
+    padding: 0.25rem 0.5rem;
     font-weight: 600;
 }
 
@@ -1056,4 +1063,138 @@ html {
     border-color: var(--border-strong);
     color: var(--fg);
     opacity: 1;
+}
+
+/* ──────────────────────────── dark mode terminal/IDE overrides ────────
+ * Restore the Slice 3 "terminal with nice green" personality:
+ *   - Monospace UI throughout, not just body
+ *   - Green accent on headings, active nav, status dots, rail borders
+ *   - Flat(ter) corners; terminal-ish borders
+ *   - Lowercase top-nav/section chrome where it makes sense
+ */
+
+:root[data-theme="dark"] {
+    --pico-font-family: var(--font-mono);
+}
+
+:root[data-theme="dark"] html,
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] button,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] .palette,
+:root[data-theme="dark"] .palette__input,
+:root[data-theme="dark"] .palette__footer,
+:root[data-theme="dark"] .topnav,
+:root[data-theme="dark"] .topnav-secondary,
+:root[data-theme="dark"] .home,
+:root[data-theme="dark"] .list-page,
+:root[data-theme="dark"] .drawer {
+    font-family: var(--font-mono);
+}
+
+/* Green-accented headings and section labels. */
+:root[data-theme="dark"] .home__greet,
+:root[data-theme="dark"] .list-page__title,
+:root[data-theme="dark"] .drawer__title,
+:root[data-theme="dark"] .palette__group-header {
+    color: var(--accent);
+    letter-spacing: 0;
+}
+
+:root[data-theme="dark"] .home__heading,
+:root[data-theme="dark"] .drawer__section-title,
+:root[data-theme="dark"] .list-page__rail-title {
+    color: var(--accent);
+}
+
+:root[data-theme="dark"] .topnav__logo { color: var(--accent); }
+
+:root[data-theme="dark"] .topnav-secondary__link--active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Status dot — green in dark (already was, just firm it up). */
+:root[data-theme="dark"] .list-row__dot[data-enabled="true"] {
+    background: var(--accent);
+    box-shadow: 0 0 4px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+/* Flat corners in dark mode — more terminal-like. */
+:root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .home__search,
+:root[data-theme="dark"] .drawer,
+:root[data-theme="dark"] .list-page__rail,
+:root[data-theme="dark"] .palette {
+    border-radius: 2px;
+}
+
+:root[data-theme="dark"] .icon-btn,
+:root[data-theme="dark"] .topnav__cmdk,
+:root[data-theme="dark"] .filter-chip,
+:root[data-theme="dark"] .drawer__pivot,
+:root[data-theme="dark"] .drawer__tag,
+:root[data-theme="dark"] .list-row__link,
+:root[data-theme="dark"] .home__list-item,
+:root[data-theme="dark"] .palette__item,
+:root[data-theme="dark"] .list-page__search {
+    border-radius: 2px;
+}
+
+/* Buttons in dark mode gain a subtle green border on hover/focus. */
+:root[data-theme="dark"] .icon-btn:hover,
+:root[data-theme="dark"] .icon-btn:focus-visible,
+:root[data-theme="dark"] .topnav__cmdk:hover,
+:root[data-theme="dark"] .filter-chip:hover,
+:root[data-theme="dark"] .filter-chip:focus-visible,
+:root[data-theme="dark"] .drawer__pivot:hover,
+:root[data-theme="dark"] .drawer__pivot:focus-visible,
+:root[data-theme="dark"] .drawer__tag:hover,
+:root[data-theme="dark"] .drawer__tag:focus-visible {
+    border-color: var(--accent);
+    color: var(--fg);
+}
+
+/* Filter-chip--on in dark mode: green fill (keeps 11.2:1 contrast). */
+:root[data-theme="dark"] .filter-chip--on {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+}
+
+/* Sign-in button in dark mode — green. */
+:root[data-theme="dark"] .login-card button[type="submit"] {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+}
+
+/* Cursor-like blink on the command-palette search glyph in dark. */
+:root[data-theme="dark"] .palette__icon,
+:root[data-theme="dark"] .home__search > :first-child,
+:root[data-theme="dark"] .topnav__cmdk > :first-child {
+    color: var(--accent);
+}
+
+/* Rail selection — green highlight rather than inverse black. */
+:root[data-theme="dark"] .list-page__rail-chip.filter-chip--on {
+    background: var(--accent);
+    color: var(--accent-fg);
+}
+
+/* Status line "Enabled" in drawer takes the accent in dark. */
+:root[data-theme="dark"] .drawer__kv dt {
+    color: var(--accent);
+    opacity: 0.85;
+}
+
+/* Soft green border pulse on focused form inputs in dark. */
+:root[data-theme="dark"] .login-card input:focus-visible,
+:root[data-theme="dark"] .list-page__search:focus-visible,
+:root[data-theme="dark"] .palette__input:focus-visible {
+    border-color: var(--accent);
+    outline-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 30%, transparent);
 }

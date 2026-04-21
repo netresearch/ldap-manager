@@ -124,7 +124,10 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	if c.Query("fragment") == "drawer" {
+	// Only honour ?fragment=drawer for actual htmx requests. A plain reload
+	// of the URL (F5) lands here without HX-Request and deserves the full
+	// styled page, not a bare fragment that would inherit no CSS.
+	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.UserDrawerFragment(vm).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}

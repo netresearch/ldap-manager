@@ -118,7 +118,7 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	if c.Query("fragment") == "drawer" {
+	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.GroupDrawerFragment(vm).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}

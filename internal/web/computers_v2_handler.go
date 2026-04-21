@@ -103,7 +103,7 @@ func (a *App) handleComputerV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	if c.Query("fragment") == "drawer" {
+	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.ComputerDrawerFragment(vm).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
