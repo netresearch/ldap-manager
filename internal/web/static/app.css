@@ -677,21 +677,6 @@ input[type="text"].list-page__search {
     justify-content: center;
 }
 
-@media (max-width: 900px) {
-    .list-page__pane,
-    .list-page__pane--rail {
-        grid-template-columns: 1fr;
-    }
-
-    .list-page__pane > .drawer {
-        display: none;
-    }
-
-    .list-page__rail {
-        display: none;
-    }
-}
-
 /* OU rail — compact sticky nav alongside the list pane. */
 .list-page__rail {
     display: flex;
@@ -705,6 +690,21 @@ input[type="text"].list-page__search {
     top: calc(var(--density-touch-size) + 1rem);
     max-height: calc(100dvh - 12rem);
     overflow: auto;
+}
+
+/* Collapse rail + drawer into a single-column list on narrow viewports.
+ * Placed AFTER the default .list-page__rail rule so the display:none
+ * override actually wins (specificity tie; later rule wins). */
+@media (max-width: 900px) {
+    .list-page__pane,
+    .list-page__pane--rail {
+        grid-template-columns: 1fr;
+    }
+
+    .list-page__pane > .drawer,
+    .list-page__rail {
+        display: none;
+    }
 }
 
 .list-page__rail-title {
