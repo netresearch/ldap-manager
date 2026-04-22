@@ -25,6 +25,7 @@ type UserDrawerVM struct {
 	OUPivotHref      string       // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
 	CSRFToken        string       // current-session CSRF token used by embedded POST forms
 	UnassignedGroups []ldap.Group // groups the user is NOT a member of (datalist for add-to-group)
+	FlashError       string       // set by modify handlers when an LDAP op fails; shown inline
 }
 
 templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
@@ -276,6 +277,10 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 	</header>
 
 	<p class="drawer__dn">{ vm.User.DN() }</p>
+
+	if vm.FlashError != "" {
+		<div class="drawer__flash drawer__flash--error" role="alert">{ vm.FlashError }</div>
+	}
 
 	<section class="drawer__section">
 		<h3 class="drawer__section-title">Attributes</h3>

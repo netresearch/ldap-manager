@@ -8,6 +8,7 @@ package web
 
 import (
 	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -61,8 +62,10 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
+	var flashErr string
 	if err := a.performUserModification(userLDAP, &form, userDN); err != nil {
 		log.Warn().Err(err).Str("userDN", userDN).Msg("failed to modify user")
+		flashErr = humaniseLDAPError(err)
 	} else {
 		a.invalidateTemplateCacheOnModification()
 	}
@@ -79,6 +82,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 		}
 
 		vm.CSRFToken = a.GetCSRFToken(c)
+		vm.FlashError = flashErr
 
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
@@ -86,6 +90,32 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Redirect(detailURL)
+}
+
+// humaniseLDAPError produces a short, user-facing message from an
+// LDAP error. We keep the original (verbose) message in the server
+// logs — this version is what we paste into the drawer's flash so
+// operators can see at a glance why a change didn't stick.
+func humaniseLDAPError(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	msg := err.Error()
+
+	switch {
+	case strings.Contains(msg, "Insufficient Access Rights"),
+		strings.Contains(msg, "Code 50"):
+		return "The signed-in account does not have permission to make this change on the directory."
+	case strings.Contains(msg, "already exists"),
+		strings.Contains(msg, "Code 20"):
+		return "That membership is already in place."
+	case strings.Contains(msg, "No Such Object"),
+		strings.Contains(msg, "Code 32"):
+		return "The target entry no longer exists in the directory."
+	default:
+		return "The directory rejected the change: " + msg
+	}
 }
 
 // filterUnassignedGroups returns groups the user is not a member of.

@@ -52,8 +52,10 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
+	var flashErr string
 	if err := a.performGroupModification(userLDAP, &form, groupDN); err != nil {
 		log.Warn().Err(err).Str("groupDN", groupDN).Msg("failed to modify group")
+		flashErr = humaniseLDAPError(err)
 	} else {
 		a.invalidateTemplateCacheOnModification()
 	}
@@ -67,6 +69,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		}
 
 		vm.CSRFToken = a.GetCSRFToken(c)
+		vm.FlashError = flashErr
 
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 

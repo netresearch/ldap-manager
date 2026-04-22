@@ -28,6 +28,7 @@ type GroupDrawerVM struct {
 	ChildGroups       []ldap.Group // groups whose DN appears in this group's `member` attribute
 	AddableChildren   []ldap.Group // groups eligible to become children (not self, not current children, not ancestors)
 	AddableParents    []ldap.Group // groups eligible to become parents (not self, not current parents, not descendants)
+	FlashError        string       // set by modify handlers when an LDAP op fails; shown inline
 }
 
 templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -176,6 +177,10 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 	</header>
 
 	<p class="drawer__dn">{ vm.Group.DN() }</p>
+
+	if vm.FlashError != "" {
+		<div class="drawer__flash drawer__flash--error" role="alert">{ vm.FlashError }</div>
+	}
 
 	if !inDrawer || vm.Group.Scope() != "" || vm.Group.Description != "" || vm.Group.ManagedByDN != "" || vm.Group.WhenCreated > 0 {
 		<section class="drawer__section">

@@ -52,6 +52,7 @@ olcAccess: {0}to attrs=userPassword
   by anonymous auth
   by * none
 olcAccess: {1}to *
+  by dn="cn=admin-user,ou=users,dc=example,dc=com" write
   by users read
   by * none
 `
@@ -108,6 +109,13 @@ objectClass: top
 cn: developers
 member: cn=admin-user,ou=users,dc=example,dc=com
 member: cn=testuser1,ou=users,dc=example,dc=com
+
+dn: cn=viewers,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+objectClass: top
+cn: viewers
+description: Read-only observers (used by e2e add-to-group round-trip)
+member: cn=admin-user,ou=users,dc=example,dc=com
 `
 
 // TestMain boots the e2e harness:
