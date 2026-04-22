@@ -1717,12 +1717,17 @@ input[type="text"].list-page__search {
     width: 100%;
 }
 
-.drawer__add-input {
+/* Pico applies input padding + min-height that inflate a plain text
+ * input above our 2 rem target. Double-class bump defeats that. */
+.drawer__add-input,
+input.drawer__add-input.drawer__add-input {
     flex: 1 1 0;
     width: 100%;
     min-width: 0;
+    min-height: 2rem;
     height: 2rem;
     padding: 0 0.625rem;
+    margin: 0;
     border: 1px solid var(--border);
     border-radius: 0.375rem;
     background: var(--bg);
@@ -1740,7 +1745,12 @@ input[type="text"].list-page__search {
     border-color: #dc2626;
 }
 
-.drawer__add-submit {
+/* The doubled-class selector boosts specificity to (0,2,0) — without
+ * it Pico's `button[type="submit"] { width: 100% }` (0,1,1) wins and
+ * the + button stretches across the whole form, squeezing the input
+ * down to its intrinsic minimum width. */
+.drawer__add-submit,
+.drawer__add-submit.drawer__add-submit {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2266,6 +2276,36 @@ button.kv-edit__save {
 :root[data-theme="dark"] .drawer__tag:focus-visible {
     border-color: var(--accent);
     color: var(--fg);
+}
+
+/* Warn / danger action buttons and badges in dark mode. Light-mode
+ * uses cream / pink tints which look wrong against the terminal
+ * dark palette; use darker red/amber fills with bright border
+ * stripes so the intent reads at a glance and text stays in --fg. */
+:root[data-theme="dark"] .drawer__action--warn,
+:root[data-theme="dark"] .drawer__badge--warn {
+    background: #451a03; /* amber-950 */
+    border-color: #f59e0b; /* amber-500 — bright stripe for AA border contrast */
+    color: var(--fg);
+}
+
+:root[data-theme="dark"] .drawer__action--warn:hover,
+:root[data-theme="dark"] .drawer__action--warn:focus-visible {
+    background: #78350f; /* amber-900 */
+    border-color: #fbbf24;
+}
+
+:root[data-theme="dark"] .drawer__action--danger,
+:root[data-theme="dark"] .drawer__badge--danger {
+    background: #450a0a; /* red-950 */
+    border-color: #ef4444; /* red-500 */
+    color: var(--fg);
+}
+
+:root[data-theme="dark"] .drawer__action--danger:hover,
+:root[data-theme="dark"] .drawer__action--danger:focus-visible {
+    background: #7f1d1d; /* red-900 */
+    border-color: #fca5a5;
 }
 
 /* Filter-chip--on in dark mode: green fill (keeps 11.2:1 contrast). */

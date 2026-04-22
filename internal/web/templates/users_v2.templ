@@ -56,11 +56,15 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 					data-lpignore="true"
 					data-form-type="other"
 				/>
-				<a class={ filterChipClass(showDisabled) } href={ usersFilterHref(!showDisabled, ouFilter, lastLogon, memberOfDN) }>
+				<a
+					class={ filterChipClass(showDisabled) }
+					href={ usersFilterHref(!showDisabled, ouFilter, lastLogon, memberOfDN) }
+					title="Toggle: include disabled users in the list"
+				>
 					if showDisabled {
-						including disabled
+						include disabled ×
 					} else {
-						enabled only
+						include disabled
 					}
 				</a>
 				if ouFilter != "" {
