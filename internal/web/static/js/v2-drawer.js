@@ -93,4 +93,19 @@
   document.body.addEventListener("htmx:afterSwap", function (ev) {
     if (ev.detail && ev.detail.target) wireDatalistForms(ev.detail.target);
   });
+
+  // Any form carrying `data-confirm="Prompt text"` gets a native
+  // confirm() on submit — cancel aborts the submit. Used by the
+  // destructive detail-view actions (Disable / Delete) so an
+  // accidental click doesn't silently fire a 501 / state change.
+  document.addEventListener("submit", function (ev) {
+    var form = ev.target;
+    if (!form || !form.hasAttribute || !form.hasAttribute("data-confirm")) return;
+    var prompt = form.getAttribute("data-confirm");
+    if (!prompt) return;
+    if (!window.confirm(prompt)) {
+      ev.preventDefault();
+      if (ev.stopPropagation) ev.stopPropagation();
+    }
+  }, true);
 })();

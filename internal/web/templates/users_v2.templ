@@ -409,6 +409,22 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 		}
 	</section>
 
+	<section class="drawer__section drawer__section--actions">
+		<h3 class="drawer__section-title">Actions</h3>
+		<div class="drawer__actions">
+			<form method="post" action="/users/bulk?action=disable" data-confirm={ "Disable " + vm.User.CN() + "? The account can be re-enabled later." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
+			</form>
+			<form method="post" action="/users/bulk?action=delete" data-confirm={ "Delete " + vm.User.CN() + "? This cannot be undone." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--danger">Delete</button>
+			</form>
+		</div>
+	</section>
+
 	<section class="drawer__section drawer__section--pivots">
 		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
 		<ul class="drawer__pivots">

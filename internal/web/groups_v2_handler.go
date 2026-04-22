@@ -35,10 +35,26 @@ func (a *App) buildGroupDrawerVM(groupDN, viewerDN string) (templates.GroupDrawe
 	fullGroup := a.populateMembersForGroup(&group)
 	ouName := immediateOU(groupDN)
 
-	var unassigned []ldap.User
+	var (
+		unassigned      []ldap.User
+		childGroups     []ldap.Group
+		addableChildren []ldap.Group
+		addableParents  []ldap.Group
+	)
+
 	if a.ldapCache != nil {
 		unassigned = filterUnassignedUsers(a.ldapCache.FindUsers(true), fullGroup)
 		sortUsersByCN(unassigned)
+
+		allGroups := a.ldapCache.FindGroups()
+		childGroups = resolveChildGroups(&fullGroup.Group, allGroups)
+		sortGroupsByCN(childGroups)
+
+		addableChildren = filterAddableChildGroups(allGroups, &fullGroup.Group, childGroups)
+		sortGroupsByCN(addableChildren)
+
+		addableParents = filterAddableParentGroups(allGroups, &fullGroup.Group, fullGroup.ParentGroups)
+		sortGroupsByCN(addableParents)
 	}
 
 	return templates.GroupDrawerVM{
@@ -47,7 +63,186 @@ func (a *App) buildGroupDrawerVM(groupDN, viewerDN string) (templates.GroupDrawe
 		OUName:          ouName,
 		OUPivotHref:     buildGroupOUPivotHref(ouName),
 		UnassignedUsers: unassigned,
+		ChildGroups:     childGroups,
+		AddableChildren: addableChildren,
+		AddableParents:  addableParents,
 	}, true
+}
+
+// resolveChildGroups returns the subset of `allGroups` whose DN appears
+// in the target group's `member` attribute. AD and OpenLDAP both store
+// nested-group edges in `member` (same attribute as user membership),
+// so resolving "which members are groups" is just an intersection.
+func resolveChildGroups(g *ldap.Group, allGroups []ldap.Group) []ldap.Group {
+	if g == nil || len(g.Members) == 0 {
+		return nil
+	}
+
+	byDN := make(map[string]*ldap.Group, len(allGroups))
+	for i := range allGroups {
+		byDN[allGroups[i].DN()] = &allGroups[i]
+	}
+
+	out := make([]ldap.Group, 0)
+
+	for _, memberDN := range g.Members {
+		if child, ok := byDN[memberDN]; ok {
+			out = append(out, *child)
+		}
+	}
+
+	return out
+}
+
+// filterAddableChildGroups returns groups that could become children of
+// `self`: exclude self, existing children, and any group that is itself
+// (transitively) a parent of self — making it a child would create a
+// cycle. Cycle detection walks ParentGroups up to a sensible depth.
+func filterAddableChildGroups(allGroups []ldap.Group, self *ldap.Group, currentChildren []ldap.Group) []ldap.Group {
+	skip := make(map[string]struct{}, len(currentChildren)+1)
+	skip[self.DN()] = struct{}{}
+
+	for _, c := range currentChildren {
+		skip[c.DN()] = struct{}{}
+	}
+
+	// Walk up: collect every ancestor DN so we never offer one as a
+	// new child.
+	for _, ancestorDN := range collectAncestorDNs(self, allGroups) {
+		skip[ancestorDN] = struct{}{}
+	}
+
+	out := make([]ldap.Group, 0, len(allGroups))
+	for _, g := range allGroups {
+		if _, excluded := skip[g.DN()]; excluded {
+			continue
+		}
+
+		out = append(out, g)
+	}
+
+	return out
+}
+
+// filterAddableParentGroups returns groups that could become parents of
+// `self`: exclude self, existing parents, and any group that is
+// (transitively) a descendant of self — adding it as a parent would
+// create a cycle.
+func filterAddableParentGroups(allGroups []ldap.Group, self *ldap.Group, currentParents []ldap.Group) []ldap.Group {
+	skip := make(map[string]struct{}, len(currentParents)+1)
+	skip[self.DN()] = struct{}{}
+
+	for _, p := range currentParents {
+		skip[p.DN()] = struct{}{}
+	}
+
+	for _, descendantDN := range collectDescendantDNs(self, allGroups) {
+		skip[descendantDN] = struct{}{}
+	}
+
+	out := make([]ldap.Group, 0, len(allGroups))
+	for _, g := range allGroups {
+		if _, excluded := skip[g.DN()]; excluded {
+			continue
+		}
+
+		out = append(out, g)
+	}
+
+	return out
+}
+
+// collectAncestorDNs walks `MemberOf` transitively up to a depth cap to
+// find every group that the target is (directly or indirectly) a member
+// of. Used for cycle detection on add-child.
+func collectAncestorDNs(self *ldap.Group, allGroups []ldap.Group) []string {
+	byDN := make(map[string]*ldap.Group, len(allGroups))
+	for i := range allGroups {
+		byDN[allGroups[i].DN()] = &allGroups[i]
+	}
+
+	visited := map[string]struct{}{self.DN(): {}}
+	queue := append([]string(nil), self.MemberOf...)
+
+	for depth := 0; depth < 32 && len(queue) > 0; depth++ {
+		next := make([]string, 0)
+
+		for _, dn := range queue {
+			if _, seen := visited[dn]; seen {
+				continue
+			}
+
+			visited[dn] = struct{}{}
+
+			if parent, ok := byDN[dn]; ok {
+				next = append(next, parent.MemberOf...)
+			}
+		}
+
+		queue = next
+	}
+
+	out := make([]string, 0, len(visited))
+	for dn := range visited {
+		if dn == self.DN() {
+			continue
+		}
+
+		out = append(out, dn)
+	}
+
+	return out
+}
+
+// collectDescendantDNs walks `member` transitively down to find every
+// group that is (directly or indirectly) a child of the target. Used
+// for cycle detection on add-parent.
+func collectDescendantDNs(self *ldap.Group, allGroups []ldap.Group) []string {
+	byDN := make(map[string]*ldap.Group, len(allGroups))
+	for i := range allGroups {
+		byDN[allGroups[i].DN()] = &allGroups[i]
+	}
+
+	visited := map[string]struct{}{self.DN(): {}}
+	queue := make([]string, 0)
+	for _, m := range self.Members {
+		if _, ok := byDN[m]; ok {
+			queue = append(queue, m)
+		}
+	}
+
+	for depth := 0; depth < 32 && len(queue) > 0; depth++ {
+		next := make([]string, 0)
+
+		for _, dn := range queue {
+			if _, seen := visited[dn]; seen {
+				continue
+			}
+
+			visited[dn] = struct{}{}
+
+			if g, ok := byDN[dn]; ok {
+				for _, m := range g.Members {
+					if _, isGroup := byDN[m]; isGroup {
+						next = append(next, m)
+					}
+				}
+			}
+		}
+
+		queue = next
+	}
+
+	out := make([]string, 0, len(visited))
+	for dn := range visited {
+		if dn == self.DN() {
+			continue
+		}
+
+		out = append(out, dn)
+	}
+
+	return out
 }
 
 // populateMembersForGroup resolves the group's Members DN list into a

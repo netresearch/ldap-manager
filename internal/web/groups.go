@@ -16,8 +16,11 @@ import (
 )
 
 type groupModifyForm struct {
-	AddUser    *string `form:"adduser"`
-	RemoveUser *string `form:"removeuser"`
+	AddUser     *string `form:"adduser"`
+	RemoveUser  *string `form:"removeuser"`
+	AddChild    *string `form:"addchild"`  // DN of a group to add as a child (member) of this group
+	AddParent   *string `form:"addparent"` // DN of a group to add THIS group to as a parent
+	RemoveChild *string `form:"removechild"`
 }
 
 // groupModifyHandler applies an add/remove-user action and redirects back to
@@ -38,7 +41,8 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 		return handle500(c, err)
 	}
 
-	if form.RemoveUser == nil && form.AddUser == nil {
+	if form.RemoveUser == nil && form.AddUser == nil &&
+		form.AddChild == nil && form.AddParent == nil && form.RemoveChild == nil {
 		return c.Redirect(detailURL)
 	}
 
@@ -102,10 +106,17 @@ func findGroupByDN(groups []ldap.Group, dn string) *ldap.Group {
 }
 
 // performGroupModification handles the actual LDAP group modification operation.
+// AD and OpenLDAP both store nested-group membership in the same `member`
+// attribute as user membership, so AddUserToGroup / RemoveUserFromGroup
+// work transparently for group-to-group edges: adding a group's DN as the
+// "user" argument creates a parent→child edge; doing the reverse (this
+// group's DN as the member, target group as the parent) links THIS group
+// UP the hierarchy.
 func (a *App) performGroupModification(
 	ldapClient *ldap.LDAP, form *groupModifyForm, groupDN string,
 ) error {
-	if form.AddUser != nil {
+	switch {
+	case form.AddUser != nil:
 		if err := ldapClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err
 		}
@@ -113,13 +124,39 @@ func (a *App) performGroupModification(
 		if a.ldapCache != nil {
 			a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
 		}
-	} else if form.RemoveUser != nil {
+	case form.RemoveUser != nil:
 		if err := ldapClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
 			return err
 		}
 
 		if a.ldapCache != nil {
 			a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
+		}
+	case form.AddChild != nil:
+		// Add the child group as a member of THIS group.
+		if err := ldapClient.AddUserToGroup(*form.AddChild, groupDN); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(*form.AddChild, groupDN)
+		}
+	case form.RemoveChild != nil:
+		if err := ldapClient.RemoveUserFromGroup(*form.RemoveChild, groupDN); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnRemoveUserFromGroup(*form.RemoveChild, groupDN)
+		}
+	case form.AddParent != nil:
+		// Add THIS group as a member of the target parent group.
+		if err := ldapClient.AddUserToGroup(groupDN, *form.AddParent); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(groupDN, *form.AddParent)
 		}
 	}
 

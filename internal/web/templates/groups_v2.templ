@@ -19,12 +19,15 @@ import (
 // can range over resolved []ldap.User member tags — the raw ldap.Group.Members
 // is a []string of DNs which is not enough to render CN/DN links.
 type GroupDrawerVM struct {
-	Group            *ldap_cache.FullLDAPGroup
-	Pinned           bool
-	OUName           string      // plain-text OU name, e.g. "ou=Groups" (for display)
-	OUPivotHref      string      // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
-	CSRFToken        string      // current-session CSRF token used by embedded POST forms
-	UnassignedUsers  []ldap.User // users NOT in this group, for the "add user" datalist
+	Group             *ldap_cache.FullLDAPGroup
+	Pinned            bool
+	OUName            string       // plain-text OU name, e.g. "ou=Groups" (for display)
+	OUPivotHref       string       // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
+	CSRFToken         string       // current-session CSRF token used by embedded POST forms
+	UnassignedUsers   []ldap.User  // users NOT in this group, for the "add user" datalist
+	ChildGroups       []ldap.Group // groups whose DN appears in this group's `member` attribute
+	AddableChildren   []ldap.Group // groups eligible to become children (not self, not current children, not ancestors)
+	AddableParents    []ldap.Group // groups eligible to become parents (not self, not current parents, not descendants)
 }
 
 templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -211,11 +214,12 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 		</section>
 	}
 
-	if !inDrawer || len(vm.Group.ParentGroups) > 0 {
+	if !inDrawer || len(vm.Group.ParentGroups) > 0 || len(vm.AddableParents) > 0 {
 		<section class="drawer__section">
 			<h3 class="drawer__section-title">
 				{ fmt.Sprintf("Parent groups · %d", len(vm.Group.ParentGroups)) }
 			</h3>
+			@groupAddParentForm(vm)
 			if len(vm.Group.ParentGroups) == 0 {
 				<p class="drawer__empty-inline">None.</p>
 			} else {
@@ -223,6 +227,60 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 					for _, pg := range vm.Group.ParentGroups {
 						<li class="drawer__tag-row">
 							<a class="drawer__tag" href={ groupDetailHref(pg) } title={ pg.DN() }>{ pg.CN() }</a>
+							<form
+								class="drawer__tag-remove-form"
+								method="post"
+								action={ templ.SafeURL("/groups/" + url.PathEscape(pg.DN())) }
+								hx-post={ "/groups/" + url.PathEscape(pg.DN()) }
+								hx-target="closest .drawer"
+								hx-swap="innerHTML"
+							>
+								<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+								<input type="hidden" name="removechild" value={ vm.Group.DN() }/>
+								<button
+									type="submit"
+									class="drawer__tag-remove"
+									aria-label={ "Remove parent link to " + pg.CN() }
+									title={ "Remove parent link to " + pg.CN() }
+								>×</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
+
+	if !inDrawer || len(vm.ChildGroups) > 0 || len(vm.AddableChildren) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Child groups · %d", len(vm.ChildGroups)) }
+			</h3>
+			@groupAddChildForm(vm)
+			if len(vm.ChildGroups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, cg := range vm.ChildGroups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(cg) } title={ cg.DN() }>{ cg.CN() }</a>
+							<form
+								class="drawer__tag-remove-form"
+								method="post"
+								action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+								hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+								hx-target="closest .drawer"
+								hx-swap="innerHTML"
+							>
+								<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+								<input type="hidden" name="removechild" value={ cg.DN() }/>
+								<button
+									type="submit"
+									class="drawer__tag-remove"
+									aria-label={ "Remove child group " + cg.CN() }
+									title={ "Remove child " + cg.CN() }
+								>×</button>
+							</form>
 						</li>
 					}
 				</ul>
@@ -272,6 +330,17 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 				</p>
 			}
 		}
+	</section>
+
+	<section class="drawer__section drawer__section--actions">
+		<h3 class="drawer__section-title">Actions</h3>
+		<div class="drawer__actions">
+			<form method="post" action="/groups/bulk?action=delete" data-confirm={ "Delete group " + vm.Group.CN() + "? This cannot be undone." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.Group.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--danger">Delete</button>
+			</form>
+		</div>
 	</section>
 
 	<section class="drawer__section drawer__section--pivots">
@@ -431,6 +500,93 @@ func groupSearchText(g ldap.Group) string {
 	}
 
 	return out
+}
+
+// groupAddChildForm renders a datalist combobox for selecting another
+// group to add as a child (member) of this one. Mirrors userAddGroupForm.
+templ groupAddChildForm(vm GroupDrawerVM) {
+	if len(vm.AddableChildren) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddChildList-" + vm.Group.DN() }
+				name="addchild-label"
+				placeholder="Add child group…"
+				aria-label="Add child group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addchild" data-drawer-datalist-value/>
+			<datalist id={ "groupAddChildList-" + vm.Group.DN() }>
+				for _, g := range vm.AddableChildren {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add child group">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// groupAddParentForm renders a datalist combobox for selecting another
+// group to add THIS group to (i.e., making that group a parent of this
+// one). Submits via `addparent=<target-DN>`.
+templ groupAddParentForm(vm GroupDrawerVM) {
+	if len(vm.AddableParents) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddParentList-" + vm.Group.DN() }
+				name="addparent-label"
+				placeholder="Add parent group…"
+				aria-label="Add parent group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addparent" data-drawer-datalist-value/>
+			<datalist id={ "groupAddParentList-" + vm.Group.DN() }>
+				for _, g := range vm.AddableParents {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add parent group">
+				@iconPlus()
+			</button>
+		</form>
+	}
 }
 
 // groupAddUserForm renders an inline "add user to group" form —
