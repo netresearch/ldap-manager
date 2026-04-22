@@ -32,6 +32,10 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 			</header>
 
 			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all computers currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible computers"/>
+					<span>all</span>
+				</label>
 				<input
 					type="search"
 					class="list-page__search"

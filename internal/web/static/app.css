@@ -969,6 +969,36 @@ a.home__quick-card:focus-visible .home__quick-card-arrow {
     flex-wrap: wrap;
 }
 
+/* "Select all (visible)" master checkbox. Styled as a compact chip
+ * so it sits next to the free-text filter without dominating; the
+ * title attribute explains the "(visible)" nuance on hover. */
+.list-page__select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 0.75rem;
+    min-height: var(--density-touch-size);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg-subtle);
+    color: var(--fg-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    user-select: none;
+    flex: 0 0 auto;
+}
+
+.list-page__select-all:hover,
+.list-page__select-all:focus-within {
+    border-color: var(--border-strong);
+    color: var(--fg);
+}
+
+.list-page__select-all input {
+    margin: 0;
+    cursor: pointer;
+}
+
 /* Higher specificity (input[type="search"].list-page__search) required to
  * defeat Pico's own input[type="search"] rule which sets vertical padding
  * and a left-padded magnifier background — both push the element above
@@ -1177,12 +1207,17 @@ input[type="text"].list-page__search {
     /* Independent scroll: list owns its vertical scroll so long user/group
      * lists scroll without pushing the drawer or rail. min-height: 0 is
      * REQUIRED so this flex child can actually shrink below its intrinsic
-     * content height — otherwise overflow never kicks in. */
+     * content height — otherwise overflow never kicks in.
+     * `scrollbar-gutter: stable` reserves the scrollbar track width
+     * whether the scrollbar is actually drawn or not, so switching
+     * between a short (no scroll) and long (scroll) list doesn't shift
+     * row content left/right by ~15 px. */
     min-width: 0;
     min-height: 0;
     height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
 .list-rows__empty {
@@ -1244,7 +1279,11 @@ input[type="text"].list-page__search {
      *   6: trailing slot 1 (lock for disabled, count pill for groups)
      *   7: trailing slot 2 (disabled badge)
      */
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto;
+    /* Primary keeps 2fr so the CN reserves most of the row; secondary
+     * capped at minmax(0, 1fr) so an overlong description can't push
+     * the CN out of its ellipsis region. Both columns minmax(0,*) so
+     * text-overflow actually fires. */
+    grid-template-columns: auto auto auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
     gap: 0.625rem;
     align-items: center;
     padding: 0.5rem 0.875rem;
@@ -1654,6 +1693,68 @@ input[type="text"].list-page__search {
     color: #b91c1c;
     border-color: #dc2626;
     background: #fef2f2;
+}
+
+/* Inline "Add to group" / "Add user" combobox form rendered inside
+ * the drawer's Members / Groups section. Uses a native <datalist>
+ * so the combobox works without any autocomplete dependency and is
+ * CSP-safe. */
+.drawer__add-form {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+}
+
+.drawer__add-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: var(--density-touch-size);
+    padding: 0 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.875rem;
+}
+
+.drawer__add-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.drawer__add-input[aria-invalid="true"] {
+    border-color: #dc2626;
+}
+
+.drawer__add-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--density-touch-size);
+    height: var(--density-touch-size);
+    min-width: var(--density-touch-size);
+    padding: 0;
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    color: var(--fg-muted);
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.drawer__add-submit:hover,
+.drawer__add-submit:focus-visible {
+    color: var(--fg);
+    border-color: var(--border-strong);
+}
+
+.drawer__add-submit svg {
+    width: 1rem;
+    height: 1rem;
+    display: block;
 }
 
 /* Sticky pivots: for drawers with long tag lists (a user in 30 groups,

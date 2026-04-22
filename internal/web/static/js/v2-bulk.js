@@ -279,12 +279,72 @@
 
   document.addEventListener("change", function (ev) {
     var t = ev.target;
-    if (!t || !t.hasAttribute || !t.hasAttribute("data-bulk")) return;
-    if (t.checked) {
-      selected.add(t.value);
-    } else {
-      selected.delete(t.value);
+    if (!t || !t.hasAttribute) return;
+
+    // Per-row checkbox
+    if (t.hasAttribute("data-bulk")) {
+      if (t.checked) {
+        selected.add(t.value);
+      } else {
+        selected.delete(t.value);
+      }
+      updateBar();
+      syncSelectAll();
+      return;
     }
-    updateBar();
+
+    // Select-all-visible master checkbox. Walks the list rows and
+    // toggles every data-bulk checkbox whose row isn't `hidden` by
+    // the free-text filter. This lets an operator narrow the list
+    // with the search input, click the master, and bulk-act on the
+    // filtered subset.
+    if (t.hasAttribute("data-select-all-visible")) {
+      var checks = document.querySelectorAll("[data-bulk]");
+      for (var i = 0; i < checks.length; i++) {
+        var ck = checks[i];
+        var row = ck.closest("[data-search-item]") || ck.closest(".list-row");
+        if (row && row.hidden) continue;
+        ck.checked = t.checked;
+        if (t.checked) {
+          selected.add(ck.value);
+        } else {
+          selected.delete(ck.value);
+        }
+      }
+      updateBar();
+    }
+  });
+
+  // syncSelectAll flips the master checkbox between empty /
+  // indeterminate / all depending on the current selection over the
+  // visible rows.
+  function syncSelectAll() {
+    var master = document.querySelector("[data-select-all-visible]");
+    if (!master) return;
+    var checks = document.querySelectorAll("[data-bulk]");
+    var visible = 0;
+    var checked = 0;
+    for (var i = 0; i < checks.length; i++) {
+      var ck = checks[i];
+      var row = ck.closest("[data-search-item]") || ck.closest(".list-row");
+      if (row && row.hidden) continue;
+      visible++;
+      if (ck.checked) checked++;
+    }
+    master.indeterminate = checked > 0 && checked < visible;
+    master.checked = visible > 0 && checked === visible;
+  }
+
+  // Re-sync the master whenever the filter hides or reveals rows.
+  // v2-search-filter.js flips `hidden` directly; observe the list so
+  // we don't couple the two modules.
+  document.addEventListener("DOMContentLoaded", function () {
+    var list = document.querySelector("[data-search-list]");
+    if (!list || typeof MutationObserver === "undefined") return;
+    new MutationObserver(syncSelectAll).observe(list, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
   });
 })();

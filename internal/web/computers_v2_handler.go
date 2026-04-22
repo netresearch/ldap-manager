@@ -3,6 +3,8 @@ package web
 
 import (
 	"net/url"
+	"sort"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -80,6 +82,8 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 		computers = filterComputersByOU(all, ouFilter)
 	}
 
+	sortComputersByCN(computers)
+
 	ous := distinctImmediateOUsFromComputers(all)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
@@ -132,6 +136,13 @@ func (a *App) handleComputerV2(c *fiber.Ctx) error {
 
 	return templates.ComputerFullV2(vm, a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// sortComputersByCN sorts a slice of computers in place by CN, case-insensitive.
+func sortComputersByCN(computers []ldap.Computer) {
+	sort.SliceStable(computers, func(i, j int) bool {
+		return strings.ToLower(computers[i].CN()) < strings.ToLower(computers[j].CN())
+	})
 }
 
 // filterComputersByOU returns computers whose immediate OU matches ou. When

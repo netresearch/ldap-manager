@@ -19,14 +19,15 @@ import (
 // can range over resolved []ldap.User member tags — the raw ldap.Group.Members
 // is a []string of DNs which is not enough to render CN/DN links.
 type GroupDrawerVM struct {
-	Group       *ldap_cache.FullLDAPGroup
-	Pinned      bool
-	OUName      string // plain-text OU name, e.g. "ou=Groups" (for display)
-	OUPivotHref string // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
-	CSRFToken   string // current-session CSRF token used by embedded POST forms
+	Group            *ldap_cache.FullLDAPGroup
+	Pinned           bool
+	OUName           string      // plain-text OU name, e.g. "ou=Groups" (for display)
+	OUPivotHref      string      // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
+	CSRFToken        string      // current-session CSRF token used by embedded POST forms
+	UnassignedUsers  []ldap.User // users NOT in this group, for the "add user" datalist
 }
 
-templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
@@ -37,6 +38,10 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 			</header>
 
 			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all groups currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible groups"/>
+					<span>all</span>
+				</label>
 				<input
 					type="search"
 					class="list-page__search"
@@ -52,14 +57,23 @@ templ GroupsListV2(groups []ldap.Group, ouFilter string, ous []string, flashes [
 					data-form-type="other"
 				/>
 				if ouFilter != "" {
-					<a class="filter-chip filter-chip--on" href={ clearGroupsOUHref() } title={ ouFilter }>
+					<a class="filter-chip filter-chip--on" href={ groupsFilterHref("", memberDN) } title={ ouFilter }>
 						{ ouChipLabel(ouFilter) } ×
+					</a>
+				}
+				if memberDN != "" {
+					<a class="filter-chip filter-chip--on" href={ groupsFilterHref(ouFilter, "") } title={ memberDN }>
+						if memberCN != "" {
+							member { memberCN } ×
+						} else {
+							member ×
+						}
 					</a>
 				}
 			</div>
 
 			<div class={ listPanePaneClass(ous) }>
-				@ouRail("/groups", ous, ouFilter, groupOUHref)
+				@ouRail("/groups", ous, ouFilter, groupOUHrefFactory(memberDN))
 
 				<ul class="list-rows" data-search-list aria-label="Groups">
 					for _, g := range groups {
@@ -220,6 +234,7 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 		<h3 class="drawer__section-title">
 			{ fmt.Sprintf("Members · %d", len(vm.Group.Members)) }
 		</h3>
+		@groupAddUserForm(vm)
 		if len(vm.Group.Members) == 0 {
 			<p class="drawer__empty-inline">No members.</p>
 		} else {
@@ -418,21 +433,76 @@ func groupSearchText(g ldap.Group) string {
 	return out
 }
 
-func clearGroupsOUHref() templ.SafeURL {
-	return templ.URL("/groups")
+// groupAddUserForm renders an inline "add user to group" form —
+// native datalist combobox + hidden DN input. Mirrors userAddGroupForm.
+templ groupAddUserForm(vm GroupDrawerVM) {
+	if len(vm.UnassignedUsers) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddUserList-" + vm.Group.DN() }
+				name="adduser-label"
+				placeholder="Add user — start typing a name…"
+				aria-label="Add user"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="adduser" data-drawer-datalist-value/>
+			<datalist id={ "groupAddUserList-" + vm.Group.DN() }>
+				for _, u := range vm.UnassignedUsers {
+					<option value={ u.CN() } data-dn={ u.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add user">
+				@iconPlus()
+			</button>
+		</form>
+	}
 }
 
-// groupOUHref maps an OU value to a /groups URL for the OU rail. An
-// empty value clears the filter.
-func groupOUHref(value string) templ.SafeURL {
-	if value == "" {
+// groupsFilterHref composes a /groups URL combining the OU and member
+// filters. Empty values are omitted. Mirrors usersFilterHref.
+func groupsFilterHref(ouFilter, memberDN string) templ.SafeURL {
+	v := url.Values{}
+
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	if memberDN != "" {
+		v.Set("member", memberDN)
+	}
+
+	qs := v.Encode()
+	if qs == "" {
 		return templ.URL("/groups")
 	}
 
-	v := url.Values{}
-	v.Set("ou", value)
+	return templ.URL("/groups?" + qs)
+}
 
-	return templ.URL("/groups?" + v.Encode())
+// groupOUHrefFactory preserves the active member filter when the user
+// clicks an OU row in the rail. Mirrors userOUHrefFactory.
+func groupOUHrefFactory(memberDN string) ouHref {
+	return func(value string) templ.SafeURL {
+		return groupsFilterHref(value, memberDN)
+	}
 }
 
 // asLdapGroup returns the embedded ldap.Group from a FullLDAPGroup so

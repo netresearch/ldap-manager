@@ -3,6 +3,7 @@ package web
 
 import (
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,11 +37,18 @@ func (a *App) buildUserDrawerVM(userDN, viewerDN string) (templates.UserDrawerVM
 
 	ouFilter := immediateOU(userDN)
 
+	var unassigned []ldap.Group
+	if a.ldapCache != nil {
+		unassigned = filterUnassignedGroups(a.ldapCache.FindGroups(), fullUser)
+		sortGroupsByCN(unassigned)
+	}
+
 	return templates.UserDrawerVM{
-		User:        fullUser,
-		Pinned:      pinned,
-		OUName:      ouFilter,
-		OUPivotHref: buildOUPivotHref(ouFilter),
+		User:             fullUser,
+		Pinned:           pinned,
+		OUName:           ouFilter,
+		OUPivotHref:      buildOUPivotHref(ouFilter),
+		UnassignedGroups: unassigned,
 	}, true
 }
 
@@ -91,6 +99,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users := filterUsersByOU(all, ouFilter)
 	users = filterUsersByLastLogon(users, lastLogon)
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
+	sortUsersByCN(users)
 
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
 	adminDNs := adminUserDNs(a.ldapCache)
@@ -138,6 +147,16 @@ func adminUserDNs(cache *ldap_cache.Manager) map[string]struct{} {
 	}
 
 	return out
+}
+
+// sortUsersByCN sorts a slice of users in place by CN, case-insensitive,
+// stable. AD and OpenLDAP both return results in server-specified order
+// which is effectively random from an operator's point of view; a
+// predictable alphabetic sort makes the list scan-ready.
+func sortUsersByCN(users []ldap.User) {
+	sort.SliceStable(users, func(i, j int) bool {
+		return strings.ToLower(users[i].CN()) < strings.ToLower(users[j].CN())
+	})
 }
 
 // lookupGroupCN resolves a group DN to its CN via ldap_cache. Empty DN or

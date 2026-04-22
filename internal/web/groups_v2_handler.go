@@ -3,6 +3,8 @@ package web
 
 import (
 	"net/url"
+	"sort"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -33,11 +35,18 @@ func (a *App) buildGroupDrawerVM(groupDN, viewerDN string) (templates.GroupDrawe
 	fullGroup := a.populateMembersForGroup(&group)
 	ouName := immediateOU(groupDN)
 
+	var unassigned []ldap.User
+	if a.ldapCache != nil {
+		unassigned = filterUnassignedUsers(a.ldapCache.FindUsers(true), fullGroup)
+		sortUsersByCN(unassigned)
+	}
+
 	return templates.GroupDrawerVM{
-		Group:       fullGroup,
-		Pinned:      pinned,
-		OUName:      ouName,
-		OUPivotHref: buildGroupOUPivotHref(ouName),
+		Group:           fullGroup,
+		Pinned:          pinned,
+		OUName:          ouName,
+		OUPivotHref:     buildGroupOUPivotHref(ouName),
+		UnassignedUsers: unassigned,
 	}, true
 }
 
@@ -80,6 +89,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	}
 
 	ouFilter := c.Query("ou")
+	memberDN := c.Query("member")
 
 	var all []ldap.Group
 	if a.ldapCache != nil {
@@ -88,11 +98,53 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 
 	ous := distinctImmediateOUsFromGroups(all)
 	groups := filterGroupsByOU(all, ouFilter)
+	groups = filterGroupsByMember(groups, memberDN)
+	sortGroupsByCN(groups)
+
+	memberCN := lookupUserCN(memberDN, a.ldapCache)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// filterGroupsByMember narrows to groups that list the given user DN in
+// their Members attribute. Empty memberDN is a no-op. Inverse of
+// filterUsersByMemberOf; both look up the group list the same way.
+func filterGroupsByMember(groups []ldap.Group, memberDN string) []ldap.Group {
+	if memberDN == "" {
+		return groups
+	}
+
+	out := make([]ldap.Group, 0, len(groups))
+	for _, g := range groups {
+		for _, m := range g.Members {
+			if m == memberDN {
+				out = append(out, g)
+
+				break
+			}
+		}
+	}
+
+	return out
+}
+
+// lookupUserCN resolves a user DN to its CN via ldap_cache. Empty DN or
+// cache miss both yield "".
+func lookupUserCN(userDN string, cache *ldap_cache.Manager) string {
+	if userDN == "" || cache == nil {
+		return ""
+	}
+
+	for _, u := range cache.FindUsers(true) {
+		if u.DN() == userDN {
+			return u.CN()
+		}
+	}
+
+	return ""
 }
 
 // handleGroupV2 renders either the drawer fragment (?fragment=drawer) or the
@@ -139,6 +191,13 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 
 	return templates.GroupFullV2(vm, a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// sortGroupsByCN sorts a slice of groups in place by CN, case-insensitive.
+func sortGroupsByCN(groups []ldap.Group) {
+	sort.SliceStable(groups, func(i, j int) bool {
+		return strings.ToLower(groups[i].CN()) < strings.ToLower(groups[j].CN())
+	})
 }
 
 // filterGroupsByOU returns groups whose immediate OU matches ou. When ou is

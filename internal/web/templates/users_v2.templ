@@ -19,11 +19,12 @@ import (
 // range over resolved []ldap.Group tags — the raw ldap.User.Groups is a
 // []string of memberOf DNs which is not enough to render CN/DN links.
 type UserDrawerVM struct {
-	User        *ldap_cache.FullLDAPUser
-	Pinned      bool
-	OUName      string // plain-text OU name, e.g. "ou=Users" (for display)
-	OUPivotHref string // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
-	CSRFToken   string // current-session CSRF token used by embedded POST forms
+	User             *ldap_cache.FullLDAPUser
+	Pinned           bool
+	OUName           string       // plain-text OU name, e.g. "ou=Users" (for display)
+	OUPivotHref      string       // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
+	CSRFToken        string       // current-session CSRF token used by embedded POST forms
+	UnassignedGroups []ldap.Group // groups the user is NOT a member of (datalist for add-to-group)
 }
 
 templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
@@ -37,6 +38,10 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 			</header>
 
 			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all users currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible users"/>
+					<span>all</span>
+				</label>
 				<input
 					type="search"
 					class="list-page__search"
@@ -366,6 +371,7 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 		<h3 class="drawer__section-title">
 			{ fmt.Sprintf("Groups · %d", len(vm.User.Groups)) }
 		</h3>
+		@userAddGroupForm(vm)
 		if len(vm.User.Groups) == 0 {
 			<p class="drawer__empty-inline">None.</p>
 		} else {
@@ -429,8 +435,72 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 					</a>
 				</li>
 			}
+			if len(vm.User.Groups) > 0 {
+				<li>
+					<a class="drawer__pivot" href={ userGroupsListHref(vm.User.User) } aria-label={ fmt.Sprintf("View all %d groups for this user as group list", len(vm.User.Groups)) } title="View all groups as group list">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconList()</span>
+						<span class="drawer__pivot-text">{ fmt.Sprintf("View all %d groups as group list", len(vm.User.Groups)) }</span>
+					</a>
+				</li>
+			}
 		</ul>
 	</section>
+}
+
+// userAddGroupForm renders an inline "add to group" form — a native
+// datalist combobox pre-filled with every group the user is NOT a
+// member of. Submits to /users/<dn> with `addgroup=<group-dn>`
+// (handled by userModifyHandler); on HX-Request the handler swaps
+// the refreshed drawer fragment in place.
+templ userAddGroupForm(vm UserDrawerVM) {
+	if len(vm.UnassignedGroups) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(userEditHref(vm.User.User)) }
+			hx-post={ userEditHref(vm.User.User) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "userAddGroupList-" + vm.User.DN() }
+				name="addgroup-label"
+				placeholder="Add to group — start typing a name…"
+				aria-label="Add to group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addgroup" data-drawer-datalist-value/>
+			<datalist id={ "userAddGroupList-" + vm.User.DN() }>
+				for _, g := range vm.UnassignedGroups {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add to group">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// userGroupsListHref points at /groups?member=<user-dn> so the operator
+// sees the user's groups in the Groups list UI (with bulk actions,
+// free-text filter, OU rail, etc.) instead of as just tags.
+func userGroupsListHref(u ldap.User) templ.SafeURL {
+	v := url.Values{}
+	v.Set("member", u.DN())
+
+	return templ.URL("/groups?" + v.Encode())
 }
 
 // userKVEdit renders an inline-editable drawer key/value row as a small
