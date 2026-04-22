@@ -38,6 +38,8 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
 			</header>
 
+			@listFlashes(flashes)
+
 			<div class="list-page__filters" data-search-filter>
 				<label class="list-page__select-all" title="Select all users currently visible in the list (after filtering)">
 					<input type="checkbox" data-select-all-visible aria-label="Select all visible users"/>

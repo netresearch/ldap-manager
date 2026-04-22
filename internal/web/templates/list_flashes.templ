@@ -1,0 +1,35 @@
+// Flash banner rendered at the top of list pages (/users, /groups,
+// /computers) after a POST+redirect. Handler calls a.setFlash before
+// the redirect; the list handler pops it via a.takeFlash and passes
+// it to the list template which delegates to this component.
+
+package templates
+
+// listFlashes renders the queued flash messages as inline alert banners.
+// No-op when the slice is empty so callers don't need a guard around
+// the @listFlashes() call.
+templ listFlashes(flashes []Flash) {
+	if len(flashes) > 0 {
+		<div class="list-page__flashes" role="alert" aria-live="polite">
+			for _, f := range flashes {
+				<div class={ listFlashClass(f) }>
+					{ f.Message }
+				</div>
+			}
+		</div>
+	}
+}
+
+// listFlashClass picks the block-level flash class based on the flash
+// type. The base class provides the banner layout; the modifier sets
+// the colour (green success, red error, blue info).
+func listFlashClass(f Flash) string {
+	switch f.Type {
+	case FlashTypeSuccess:
+		return "list-page__flash list-page__flash--success"
+	case FlashTypeError:
+		return "list-page__flash list-page__flash--error"
+	default:
+		return "list-page__flash list-page__flash--info"
+	}
+}

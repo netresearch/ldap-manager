@@ -122,10 +122,13 @@ func TestBulkHandler_Groups_UnknownAction(t *testing.T) {
 	}
 }
 
-// TestBulkHandler_Groups_DeleteStubbed verifies the delete action on
-// /groups/bulk is explicitly not yet implemented (simple-ldap-go has no
-// DeleteGroup). Stubbed with 501 rather than a half-baked DIY.
-func TestBulkHandler_Groups_DeleteStubbed(t *testing.T) {
+// TestBulkHandler_Groups_DeleteDispatches verifies the delete action on
+// /groups/bulk is wired to bulkDeleteGroups and reaches the LDAP-bind
+// path (not a 501 stub). In the mock harness getUserLDAP fails against
+// the fake server, so the handler bubbles a 401 → handle500 → /login
+// redirect. What we assert: NOT 501 (the old stubbed behaviour) and
+// NOT 400 (well-formed request).
+func TestBulkHandler_Groups_DeleteDispatches(t *testing.T) {
 	app, store := setupFullTestApp(t)
 
 	cookies := createAuthSession(t, app, store)
@@ -146,8 +149,44 @@ func TestBulkHandler_Groups_DeleteStubbed(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusNotImplemented {
-		t.Fatalf("expected 501, got %d", resp.StatusCode)
+	if resp.StatusCode == http.StatusNotImplemented {
+		t.Fatalf("expected dispatch (not 501 stub); got 501 — delete groups is "+
+			"no longer stubbed. Got status %d.", resp.StatusCode)
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		t.Fatalf("unexpected 400 for well-formed delete request: %d", resp.StatusCode)
+	}
+}
+
+// TestBulkHandler_Computers_DeleteDispatches mirrors
+// TestBulkHandler_Groups_DeleteDispatches for the computers list.
+func TestBulkHandler_Computers_DeleteDispatches(t *testing.T) {
+	app, store := setupFullTestApp(t)
+
+	cookies := createAuthSession(t, app, store)
+
+	form := url.Values{"target_dn": {"cn=pc1,dc=test", "cn=pc2,dc=test"}}
+	req := httptest.NewRequest(http.MethodPost,
+		"/computers/bulk?action=delete",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("computers/bulk POST: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotImplemented {
+		t.Fatalf("expected dispatch (not 501 stub); got 501")
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		t.Fatalf("unexpected 400: %d", resp.StatusCode)
 	}
 }
 

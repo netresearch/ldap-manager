@@ -109,7 +109,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	page := templates.UsersListV2(
 		users, showDisabled, ouFilter, lastLogon,
 		memberOf, memberOfCN, ous,
-		templates.Flashes(), a.paletteContextFor(viewerDN),
+		a.takeFlash(c), a.paletteContextFor(viewerDN),
 		adminDNs,
 	)
 

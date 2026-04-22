@@ -157,6 +157,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("e2e bootstrap: bulk seed users: %v", err)
 	}
 
+	// Expose the container to per-test seed helpers (e.g. bulk-delete
+	// creates disposable groups then asserts the delete round-trip).
+	containerForSeed = ldapContainer
+
 	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		log.Fatalf("e2e bootstrap: install playwright: %v", err)
 	}
@@ -259,6 +263,12 @@ func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error
 
 	return container, fmt.Sprintf("ldap://%s:%s", host, port.Port()), nil
 }
+
+// containerForSeed is the running OpenLDAP testcontainer, exposed to
+// per-test seed helpers that add/remove fixture entries. Populated by
+// TestMain; nil outside of the e2e test harness (which makes per-test
+// helpers self-skip).
+var containerForSeed testcontainers.Container
 
 // bulkSeedUsers appends N additional inetOrgPerson entries to ou=users so
 // long-list / flex-pressure diagnostic tests have realistic data to work

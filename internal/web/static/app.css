@@ -1722,6 +1722,60 @@ input[type="text"].list-page__search {
     background: #fef2f2;
 }
 
+/* Top-of-list banner rendered after a POST+redirect (bulk actions
+ * etc). Uses the same visual pattern as .drawer__flash: coloured
+ * left-border stripe + tinted fill + body text in --fg for AAA
+ * contrast. Placed between the list header and the filter row. */
+.list-page__flashes {
+    margin-bottom: 1rem;
+}
+
+.list-page__flash {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.list-page__flash + .list-page__flash {
+    margin-top: 0.5rem;
+}
+
+.list-page__flash--success {
+    border-color: #16a34a; /* green-600 */
+    background: #f0fdf4; /* green-50 */
+}
+
+.list-page__flash--error {
+    border-color: #dc2626; /* red-600 */
+    background: #fef2f2; /* red-50 */
+}
+
+.list-page__flash--info {
+    border-color: #2563eb; /* blue-600 */
+    background: #eff6ff; /* blue-50 */
+}
+
+:root[data-theme="dark"] .list-page__flash--success {
+    background: #052e16; /* green-950 */
+    border-color: #22c55e; /* green-500 stripe */
+    color: var(--fg);
+}
+
+:root[data-theme="dark"] .list-page__flash--error {
+    background: #450a0a; /* red-950 */
+    border-color: #ef4444; /* red-500 stripe */
+    color: var(--fg);
+}
+
+:root[data-theme="dark"] .list-page__flash--info {
+    background: #172554; /* blue-950 */
+    border-color: #3b82f6; /* blue-500 stripe */
+    color: var(--fg);
+}
+
 /* Inline badges inside drawer__kv values — used for status flags like
  * "must change password" (warn) or "locked" (danger). Small uppercase
  * pills so they read as supplementary metadata, not primary content. */

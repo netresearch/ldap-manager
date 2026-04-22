@@ -41,6 +41,8 @@ templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
 			</header>
 
+			@listFlashes(flashes)
+
 			<div class="list-page__filters" data-search-filter>
 				<label class="list-page__select-all" title="Select all groups currently visible in the list (after filtering)">
 					<input type="checkbox" data-select-all-visible aria-label="Select all visible groups"/>

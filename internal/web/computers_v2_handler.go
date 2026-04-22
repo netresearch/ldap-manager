@@ -88,7 +88,7 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.ComputersListV2(computers, ouFilter, ous, templates.Flashes(), a.paletteContextFor(viewerDN)).
+	return templates.ComputersListV2(computers, ouFilter, ous, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

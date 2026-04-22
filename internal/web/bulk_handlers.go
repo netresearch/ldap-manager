@@ -5,16 +5,20 @@
 // identifier comes in on the query string (?action=…) to keep the POST
 // body a plain target_dn[] list.
 //
-// Write operations that simple-ldap-go does not currently expose (e.g.
-// DeleteGroup, DeleteComputer, DisableUser, DisableComputer) return
-// HTTP 501 Not Implemented with a short explanation rather than a
-// half-baked DIY implementation — the latter risks corrupting directory
-// state on unexpected schemas.
+// Write operations that simple-ldap-go does not currently expose in a
+// portable way (DisableUser/DisableComputer on non-AD) return HTTP 501
+// rather than a half-baked DIY.  Delete uses the generic DeleteByDN
+// added in simple-ldap-go v1.11 — works for users, groups, computers.
 package web
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
+	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
+
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 // bulkNotImplementedMessage is the response body for bulk actions that
@@ -62,8 +66,7 @@ func (a *App) handleBulkGroups(c *fiber.Ctx) error {
 	case "add-members":
 		return a.bulkAddMembersToGroups(c)
 	case "delete":
-		// simple-ldap-go does not expose DeleteGroup — stub.
-		return bulkNotImplemented(c, "delete groups", "")
+		return a.bulkDeleteGroups(c)
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("unknown bulk action")
 	}
@@ -83,8 +86,7 @@ func (a *App) handleBulkComputers(c *fiber.Ctx) error {
 		// Same reasoning as users "disable" — no portable write op.
 		return bulkNotImplemented(c, "disable computers", "")
 	case "delete":
-		// simple-ldap-go does not expose DeleteComputer — stub.
-		return bulkNotImplemented(c, "delete computers", "")
+		return a.bulkDeleteComputers(c)
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("unknown bulk action")
 	}
@@ -210,8 +212,9 @@ func (a *App) bulkRemoveFromGroup(c *fiber.Ctx) error {
 	return c.Redirect("/users", fiber.StatusSeeOther)
 }
 
-// bulkDeleteUsers deletes each user in target_dn[]. Per-entry failures are
-// logged but do not abort the batch — callers land on /users regardless.
+// bulkDeleteUsers deletes each user in target_dn[]. Per-entry failures
+// are logged and summarised in the flash banner but do not abort the
+// batch — callers land on /users regardless.
 func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
@@ -225,8 +228,14 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 	defer func() { _ = client.Close() }()
 
 	deleted := 0
+	var firstErr error
+
 	for _, userDN := range targets {
 		if err := client.DeleteUser(userDN); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+
 			log.Warn().Err(err).Str("user", userDN).Msg("bulk delete-user failed")
 
 			continue
@@ -235,9 +244,78 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 		deleted++
 	}
 
+	a.finaliseBulkDelete(c, "user", deleted, len(targets), firstErr)
+
+	return c.Redirect("/users", fiber.StatusSeeOther)
+}
+
+// bulkDeleteGroups deletes each DN in target_dn[] as an LDAP entry
+// via simple-ldap-go's generic DeleteByDN (which performs a raw
+// ldap.Del on the DN). Flash summarises the result on the list page.
+func (a *App) bulkDeleteGroups(c *fiber.Ctx) error {
+	return a.bulkDeleteByDN(c, "group", "/groups")
+}
+
+// bulkDeleteComputers mirrors bulkDeleteGroups against the computers
+// list. Uses the same generic DeleteByDN because computers and groups
+// are both single-entry deletes without a type-specific helper.
+func (a *App) bulkDeleteComputers(c *fiber.Ctx) error {
+	return a.bulkDeleteByDN(c, "computer", "/computers")
+}
+
+// bulkDeleteByDN is the shared body of bulkDeleteGroups /
+// bulkDeleteComputers: collect target_dn[], open a per-user LDAP
+// binding, DeleteByDN each target, count successes, flash a summary,
+// and redirect back to the list page at `redirectTo`. `kind` is the
+// singular noun used in the flash and the log field.
+//
+// Users have their own handler (bulkDeleteUsers) because we call the
+// type-specific `client.DeleteUser` which also fires cache-hook work
+// in simple-ldap-go that DeleteByDN bypasses.
+func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
+	targets := collectTargetDNs(c)
+	if len(targets) == 0 {
+		return c.Redirect(redirectTo, fiber.StatusSeeOther)
+	}
+
+	client, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer func() { _ = client.Close() }()
+
+	deleted := 0
+	var firstErr error
+
+	for _, dn := range targets {
+		if err := ldap.DeleteByDN(c.UserContext(), client, dn); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+
+			log.Warn().Err(err).Str("dn", dn).Str("kind", kind).Msg("bulk delete failed")
+
+			continue
+		}
+
+		deleted++
+	}
+
+	a.finaliseBulkDelete(c, kind, deleted, len(targets), firstErr)
+
+	return c.Redirect(redirectTo, fiber.StatusSeeOther)
+}
+
+// finaliseBulkDelete is the shared post-loop cleanup for all three
+// bulk-delete handlers: invalidate the template + LDAP caches if any
+// delete succeeded, and drop a "Deleted N / M <kind>s" flash on the
+// next list page load. `kind` is the singular noun ("user", "group",
+// "computer"); pluralisation is naive "s"-suffix which is correct for
+// all three.
+func (a *App) finaliseBulkDelete(c *fiber.Ctx, kind string, deleted, total int, firstErr error) {
 	if deleted > 0 {
 		// No dedicated OnDelete hook in the cache — force a full refresh
-		// by invalidating the template cache so stale lists don't linger.
+		// so stale lists don't linger.
 		a.invalidateTemplateCacheOnModification()
 
 		if a.ldapCache != nil {
@@ -246,11 +324,34 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 	}
 
 	log.Info().
-		Int("targeted", len(targets)).
+		Int("targeted", total).
 		Int("deleted", deleted).
-		Msg("bulk delete-users complete")
+		Str("kind", kind).
+		Msg("bulk delete complete")
 
-	return c.Redirect("/users", fiber.StatusSeeOther)
+	switch deleted {
+	case total:
+		a.setFlash(c, templates.SuccessFlash(
+			fmt.Sprintf("Deleted %d %s%s.", deleted, kind, pluralSuffix(deleted))))
+	case 0:
+		a.setFlash(c, templates.ErrorFlash(
+			fmt.Sprintf("Failed to delete any of %d %s%s: %s",
+				total, kind, pluralSuffix(total), humaniseLDAPError(firstErr))))
+	default:
+		a.setFlash(c, templates.ErrorFlash(
+			fmt.Sprintf("Deleted %d / %d %s%s (%s)",
+				deleted, total, kind, pluralSuffix(total), humaniseLDAPError(firstErr))))
+	}
+}
+
+// pluralSuffix returns "s" when count != 1. Matches English
+// pluralisation for "user(s)" / "group(s)" / "computer(s)".
+func pluralSuffix(count int) string {
+	if count == 1 {
+		return ""
+	}
+
+	return "s"
 }
 
 // bulkAddMembersToGroups adds user_dn to each group listed in target_dn[].
