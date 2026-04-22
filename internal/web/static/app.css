@@ -363,6 +363,16 @@ html:has(> body.has-page-scroll) {
     background: var(--bg);
     border-bottom: 1px solid var(--border);
     min-height: var(--density-touch-size);
+    /* Pin the chrome height: body is flex-column, and when a long list
+     * overflows the viewport the default `flex-shrink: 1` would let
+     * CSS shrink topnav down to `min-height: var(--density-touch-size)`.
+     * With box-sizing: border-box that min-height INCLUDES the 0.5rem
+     * vertical padding, so the padding collapses to 0 and the logo /
+     * cmdk button visually eat the topnav row — "the header gets
+     * denser with longer lists". list-page already has `min-height: 0`
+     * and its inner pane scrolls, so it safely absorbs all the
+     * shrinkage on our behalf. */
+    flex-shrink: 0;
 }
 
 .topnav__logo {
@@ -410,6 +420,10 @@ html:has(> body.has-page-scroll) {
     padding: 0.25rem 1rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-subtle);
+    /* Same rationale as `.topnav` above: pin the chrome height so long
+     * lists below don't trigger body-flex shrinkage that collapses the
+     * min-height-clamped padding. */
+    flex-shrink: 0;
     font-size: 0.875rem;
     /* Keep the secondary row optically compact while still giving its
      * tap targets a 36-px minimum height (AA) via the links below. */

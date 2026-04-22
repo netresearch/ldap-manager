@@ -149,6 +149,14 @@ func TestMain(m *testing.M) {
 		log.Fatalf("e2e bootstrap: seed openldap: %v", err)
 	}
 
+	// Bulk-seed a large number of inetOrgPerson entries so diagnostic
+	// tests (TestHeaderShrinkRepro) can observe flex behaviour under
+	// realistic list length. The in-app cache picks these up on its
+	// initial warm-up (which runs AFTER TestMain's seed phase).
+	if err := bulkSeedUsers(ctx, ldapContainer, 200); err != nil {
+		log.Fatalf("e2e bootstrap: bulk seed users: %v", err)
+	}
+
 	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		log.Fatalf("e2e bootstrap: install playwright: %v", err)
 	}
@@ -250,6 +258,30 @@ func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error
 	}
 
 	return container, fmt.Sprintf("ldap://%s:%s", host, port.Port()), nil
+}
+
+// bulkSeedUsers appends N additional inetOrgPerson entries to ou=users so
+// long-list / flex-pressure diagnostic tests have realistic data to work
+// with. Idempotent because the LDIF uses unique cn=bulkuserNNN DNs.
+func bulkSeedUsers(ctx context.Context, container testcontainers.Container, n int) error {
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		cn := fmt.Sprintf("bulkuser%03d", i)
+		fmt.Fprintf(&b, `dn: cn=%s,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: %s
+sn: Bulk
+uid: %s
+userPassword: pw
+
+`, cn, cn, cn)
+	}
+	return execLDAP(ctx, container,
+		"ldapadd", "-x", "-D", bootstrapAdminDN, "-w", bootstrapAdminPass,
+		"-H", "ldap://localhost", b.String())
 }
 
 // seedOpenLDAP applies the ACL relaxation via ldapmodify (cn=config) and
