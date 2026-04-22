@@ -49,6 +49,7 @@ func (a *App) buildUserDrawerVM(userDN, viewerDN string) (templates.UserDrawerVM
 		OUName:           ouFilter,
 		OUPivotHref:      buildOUPivotHref(ouFilter),
 		UnassignedGroups: unassigned,
+		IsAD:             a.ldapConfig.IsActiveDirectory,
 	}, true
 }
 
@@ -116,33 +117,43 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	return page.Render(c.UserContext(), c.Response().BodyWriter())
 }
 
-// adminUserDNs collects the DNs of users that are members of a group
-// whose CN matches a short "privileged" name list (admins, domain
-// admins, enterprise admins — case-insensitive). Returns a set so the
-// list template's check stays O(1) per row. A nil cache yields nil.
+// adminUserDNs collects the DNs of users flagged as privileged by AD's
+// `adminCount=1` attribute (surfaced as `User.AdminCount` in
+// simple-ldap-go v1.12+).
+//
+// Why adminCount and not a CN allowlist:
+//
+//	AD sets adminCount=1 via adminSDHolder on every member of its
+//	protected groups (Domain Admins, Enterprise Admins,
+//	Administrators, Account Operators, Backup Operators, Server
+//	Operators, Print Operators, Replicator, Schema Admins, Key
+//	Admins, Enterprise Key Admins, Read-Only Domain Controllers,
+//	Domain Controllers). This catches every AD-recognised privileged
+//	user without us hard-coding English CNs (which would miss
+//	localised directories like "Domänen-Admins") and without walking
+//	nested group membership.
+//
+// Limitations:
+//
+//	The attribute is STICKY: AD does not clear adminCount when a
+//	user leaves a protected group. A true value therefore means
+//	"is or was privileged" — still a strong UI signal but not a
+//	perfect real-time membership check. For non-AD directories
+//	(OpenLDAP) the attribute is never set, so the shield never
+//	renders. That matches the read-only nature of those deployments.
+//
+// Returns a set so the list template's per-row check stays O(1).
+// A nil cache yields nil.
 func adminUserDNs(cache *ldap_cache.Manager) map[string]struct{} {
 	if cache == nil {
 		return nil
 	}
 
-	privilegedNames := map[string]struct{}{
-		"admins":            {},
-		"domain admins":     {},
-		"enterprise admins": {},
-		"administrators":    {},
-		"schema admins":     {},
-	}
-
 	out := make(map[string]struct{})
 
-	for _, g := range cache.FindGroups() {
-		cn := strings.ToLower(g.CN())
-		if _, ok := privilegedNames[cn]; !ok {
-			continue
-		}
-
-		for _, memberDN := range g.Members {
-			out[memberDN] = struct{}{}
+	for _, u := range cache.FindUsers(true /* include disabled — privileged flag applies regardless */) {
+		if u.AdminCount {
+			out[u.DN()] = struct{}{}
 		}
 	}
 

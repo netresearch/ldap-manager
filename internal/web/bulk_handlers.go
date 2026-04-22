@@ -44,10 +44,14 @@ func (a *App) handleBulkUsers(c *fiber.Ctx) error {
 	case "delete":
 		return a.bulkDeleteUsers(c)
 	case "disable":
-		// sAMAccountName enable/disable on OpenLDAP (inetOrgPerson) has no
-		// portable bit to flip — userAccountControl is AD-specific. Rather
-		// than silently muddle the description attribute we stub here.
-		return bulkNotImplemented(c, "disable users", "")
+		if !a.ldapConfig.IsActiveDirectory {
+			// OpenLDAP inetOrgPerson has no portable enable/disable
+			// attribute. Return 501 with the same message the template
+			// used to render so the contract is unchanged for non-AD.
+			return bulkNotImplemented(c, "disable users", "")
+		}
+
+		return a.bulkDisableUsers(c)
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("unknown bulk action")
 	}
@@ -83,8 +87,14 @@ func (a *App) handleBulkComputers(c *fiber.Ctx) error {
 	action := c.Query("action")
 	switch action {
 	case "disable":
-		// Same reasoning as users "disable" — no portable write op.
-		return bulkNotImplemented(c, "disable computers", "")
+		if !a.ldapConfig.IsActiveDirectory {
+			// Non-AD: no userAccountControl to flip. Keep the 501
+			// contract in place so non-AD deployments see a clear
+			// message rather than a silent no-op.
+			return bulkNotImplemented(c, "disable computers", "")
+		}
+
+		return a.bulkDisableComputers(c)
 	case "delete":
 		return a.bulkDeleteComputers(c)
 	default:
@@ -304,6 +314,94 @@ func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
 	a.finaliseBulkDelete(c, kind, deleted, len(targets), firstErr)
 
 	return c.Redirect(redirectTo, fiber.StatusSeeOther)
+}
+
+// bulkDisableUsers flips the ACCOUNTDISABLE bit (0x2) on each user DN
+// in target_dn[] via simple-ldap-go v1.12's DisableUserContext. AD
+// only — the caller in handleBulkUsers gates this on
+// a.ldapConfig.IsActiveDirectory so non-AD deployments never reach here.
+func (a *App) bulkDisableUsers(c *fiber.Ctx) error {
+	return a.bulkUACDisable(c, "user", "/users", func(client *ldap.LDAP, dn string) error {
+		return client.DisableUserContext(c.UserContext(), dn)
+	})
+}
+
+// bulkDisableComputers mirrors bulkDisableUsers for computer entries.
+// AD-only, same gating in handleBulkComputers.
+func (a *App) bulkDisableComputers(c *fiber.Ctx) error {
+	return a.bulkUACDisable(c, "computer", "/computers", func(client *ldap.LDAP, dn string) error {
+		return client.DisableComputerContext(c.UserContext(), dn)
+	})
+}
+
+// bulkUACDisable is the shared body for bulkDisableUsers /
+// bulkDisableComputers: open a per-user LDAP binding, run the given
+// per-DN disable op, count successes, flash "Disabled N / M <kind>s".
+// Pattern matches bulkDeleteByDN — different op, same batching.
+func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*ldap.LDAP, string) error) error {
+	targets := collectTargetDNs(c)
+	if len(targets) == 0 {
+		return c.Redirect(redirectTo, fiber.StatusSeeOther)
+	}
+
+	client, err := a.getUserLDAP(c)
+	if err != nil {
+		return handle500(c, err)
+	}
+	defer func() { _ = client.Close() }()
+
+	disabled := 0
+	var firstErr error
+
+	for _, dn := range targets {
+		if err := op(client, dn); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+
+			log.Warn().Err(err).Str("dn", dn).Str("kind", kind).Msg("bulk disable failed")
+
+			continue
+		}
+
+		disabled++
+	}
+
+	a.finaliseBulkDisable(c, kind, disabled, len(targets), firstErr)
+
+	return c.Redirect(redirectTo, fiber.StatusSeeOther)
+}
+
+// finaliseBulkDisable is the disable analogue of finaliseBulkDelete:
+// refresh caches on any success, log the summary, flash the result.
+func (a *App) finaliseBulkDisable(c *fiber.Ctx, kind string, disabled, total int, firstErr error) {
+	if disabled > 0 {
+		a.invalidateTemplateCacheOnModification()
+
+		if a.ldapCache != nil {
+			a.ldapCache.Refresh()
+		}
+	}
+
+	log.Info().
+		Int("targeted", total).
+		Int("disabled", disabled).
+		Str("kind", kind).
+		Msg("bulk disable complete")
+
+	switch disabled {
+	case total:
+		a.setFlash(c, templates.SuccessFlash(
+			fmt.Sprintf("Disabled %d %s%s.", disabled, kind, pluralSuffix(disabled))))
+	case 0:
+		a.setFlash(c, templates.ErrorFlash(
+			fmt.Sprintf("Failed to disable any of %d %s%s: %s",
+				total, kind, pluralSuffix(total), humaniseLDAPError(firstErr))))
+	default:
+		a.setFlash(c, templates.ErrorFlash(
+			fmt.Sprintf("Disabled %d / %d %s%s (%s)",
+				disabled, total, kind, pluralSuffix(total), humaniseLDAPError(firstErr))))
+	}
 }
 
 // finaliseBulkDelete is the shared post-loop cleanup for all three

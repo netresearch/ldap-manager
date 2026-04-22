@@ -26,6 +26,7 @@ type UserDrawerVM struct {
 	CSRFToken        string       // current-session CSRF token used by embedded POST forms
 	UnassignedGroups []ldap.Group // groups the user is NOT a member of (datalist for add-to-group)
 	FlashError       string       // set by modify handlers when an LDAP op fails; shown inline
+	IsAD             bool         // true when the backend is Active Directory — gates the Disable button since OpenLDAP has no portable disable mechanism
 }
 
 templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
@@ -423,11 +424,13 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 	<section class="drawer__section drawer__section--actions">
 		<h3 class="drawer__section-title">Actions</h3>
 		<div class="drawer__actions">
-			<form method="post" action="/users/bulk?action=disable" data-confirm={ "Disable " + vm.User.CN() + "? The account can be re-enabled later." }>
-				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
-				<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
-				<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
-			</form>
+			if vm.IsAD {
+				<form method="post" action="/users/bulk?action=disable" data-confirm={ "Disable " + vm.User.CN() + "? The account can be re-enabled later." }>
+					<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+					<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
+					<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
+				</form>
+			}
 			<form method="post" action="/users/bulk?action=delete" data-confirm={ "Delete " + vm.User.CN() + "? This cannot be undone." }>
 				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
 				<input type="hidden" name="target_dn" value={ vm.User.DN() }/>

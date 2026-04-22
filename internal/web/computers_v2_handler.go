@@ -48,6 +48,7 @@ func (a *App) buildComputerDrawerVM(computerDN, viewerDN string) (templates.Comp
 		Pinned:      pinned,
 		OUName:      ouName,
 		OUPivotHref: buildComputerOUPivotHref(ouName),
+		IsAD:        a.ldapConfig.IsActiveDirectory,
 	}, true
 }
 

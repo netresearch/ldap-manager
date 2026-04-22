@@ -19,6 +19,7 @@ type ComputerDrawerVM struct {
 	OUName      string // plain-text OU name, e.g. "ou=Computers" (for display)
 	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
 	CSRFToken   string // current-session CSRF token used by embedded POST forms
+	IsAD        bool   // true when backend is Active Directory — gates the Disable button
 }
 
 templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
@@ -324,11 +325,13 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 	<section class="drawer__section drawer__section--actions">
 		<h3 class="drawer__section-title">Actions</h3>
 		<div class="drawer__actions">
-			<form method="post" action="/computers/bulk?action=disable" data-confirm={ "Disable " + vm.Computer.CN() + "?" }>
-				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
-				<input type="hidden" name="target_dn" value={ vm.Computer.DN() }/>
-				<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
-			</form>
+			if vm.IsAD {
+				<form method="post" action="/computers/bulk?action=disable" data-confirm={ "Disable " + vm.Computer.CN() + "?" }>
+					<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+					<input type="hidden" name="target_dn" value={ vm.Computer.DN() }/>
+					<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
+				</form>
+			}
 			<form method="post" action="/computers/bulk?action=delete" data-confirm={ "Delete " + vm.Computer.CN() + "? This cannot be undone." }>
 				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
 				<input type="hidden" name="target_dn" value={ vm.Computer.DN() }/>

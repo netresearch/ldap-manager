@@ -190,9 +190,13 @@ func TestBulkHandler_Computers_DeleteDispatches(t *testing.T) {
 	}
 }
 
-// TestBulkHandler_Computers_DisableStubbed verifies the disable action on
-// /computers/bulk is explicitly not yet implemented.
-func TestBulkHandler_Computers_DisableStubbed(t *testing.T) {
+// TestBulkHandler_Computers_DisableStubbedOnNonAD verifies the disable
+// action on /computers/bulk returns 501 on non-AD directories (where
+// userAccountControl doesn't exist). The default test config has
+// IsActiveDirectory=false, so the handler's AD gate falls through to
+// bulkNotImplemented. AD deployments dispatch to bulkDisableComputers
+// instead — covered by the AD-gated test below.
+func TestBulkHandler_Computers_DisableStubbedOnNonAD(t *testing.T) {
 	app, store := setupFullTestApp(t)
 
 	cookies := createAuthSession(t, app, store)
@@ -218,9 +222,10 @@ func TestBulkHandler_Computers_DisableStubbed(t *testing.T) {
 	}
 }
 
-// TestBulkHandler_Users_DisableStubbed verifies the disable action on
-// /users/bulk is explicitly not yet implemented for inetOrgPerson.
-func TestBulkHandler_Users_DisableStubbed(t *testing.T) {
+// TestBulkHandler_Users_DisableStubbedOnNonAD verifies disable on
+// /users/bulk still returns 501 when IsActiveDirectory is false
+// (the default test harness). The AD path is tested separately.
+func TestBulkHandler_Users_DisableStubbedOnNonAD(t *testing.T) {
 	app, store := setupFullTestApp(t)
 
 	cookies := createAuthSession(t, app, store)
@@ -243,6 +248,75 @@ func TestBulkHandler_Users_DisableStubbed(t *testing.T) {
 
 	if resp.StatusCode != http.StatusNotImplemented {
 		t.Fatalf("expected 501, got %d", resp.StatusCode)
+	}
+}
+
+// TestBulkHandler_Users_DisableDispatchesOnAD verifies the AD gate:
+// when IsActiveDirectory is true, /users/bulk?action=disable should
+// NOT return 501 — it should reach the bulkDisableUsers path (where
+// getUserLDAP fails against the mock server and bubbles a redirect).
+// The regression this guards: a future refactor that drops the gate
+// would make AD deployments see a spurious 501 even though the code
+// is ready for them.
+func TestBulkHandler_Users_DisableDispatchesOnAD(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	app.ldapConfig.IsActiveDirectory = true
+
+	cookies := createAuthSession(t, app, store)
+
+	form := url.Values{"target_dn": {"cn=u1,dc=test"}}
+	req := httptest.NewRequest(http.MethodPost,
+		"/users/bulk?action=disable",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("users/bulk POST: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotImplemented {
+		t.Fatalf("expected dispatch to bulkDisableUsers on AD (not 501 stub); got 501")
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		t.Fatalf("unexpected 400 for well-formed disable on AD: %d", resp.StatusCode)
+	}
+}
+
+// TestBulkHandler_Computers_DisableDispatchesOnAD mirrors the users
+// AD-gate test for computers.
+func TestBulkHandler_Computers_DisableDispatchesOnAD(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	app.ldapConfig.IsActiveDirectory = true
+
+	cookies := createAuthSession(t, app, store)
+
+	form := url.Values{"target_dn": {"cn=pc1,dc=test"}}
+	req := httptest.NewRequest(http.MethodPost,
+		"/computers/bulk?action=disable",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("computers/bulk POST: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotImplemented {
+		t.Fatalf("expected dispatch to bulkDisableComputers on AD (not 501); got 501")
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		t.Fatalf("unexpected 400 for well-formed disable on AD: %d", resp.StatusCode)
 	}
 }
 
