@@ -1011,6 +1011,15 @@ a.home__quick-card:focus-visible .home__quick-card-arrow {
     cursor: pointer;
     user-select: none;
     flex: 0 0 auto;
+    /* Reset Pico's default `label { margin-bottom: calc(var(--pico-spacing) * .375) }`
+     * — this chip is used inline in the filters row, not as a form label
+     * stacked above an input. The extra margin pushes the flex line
+     * cross-size to 39.375 px while the chip's own box stays 33.75 px,
+     * and flex centering places the chip at the row top with the margin
+     * consumed below — offsetting its y-center 2.8 px above the search
+     * input baseline. User-visible as "the [ ] all chip sits slightly
+     * above the other filters." */
+    margin-bottom: 0;
 }
 
 .list-page__select-all:hover,
@@ -1276,6 +1285,10 @@ input[type="text"].list-page__search {
     min-height: 1.5rem;
     padding: 0 0.5rem 0 0.25rem;
     cursor: pointer;
+    /* See .list-page__select-all — reset Pico's default label
+     * margin-bottom so this inline <label> doesn't add cross-axis
+     * space to the list-row grid cell. */
+    margin-bottom: 0;
 }
 
 .list-row__check {
