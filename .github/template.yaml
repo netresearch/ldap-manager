@@ -15,12 +15,6 @@ intentional-drift:
     exercise fully; that surface is covered by the integration + e2e suites,
     not the unit numerator. 60% is the current authored-code floor and is
     expected to rise as follow-up PRs add handler unit tests.
-- path: .github/codecov.yml
-  reason: "Lowered patch.default.target from the template's 80% to 40% because
-    this PR lands a ~5k-line Pico/templ UI revamp whose handler coverage
-    lives in the integration + e2e suites, not the unit numerator. See the
-    inline comment in codecov.yml. Matching rationale applies to
-    .github/workflows/ci.yml's coverage-threshold=60."
 - path: .github/labeler.yml
   reason: "Branch drops TypeScript/Tailwind/PostCSS/bun toolchain (see
     `chore: drop Tailwind/TypeScript/PostCSS; Go-only build`). The go-app
