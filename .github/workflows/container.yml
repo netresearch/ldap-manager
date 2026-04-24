@@ -1,0 +1,88 @@
+name: Container (main)
+
+# Rolling container build for every push to main.
+#
+# Produces `ghcr.io/netresearch/ldap-manager:main` (plus any extra tags
+# docker/metadata-action adds). Uses the same binary-selector
+# Dockerfile + platforms as release.yml — the only difference is that
+# release.yml downloads pre-built binaries from the GitHub Release,
+# while this workflow cross-compiles them inline in the
+# pre-build-command (there's no release to download from for rolling
+# main builds).
+#
+# Intentional-drift from templates/go-app (see .github/template.yaml):
+# the template does not ship a per-main container builder — it relies
+# on tag-driven releases exclusively. This repo historically shipped an
+# always-up-to-date `:main` image (see the pre-ea6f7a3 container.yml)
+# and that workflow was dropped as part of the single-build migration
+# without a replacement. This file restores it under the new
+# binary-selector Dockerfile model.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-main
+  cancel-in-progress: true
+
+jobs:
+  container:
+    name: Build :main container image
+    uses: netresearch/.github/.github/workflows/build-container.yml@main
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+      attestations: write
+    with:
+      image-name: ldap-manager
+      platforms: "linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
+      sign: true
+      attest: true
+      # Cross-compile the five linux target binaries the Dockerfile's
+      # binary-selector stage expects under bin/ldap-manager-linux-*.
+      # Mirrors release.yml's ldflags convention so `ldap-manager
+      # version` reports a meaningful "main-<shortsha>" version instead
+      # of an empty string. Sequential compile is fine for a rolling
+      # dev image — the matrix parallelism in release.yml is only
+      # worthwhile for user-facing tagged builds.
+      #
+      # Inputs come from well-known GitHub-populated runtime env vars
+      # (GITHUB_SHA) — no raw ${{ github.event.* }} interpolation into
+      # shell to keep the workflow injection-safe.
+      pre-build-command: |
+        set -euo pipefail
+
+        echo "::group::install templ + generate"
+        go install github.com/a-h/templ/cmd/templ@latest
+        templ generate
+        echo "::endgroup::"
+
+        BINARY_BASE="ldap-manager"
+        SHORT_SHA="${GITHUB_SHA:0:7}"
+        VERSION="main-${SHORT_SHA}"
+        BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        LDFLAGS="-s -w -X main.version=${VERSION} -X main.build=${GITHUB_SHA} -X main.buildTime=${BUILD_TIME}"
+
+        mkdir -p bin
+        for spec in 386 amd64 arm64 armv6 armv7; do
+          case "$spec" in
+            386)   export GOOS=linux GOARCH=386   GOARM= ;;
+            amd64) export GOOS=linux GOARCH=amd64 GOARM= ;;
+            arm64) export GOOS=linux GOARCH=arm64 GOARM= ;;
+            armv6) export GOOS=linux GOARCH=arm   GOARM=6 ;;
+            armv7) export GOOS=linux GOARCH=arm   GOARM=7 ;;
+          esac
+          OUT="bin/${BINARY_BASE}-linux-${spec}"
+          echo "::group::build $OUT (GOOS=$GOOS GOARCH=$GOARCH GOARM=${GOARM:-})"
+          CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "$OUT" ./cmd/ldap-manager
+          chmod +x "$OUT"
+          ls -l "$OUT"
+          echo "::endgroup::"
+        done

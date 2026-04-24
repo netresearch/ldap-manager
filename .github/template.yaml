@@ -25,6 +25,19 @@ intentional-drift:
     any unrelated PR. Also adds scripts/vendor.lock to dependencies so vendor
     refreshes (Pico, htmx, Alpine CSP build pinned via scripts/vendor.sh)
     route to the dependencies label."
+- path: .github/workflows/container.yml
+  reason: "Rolling `:main` container image. The templates/go-app pipeline
+    ships only tag-driven releases, but this repo historically shipped a
+    per-main-push container at ghcr.io/netresearch/ldap-manager:main (see
+    the original container.yml deleted in commit ea6f7a3). That deletion
+    dropped the rolling build without a replacement. This workflow
+    restores it under the new binary-selector Dockerfile model: one job
+    cross-compiles all five linux/{386,amd64,arm64,armv6,armv7} binaries
+    in a pre-build-command (matching release.yml's ldflags + `templ
+    generate`), then the reusable build-container.yml runs the Dockerfile
+    whose binary-selector stage picks the correct bin/<name>-linux-* per
+    TARGETARCH/TARGETVARIANT — no `go build` inside Docker, same
+    single-compile invariant release.yml upholds."
 - path: .github/workflows/release.yml
   reason: "Templ code must be generated before `go build`. The
     `internal/web/templates/*_templ.go` files are gitignored, so a clean
