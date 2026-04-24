@@ -61,4 +61,25 @@ func TestBuildGraph_UserFocus_Depth1(t *testing.T) {
 	if got := len(data.Edges); got != 3 {
 		t.Errorf("edge count at depth 1: got %d, want 3", got)
 	}
+
+	// Edge kind correctness — catches a regression where direction is
+	// right but kind is swapped.
+	bobDN := "cn=bob,ou=Engineering,dc=ex,dc=com"
+	ouDN := "ou=Engineering,dc=ex,dc=com"
+	for _, e := range data.Edges {
+		switch {
+		case e.Source == bobDN && e.Kind != EdgeMemberOf:
+			t.Errorf("edge from bob expected EdgeMemberOf, got %q: %+v", e.Kind, e)
+		case e.Source == ouDN && e.Kind != EdgeContains:
+			t.Errorf("edge from OU expected EdgeContains, got %q: %+v", e.Kind, e)
+		}
+	}
+
+	// No self-loops — a user/group/OU shouldn't appear as both source
+	// and target of the same edge.
+	for _, e := range data.Edges {
+		if e.Source == e.Target {
+			t.Errorf("self-loop edge: %+v", e)
+		}
+	}
 }
