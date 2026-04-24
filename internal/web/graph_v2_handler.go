@@ -21,7 +21,7 @@ import (
 // body to mirror /api/search-index.json.
 func (a *App) handleGraphJSON(c *fiber.Ctx) error {
 	data, status, errMsg := a.buildGraphFromQuery(c)
-	if data == nil {
+	if status != 0 {
 		return c.Status(status).SendString(errMsg)
 	}
 
@@ -44,11 +44,13 @@ func (a *App) handleGraphJSON(c *fiber.Ctx) error {
 }
 
 // buildGraphFromQuery parses ?entity= and ?depth= from c and returns the
-// resulting graph along with the HTTP status the caller should emit when
-// data is nil. On success returns (data, 0, ""). On failure returns
+// resulting graph. The integer return is the HTTP status the caller should
+// emit when the request was rejected; 0 means "no error, render data".
+// On success returns (data, 0, ""). On failure returns
 // (nil, status, message) so the caller can render the response with the
 // project's standard `c.Status(...).SendString(...)` idiom rather than
-// writing the response from inside the helper.
+// writing the response from inside the helper. Callers MUST branch on
+// `status != 0` (not on `data == nil`) so the error path stays explicit.
 func (a *App) buildGraphFromQuery(c *fiber.Ctx) (*ldap_cache.GraphData, int, string) {
 	entity := c.Query("entity")
 	if entity == "" {
@@ -60,11 +62,16 @@ func (a *App) buildGraphFromQuery(c *fiber.Ctx) (*ldap_cache.GraphData, int, str
 
 	depth := 2
 	if raw := c.Query("depth"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil {
-			depth = n
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			// Fail fast on non-numeric input rather than silently
+			// falling back to the default — matches the "validate
+			// early" rule in internal/CLAUDE.md.
+			return nil, fiber.StatusBadRequest, "invalid depth"
 		}
+		depth = n
 	}
-	// Clamping happens inside BuildGraph.
+	// Clamping of in-range numeric values happens inside BuildGraph.
 
 	data, err := a.ldapCache.BuildGraph(entity, depth)
 	if err != nil {
