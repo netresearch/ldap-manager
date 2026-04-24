@@ -95,4 +95,35 @@ func TestBuildGraph_GroupFocus_Depth1(t *testing.T) {
 	if got := len(data.Nodes); got != 5 {
 		t.Errorf("node count: got %d, want 5", got)
 	}
+
+	// Expect edges: bob→engineers, dave→engineers, alice→engineers
+	// (memberOf) + engineers→all-staff (memberOf) = 4 edges.
+	if got := len(data.Edges); got != 4 {
+		t.Errorf("edge count: got %d, want 4", got)
+	}
+
+	// Edge kind + direction correctness on the parent edge — the
+	// non-obvious branch of the group-focus builder.
+	engineersDN := "cn=engineers,ou=Groups,dc=ex,dc=com"
+	allStaffDN := "cn=all-staff,ou=Groups,dc=ex,dc=com"
+
+	var foundParent bool
+
+	for _, e := range data.Edges {
+		if e.Source == engineersDN && e.Target == allStaffDN {
+			if e.Kind != EdgeMemberOf {
+				t.Errorf("engineers→all-staff edge: kind %q, want %q", e.Kind, EdgeMemberOf)
+			}
+
+			foundParent = true
+		}
+
+		if e.Source == e.Target {
+			t.Errorf("self-loop edge: %+v", e)
+		}
+	}
+
+	if !foundParent {
+		t.Errorf("missing engineers→all-staff memberOf edge")
+	}
 }
