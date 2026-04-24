@@ -137,7 +137,46 @@ func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
 }
 
 func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {
-	return &GraphData{Focus: g.DN(), Depth: depth}
+	data := &GraphData{Focus: g.DN(), Depth: depth}
+	data.Nodes = append(data.Nodes, groupNode(g, 0, false))
+	seen := map[string]int{g.DN(): 0}
+
+	// Ring 1: members (users, computers, or nested groups) + parent groups
+	// (any cached group whose Members contains g.DN()).
+	for _, memberDN := range g.Members {
+		addRingMember(data, seen, m, memberDN, 1, Edge{Source: memberDN, Target: g.DN(), Kind: EdgeMemberOf})
+	}
+
+	for _, parent := range m.Groups.Get() {
+		for _, memDN := range parent.Members {
+			if memDN == g.DN() {
+				if _, dup := seen[parent.DN()]; !dup {
+					data.Nodes = append(data.Nodes, groupNode(parent, 1, true))
+					seen[parent.DN()] = 1
+				}
+
+				data.Edges = append(data.Edges, Edge{Source: g.DN(), Target: parent.DN(), Kind: EdgeMemberOf})
+
+				break
+			}
+		}
+	}
+
+	if depth >= 2 {
+		for _, n := range nodesInRing(data, 1) {
+			m.expandNode(data, seen, n, 2)
+		}
+	}
+
+	if depth >= 3 {
+		for _, n := range nodesInRing(data, 2) {
+			m.expandNode(data, seen, n, 3)
+		}
+	}
+
+	applyCaps(data)
+
+	return data
 }
 
 func (m *Manager) buildGraphFromComputer(c ldap.Computer, depth int) *GraphData {

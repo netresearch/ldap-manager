@@ -83,3 +83,16 @@ func TestBuildGraph_UserFocus_Depth1(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildGraph_GroupFocus_Depth1(t *testing.T) {
+	m := graphFixture(t)
+	data, err := m.BuildGraph("cn=engineers,ou=Groups,dc=ex,dc=com", 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	// engineers has 3 user members + is a member of all-staff
+	// Expect: engineers (ring 0) + 3 users (ring 1) + all-staff (ring 1) = 5 nodes
+	if got := len(data.Nodes); got != 5 {
+		t.Errorf("node count: got %d, want 5", got)
+	}
+}
