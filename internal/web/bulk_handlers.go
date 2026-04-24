@@ -52,7 +52,12 @@ func bulkRedirectAfter(c *fiber.Ctx, fallbackList string, dropPanel bool) string
 
 	// Reject cross-origin Referers. Allow relative Referers (empty Host),
 	// which some clients still emit for same-origin POSTs.
-	if refURL.Host != "" && refURL.Host != c.Hostname() {
+	//
+	// Compare hostnames via url.URL.Hostname() (strips any port) so dev
+	// and proxy deployments on non-default ports (e.g. localhost:3000)
+	// are not incorrectly flagged as cross-origin against Fiber's
+	// port-less c.Hostname().
+	if refURL.Host != "" && refURL.Hostname() != c.Hostname() {
 		return fallbackList
 	}
 

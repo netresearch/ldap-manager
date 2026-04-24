@@ -2,6 +2,7 @@
 package web
 
 import (
+	"io"
 	"net/http/httptest"
 	"testing"
 
@@ -71,6 +72,20 @@ func TestBulkRedirectAfter(t *testing.T) {
 			want:         "/users",
 		},
 		{
+			// httptest.NewRequest defaults Host to "example.com"; the
+			// absolute referer has the same hostname but an arbitrary
+			// port. Fiber's c.Hostname() is port-less, so we must
+			// compare against refURL.Hostname(), not refURL.Host — the
+			// latter would treat "example.com:3000" as a different
+			// origin and discard filters. This guards bug-fixed in the
+			// post-review follow-up.
+			name:         "same-origin with explicit port preserved",
+			referer:      "http://example.com:3000/users?ou=Eng",
+			fallbackList: "/users",
+			dropPanel:    false,
+			want:         "/users?ou=Eng",
+		},
+		{
 			name:         "unparseable referer falls back",
 			referer:      "://not-a-url",
 			fallbackList: "/users",
@@ -111,11 +126,11 @@ func TestBulkRedirectAfter(t *testing.T) {
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			body := make([]byte, 256)
-			n, _ := resp.Body.Read(body)
-			got := string(body[:n])
-
-			if got != tc.want {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("read body: %v", err)
+			}
+			if got := string(body); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
