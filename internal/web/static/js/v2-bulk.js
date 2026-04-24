@@ -187,11 +187,19 @@
   function openDisableUsers() {
     if (selected.size === 0) return;
 
+    // Disable flips the AD userAccountControl ACCOUNTDISABLE bit (0x2)
+    // via simple-ldap-go v1.12's DisableUserContext. The endpoint is
+    // gated on a.ldapConfig.IsActiveDirectory in the Go handler; the
+    // client can't detect the backend from here, so the prompt says
+    // "only on Active Directory" rather than pretending it works
+    // everywhere. On OpenLDAP the POST returns 501 with the
+    // bulkNotImplementedMessage contract.
     if (
       !window.confirm(
         "Disable " +
           selected.size +
-          " user(s)? (Note: not yet implemented — will return 501)"
+          " user(s)? Accounts can be re-enabled later. " +
+          "(Active Directory only — returns 501 on OpenLDAP.)"
       )
     )
       return;
@@ -237,7 +245,7 @@
       !window.confirm(
         "Delete " +
           selected.size +
-          " group(s)? (Note: not yet implemented — will return 501)"
+          " group(s)? This cannot be undone."
       )
     )
       return;
@@ -250,11 +258,13 @@
   function openDisableComputers() {
     if (selected.size === 0) return;
 
+    // See openDisableUsers for the AD-only rationale.
     if (
       !window.confirm(
         "Disable " +
           selected.size +
-          " computer(s)? (Note: not yet implemented — will return 501)"
+          " computer(s)? " +
+          "(Active Directory only — returns 501 on OpenLDAP.)"
       )
     )
       return;
@@ -269,7 +279,7 @@
       !window.confirm(
         "Delete " +
           selected.size +
-          " computer(s)? (Note: not yet implemented — will return 501)"
+          " computer(s)? This cannot be undone."
       )
     )
       return;
