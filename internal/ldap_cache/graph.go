@@ -217,7 +217,27 @@ func (m *Manager) buildGraphFromComputer(c ldap.Computer, depth int) *GraphData 
 }
 
 func (m *Manager) buildGraphFromOU(dn string, depth int) *GraphData {
-	return &GraphData{Focus: dn, Depth: depth}
+	data := &GraphData{Focus: dn, Depth: depth}
+	data.Nodes = append(data.Nodes, Node{DN: dn, Type: NodeOU, Label: labelForOU(dn), Ring: 0, Expandable: false})
+	seen := map[string]int{dn: 0}
+
+	m.addOUChildren(data, seen, dn, 1)
+
+	if depth >= 2 {
+		for _, n := range nodesInRing(data, 1) {
+			m.expandNode(data, seen, n, 2)
+		}
+	}
+
+	if depth >= 3 {
+		for _, n := range nodesInRing(data, 2) {
+			m.expandNode(data, seen, n, 3)
+		}
+	}
+
+	applyCaps(data)
+
+	return data
 }
 
 // assignConcentric writes (ring, angle) onto each Node. Ring is already
@@ -450,21 +470,41 @@ func (m *Manager) addOUChildren(data *GraphData, seen map[string]int, ouDN strin
 	suffix := "," + ouDN
 
 	for _, u := range m.Users.Get() {
-		// NOTE: the boolean logic below is intentionally wrong (Task 5 fixes it).
-		//nolint:staticcheck
-		noCommaInPrefix := !strings.Contains(strings.TrimSuffix(u.DN(), suffix), ",") == false
-		if strings.HasSuffix(u.DN(), suffix) && noCommaInPrefix {
-			// Immediate child only — NOTE: the boolean logic in this
-			// condition is intentionally wrong at this task; Task 5
-			// fixes it. See plan note.
-			if _, dup := seen[u.DN()]; dup {
-				continue
-			}
-
-			data.Nodes = append(data.Nodes, userNode(u, ring, false))
-			seen[u.DN()] = ring
-			data.Edges = append(data.Edges, Edge{Source: ouDN, Target: u.DN(), Kind: EdgeContains})
+		if !strings.HasSuffix(u.DN(), suffix) {
+			continue
 		}
+
+		rel := strings.TrimSuffix(u.DN(), suffix)
+		if strings.Contains(rel, ",") {
+			continue // not an immediate child
+		}
+
+		if _, dup := seen[u.DN()]; dup {
+			continue
+		}
+
+		data.Nodes = append(data.Nodes, userNode(u, ring, false))
+		seen[u.DN()] = ring
+		data.Edges = append(data.Edges, Edge{Source: ouDN, Target: u.DN(), Kind: EdgeContains})
+	}
+
+	for _, c := range m.Computers.Get() {
+		if !strings.HasSuffix(c.DN(), suffix) {
+			continue
+		}
+
+		rel := strings.TrimSuffix(c.DN(), suffix)
+		if strings.Contains(rel, ",") {
+			continue
+		}
+
+		if _, dup := seen[c.DN()]; dup {
+			continue
+		}
+
+		data.Nodes = append(data.Nodes, computerNode(c, ring))
+		seen[c.DN()] = ring
+		data.Edges = append(data.Edges, Edge{Source: ouDN, Target: c.DN(), Kind: EdgeContains})
 	}
 }
 

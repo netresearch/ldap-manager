@@ -164,3 +164,34 @@ func TestBuildGraph_ComputerFocus_Depth1(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildGraph_OUFocus_Depth1(t *testing.T) {
+	m := graphFixture(t)
+	data, err := m.BuildGraph("ou=Engineering,dc=ex,dc=com", 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	// Expect: ou=Engineering (ring 0) + bob + dave + alice (ring 1) = 4
+	if got := len(data.Nodes); got != 4 {
+		t.Errorf("node count: got %d, want 4", got)
+	}
+
+	ouDN := "ou=Engineering,dc=ex,dc=com"
+	if got := len(data.Edges); got != 3 {
+		t.Errorf("edge count: got %d, want 3", got)
+	}
+
+	for _, e := range data.Edges {
+		if e.Source != ouDN {
+			t.Errorf("edge source: got %q, want %q: %+v", e.Source, ouDN, e)
+		}
+
+		if e.Kind != EdgeContains {
+			t.Errorf("edge kind: got %q, want %q: %+v", e.Kind, EdgeContains, e)
+		}
+
+		if e.Source == e.Target {
+			t.Errorf("self-loop edge: %+v", e)
+		}
+	}
+}
