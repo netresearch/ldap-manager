@@ -163,7 +163,7 @@ Both endpoints:
 - 400 if `entity` is missing or not a parseable DN (via `ldap.ParseDN`).
 - 404 if the DN is not present in any cache (user, group, computer, or OU). OUs are cached implicitly — any DN with an `ou=` RDN counts as an OU focus; its neighbours are everything directly under it.
 - Default `depth=2` when the parameter is missing. Clamp to `[1, 3]` — any out-of-range input rounds to the nearest valid value and returns 200 (not 400).
-- Set `ETag` to `sha256(focus-dn + depth + cache-version)[:16]`, mirror the `/api/search-index.json` pattern. Clients respect `If-None-Match`.
+- Set `ETag` to `"` + `sha256(<marshalled JSON body>)[:16]` + `"`, mirroring the `/api/search-index.json` pattern: the hash over the response body is stable across requests as long as the builder inputs (focus, depth) and the underlying cache contents don't change. Clients respect `If-None-Match`.
 - `Cache-Control: private, must-revalidate`.
 
 The HTML endpoint also sets `Content-Security-Policy: script-src 'self'` inherited from the site CSP — the embedded `<script type="application/json">` is data, not script, so it is CSP-safe.

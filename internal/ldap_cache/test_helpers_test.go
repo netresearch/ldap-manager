@@ -4,7 +4,9 @@ package ldap_cache
 
 import (
 	"errors"
+	"reflect"
 	"sync"
+	"unsafe"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 )
@@ -100,4 +102,42 @@ func NewMockComputer(_, samAccountName string, enabled bool, groups []string) ld
 		Enabled:        enabled,
 		Groups:         groups,
 	}
+}
+
+// Test-only helpers: seed ldap.User / Group / Computer with a real DN by
+// poking simple-ldap-go's unexported Object fields. Production code builds
+// these via objectFromEntry internal to that package.
+
+// newUserWithDN creates a ldap.User with the DN and CN fields populated via reflection.
+func newUserWithDN(dn, cn, sam string, enabled bool, groups []string) ldap.User {
+	u := ldap.User{SAMAccountName: sam, Enabled: enabled, Groups: groups}
+	setObjectFields(reflect.ValueOf(&u).Elem().FieldByName("Object"), dn, cn)
+
+	return u
+}
+
+// newGroupWithDN creates a ldap.Group with the DN and CN fields populated via reflection.
+func newGroupWithDN(dn, cn string, members []string) ldap.Group {
+	g := ldap.Group{Members: members}
+	setObjectFields(reflect.ValueOf(&g).Elem().FieldByName("Object"), dn, cn)
+
+	return g
+}
+
+// newComputerWithDN creates a ldap.Computer with the DN and CN fields populated via reflection.
+func newComputerWithDN(dn, cn, sam string, enabled bool, groups []string) ldap.Computer { //nolint:unused
+	c := ldap.Computer{SAMAccountName: sam, Enabled: enabled, Groups: groups}
+	setObjectFields(reflect.ValueOf(&c).Elem().FieldByName("Object"), dn, cn)
+
+	return c
+}
+
+// setObjectFields uses unsafe pointer arithmetic to write the unexported dn and cn
+// fields of simple-ldap-go's Object struct. This is only valid in test code where
+// we need to seed deterministic DNs without going through LDAP entry parsing.
+func setObjectFields(obj reflect.Value, dn, cn string) {
+	dnField := obj.FieldByName("dn")
+	cnField := obj.FieldByName("cn")
+	reflect.NewAt(dnField.Type(), unsafe.Pointer(dnField.UnsafeAddr())).Elem().SetString(dn) //nolint:gosec
+	reflect.NewAt(cnField.Type(), unsafe.Pointer(cnField.UnsafeAddr())).Elem().SetString(cn) //nolint:gosec
 }
