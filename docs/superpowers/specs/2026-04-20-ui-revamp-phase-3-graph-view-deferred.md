@@ -1,7 +1,6 @@
-# Phase 3 Graph View — Deferred
+# Phase 3 Graph View — Deferred (SUPERSEDED)
 
-**Status:** Deferred (2026-04-20)
-**Owner:** TBD (next engineering rotation)
+**Status:** Superseded 2026-04-24 by [`2026-04-24-phase-3-graph-view-design.md`](./2026-04-24-phase-3-graph-view-design.md). Kept for historical context on why the work was originally deferred.
 **Parent spec:** [`2026-04-20-ui-revamp-design.md`](./2026-04-20-ui-revamp-design.md) §2
 
 The relationship graph view (users ↔ groups ↔ computers ↔ OUs) was in scope
