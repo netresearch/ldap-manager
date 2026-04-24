@@ -185,12 +185,12 @@ func (m *Manager) buildGraphFromComputer(c ldap.Computer, depth int) *GraphData 
 	seen := map[string]int{c.DN(): 0}
 
 	for _, gDN := range c.Groups {
+		if _, dup := seen[gDN]; dup {
+			continue
+		}
 		if g, ok := m.Groups.FindByDN(gDN); ok {
-			if _, dup := seen[gDN]; !dup {
-				data.Nodes = append(data.Nodes, groupNode(*g, 1, true))
-				seen[gDN] = 1
-			}
-
+			data.Nodes = append(data.Nodes, groupNode(*g, 1, true))
+			seen[gDN] = 1
 			data.Edges = append(data.Edges, Edge{Source: c.DN(), Target: gDN, Kind: EdgeMemberOf})
 		}
 	}
