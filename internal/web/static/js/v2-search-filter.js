@@ -24,7 +24,14 @@
         var items = Array.prototype.slice.call(
             list.querySelectorAll("[data-search-item]")
         );
-        var count = document.querySelector("[data-search-count]");
+        // Keep count scoped consistently with `list` — if more than one
+        // [data-search-filter] widget is ever rendered on a page the
+        // document-wide lookup would point every filter at the first
+        // count element. The document fallback is kept for legacy
+        // single-widget pages that put the count outside the scope.
+        var count =
+            scope.querySelector("[data-search-count]") ||
+            document.querySelector("[data-search-count]");
         var debounceTimer = null;
 
         input.setAttribute("role", "searchbox");
