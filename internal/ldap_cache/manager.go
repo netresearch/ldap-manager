@@ -489,6 +489,83 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 	})
 }
 
+// OnDeleteUser drops a user entry from the cache by DN and scrubs any
+// group memberships that reference it. Call after a successful LDAP
+// delete. Idempotent: no-op if the user isn't cached. The trailing
+// Refresh() the bulk handler still issues catches up with everything
+// else the directory might have changed, but correctness of the user
+// list itself no longer depends on that refresh winning against AD
+// replication delay.
+func (m *Manager) OnDeleteUser(userDN string) {
+	m.Users.remove(userDN)
+
+	m.Groups.update(func(group *ldap.Group) {
+		for idx, member := range group.Members {
+			if member == userDN {
+				group.Members = append(group.Members[:idx], group.Members[idx+1:]...)
+
+				return
+			}
+		}
+	})
+}
+
+// OnDeleteGroup drops a group entry from the cache by DN and scrubs any
+// user/computer memberOf references that point at it. See OnDeleteUser
+// for rationale.
+func (m *Manager) OnDeleteGroup(groupDN string) {
+	m.Groups.remove(groupDN)
+
+	m.Users.update(func(user *ldap.User) {
+		for idx, g := range user.Groups {
+			if g == groupDN {
+				user.Groups = append(user.Groups[:idx], user.Groups[idx+1:]...)
+
+				return
+			}
+		}
+	})
+
+	m.Computers.update(func(computer *ldap.Computer) {
+		for idx, g := range computer.Groups {
+			if g == groupDN {
+				computer.Groups = append(computer.Groups[:idx], computer.Groups[idx+1:]...)
+
+				return
+			}
+		}
+	})
+}
+
+// OnDeleteComputer drops a computer entry from the cache by DN.
+// Computers are not referenced from other cached entities (group
+// membership is stored on the computer side only for memberOf display),
+// so this is a straight remove.
+func (m *Manager) OnDeleteComputer(computerDN string) {
+	m.Computers.remove(computerDN)
+}
+
+// OnDisableUser flips the Enabled bit on the cached user to false so
+// the UI reflects the disabled state immediately after a successful
+// LDAP userAccountControl mutation, without waiting for the next
+// background Refresh to rediscover it via the readonly bind.
+func (m *Manager) OnDisableUser(userDN string) {
+	m.Users.update(func(user *ldap.User) {
+		if user.DN() == userDN {
+			user.Enabled = false
+		}
+	})
+}
+
+// OnDisableComputer is the OnDisableUser analogue for machine accounts.
+func (m *Manager) OnDisableComputer(computerDN string) {
+	m.Computers.update(func(computer *ldap.Computer) {
+		if computer.DN() == computerDN {
+			computer.Enabled = false
+		}
+	})
+}
+
 // PopulateGroupsForUserFromData creates a FullLDAPUser with populated group memberships
 // using provided data instead of cache. Works identically to PopulateGroupsForUser
 // but operates on explicit slices rather than the cache.

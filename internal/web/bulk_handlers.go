@@ -251,6 +251,14 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 			continue
 		}
 
+		// Optimistic cache update: drop the user and scrub any group
+		// memberships pointing at them, so the redirected list renders
+		// correctly on the next request even if AD replication to the
+		// readonly-bind DC hasn't caught up yet.
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteUser(userDN)
+		}
+
 		deleted++
 	}
 
@@ -263,26 +271,37 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 // via simple-ldap-go's generic DeleteByDN (which performs a raw
 // ldap.Del on the DN). Flash summarises the result on the list page.
 func (a *App) bulkDeleteGroups(c *fiber.Ctx) error {
-	return a.bulkDeleteByDN(c, "group", "/groups")
+	return a.bulkDeleteByDN(c, "group", "/groups", func(dn string) {
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteGroup(dn)
+		}
+	})
 }
 
 // bulkDeleteComputers mirrors bulkDeleteGroups against the computers
 // list. Uses the same generic DeleteByDN because computers and groups
 // are both single-entry deletes without a type-specific helper.
 func (a *App) bulkDeleteComputers(c *fiber.Ctx) error {
-	return a.bulkDeleteByDN(c, "computer", "/computers")
+	return a.bulkDeleteByDN(c, "computer", "/computers", func(dn string) {
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteComputer(dn)
+		}
+	})
 }
 
 // bulkDeleteByDN is the shared body of bulkDeleteGroups /
 // bulkDeleteComputers: collect target_dn[], open a per-user LDAP
 // binding, DeleteByDN each target, count successes, flash a summary,
 // and redirect back to the list page at `redirectTo`. `kind` is the
-// singular noun used in the flash and the log field.
+// singular noun used in the flash and the log field. onCacheSuccess is
+// invoked per successfully-deleted DN so the caller can apply an
+// optimistic cache update (scrubbing the entity before the next
+// Refresh() round-trip).
 //
 // Users have their own handler (bulkDeleteUsers) because we call the
 // type-specific `client.DeleteUser` which also fires cache-hook work
 // in simple-ldap-go that DeleteByDN bypasses.
-func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
+func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string, onCacheSuccess func(dn string)) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
 		return c.Redirect(redirectTo, fiber.StatusSeeOther)
@@ -308,6 +327,10 @@ func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
 			continue
 		}
 
+		if onCacheSuccess != nil {
+			onCacheSuccess(dn)
+		}
+
 		deleted++
 	}
 
@@ -321,24 +344,39 @@ func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
 // only — the caller in handleBulkUsers gates this on
 // a.ldapConfig.IsActiveDirectory so non-AD deployments never reach here.
 func (a *App) bulkDisableUsers(c *fiber.Ctx) error {
-	return a.bulkUACDisable(c, "user", "/users", func(client *ldap.LDAP, dn string) error {
-		return client.DisableUserContext(c.UserContext(), dn)
-	})
+	return a.bulkUACDisable(c, "user", "/users",
+		func(client *ldap.LDAP, dn string) error {
+			return client.DisableUserContext(c.UserContext(), dn)
+		},
+		func(dn string) {
+			if a.ldapCache != nil {
+				a.ldapCache.OnDisableUser(dn)
+			}
+		})
 }
 
 // bulkDisableComputers mirrors bulkDisableUsers for computer entries.
 // AD-only, same gating in handleBulkComputers.
 func (a *App) bulkDisableComputers(c *fiber.Ctx) error {
-	return a.bulkUACDisable(c, "computer", "/computers", func(client *ldap.LDAP, dn string) error {
-		return client.DisableComputerContext(c.UserContext(), dn)
-	})
+	return a.bulkUACDisable(c, "computer", "/computers",
+		func(client *ldap.LDAP, dn string) error {
+			return client.DisableComputerContext(c.UserContext(), dn)
+		},
+		func(dn string) {
+			if a.ldapCache != nil {
+				a.ldapCache.OnDisableComputer(dn)
+			}
+		})
 }
 
 // bulkUACDisable is the shared body for bulkDisableUsers /
 // bulkDisableComputers: open a per-user LDAP binding, run the given
 // per-DN disable op, count successes, flash "Disabled N / M <kind>s".
+// onCacheSuccess is invoked per successfully-disabled DN so the caller
+// can flip Enabled=false in the local cache without waiting for the
+// next Refresh() to notice via the readonly-bind DC.
 // Pattern matches bulkDeleteByDN — different op, same batching.
-func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*ldap.LDAP, string) error) error {
+func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*ldap.LDAP, string) error, onCacheSuccess func(dn string)) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
 		return c.Redirect(redirectTo, fiber.StatusSeeOther)
@@ -362,6 +400,10 @@ func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*lda
 			log.Warn().Err(err).Str("dn", dn).Str("kind", kind).Msg("bulk disable failed")
 
 			continue
+		}
+
+		if onCacheSuccess != nil {
+			onCacheSuccess(dn)
 		}
 
 		disabled++

@@ -129,6 +129,29 @@ func (c *Cache[T]) update(fn func(*T)) {
 	c.buildIndexes()
 }
 
+// remove drops the item with the given distinguished name from the cache
+// and rebuilds indexes. A no-op when no matching entry exists, so callers
+// can invoke it optimistically after an LDAP delete without first
+// checking presence. Used by the Manager's OnDelete* hooks to keep the
+// in-memory cache correct immediately after a successful LDAP mutation,
+// without waiting for the next background Refresh (which can be delayed
+// by AD replication between the modifying DC and the readonly-bind DC).
+func (c *Cache[T]) remove(dn string) {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	for idx := range c.items {
+		if c.items[idx].DN() != dn {
+			continue
+		}
+
+		c.items = append(c.items[:idx], c.items[idx+1:]...)
+		c.buildIndexes()
+
+		return
+	}
+}
+
 // Get returns a snapshot copy of all cached items.
 // The returned slice is safe to iterate without holding any lock.
 func (c *Cache[T]) Get() []T {
