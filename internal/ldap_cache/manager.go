@@ -490,79 +490,75 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 }
 
 // OnDeleteUser drops a user entry from the cache by DN and scrubs any
-// group memberships that reference it. Call after a successful LDAP
-// delete. Idempotent: no-op if the user isn't cached. The trailing
-// Refresh() the bulk handler still issues catches up with everything
-// else the directory might have changed, but correctness of the user
-// list itself no longer depends on that refresh winning against AD
-// replication delay.
+// group membership references that point at it. Call after a successful
+// LDAP delete. Idempotent: no-op if the user isn't cached.
+//
+// The group-membership scrub is a full scan over Groups since there is
+// no reverse index from user DN → group DN list. For typical bulk
+// operations (tens of deletions, hundreds of groups) this is fine; a
+// reverse index would only pay off for larger directories.
 func (m *Manager) OnDeleteUser(userDN string) {
 	m.Users.remove(userDN)
 
 	m.Groups.update(func(group *ldap.Group) {
-		for idx, member := range group.Members {
-			if member == userDN {
-				group.Members = append(group.Members[:idx], group.Members[idx+1:]...)
-
-				return
-			}
-		}
+		group.Members = slices.DeleteFunc(group.Members, func(member string) bool {
+			return member == userDN
+		})
 	})
 }
 
-// OnDeleteGroup drops a group entry from the cache by DN and scrubs any
-// user/computer memberOf references that point at it. See OnDeleteUser
-// for rationale.
+// OnDeleteGroup drops a group entry from the cache by DN and scrubs
+// memberOf references from every cached user and computer. See
+// OnDeleteUser for the iteration-cost rationale.
 func (m *Manager) OnDeleteGroup(groupDN string) {
 	m.Groups.remove(groupDN)
 
 	m.Users.update(func(user *ldap.User) {
-		for idx, g := range user.Groups {
-			if g == groupDN {
-				user.Groups = append(user.Groups[:idx], user.Groups[idx+1:]...)
-
-				return
-			}
-		}
+		user.Groups = slices.DeleteFunc(user.Groups, func(g string) bool {
+			return g == groupDN
+		})
 	})
 
 	m.Computers.update(func(computer *ldap.Computer) {
-		for idx, g := range computer.Groups {
-			if g == groupDN {
-				computer.Groups = append(computer.Groups[:idx], computer.Groups[idx+1:]...)
-
-				return
-			}
-		}
+		computer.Groups = slices.DeleteFunc(computer.Groups, func(g string) bool {
+			return g == groupDN
+		})
 	})
 }
 
-// OnDeleteComputer drops a computer entry from the cache by DN.
-// Computers are not referenced from other cached entities (group
-// membership is stored on the computer side only for memberOf display),
-// so this is a straight remove.
+// OnDeleteComputer drops a computer entry from the cache by DN and
+// scrubs any group Members reference pointing at it. Computer group
+// memberships are derived at display time by scanning ldap.Group.Members
+// for the computer DN (see PopulateGroupsForComputerFromData), so those
+// reverse references have to be removed or the group member count and
+// the drawer's members list stay stale until the next full Refresh.
 func (m *Manager) OnDeleteComputer(computerDN string) {
 	m.Computers.remove(computerDN)
+
+	m.Groups.update(func(group *ldap.Group) {
+		group.Members = slices.DeleteFunc(group.Members, func(member string) bool {
+			return member == computerDN
+		})
+	})
 }
 
 // OnDisableUser flips the Enabled bit on the cached user to false so
 // the UI reflects the disabled state immediately after a successful
 // LDAP userAccountControl mutation, without waiting for the next
 // background Refresh to rediscover it via the readonly bind.
+//
+// Uses Cache.updateByDN for O(1) lookup via dnIndex instead of a full
+// linear scan over every cached user.
 func (m *Manager) OnDisableUser(userDN string) {
-	m.Users.update(func(user *ldap.User) {
-		if user.DN() == userDN {
-			user.Enabled = false
-		}
+	m.Users.updateByDN(userDN, func(user *ldap.User) {
+		user.Enabled = false
 	})
 }
 
 // OnDisableComputer is the OnDisableUser analogue for machine accounts.
 func (m *Manager) OnDisableComputer(computerDN string) {
-	m.Computers.update(func(computer *ldap.Computer) {
-		if computer.DN() == computerDN {
-			computer.Enabled = false
-		}
+	m.Computers.updateByDN(computerDN, func(computer *ldap.Computer) {
+		computer.Enabled = false
 	})
 }
 

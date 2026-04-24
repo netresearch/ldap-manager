@@ -171,50 +171,127 @@ func TestManagerOnDeleteComputer_NoOpOnAbsent(t *testing.T) {
 	}
 }
 
-// TestManagerOnDisableUser_FlipsEnabled uses the `update` code path
-// which iterates all users. Because mock users' DN() returns "", we
-// exploit the empty-string equality to flip every cached user's
-// Enabled bit and assert the write-back took effect. This is the same
-// pragmatic approach the existing OnAdd/OnRemove tests use.
-func TestManagerOnDisableUser_FlipsEnabled(t *testing.T) {
-	mockClient := &mockLDAPClient{
-		users: []ldap.User{
-			NewMockUser("cn=john.doe,…", "john.doe", true, nil),
-			NewMockUser("cn=jane.smith,…", "jane.smith", true, nil),
-		},
-	}
-	manager := New(mockClient)
-	if err := manager.RefreshUsers(); err != nil {
-		t.Fatalf("refresh users: %v", err)
-	}
+// TestManagerOnDeleteComputer_ScrubGroupMembership verifies that
+// deleting a computer also removes its DN from every cached group's
+// Members list. Computers can be group members in AD (machine accounts
+// in security groups), and the UI derives computer group memberships
+// by scanning group Members, so the scrub is necessary for the group
+// member count to stay accurate after the delete.
+func TestManagerOnDeleteComputer_ScrubGroupMembership(t *testing.T) {
+	const computerDN = "cn=workstation-01,ou=computers,dc=example,dc=com"
 
-	manager.OnDisableUser("") // mock DN()=="" matches all
-
-	for _, u := range manager.Users.Get() {
-		if u.Enabled {
-			t.Errorf("user %q still enabled after OnDisableUser", u.SAMAccountName)
-		}
-	}
-}
-
-// TestManagerOnDisableComputer_FlipsEnabled mirrors
-// TestManagerOnDisableUser_FlipsEnabled for machine accounts.
-func TestManagerOnDisableComputer_FlipsEnabled(t *testing.T) {
 	mockClient := &mockLDAPClient{
 		computers: []ldap.Computer{
-			NewMockComputer("cn=ws01,…", "ws01$", true, nil),
+			NewMockComputer(computerDN, "workstation-01$", true, nil),
+		},
+		groups: []ldap.Group{
+			{Members: []string{computerDN, "cn=other,dc=example,dc=com"}},
 		},
 	}
 	manager := New(mockClient)
 	if err := manager.RefreshComputers(); err != nil {
 		t.Fatalf("refresh computers: %v", err)
 	}
+	if err := manager.RefreshGroups(); err != nil {
+		t.Fatalf("refresh groups: %v", err)
+	}
 
-	manager.OnDisableComputer("")
+	manager.OnDeleteComputer(computerDN)
 
-	for _, cmp := range manager.Computers.Get() {
-		if cmp.Enabled {
-			t.Errorf("computer %q still enabled after OnDisableComputer", cmp.SAMAccountName)
+	groups := manager.Groups.Get()
+	if len(groups) != 1 {
+		t.Fatalf("expected 1 group, got %d", len(groups))
+	}
+	for _, m := range groups[0].Members {
+		if m == computerDN {
+			t.Errorf("group still references deleted computer %q", computerDN)
 		}
+	}
+	if want := "cn=other,dc=example,dc=com"; len(groups[0].Members) != 1 || groups[0].Members[0] != want {
+		t.Errorf("expected remaining member %q, got %v", want, groups[0].Members)
+	}
+}
+
+// testMutable is a cacheable with both a DN and a mutable bool, used
+// to exercise Cache.updateByDN under a controlled DN surface. The
+// approach mirrors testEntity above; simple-ldap-go's unexported dn
+// field makes it impractical to seed real DNs on ldap.User /
+// ldap.Computer from outside that package.
+type testMutable struct {
+	dn      string
+	enabled bool
+}
+
+func (m testMutable) DN() string { return m.dn }
+
+func TestCacheUpdateByDN(t *testing.T) {
+	t.Run("mutates the matching entry and returns true", func(t *testing.T) {
+		c := NewCached[testMutable]()
+		c.setAll([]testMutable{
+			{dn: "cn=alice,dc=x", enabled: true},
+			{dn: "cn=bob,dc=x", enabled: true},
+		})
+
+		ok := c.updateByDN("cn=bob,dc=x", func(m *testMutable) { m.enabled = false })
+		if !ok {
+			t.Fatal("updateByDN returned false for an existing DN")
+		}
+
+		got, found := c.FindByDN("cn=bob,dc=x")
+		if !found {
+			t.Fatal("bob missing after updateByDN")
+		}
+		if got.enabled {
+			t.Error("bob still enabled after updateByDN")
+		}
+
+		alice, _ := c.FindByDN("cn=alice,dc=x")
+		if !alice.enabled {
+			t.Error("alice got mutated — update leaked past the DN filter")
+		}
+	})
+
+	t.Run("returns false and does nothing for an unknown DN", func(t *testing.T) {
+		c := NewCached[testMutable]()
+		c.setAll([]testMutable{
+			{dn: "cn=alice,dc=x", enabled: true},
+		})
+
+		called := false
+		ok := c.updateByDN("cn=ghost,dc=x", func(_ *testMutable) { called = true })
+		if ok {
+			t.Error("updateByDN returned true for a missing DN")
+		}
+		if called {
+			t.Error("fn was invoked for a missing DN")
+		}
+	})
+}
+
+// TestManagerOnDisable_NoOpOnAbsentDN verifies that calling
+// OnDisableUser / OnDisableComputer with a DN that isn't cached is a
+// safe no-op. The happy-path ("a known DN gets Enabled flipped") is
+// covered structurally by TestCacheUpdateByDN above — seeding an
+// ldap.User with a real DN requires reaching into simple-ldap-go's
+// unexported Object fields.
+func TestManagerOnDisable_NoOpOnAbsentDN(t *testing.T) {
+	mockClient := &mockLDAPClient{
+		users:     createMockUsers(),
+		computers: createMockComputers(),
+	}
+	manager := New(mockClient)
+	manager.Refresh()
+
+	usersBefore := manager.Users.Count()
+	computersBefore := manager.Computers.Count()
+
+	manager.OnDisableUser("cn=ghost-user,dc=example,dc=com")
+	manager.OnDisableComputer("cn=ghost-computer,dc=example,dc=com")
+
+	if got := manager.Users.Count(); got != usersBefore {
+		t.Errorf("user count changed: before=%d after=%d", usersBefore, got)
+	}
+	if got := manager.Computers.Count(); got != computersBefore {
+		t.Errorf("computer count changed: before=%d after=%d", computersBefore, got)
 	}
 }
