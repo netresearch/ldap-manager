@@ -25,3 +25,14 @@ intentional-drift:
     any unrelated PR. Also adds scripts/vendor.lock to dependencies so vendor
     refreshes (Pico, htmx, Alpine CSP build pinned via scripts/vendor.sh)
     route to the dependencies label."
+- path: .github/workflows/release.yml
+  reason: "Templ code must be generated before `go build`. The
+    `internal/web/templates/*_templ.go` files are gitignored, so a clean
+    release checkout has none of them and compilation fails with
+    `undefined: PinnedEntry` etc. The go-app template's
+    `pre-build-command` only runs `bun run build:assets` when
+    package.json is present; this repo is Go-only (no package.json —
+    see the labeler drift entry above). Adds
+    `go install github.com/a-h/templ/cmd/templ@latest && templ generate`
+    to the pre-build-command so release binaries compile, mirroring
+    ci.yml's existing `pre-build-cmd`."
