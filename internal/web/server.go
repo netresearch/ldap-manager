@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -48,11 +49,28 @@ type App struct {
 }
 
 // pinnedStorePath returns the bbolt file path for the per-user pinned
-// store. It is derived from the session-storage path (when configured)
-// by appending `.pinned` — bbolt holds an exclusive lock on each file,
-// so the pinned store must not share the session file. When the caller
-// did not configure a session path, `pinned.bbolt` is used.
-func pinnedStorePath(sessionPath string) string {
+// store.
+//
+// Precedence:
+//  1. Explicit opts.PinnedPath — used verbatim (set via --pinned-path /
+//     PINNED_PATH). Sentinel values "none" / "off" / "disabled" return
+//     "" so the caller knows to skip opening the store entirely.
+//  2. Session-storage path with a `.pinned` suffix when the caller
+//     configured one. bbolt holds an exclusive lock per file, so the
+//     pinned store must not share the session file.
+//  3. "pinned.bbolt" relative to process cwd as a last-resort default.
+//     Read-only working directories (common in containers) should set
+//     PinnedPath explicitly to avoid a boot failure.
+func pinnedStorePath(sessionPath, pinnedPath string) string {
+	switch strings.ToLower(strings.TrimSpace(pinnedPath)) {
+	case "none", "off", "disabled":
+		return ""
+	case "":
+		// fall through to auto-placement
+	default:
+		return pinnedPath
+	}
+
 	if sessionPath == "" {
 		return "pinned.bbolt"
 	}
@@ -152,17 +170,44 @@ func NewApp(opts *options.Opts) (*App, error) {
 	// the file, so we cannot reuse the session bbolt file; instead we
 	// place the pinned store next to it with a `.pinned` suffix. When
 	// sessions are in-memory, the default "pinned.bbolt" path is used so
-	// pins survive restarts in dev mode too.
-	pinnedPath := pinnedStorePath(opts.SessionPath)
-	pinnedDB, err := bolt.Open(pinnedPath, 0o600, &bolt.Options{Timeout: 2 * time.Second})
-	if err != nil {
-		return nil, fmt.Errorf("open pinned store db: %w", err)
-	}
-	pinnedStore, err := NewPinnedStore(pinnedDB)
-	if err != nil {
-		_ = pinnedDB.Close()
-
-		return nil, fmt.Errorf("init pinned store: %w", err)
+	// pins survive restarts in dev mode too. Callers on read-only
+	// filesystems can override with --pinned-path=/writable/path, or
+	// disable persistence entirely with --pinned-path=none.
+	//
+	// When the store cannot be opened (explicit "none", unreadable
+	// path, permission denied on a read-only volume) we log a warning
+	// and continue with a nil store — the handlers nil-guard the call
+	// sites and the drawer simply hides the pin star. Pinning becoming
+	// a no-op is a much better failure mode than refusing to boot.
+	pinnedPath := pinnedStorePath(opts.SessionPath, opts.PinnedPath)
+	var (
+		pinnedDB    *bolt.DB
+		pinnedStore *PinnedStore
+	)
+	if pinnedPath == "" {
+		log.Info().Msg("pinned store disabled (--pinned-path=none); pin UI will be hidden")
+	} else {
+		db, openErr := bolt.Open(pinnedPath, 0o600, &bolt.Options{Timeout: 2 * time.Second})
+		if openErr != nil {
+			log.Warn().
+				Err(openErr).
+				Str("path", pinnedPath).
+				Msg("failed to open pinned store; continuing without persistent pinning " +
+					"(read-only filesystem? set --pinned-path=/writable/path or " +
+					"--pinned-path=none to silence)")
+		} else {
+			store, initErr := NewPinnedStore(db)
+			if initErr != nil {
+				_ = db.Close()
+				log.Warn().
+					Err(initErr).
+					Str("path", pinnedPath).
+					Msg("failed to init pinned store bucket; continuing without persistent pinning")
+			} else {
+				pinnedDB = db
+				pinnedStore = store
+			}
+		}
 	}
 
 	a := &App{
