@@ -13,6 +13,8 @@ package web
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -20,6 +22,74 @@ import (
 
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
+
+// bulkRedirectAfter computes the post-action redirect target for a bulk
+// handler. It preserves the originating filters (ou=, enabled=, member_of=,
+// …) by reusing the Referer URL's query string. It also keeps or drops
+// the ?panel= drawer-state parameter depending on whether the entity the
+// drawer was showing is still there after the op:
+//
+//   - dropPanel=true (delete): always strips ?panel= because the
+//     referenced entity is gone. If the Referer path was a single-entity
+//     detail page (fallbackList + "/:dn"), it is rewritten to the parent
+//     list so the user doesn't land on a dangling detail route.
+//   - dropPanel=false (disable et al.): keeps the full Referer verbatim
+//     so the drawer reopens on the same entity (now with updated state)
+//     and the filter chips stay applied.
+//
+// Only same-origin Referer values are honoured to avoid open-redirect
+// risk; cross-origin or unparseable Referer falls back to fallbackList.
+func bulkRedirectAfter(c *fiber.Ctx, fallbackList string, dropPanel bool) string {
+	ref := c.Get(fiber.HeaderReferer)
+	if ref == "" {
+		return fallbackList
+	}
+
+	refURL, err := url.Parse(ref)
+	if err != nil {
+		return fallbackList
+	}
+
+	// Reject cross-origin Referers. Allow relative Referers (empty Host),
+	// which some clients still emit for same-origin POSTs.
+	//
+	// Compare hostnames via url.URL.Hostname() (strips any port) so dev
+	// and proxy deployments on non-default ports (e.g. localhost:3000)
+	// are not incorrectly flagged as cross-origin against Fiber's
+	// port-less c.Hostname().
+	if refURL.Host != "" && refURL.Hostname() != c.Hostname() {
+		return fallbackList
+	}
+
+	// Use EscapedPath so percent-encoded DNs (e.g. /users/cn%3Dbob%2Cdc%3Dx)
+	// round-trip unchanged; refURL.Path decodes by default which would
+	// emit raw "=" and "," that the router then has to re-interpret.
+	path := refURL.EscapedPath()
+	q := refURL.Query()
+
+	if dropPanel {
+		q.Del("panel")
+		// The Referer may have been a per-entity detail page
+		// (fallbackList + "/:dn"); after delete the entity is gone, so
+		// collapse back to the parent list route.
+		if path != fallbackList && strings.HasPrefix(path, fallbackList+"/") {
+			path = fallbackList
+		}
+	}
+
+	// Only redirect to paths on the same list surface — defence in depth
+	// against an attacker setting a crafted Referer to bounce through the
+	// 303 into an unrelated route.
+	if path != fallbackList && !strings.HasPrefix(path, fallbackList+"/") {
+		return fallbackList
+	}
+
+	if len(q) == 0 {
+		return path
+	}
+
+	return path + "?" + q.Encode()
+}
 
 // bulkNotImplementedMessage is the response body for bulk actions that
 // require LDAP operations simple-ldap-go does not yet expose. The HTTP
@@ -135,7 +205,7 @@ func (a *App) bulkAddToGroup(c *fiber.Ctx) error {
 
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect("/users", fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, "/users", false), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -169,7 +239,7 @@ func (a *App) bulkAddToGroup(c *fiber.Ctx) error {
 		Str("group", groupDN).
 		Msg("bulk add-to-group complete")
 
-	return c.Redirect("/users", fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, "/users", false), fiber.StatusSeeOther)
 }
 
 // bulkRemoveFromGroup removes each user in target_dn[] from the group_dn.
@@ -185,7 +255,7 @@ func (a *App) bulkRemoveFromGroup(c *fiber.Ctx) error {
 
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect("/users", fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, "/users", false), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -219,7 +289,7 @@ func (a *App) bulkRemoveFromGroup(c *fiber.Ctx) error {
 		Str("group", groupDN).
 		Msg("bulk remove-from-group complete")
 
-	return c.Redirect("/users", fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, "/users", false), fiber.StatusSeeOther)
 }
 
 // bulkDeleteUsers deletes each user in target_dn[]. Per-entry failures
@@ -228,7 +298,7 @@ func (a *App) bulkRemoveFromGroup(c *fiber.Ctx) error {
 func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect("/users", fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, "/users", true), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -251,41 +321,60 @@ func (a *App) bulkDeleteUsers(c *fiber.Ctx) error {
 			continue
 		}
 
+		// Optimistic cache update: drop the user and scrub any group
+		// memberships pointing at them, so the redirected list renders
+		// correctly on the next request even if AD replication to the
+		// readonly-bind DC hasn't caught up yet.
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteUser(userDN)
+		}
+
 		deleted++
 	}
 
 	a.finaliseBulkDelete(c, "user", deleted, len(targets), firstErr)
 
-	return c.Redirect("/users", fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, "/users", true), fiber.StatusSeeOther)
 }
 
 // bulkDeleteGroups deletes each DN in target_dn[] as an LDAP entry
 // via simple-ldap-go's generic DeleteByDN (which performs a raw
 // ldap.Del on the DN). Flash summarises the result on the list page.
 func (a *App) bulkDeleteGroups(c *fiber.Ctx) error {
-	return a.bulkDeleteByDN(c, "group", "/groups")
+	return a.bulkDeleteByDN(c, "group", "/groups", func(dn string) {
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteGroup(dn)
+		}
+	})
 }
 
 // bulkDeleteComputers mirrors bulkDeleteGroups against the computers
 // list. Uses the same generic DeleteByDN because computers and groups
 // are both single-entry deletes without a type-specific helper.
 func (a *App) bulkDeleteComputers(c *fiber.Ctx) error {
-	return a.bulkDeleteByDN(c, "computer", "/computers")
+	return a.bulkDeleteByDN(c, "computer", "/computers", func(dn string) {
+		if a.ldapCache != nil {
+			a.ldapCache.OnDeleteComputer(dn)
+		}
+	})
 }
 
 // bulkDeleteByDN is the shared body of bulkDeleteGroups /
 // bulkDeleteComputers: collect target_dn[], open a per-user LDAP
 // binding, DeleteByDN each target, count successes, flash a summary,
 // and redirect back to the list page at `redirectTo`. `kind` is the
-// singular noun used in the flash and the log field.
+// singular noun used in the flash and the log field. onCacheSuccess is
+// invoked per successfully-deleted DN so the caller can apply an
+// optimistic cache update (scrubbing the entity before the next
+// Refresh() round-trip).
 //
 // Users have their own handler (bulkDeleteUsers) because we call the
 // type-specific `client.DeleteUser` which also fires cache-hook work
 // in simple-ldap-go that DeleteByDN bypasses.
-func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
+func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string, onCacheSuccess func(dn string)) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect(redirectTo, fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, redirectTo, true), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -308,12 +397,16 @@ func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
 			continue
 		}
 
+		if onCacheSuccess != nil {
+			onCacheSuccess(dn)
+		}
+
 		deleted++
 	}
 
 	a.finaliseBulkDelete(c, kind, deleted, len(targets), firstErr)
 
-	return c.Redirect(redirectTo, fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, redirectTo, true), fiber.StatusSeeOther)
 }
 
 // bulkDisableUsers flips the ACCOUNTDISABLE bit (0x2) on each user DN
@@ -321,27 +414,47 @@ func (a *App) bulkDeleteByDN(c *fiber.Ctx, kind, redirectTo string) error {
 // only — the caller in handleBulkUsers gates this on
 // a.ldapConfig.IsActiveDirectory so non-AD deployments never reach here.
 func (a *App) bulkDisableUsers(c *fiber.Ctx) error {
-	return a.bulkUACDisable(c, "user", "/users", func(client *ldap.LDAP, dn string) error {
-		return client.DisableUserContext(c.UserContext(), dn)
-	})
+	return a.bulkUACDisable(c, "user", "/users",
+		func(client *ldap.LDAP, dn string) error {
+			return client.DisableUserContext(c.UserContext(), dn)
+		},
+		func(dn string) {
+			if a.ldapCache != nil {
+				a.ldapCache.OnDisableUser(dn)
+			}
+		})
 }
 
 // bulkDisableComputers mirrors bulkDisableUsers for computer entries.
 // AD-only, same gating in handleBulkComputers.
 func (a *App) bulkDisableComputers(c *fiber.Ctx) error {
-	return a.bulkUACDisable(c, "computer", "/computers", func(client *ldap.LDAP, dn string) error {
-		return client.DisableComputerContext(c.UserContext(), dn)
-	})
+	return a.bulkUACDisable(c, "computer", "/computers",
+		func(client *ldap.LDAP, dn string) error {
+			return client.DisableComputerContext(c.UserContext(), dn)
+		},
+		func(dn string) {
+			if a.ldapCache != nil {
+				a.ldapCache.OnDisableComputer(dn)
+			}
+		})
 }
 
 // bulkUACDisable is the shared body for bulkDisableUsers /
 // bulkDisableComputers: open a per-user LDAP binding, run the given
 // per-DN disable op, count successes, flash "Disabled N / M <kind>s".
+// onCacheSuccess is invoked per successfully-disabled DN so the caller
+// can flip Enabled=false in the local cache without waiting for the
+// next Refresh() to notice via the readonly-bind DC.
 // Pattern matches bulkDeleteByDN — different op, same batching.
-func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*ldap.LDAP, string) error) error {
+func (a *App) bulkUACDisable(
+	c *fiber.Ctx,
+	kind, redirectTo string,
+	op func(*ldap.LDAP, string) error,
+	onCacheSuccess func(dn string),
+) error {
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect(redirectTo, fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, redirectTo, false), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -364,23 +477,32 @@ func (a *App) bulkUACDisable(c *fiber.Ctx, kind, redirectTo string, op func(*lda
 			continue
 		}
 
+		if onCacheSuccess != nil {
+			onCacheSuccess(dn)
+		}
+
 		disabled++
 	}
 
 	a.finaliseBulkDisable(c, kind, disabled, len(targets), firstErr)
 
-	return c.Redirect(redirectTo, fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, redirectTo, false), fiber.StatusSeeOther)
 }
 
 // finaliseBulkDisable is the disable analogue of finaliseBulkDelete:
-// refresh caches on any success, log the summary, flash the result.
+// invalidate the rendered-template cache so the redirected list page
+// is re-rendered, log the summary, and flash the result.
+//
+// The LDAP cache itself was already updated optimistically in the
+// per-entity loop via OnDisable{User,Computer} — we intentionally do
+// NOT call ldapCache.Refresh() here: Refresh() queries the readonly-
+// bind DC, which under normal AD replication delay returns the
+// pre-disable state (Enabled=true) and overwrites our optimistic
+// update. The 30 s background refresh picks up the upstream state
+// once replication has caught up.
 func (a *App) finaliseBulkDisable(c *fiber.Ctx, kind string, disabled, total int, firstErr error) {
 	if disabled > 0 {
 		a.invalidateTemplateCacheOnModification()
-
-		if a.ldapCache != nil {
-			a.ldapCache.Refresh()
-		}
 	}
 
 	log.Info().
@@ -405,20 +527,21 @@ func (a *App) finaliseBulkDisable(c *fiber.Ctx, kind string, disabled, total int
 }
 
 // finaliseBulkDelete is the shared post-loop cleanup for all three
-// bulk-delete handlers: invalidate the template + LDAP caches if any
-// delete succeeded, and drop a "Deleted N / M <kind>s" flash on the
-// next list page load. `kind` is the singular noun ("user", "group",
-// "computer"); pluralisation is naive "s"-suffix which is correct for
-// all three.
+// bulk-delete handlers: invalidate the rendered-template cache and
+// drop a "Deleted N / M <kind>s" flash on the next list page load.
+// `kind` is the singular noun ("user", "group", "computer");
+// pluralisation is naive "s"-suffix which is correct for all three.
+//
+// The LDAP cache itself was already updated optimistically in the
+// per-entity loop via OnDelete{User,Group,Computer} — we intentionally
+// do NOT call ldapCache.Refresh() here: Refresh() queries the readonly-
+// bind DC, which under normal AD replication delay still sees the
+// just-deleted entity and overwrites our optimistic scrub. The 30 s
+// background refresh picks up the upstream state once replication
+// has caught up.
 func (a *App) finaliseBulkDelete(c *fiber.Ctx, kind string, deleted, total int, firstErr error) {
 	if deleted > 0 {
-		// No dedicated OnDelete hook in the cache — force a full refresh
-		// so stale lists don't linger.
 		a.invalidateTemplateCacheOnModification()
-
-		if a.ldapCache != nil {
-			a.ldapCache.Refresh()
-		}
 	}
 
 	log.Info().
@@ -465,7 +588,7 @@ func (a *App) bulkAddMembersToGroups(c *fiber.Ctx) error {
 
 	targets := collectTargetDNs(c)
 	if len(targets) == 0 {
-		return c.Redirect("/groups", fiber.StatusSeeOther)
+		return c.Redirect(bulkRedirectAfter(c, "/groups", false), fiber.StatusSeeOther)
 	}
 
 	client, err := a.getUserLDAP(c)
@@ -499,7 +622,7 @@ func (a *App) bulkAddMembersToGroups(c *fiber.Ctx) error {
 		Str("user", userDN).
 		Msg("bulk add-members complete")
 
-	return c.Redirect("/groups", fiber.StatusSeeOther)
+	return c.Redirect(bulkRedirectAfter(c, "/groups", false), fiber.StatusSeeOther)
 }
 
 // collectTargetDNs extracts the target_dn[] list from both URL-encoded

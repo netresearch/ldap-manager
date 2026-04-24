@@ -489,6 +489,79 @@ func (m *Manager) OnRemoveUserFromGroup(userDN, groupDN string) {
 	})
 }
 
+// OnDeleteUser drops a user entry from the cache by DN and scrubs any
+// group membership references that point at it. Call after a successful
+// LDAP delete. Idempotent: no-op if the user isn't cached.
+//
+// The group-membership scrub is a full scan over Groups since there is
+// no reverse index from user DN → group DN list. For typical bulk
+// operations (tens of deletions, hundreds of groups) this is fine; a
+// reverse index would only pay off for larger directories.
+func (m *Manager) OnDeleteUser(userDN string) {
+	m.Users.remove(userDN)
+
+	m.Groups.update(func(group *ldap.Group) {
+		group.Members = slices.DeleteFunc(group.Members, func(member string) bool {
+			return member == userDN
+		})
+	})
+}
+
+// OnDeleteGroup drops a group entry from the cache by DN and scrubs
+// memberOf references from every cached user and computer. See
+// OnDeleteUser for the iteration-cost rationale.
+func (m *Manager) OnDeleteGroup(groupDN string) {
+	m.Groups.remove(groupDN)
+
+	m.Users.update(func(user *ldap.User) {
+		user.Groups = slices.DeleteFunc(user.Groups, func(g string) bool {
+			return g == groupDN
+		})
+	})
+
+	m.Computers.update(func(computer *ldap.Computer) {
+		computer.Groups = slices.DeleteFunc(computer.Groups, func(g string) bool {
+			return g == groupDN
+		})
+	})
+}
+
+// OnDeleteComputer drops a computer entry from the cache by DN and
+// scrubs any group Members reference pointing at it. Computer group
+// memberships are derived at display time by scanning ldap.Group.Members
+// for the computer DN (see PopulateGroupsForComputerFromData), so those
+// reverse references have to be removed or the group member count and
+// the drawer's members list stay stale until the next full Refresh.
+func (m *Manager) OnDeleteComputer(computerDN string) {
+	m.Computers.remove(computerDN)
+
+	m.Groups.update(func(group *ldap.Group) {
+		group.Members = slices.DeleteFunc(group.Members, func(member string) bool {
+			return member == computerDN
+		})
+	})
+}
+
+// OnDisableUser flips the Enabled bit on the cached user to false so
+// the UI reflects the disabled state immediately after a successful
+// LDAP userAccountControl mutation, without waiting for the next
+// background Refresh to rediscover it via the readonly bind.
+//
+// Uses Cache.updateByDN for O(1) lookup via dnIndex instead of a full
+// linear scan over every cached user.
+func (m *Manager) OnDisableUser(userDN string) {
+	m.Users.updateByDN(userDN, func(user *ldap.User) {
+		user.Enabled = false
+	})
+}
+
+// OnDisableComputer is the OnDisableUser analogue for machine accounts.
+func (m *Manager) OnDisableComputer(computerDN string) {
+	m.Computers.updateByDN(computerDN, func(computer *ldap.Computer) {
+		computer.Enabled = false
+	})
+}
+
 // PopulateGroupsForUserFromData creates a FullLDAPUser with populated group memberships
 // using provided data instead of cache. Works identically to PopulateGroupsForUser
 // but operates on explicit slices rather than the cache.

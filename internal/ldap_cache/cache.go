@@ -5,6 +5,7 @@ package ldap_cache
 
 import (
 	"reflect"
+	"slices"
 	"sync"
 )
 
@@ -127,6 +128,63 @@ func (c *Cache[T]) update(fn func(*T)) {
 
 	// Rebuild indexes after updates to maintain consistency
 	c.buildIndexes()
+}
+
+// remove drops the item with the given distinguished name from the cache
+// and rebuilds indexes. A no-op when no matching entry exists, so callers
+// can invoke it optimistically after an LDAP delete without first
+// checking presence. Used by the Manager's OnDelete* hooks to keep the
+// in-memory cache correct immediately after a successful LDAP mutation,
+// without waiting for the next background Refresh (which can be delayed
+// by AD replication between the modifying DC and the readonly-bind DC).
+//
+// Uses the dnIndex for O(1) location lookup and slices.Delete for the
+// slice shrink (which zeroes the vacated slot, so pointer fields inside
+// T do not keep the removed entry's data alive indefinitely).
+func (c *Cache[T]) remove(dn string) {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	ptr, ok := c.dnIndex[dn]
+	if !ok {
+		return
+	}
+
+	for idx := range c.items {
+		if &c.items[idx] != ptr {
+			continue
+		}
+
+		c.items = slices.Delete(c.items, idx, idx+1)
+		c.buildIndexes()
+
+		return
+	}
+}
+
+// updateByDN applies a mutation function to the single cached item with
+// the given DN, using the dnIndex for O(1) location. Unlike update()
+// this does NOT rebuild indexes — callers must only perform non-key
+// mutations (flipping Enabled, touching Mail, etc.). DN-changing edits
+// must go through setAll or remove+append.
+//
+// Returns true if the entry was found and the fn invoked. Used by the
+// Manager's OnDisable* hooks to flip Enabled=false without a full
+// linear scan.
+func (c *Cache[T]) updateByDN(dn string, fn func(*T)) bool {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	ptr, ok := c.dnIndex[dn]
+	if !ok {
+		return false
+	}
+
+	// ptr points into c.items; fn mutates in place. buildIndexes is not
+	// needed because DN is stable across the mutation.
+	fn(ptr)
+
+	return true
 }
 
 // Get returns a snapshot copy of all cached items.
