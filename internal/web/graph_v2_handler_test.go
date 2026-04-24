@@ -68,6 +68,19 @@ func TestHandleGraphJSON_UnknownDN(t *testing.T) {
 	}
 }
 
+func TestHandleGraphJSON_InvalidDepth(t *testing.T) {
+	app, _ := setupFullTestApp(t)
+
+	req := httptest.NewRequest("GET", "/api/graph.json?entity="+bobDN+"&depth=abc", nil)
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", resp.StatusCode)
+	}
+}
+
 func TestHandleGraphJSON_ETagStable(t *testing.T) {
 	app, _ := setupFullTestApp(t)
 	seedBob(t, app)
