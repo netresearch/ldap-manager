@@ -42,10 +42,14 @@ jobs:
       attestations: write
     with:
       image-name: ldap-manager
-      platforms: "linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
+      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner
+      # stage) only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}.
+      # linux/386 and linux/arm/v6 aren't available, so buildx fails
+      # with "no match for platform in manifest" when we ask for them.
+      platforms: "linux/amd64,linux/arm/v7,linux/arm64"
       sign: true
       attest: true
-      # Cross-compile the five linux target binaries the Dockerfile's
+      # Cross-compile the linux target binaries the Dockerfile's
       # binary-selector stage expects under bin/ldap-manager-linux-*.
       # Mirrors release.yml's ldflags convention so `ldap-manager
       # version` reports a meaningful "main-<shortsha>" version instead
@@ -75,12 +79,12 @@ jobs:
         LDFLAGS="-s -w -X main.version=${VERSION} -X main.build=${GITHUB_SHA} -X main.buildTime=${BUILD_TIME}"
 
         mkdir -p bin
-        for spec in 386 amd64 arm64 armv6 armv7; do
+        # Only build the three binaries the container actually ships.
+        # Matches the narrowed `platforms:` input above.
+        for spec in amd64 arm64 armv7; do
           case "$spec" in
-            386)   export GOOS=linux GOARCH=386   GOARM= ;;
             amd64) export GOOS=linux GOARCH=amd64 GOARM= ;;
             arm64) export GOOS=linux GOARCH=arm64 GOARM= ;;
-            armv6) export GOOS=linux GOARCH=arm   GOARM=6 ;;
             armv7) export GOOS=linux GOARCH=arm   GOARM=7 ;;
           esac
           OUT="bin/${BINARY_BASE}-linux-${spec}"

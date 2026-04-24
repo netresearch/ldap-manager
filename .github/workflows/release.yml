@@ -121,13 +121,20 @@ jobs:
     with:
       image-name: ${{ github.event.repository.name }}
       ref: ${{ needs.create-release.outputs.tag }}
-      platforms: "linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
+      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner
+      # stage) only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}.
+      # linux/386 and linux/arm/v6 aren't available; asking for them
+      # fails buildx with "no match for platform in manifest". The
+      # binaries matrix above still produces linux-386 / linux-armv6
+      # Go binaries as user-facing release downloads — they just
+      # don't ship inside the container image.
+      platforms: "linux/amd64,linux/arm/v7,linux/arm64"
       sign: true
       attest: true
       pre-build-command: |
         set -euo pipefail
         mkdir -p bin
-        for suffix in linux-386 linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
+        for suffix in linux-amd64 linux-arm64 linux-armv7; do
           gh release download "${{ needs.create-release.outputs.tag }}" \
             --pattern "${{ github.event.repository.name }}-${suffix}" --dir bin
           chmod +x "bin/${{ github.event.repository.name }}-${suffix}"
