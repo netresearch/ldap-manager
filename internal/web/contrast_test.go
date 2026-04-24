@@ -73,7 +73,13 @@ func TestAppCSSContrastAAA(t *testing.T) {
 }
 
 var (
-	reTokenLine = regexp.MustCompile(`^\s*(--[a-z][a-z0-9-]*)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;`)
+	// Tightened to the two hex forms parseHex accepts (#RGB, #RRGGBB).
+	// Previously the pattern allowed 3-8 hex digits, which would quietly
+	// swallow #RRGGBBAA tokens: they'd match here but fail parseHex and
+	// then surface as "token not found" later in the test. Either extend
+	// parseHex for alpha or tighten the regex; chose the latter because
+	// we don't use alpha tokens anywhere in app.css.
+	reTokenLine = regexp.MustCompile(`^\s*(--[a-z][a-z0-9-]*)\s*:\s*(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))\s*;`)
 	reDarkBlock = regexp.MustCompile(`(?s):root\[data-theme="dark"\]\s*\{(.*?)\}`)
 	// Match ":root { ... }" (but not ":root[..." selectors). Non-greedy
 	// body so the first closing "}" ends the block. The file may contain
