@@ -6,7 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
+	goldap "github.com/go-ldap/ldap/v3"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -91,25 +94,53 @@ func (a *App) buildSearchIndex() []SearchIndexEntry {
 		})
 	}
 
+	// Stable deterministic order so the ETag (SHA-256 of the marshalled
+	// JSON body) is stable across handler invocations with the same
+	// cache contents. Without this, ldap_cache's iteration order can
+	// vary between refreshes and every hit would mint a fresh ETag,
+	// defeating the client-side cache entirely. Sort key is
+	// (Type, CN, DN) — Type first keeps users / groups / computers
+	// grouped in the palette, CN is the primary human label, DN is
+	// the tie-breaker for entries that happen to share a CN.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Type != out[j].Type {
+			return out[i].Type < out[j].Type
+		}
+		if out[i].CN != out[j].CN {
+			return out[i].CN < out[j].CN
+		}
+
+		return out[i].DN < out[j].DN
+	})
+
 	return out
 }
 
-// immediateOU returns the first `ou=...` RDN found when walking a DN
-// left to right. Empty string if none.
+// immediateOU returns the first `ou=...` RDN found walking the DN
+// root-upward (i.e. the innermost/most-specific OU the entry lives
+// in). Returns the full RDN ("ou=Engineering") so callers can pass it
+// straight into ?ou=... filters without re-escaping.
+//
+// Uses go-ldap's ParseDN rather than raw comma splitting so escaped
+// commas inside RDN values (e.g. `cn=Last\, First,ou=Sales,…`) don't
+// get mistaken for RDN separators. Falls back to the empty string on
+// parse failure — the caller degrades gracefully (no OU pivot link
+// rendered, no ?ou= filter) rather than producing a nonsense OU name
+// from a malformed DN.
 func immediateOU(dn string) string {
-	for i := 0; i < len(dn); i++ {
-		if dn[i] == ',' {
-			rdn := dn[i+1:]
-			end := len(rdn)
-			for j := 0; j < len(rdn); j++ {
-				if rdn[j] == ',' {
-					end = j
+	parsed, err := goldap.ParseDN(dn)
+	if err != nil || parsed == nil {
+		return ""
+	}
 
-					break
-				}
-			}
-			if end >= 3 && (rdn[:3] == "ou=" || rdn[:3] == "OU=") {
-				return rdn[:end]
+	for _, rdn := range parsed.RDNs {
+		for _, ava := range rdn.Attributes {
+			if strings.EqualFold(ava.Type, "ou") {
+				// Re-emit as "ou=<value>" (lower-case type) so the
+				// query string matches whatever the URL helpers
+				// produced when rendering the row, regardless of
+				// how the directory reported the attribute.
+				return "ou=" + ava.Value
 			}
 		}
 	}
