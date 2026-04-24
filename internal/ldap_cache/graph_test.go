@@ -2,6 +2,8 @@ package ldap_cache
 
 import (
 	"fmt"
+	"math"
+	"sort"
 	"testing"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -300,6 +302,45 @@ func TestBuildGraph_PerRingCap(t *testing.T) {
 
 		if !kept[e.Target] {
 			t.Errorf("edge target %q refers to dropped node: %+v", e.Target, e)
+		}
+	}
+}
+
+func TestAssignConcentric_Deterministic(t *testing.T) {
+	m := graphFixture(t)
+	data1, _ := m.BuildGraph("cn=bob,ou=Engineering,dc=ex,dc=com", 2)
+	data2, _ := m.BuildGraph("cn=bob,ou=Engineering,dc=ex,dc=com", 2)
+	if len(data1.Nodes) != len(data2.Nodes) {
+		t.Fatalf("node count mismatch: %d vs %d", len(data1.Nodes), len(data2.Nodes))
+	}
+	for i := range data1.Nodes {
+		if data1.Nodes[i].DN != data2.Nodes[i].DN {
+			t.Errorf("node[%d] DN differs: %q vs %q", i, data1.Nodes[i].DN, data2.Nodes[i].DN)
+		}
+		if data1.Nodes[i].Angle != data2.Nodes[i].Angle {
+			t.Errorf("node[%d] angle differs: %f vs %f", i, data1.Nodes[i].Angle, data2.Nodes[i].Angle)
+		}
+	}
+}
+
+func TestAssignConcentric_EvenDistribution(t *testing.T) {
+	m := graphFixture(t)
+	data, _ := m.BuildGraph("cn=bob,ou=Engineering,dc=ex,dc=com", 1)
+	var ring1 []float64
+	for _, n := range data.Nodes {
+		if n.Ring == 1 {
+			ring1 = append(ring1, n.Angle)
+		}
+	}
+	if len(ring1) < 2 {
+		t.Skipf("ring 1 has %d nodes, cannot test spacing", len(ring1))
+	}
+	sort.Float64s(ring1)
+	expected := 2 * math.Pi / float64(len(ring1))
+	for i := 1; i < len(ring1); i++ {
+		gap := ring1[i] - ring1[i-1]
+		if math.Abs(gap-expected) > 1e-9 {
+			t.Errorf("gap[%d]: got %f, want %f", i, gap, expected)
 		}
 	}
 }
