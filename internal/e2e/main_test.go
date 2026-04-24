@@ -52,6 +52,7 @@ olcAccess: {0}to attrs=userPassword
   by anonymous auth
   by * none
 olcAccess: {1}to *
+  by dn="cn=admin-user,ou=users,dc=example,dc=com" write
   by users read
   by * none
 `
@@ -108,6 +109,13 @@ objectClass: top
 cn: developers
 member: cn=admin-user,ou=users,dc=example,dc=com
 member: cn=testuser1,ou=users,dc=example,dc=com
+
+dn: cn=viewers,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+objectClass: top
+cn: viewers
+description: Read-only observers (used by e2e add-to-group round-trip)
+member: cn=admin-user,ou=users,dc=example,dc=com
 `
 
 // TestMain boots the e2e harness:
@@ -140,6 +148,18 @@ func TestMain(m *testing.M) {
 	if err := seedOpenLDAP(ctx, ldapContainer); err != nil {
 		log.Fatalf("e2e bootstrap: seed openldap: %v", err)
 	}
+
+	// Bulk-seed a large number of inetOrgPerson entries so diagnostic
+	// tests (TestHeaderShrinkRepro) can observe flex behaviour under
+	// realistic list length. The in-app cache picks these up on its
+	// initial warm-up (which runs AFTER TestMain's seed phase).
+	if err := bulkSeedUsers(ctx, ldapContainer, 200); err != nil {
+		log.Fatalf("e2e bootstrap: bulk seed users: %v", err)
+	}
+
+	// Expose the container to per-test seed helpers (e.g. bulk-delete
+	// creates disposable groups then asserts the delete round-trip).
+	containerForSeed = ldapContainer
 
 	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		log.Fatalf("e2e bootstrap: install playwright: %v", err)
@@ -242,6 +262,36 @@ func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error
 	}
 
 	return container, fmt.Sprintf("ldap://%s:%s", host, port.Port()), nil
+}
+
+// containerForSeed is the running OpenLDAP testcontainer, exposed to
+// per-test seed helpers that add/remove fixture entries. Populated by
+// TestMain; nil outside of the e2e test harness (which makes per-test
+// helpers self-skip).
+var containerForSeed testcontainers.Container
+
+// bulkSeedUsers appends N additional inetOrgPerson entries to ou=users so
+// long-list / flex-pressure diagnostic tests have realistic data to work
+// with. Idempotent because the LDIF uses unique cn=bulkuserNNN DNs.
+func bulkSeedUsers(ctx context.Context, container testcontainers.Container, n int) error {
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		cn := fmt.Sprintf("bulkuser%03d", i)
+		fmt.Fprintf(&b, `dn: cn=%s,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: %s
+sn: Bulk
+uid: %s
+userPassword: pw
+
+`, cn, cn, cn)
+	}
+	return execLDAP(ctx, container,
+		"ldapadd", "-x", "-D", bootstrapAdminDN, "-w", bootstrapAdminPass,
+		"-H", "ldap://localhost", b.String())
 }
 
 // seedOpenLDAP applies the ACL relaxation via ldapmodify (cn=config) and

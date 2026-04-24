@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -68,11 +70,6 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 		CleanupInterval: 50 * time.Millisecond,
 	})
 
-	manifest := &AssetManifest{
-		Assets:    map[string]string{"styles.css": "styles.abc123.css"},
-		StylesCSS: "styles.abc123.css",
-	}
-
 	rateLimiter := NewRateLimiter(RateLimiterConfig{
 		MaxAttempts:  5,
 		WindowPeriod: time.Minute,
@@ -80,20 +77,28 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 		CleanupEvery: time.Hour,
 	})
 
+	// Per-user pinned store backed by a temp bbolt file.
+	pinnedDB, err := bolt.Open(filepath.Join(t.TempDir(), "pinned.bbolt"), 0o600, nil)
+	require.NoError(t, err)
+	pinnedStore, err := NewPinnedStore(pinnedDB)
+	require.NoError(t, err)
+
 	app := &App{
 		ldapConfig:    testConfig,
 		ldapCache:     ldap_cache.New(mockClient),
 		sessionStore:  store,
 		templateCache: templateCache,
 		fiber:         f,
-		assetManifest: manifest,
 		rateLimiter:   rateLimiter,
 		stopCacheLog:  make(chan struct{}),
+		pinnedStore:   pinnedStore,
+		pinnedDB:      pinnedDB,
 	}
 
 	t.Cleanup(func() {
 		templateCache.Stop()
 		rateLimiter.Stop()
+		_ = pinnedDB.Close()
 	})
 
 	// Populate cache
@@ -109,16 +114,32 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	f.Get("/debug/cache", app.RequireAuth(), app.cacheStatsHandler)
 	f.Get("/debug/ldap-pool", app.RequireAuth(), app.poolStatsHandler)
 
+	// Search index — registered without RequireAuth in the test harness so
+	// the shape/ETag tests can exercise the handler directly. Registered
+	// BEFORE the protected Group so the group's middleware is not inherited.
+	// Production wires the same handler inside the protected group (see server.go).
+	f.Get("/api/search-index.json", app.handleSearchIndex)
+
 	protected := f.Group("/", app.RequireAuth())
-	protected.Get("/", app.indexHandler)
-	protected.Get("/users", app.templateCacheMiddleware(), app.usersHandler)
-	protected.Get("/groups", app.templateCacheMiddleware(), app.groupsHandler)
-	protected.Get("/computers", app.templateCacheMiddleware(), app.computersHandler)
-	protected.Get("/users/*", app.userHandler)
-	protected.Get("/groups/*", app.groupHandler)
-	protected.Get("/computers/*", app.computerHandler)
+	protected.Get("/", app.handleHomeV2)
+	protected.Get("/users", app.templateCacheMiddleware(), app.handleUsersV2)
+	protected.Get("/groups", app.templateCacheMiddleware(), app.handleGroupsV2)
+	protected.Get("/computers", app.templateCacheMiddleware(), app.handleComputersV2)
+	protected.Get("/users/*", app.handleUserV2)
+	protected.Get("/groups/*", app.handleGroupV2)
+	protected.Get("/computers/*", app.handleComputerV2)
+	// Bulk actions — registered BEFORE /<kind>/* so Fiber's wildcard
+	// doesn't swallow the exact /<kind>/bulk route.
+	protected.Post("/users/bulk", app.handleBulkUsers)
+	protected.Post("/groups/bulk", app.handleBulkGroups)
+	protected.Post("/computers/bulk", app.handleBulkComputers)
 	protected.Post("/users/*", app.userModifyHandler)
 	protected.Post("/groups/*", app.groupModifyHandler)
+	// Pin / unpin — CSRF-free in the test harness so the handler tests
+	// exercise just the handler + store. Production wires these in the
+	// protected + CSRF group (see server.go).
+	protected.Post("/pin", app.handlePin)
+	protected.Post("/unpin", app.handleUnpin)
 	protected.Get("/logout", app.logoutHandler)
 	f.Use(app.fourOhFourHandler)
 
@@ -281,23 +302,6 @@ func TestGetCSRFToken(t *testing.T) {
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		assert.Empty(t, result)
-	})
-}
-
-func TestGetStylesPath(t *testing.T) {
-	t.Run("returns manifest path", func(t *testing.T) {
-		app := &App{
-			assetManifest: &AssetManifest{
-				Assets:    map[string]string{"styles.css": "styles.abc123.css"},
-				StylesCSS: "styles.abc123.css",
-			},
-		}
-		assert.Equal(t, "styles.abc123.css", app.GetStylesPath())
-	})
-
-	t.Run("returns default when manifest is nil", func(t *testing.T) {
-		app := &App{assetManifest: nil}
-		assert.Equal(t, "styles.css", app.GetStylesPath())
 	})
 }
 

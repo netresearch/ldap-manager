@@ -61,7 +61,6 @@ func newExampleServerApp(t *testing.T) *App {
 		sessionStore:  sessionStore,
 		templateCache: NewTemplateCache(DefaultTemplateCacheConfig()),
 		fiber:         f,
-		assetManifest: &AssetManifest{Assets: map[string]string{"styles.css": "styles.css"}, StylesCSS: "styles.css"},
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
 	}
@@ -216,50 +215,4 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 			t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
 		}
 	})
-}
-
-// Also exercise the list/detail GET handlers against the example server to
-// cover loadUserDataFromLDAP / loadGroupDataFromLDAP / loadComputerDataFromLDAP.
-func TestListHandlers_ExampleServer(t *testing.T) {
-	app := newExampleServerApp(t)
-	cookies := exampleSessionCookies(t, app)
-
-	// Mount GETs too.
-	f := app.fiber
-	f.Get("/users", app.RequireAuth(), app.usersHandler)
-	f.Get("/users/*", app.RequireAuth(), app.userHandler)
-	f.Get("/groups", app.RequireAuth(), app.groupsHandler)
-	f.Get("/groups/*", app.RequireAuth(), app.groupHandler)
-	f.Get("/computers", app.RequireAuth(), app.computersHandler)
-	f.Get("/computers/*", app.RequireAuth(), app.computerHandler)
-
-	paths := []string{
-		"/users",
-		"/users?show-disabled=1",
-		"/users/" + url.PathEscape("CN=User 1,OU=Users,dc=example,dc=com"),
-		"/groups",
-		"/computers",
-	}
-
-	for _, p := range paths {
-		t.Run(p, func(t *testing.T) {
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, p, nil)
-			for _, c := range cookies {
-				req.AddCookie(c)
-			}
-
-			resp, err := app.fiber.Test(req)
-			if err != nil {
-				t.Fatalf("GET %s: %v", p, err)
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			// Example-server mocked responses render a page (200), redirect to
-			// /login on auth failure (302), or render the 500 page on a
-			// downstream LDAP modify failure. Never 0.
-			if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
-				t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
-			}
-		})
-	}
 }

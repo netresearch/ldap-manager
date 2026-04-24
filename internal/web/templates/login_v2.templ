@@ -1,0 +1,81 @@
+package templates
+
+// LoginV2 is the new login page on the Pico + app.css stack.
+// Uses visible labels (WCAG 2.2 AAA) and the hybrid theme. Theme and
+// density toggles delegate to /static/js/v2-toggles.js (CSP-safe — no
+// inline handlers).
+templ LoginV2(flashes []Flash, version, csrfToken string) {
+	@baseV2PageScroll("Login") {
+		<div class="top-right-actions">
+			@themeToggleV2()
+			@densityToggleV2()
+		</div>
+
+		<main class="page-center">
+			<form class="login-card" action="/login" method="post" novalidate>
+				<input type="hidden" name="csrf_token" value={ csrfToken }/>
+
+				<img class="login-card__logo" src="/static/logo.webp" alt="LDAP Manager"/>
+
+				if len(flashes) > 0 {
+					<div role="alert" aria-live="assertive">
+						for _, flash := range flashes {
+							<div class="flash">{ flash.Message }</div>
+						}
+					</div>
+				}
+
+				<div>
+					<label for="login-username">Username</label>
+					<input
+						id="login-username"
+						type="text"
+						name="username"
+						autocomplete="username"
+						required
+						autofocus
+					/>
+				</div>
+
+				<div>
+					<label for="login-password">Password</label>
+					<input
+						id="login-password"
+						type="password"
+						name="password"
+						autocomplete="current-password"
+						required
+					/>
+				</div>
+
+				<button type="submit">Sign in</button>
+
+				<footer class="app-footer">
+					<p>
+						Powered by
+						<a href="https://github.com/netresearch/ldap-manager" target="_blank" rel="noopener noreferrer">
+							netresearch/ldap-manager
+						</a>
+					</p>
+					<p>{ version }</p>
+				</footer>
+			</form>
+		</main>
+	}
+}
+
+templ themeToggleV2() {
+	<button type="button" class="icon-btn" data-toggle="theme" aria-label="Toggle theme">
+		<span class="icon-btn__glyph" aria-hidden="true">
+			@iconTheme()
+		</span>
+	</button>
+}
+
+templ densityToggleV2() {
+	<button type="button" class="icon-btn" data-toggle="density" aria-label="Toggle density">
+		<span class="icon-btn__glyph" aria-hidden="true">
+			@iconDensity()
+		</span>
+	</button>
+}

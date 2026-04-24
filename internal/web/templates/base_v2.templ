@@ -1,0 +1,75 @@
+package templates
+
+// baseV2 is the new-stack shell: Pico + app.css + small external scripts.
+//
+// Inline scripts are forbidden by the site CSP (script-src 'self'; no
+// 'unsafe-inline', no 'unsafe-eval'), so pre-paint preference handling and
+// click handlers live in external /static/js/*.js files. Alpine.js is not
+// loaded here — its default build requires 'unsafe-eval' and is reintroduced
+// (as the CSP-safe `alpinejs-csp` build) only in a later slice that actually
+// needs reactive state.
+//
+// Stable across all Phase 1 slices. Individual pages embed page-specific
+// component styles in their own templ files, not here.
+//
+// The `pageScroll` argument picks between the fixed-viewport list/detail
+// shell (body clipped, inner panes scroll) and the normal document shell
+// (body scrolls). Home + login + full-detail views use pageScroll=true so
+// long content flows normally; list pages use false to keep the 3-pane
+// desktop-app feel where only the rail/list/drawer own the scroll.
+templ baseV2Shell(title string, pageScroll bool) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light" data-density="compact">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · LDAP Manager</title>
+
+			<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
+			<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
+			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+			<link rel="manifest" href="/static/site.webmanifest"/>
+
+			<link rel="stylesheet" href="/static/vendor/pico.min.css"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+
+			// Pre-paint: runs synchronously in <head> before body, so the
+			// matching data-* attributes are in place before first layout.
+			<script src="/static/js/v2-preferences-init.js"></script>
+		</head>
+		<body class={ bodyClass(pageScroll) }>
+			{ children... }
+			// Deferred: handlers wire up after DOM parse.
+			<script defer src="/static/vendor/htmx.min.js"></script>
+			<script defer src="/static/js/v2-toggles.js"></script>
+			<script defer src="/static/js/v2-palette.js"></script>
+			<script defer src="/static/js/v2-recents.js"></script>
+			<script defer src="/static/js/v2-drawer.js"></script>
+			<script defer src="/static/js/v2-bulk.js"></script>
+			<script defer src="/static/js/v2-search-filter.js"></script>
+		</body>
+	</html>
+}
+
+// baseV2 wraps the fixed-viewport shell — list pages use this so the
+// rail/list/drawer each own their vertical scroll, not the document.
+templ baseV2(title string) {
+	@baseV2Shell(title, false) {
+		{ children... }
+	}
+}
+
+// baseV2PageScroll wraps the document-scroll shell — home, login, and
+// full-page detail views use this so long content flows normally.
+templ baseV2PageScroll(title string) {
+	@baseV2Shell(title, true) {
+		{ children... }
+	}
+}
+
+func bodyClass(pageScroll bool) string {
+	if pageScroll {
+		return "has-page-scroll"
+	}
+	return ""
+}

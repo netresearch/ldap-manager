@@ -1,0 +1,56 @@
+// internal/web/templates/pinned_fragment.templ
+package templates
+
+// PinnedBlock is the exported nav wrapper that htmx targets on unpin
+// from the home page. Re-uses pinnedFragment for the inner list.
+// csrfToken is threaded into each unpin <form>; without it Fiber's
+// CSRF middleware (KeyLookup form:csrf_token) 403s the request and
+// the star click appears to do nothing.
+templ PinnedBlock(pinned []PinnedEntry, csrfToken string) {
+	<nav aria-label="Pinned" id="pinned-block">
+		<h2 class="home__heading">Pinned</h2>
+		@pinnedFragment(pinned, csrfToken)
+	</nav>
+}
+
+templ pinnedFragment(pinned []PinnedEntry, csrfToken string) {
+	<ul class="home__list" data-pinned-list>
+		if len(pinned) == 0 {
+			<li class="home__list-empty">Nothing pinned. Open any detail page and click the star.</li>
+		} else {
+			for _, p := range pinned {
+				<li class="home__list-item">
+					<span class="home__list-type-icon" aria-hidden="true">
+						@iconForEntity(p.Type)
+					</span>
+					<a class="home__list-link" href={ pinnedHref(p) }>{ p.CN }</a>
+					<form action="/unpin" method="post"
+						hx-post="/unpin?context=home"
+						hx-target="#pinned-block"
+						hx-swap="outerHTML">
+						<input type="hidden" name="csrf_token" value={ csrfToken }/>
+						<input type="hidden" name="target" value={ p.DN }/>
+						<input type="hidden" name="type" value={ p.Type }/>
+						<button type="submit" class="icon-btn icon-btn--remove" aria-label={ "Unpin " + p.CN }>
+							<span class="icon-btn__glyph" aria-hidden="true">
+								@iconStarFilled()
+							</span>
+						</button>
+					</form>
+				</li>
+			}
+		}
+	</ul>
+}
+
+func pinnedHref(p PinnedEntry) templ.SafeURL {
+	switch p.Type {
+	case "user":
+		return templ.URL("/users/" + p.DN)
+	case "group":
+		return templ.URL("/groups/" + p.DN)
+	case "computer":
+		return templ.URL("/computers/" + p.DN)
+	}
+	return templ.URL("/")
+}

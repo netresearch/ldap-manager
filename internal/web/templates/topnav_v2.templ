@@ -1,0 +1,79 @@
+// internal/web/templates/topnav_v2.templ
+package templates
+
+// PinnedEntry is the minimal view-model the pinned_fragment renders.
+// Produced server-side from PinnedStore + ldap_cache lookups.
+type PinnedEntry struct {
+	Type string // "user" | "group" | "computer"
+	DN   string
+	CN   string
+}
+
+// topnavV2 renders the sticky top navigation shared across signed-in
+// routes.
+//
+// The `Skip to main content` link is the first focusable element in the
+// page and is visually hidden until focused, satisfying WCAG 2.4.1
+// (Bypass Blocks) — keyboard users can bypass the top nav / primary nav
+// without tabbing through every header control on every page. Each
+// <main class="list-page"/"home"> in the signed-in routes carries the
+// matching id="main-content" so this link advances focus past the nav.
+templ topnavV2(activePath string) {
+	<a class="skip-link" href="#main-content">Skip to main content</a>
+	<header class="topnav">
+		<a class="topnav__logo" href="/" aria-label="Home">LDAP Manager</a>
+		<span class="topnav__spacer"></span>
+		<button type="button" class="topnav__cmdk" data-open-palette aria-label="Open command palette">
+			<span class="topnav__cmdk-icon" aria-hidden="true">
+				@iconSearch()
+			</span>
+			<span class="topnav__cmdk-label">Search</span>
+			<kbd>⌘K</kbd>
+		</button>
+		<button type="button" class="icon-btn" data-toggle="theme" aria-label="Toggle theme">
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconTheme()
+			</span>
+		</button>
+		<button type="button" class="icon-btn" data-toggle="density" aria-label="Toggle density">
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconDensity()
+			</span>
+		</button>
+		<a class="icon-btn" href="/logout" aria-label="Log out">
+			<span class="icon-btn__glyph" aria-hidden="true">
+				@iconLogout()
+			</span>
+		</a>
+	</header>
+	// Primary nav is a native <details> disclosure so the ≤640 px
+	// breakpoint can collapse it into a hamburger without any JS state
+	// machine. On wider viewports the <summary> is CSS-hidden and the
+	// link list is forced visible via author CSS (overriding the UA
+	// <details> display rules); on narrow viewports the <summary>
+	// becomes the tap target that reveals / hides the drawer.
+	<details class="topnav-secondary">
+		<summary class="topnav-secondary__summary" aria-label="Primary navigation menu">
+			<span class="topnav-secondary__summary-icon" aria-hidden="true">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+					<path d="M2.5 4.5h11"></path>
+					<path d="M2.5 8h11"></path>
+					<path d="M2.5 11.5h11"></path>
+				</svg>
+			</span>
+			<span class="topnav-secondary__summary-label">Menu</span>
+		</summary>
+		<nav class="topnav-secondary__links" aria-label="Primary">
+			<a href="/users" class={ navLinkClass(activePath, "/users") }>Users</a>
+			<a href="/groups" class={ navLinkClass(activePath, "/groups") }>Groups</a>
+			<a href="/computers" class={ navLinkClass(activePath, "/computers") }>Computers</a>
+		</nav>
+	</details>
+}
+
+func navLinkClass(activePath, linkPath string) string {
+	if activePath == linkPath {
+		return "topnav-secondary__link topnav-secondary__link--active"
+	}
+	return "topnav-secondary__link"
+}

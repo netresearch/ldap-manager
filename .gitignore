@@ -31,3 +31,5 @@ certs/
 Caddyfile.dev
 
 .serena/
+.superpowers/
+db.bbolt.pinned

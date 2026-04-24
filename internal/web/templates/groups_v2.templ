@@ -1,0 +1,680 @@
+// internal/web/templates/groups_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+)
+
+// GroupDrawerVM is the view-model shared by the group drawer fragment and
+// the full-page group detail. Populated by App.buildGroupDrawerVM.
+//
+// Group is a *FullLDAPGroup (not the bare ldap.Group) so that the template
+// can range over resolved []ldap.User member tags — the raw ldap.Group.Members
+// is a []string of DNs which is not enough to render CN/DN links.
+type GroupDrawerVM struct {
+	Group             *ldap_cache.FullLDAPGroup
+	Pinned            bool
+	OUName            string       // plain-text OU name, e.g. "ou=Groups" (for display)
+	OUPivotHref       string       // URL-encoded pivot link, e.g. "/groups?ou=ou%3DGroups"
+	CSRFToken         string       // current-session CSRF token used by embedded POST forms
+	UnassignedUsers   []ldap.User  // users NOT in this group, for the "add user" datalist
+	ChildGroups       []ldap.Group // groups whose DN appears in this group's `member` attribute
+	AddableChildren   []ldap.Group // groups eligible to become children (not self, not current children, not ancestors)
+	AddableParents    []ldap.Group // groups eligible to become parents (not self, not current parents, not descendants)
+	FlashError        string       // set by modify handlers when an LDAP op fails; shown inline
+}
+
+templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+	@baseV2("Groups") {
+		@topnavV2("/groups")
+
+		<main id="main-content" class="list-page" data-bulk-scope="groups">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Groups</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
+			</header>
+
+			@listFlashes(flashes)
+
+			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all groups currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible groups"/>
+					<span>all</span>
+				</label>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter groups…"
+					aria-label="Filter groups"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ groupsFilterHref("", memberDN) } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
+					</a>
+				}
+				if memberDN != "" {
+					<a class="filter-chip filter-chip--on" href={ groupsFilterHref(ouFilter, "") } title={ memberDN }>
+						if memberCN != "" {
+							member { memberCN } ×
+						} else {
+							member ×
+						}
+					</a>
+				}
+			</div>
+
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/groups", ous, ouFilter, groupOUHrefFactory(memberDN))
+
+				<ul class="list-rows" data-search-list aria-label="Groups">
+					for _, g := range groups {
+						@groupRowV2(g)
+					}
+					if len(groups) == 0 {
+						<li class="list-rows__empty">No groups match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a group to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+templ groupRowV2(g ldap.Group) {
+	<li class="list-row list-row--selectable" data-search-item data-search-text={ groupSearchText(g) }>
+		<label class="list-row__check-wrap" aria-label={ "Select " + g.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ g.DN() }
+			/>
+		</label>
+		<a
+			class="list-row__link"
+			href={ groupDetailHref(g) }
+			hx-get={ groupDrawerFragmentHref(g) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + g.CN() }
+		>
+			<span class="list-row__dot" data-enabled="true"></span>
+			<span class="list-row__type-icon" aria-hidden="true" title={ groupRowKindTitle(g) }>
+				if g.IsSecurity() {
+					@iconShield()
+				} else {
+					@iconGroup()
+				}
+			</span>
+			<span class="list-row__admin-slot" aria-hidden="true"></span>
+			<span class="list-row__primary">{ g.CN() }</span>
+			if g.Description != "" {
+				<span class="list-row__secondary">{ g.Description }</span>
+			}
+			<span class="list-row__count" title={ fmt.Sprintf("%d members", len(g.Members)) }>
+				{ fmt.Sprintf("%d", len(g.Members)) }
+			</span>
+		</a>
+	</li>
+}
+
+templ GroupFullV2(vm GroupDrawerVM, palettePinned []PinnedEntry) {
+	@baseV2PageScroll(vm.Group.CN()) {
+		@topnavV2("/groups")
+
+		<main id="main-content" class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="Group detail">
+					@groupDrawerContentsCtx(vm, false)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+// groupDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside GroupFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Groups" instead to avoid a
+// self-referential link.
+templ groupDrawerContents(vm GroupDrawerVM) {
+	@groupDrawerContentsCtx(vm, true)
+}
+
+templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
+	<header
+		class="drawer__head"
+		data-recent-type="group"
+		data-recent-dn={ vm.Group.DN() }
+		data-recent-cn={ vm.Group.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.Group.CN() }</h2>
+			<p class="drawer__sub">{ fmt.Sprintf("%d members", len(vm.Group.Members)) }</p>
+		</div>
+		@pinStarButton("group", vm.Group.DN(), vm.Pinned, vm.CSRFToken)
+	</header>
+
+	<p class="drawer__dn">{ vm.Group.DN() }</p>
+
+	if vm.FlashError != "" {
+		<div class="drawer__flash drawer__flash--error" role="alert">{ vm.FlashError }</div>
+	}
+
+	if !inDrawer || vm.Group.Scope() != "" || vm.Group.Description != "" || vm.Group.ManagedByDN != "" || vm.Group.WhenCreated > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">Attributes</h3>
+			<dl class="drawer__kv">
+				if vm.Group.Scope() != "" {
+					<dt>Kind</dt>
+					<dd>
+						{ groupKindLabel(vm.Group) }
+						<span class="drawer__badge">{ vm.Group.Scope() }</span>
+					</dd>
+				}
+				if !inDrawer || vm.Group.Description != "" {
+					<dt>Description</dt>
+					<dd>{ notSetOr(vm.Group.Description) }</dd>
+				}
+				if !inDrawer || vm.Group.ManagedByDN != "" {
+					<dt>Managed by</dt>
+					<dd>
+						if vm.Group.ManagedByDN != "" {
+							<a href={ templ.URL("/users/" + vm.Group.ManagedByDN) } title={ vm.Group.ManagedByDN }>{ groupManagerLabel(vm.Group.ManagedByDN) }</a>
+						} else {
+							(not set)
+						}
+					</dd>
+				}
+				if !inDrawer || vm.Group.WhenCreated > 0 {
+					<dt>Created</dt>
+					<dd>{ formatGroupTimestamp(vm.Group.WhenCreated) }</dd>
+				}
+				if !inDrawer || vm.Group.WhenChanged > 0 {
+					<dt>Modified</dt>
+					<dd>{ formatGroupTimestamp(vm.Group.WhenChanged) }</dd>
+				}
+			</dl>
+		</section>
+	}
+
+	if !inDrawer || len(vm.Group.ParentGroups) > 0 || len(vm.AddableParents) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Parent groups · %d", len(vm.Group.ParentGroups)) }
+			</h3>
+			@groupAddParentForm(vm)
+			if len(vm.Group.ParentGroups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, pg := range vm.Group.ParentGroups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(pg) } title={ pg.DN() }>{ pg.CN() }</a>
+							<form
+								class="drawer__tag-remove-form"
+								method="post"
+								action={ templ.SafeURL("/groups/" + url.PathEscape(pg.DN())) }
+								hx-post={ "/groups/" + url.PathEscape(pg.DN()) }
+								hx-target="closest .drawer"
+								hx-swap="innerHTML"
+							>
+								<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+								<input type="hidden" name="removechild" value={ vm.Group.DN() }/>
+								<button
+									type="submit"
+									class="drawer__tag-remove"
+									aria-label={ "Remove parent link to " + pg.CN() }
+									title={ "Remove parent link to " + pg.CN() }
+								>×</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
+
+	if !inDrawer || len(vm.ChildGroups) > 0 || len(vm.AddableChildren) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Child groups · %d", len(vm.ChildGroups)) }
+			</h3>
+			@groupAddChildForm(vm)
+			if len(vm.ChildGroups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, cg := range vm.ChildGroups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(cg) } title={ cg.DN() }>{ cg.CN() }</a>
+							<form
+								class="drawer__tag-remove-form"
+								method="post"
+								action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+								hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+								hx-target="closest .drawer"
+								hx-swap="innerHTML"
+							>
+								<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+								<input type="hidden" name="removechild" value={ cg.DN() }/>
+								<button
+									type="submit"
+									class="drawer__tag-remove"
+									aria-label={ "Remove child group " + cg.CN() }
+									title={ "Remove child " + cg.CN() }
+								>×</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">
+			{ fmt.Sprintf("Members · %d", len(vm.Group.Members)) }
+		</h3>
+		@groupAddUserForm(vm)
+		if len(vm.Group.Members) == 0 {
+			<p class="drawer__empty-inline">No members.</p>
+		} else {
+			<ul class="drawer__tags">
+				for _, u := range limitMembers(vm.Group.Members, 20) {
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ userDetailHref(u) } title={ u.DN() }>{ u.CN() }</a>
+						<form
+							class="drawer__tag-remove-form"
+							method="post"
+							action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+							hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+							hx-target="closest .drawer"
+							hx-swap="innerHTML"
+						>
+							<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+							<input type="hidden" name="removeuser" value={ u.DN() }/>
+							<button
+								type="submit"
+								class="drawer__tag-remove"
+								aria-label={ "Remove " + u.CN() + " from " + vm.Group.CN() }
+								title={ "Remove " + u.CN() }
+							>
+								×
+							</button>
+						</form>
+					</li>
+				}
+			</ul>
+			if len(vm.Group.Members) > 20 {
+				<p class="drawer__empty-inline">
+					<a class="drawer__pivot-inline" href={ membersListHref(asLdapGroup(vm.Group)) }>
+						+ { fmt.Sprintf("%d", len(vm.Group.Members) - 20) } more — open as user list →
+					</a>
+				</p>
+			}
+		}
+	</section>
+
+	<section class="drawer__section drawer__section--actions">
+		<h3 class="drawer__section-title">Actions</h3>
+		<div class="drawer__actions">
+			<form method="post" action="/groups/bulk?action=delete" data-confirm={ "Delete group " + vm.Group.CN() + "? This cannot be undone." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.Group.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--danger">Delete</button>
+			</form>
+		</div>
+	</section>
+
+	<section class="drawer__section drawer__section--pivots">
+		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
+		<ul class="drawer__pivots">
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ groupDetailHref(asLdapGroup(vm.Group)) } aria-label="Open full page" title="Open full page">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconOpenExternal()</span>
+						<span class="drawer__pivot-text">Open full page</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/groups") } aria-label="Back to Groups" title="Back to Groups">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowLeft()</span>
+						<span class="drawer__pivot-text">Back to Groups</span>
+					</a>
+				</li>
+			}
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other groups in " + ouChipLabel(vm.OUName) } title={ "Other groups in " + vm.OUName }>
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
+						<span class="drawer__pivot-text">Other groups in { ouChipLabel(vm.OUName) }</span>
+					</a>
+				</li>
+			}
+			if len(vm.Group.Members) > 0 {
+				<li>
+					<a class="drawer__pivot" href={ membersListHref(asLdapGroup(vm.Group)) } aria-label={ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) } title="View all members">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconList()</span>
+						<span class="drawer__pivot-text">{ fmt.Sprintf("View all %d members as user list", len(vm.Group.Members)) }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// limitMembers returns at most n members. Rendering hundreds of tags in a
+// drawer would dominate the viewport and hurt scroll performance; we truncate
+// and surface a "view all" pivot that takes the user to the filtered /users list.
+func limitMembers(members []ldap.User, n int) []ldap.User {
+	if len(members) <= n {
+		return members
+	}
+
+	return members[:n]
+}
+
+// membersListHref points at /users?memberOf=<group-dn> so the user can see
+// every member of this group in the full Users list (pagination, filtering,
+// bulk actions all available there).
+func membersListHref(g ldap.Group) templ.SafeURL {
+	v := url.Values{}
+	v.Set("memberOf", g.DN())
+
+	return templ.URL("/users?" + v.Encode())
+}
+
+func groupDrawerFragmentHref(g ldap.Group) string {
+	return "/groups/" + url.PathEscape(g.DN()) + "?fragment=drawer"
+}
+
+// groupKindLabel returns "Security" / "Distribution" / "Unknown"
+// depending on the bitmask. Non-AD entries with GroupType=0 render as
+// "Unknown" so the label always reads cleanly.
+func groupKindLabel(g *ldap_cache.FullLDAPGroup) string {
+	if g == nil {
+		return "Unknown"
+	}
+
+	switch {
+	case g.IsSecurity():
+		return "Security"
+	case g.IsDistribution():
+		return "Distribution"
+	default:
+		return "Unknown"
+	}
+}
+
+// groupManagerLabel strips the "CN=" prefix from a managedBy DN.
+// Mirrors users_v2.managerLabel.
+func groupManagerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
+}
+
+// formatGroupTimestamp renders a Unix-seconds timestamp, falling back
+// to "(not set)" when absent so the drawer KV row is always readable.
+func formatGroupTimestamp(t int64) string {
+	if t <= 0 {
+		return "(not set)"
+	}
+
+	return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+}
+
+// groupEditHref is the POST target for drawer tag remove/add forms. Mirrors
+// userEditHref — shares the existing /groups/<dn> POST route for member
+// modifications dispatched inside groupModifyHandler.
+func groupEditHref(g ldap.Group) string {
+	return "/groups/" + url.PathEscape(g.DN())
+}
+
+// groupRowKindTitle returns a tooltip describing the security /
+// distribution kind + scope so the iconShield vs iconGroup glyph
+// swap on the row has an accessible hover explanation.
+func groupRowKindTitle(g ldap.Group) string {
+	kind := "Group"
+	switch {
+	case g.IsSecurity():
+		kind = "Security group"
+	case g.IsDistribution():
+		kind = "Distribution group"
+	}
+
+	if scope := g.Scope(); scope != "" {
+		return kind + " · " + scope
+	}
+
+	return kind
+}
+
+// groupSearchText concatenates group fields the free-text list filter
+// should match on. CN is already visible; description and DN aren't,
+// but operators often paste a partial DN or remember a description
+// fragment to find a group fast.
+func groupSearchText(g ldap.Group) string {
+	parts := []string{g.CN(), g.Description, g.DN()}
+	out := ""
+
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
+}
+
+// groupAddChildForm renders a datalist combobox for selecting another
+// group to add as a child (member) of this one. Mirrors userAddGroupForm.
+templ groupAddChildForm(vm GroupDrawerVM) {
+	if len(vm.AddableChildren) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddChildList-" + vm.Group.DN() }
+				name="addchild-label"
+				placeholder="Add child group…"
+				aria-label="Add child group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addchild" data-drawer-datalist-value/>
+			<datalist id={ "groupAddChildList-" + vm.Group.DN() }>
+				for _, g := range vm.AddableChildren {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add child group">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// groupAddParentForm renders a datalist combobox for selecting another
+// group to add THIS group to (i.e., making that group a parent of this
+// one). Submits via `addparent=<target-DN>`.
+templ groupAddParentForm(vm GroupDrawerVM) {
+	if len(vm.AddableParents) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddParentList-" + vm.Group.DN() }
+				name="addparent-label"
+				placeholder="Add parent group…"
+				aria-label="Add parent group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addparent" data-drawer-datalist-value/>
+			<datalist id={ "groupAddParentList-" + vm.Group.DN() }>
+				for _, g := range vm.AddableParents {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add parent group">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// groupAddUserForm renders an inline "add user to group" form —
+// native datalist combobox + hidden DN input. Mirrors userAddGroupForm.
+templ groupAddUserForm(vm GroupDrawerVM) {
+	if len(vm.UnassignedUsers) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(groupEditHref(asLdapGroup(vm.Group))) }
+			hx-post={ groupEditHref(asLdapGroup(vm.Group)) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "groupAddUserList-" + vm.Group.DN() }
+				name="adduser-label"
+				placeholder="Add user — start typing a name…"
+				aria-label="Add user"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="adduser" data-drawer-datalist-value/>
+			<datalist id={ "groupAddUserList-" + vm.Group.DN() }>
+				for _, u := range vm.UnassignedUsers {
+					<option value={ u.CN() } data-dn={ u.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add user">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// groupsFilterHref composes a /groups URL combining the OU and member
+// filters. Empty values are omitted. Mirrors usersFilterHref.
+func groupsFilterHref(ouFilter, memberDN string) templ.SafeURL {
+	v := url.Values{}
+
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	if memberDN != "" {
+		v.Set("member", memberDN)
+	}
+
+	qs := v.Encode()
+	if qs == "" {
+		return templ.URL("/groups")
+	}
+
+	return templ.URL("/groups?" + qs)
+}
+
+// groupOUHrefFactory preserves the active member filter when the user
+// clicks an OU row in the rail. Mirrors userOUHrefFactory.
+func groupOUHrefFactory(memberDN string) ouHref {
+	return func(value string) templ.SafeURL {
+		return groupsFilterHref(value, memberDN)
+	}
+}
+
+// asLdapGroup returns the embedded ldap.Group from a FullLDAPGroup so
+// existing helpers that take ldap.Group (like groupDetailHref) can be reused
+// from template code that holds a *FullLDAPGroup.
+func asLdapGroup(g *ldap_cache.FullLDAPGroup) ldap.Group {
+	if g == nil {
+		return ldap.Group{}
+	}
+
+	return g.Group
+}

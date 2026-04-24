@@ -1,0 +1,79 @@
+// internal/web/templates/ou_rail.templ — shared OU tree rail (Phase 2).
+package templates
+
+import "strings"
+
+// ouHref maps an OU value (or "" for the all-entities view) to the final
+// templ.SafeURL used by the rail anchor. Each list page supplies a
+// closure that folds its own stacked filters (show-disabled, last-logon)
+// into the returned URL.
+type ouHref func(value string) templ.SafeURL
+
+// ouRail renders a vertical list of distinct immediate OUs alongside the
+// list pane. The first row ("All") clears the filter; each OU row links
+// to /users?ou=<ou> (or groups/computers).
+//
+// When the slice is empty we render nothing — the grid collapses back to
+// a two-column layout via listPanePaneClass.
+templ ouRail(basePath string, ous []string, activeOU string, href ouHref) {
+	if len(ous) > 0 {
+		<nav class="list-page__rail" aria-label="OUs">
+			<h2 class="list-page__rail-title">OUs</h2>
+			<ul>
+				<li>
+					<a
+						class={ ouChipClass(activeOU == "") }
+						href={ href("") }
+					>
+						All
+					</a>
+				</li>
+				for _, ou := range ous {
+					<li>
+						<a
+							class={ ouChipClass(ou == activeOU) }
+							href={ href(ou) }
+							title={ ou }
+						>
+							{ ouChipLabel(ou) }
+						</a>
+					</li>
+				}
+			</ul>
+		</nav>
+	}
+}
+
+// ouChipLabel strips the "ou=" attribute prefix from a raw RDN so the
+// rail reads as clean OU names under the "OUs" heading — the prefix is
+// redundant context. The raw value is kept as a `title` attribute so
+// the full RDN is still available on hover.
+func ouChipLabel(rdn string) string {
+	if strings.HasPrefix(strings.ToLower(rdn), "ou=") {
+		return rdn[3:]
+	}
+
+	return rdn
+}
+
+// ouChipClass reuses the filter-chip visuals but widens the chip to span
+// the rail's column so the OU names read as a proper list.
+func ouChipClass(active bool) string {
+	if active {
+		return "filter-chip filter-chip--on list-page__rail-chip"
+	}
+
+	return "filter-chip list-page__rail-chip"
+}
+
+// listPanePaneClass picks between the two- and three-column list-pane
+// variants. When the cache produced at least one OU we render the rail
+// (three columns); when the OU set is empty we keep the original
+// two-column layout so the list does not grow an empty gutter.
+func listPanePaneClass(ous []string) string {
+	if len(ous) == 0 {
+		return "list-page__pane"
+	}
+
+	return "list-page__pane list-page__pane--rail"
+}

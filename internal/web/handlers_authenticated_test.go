@@ -389,40 +389,57 @@ func TestCSRFProtectedModifyHandlers(t *testing.T) {
 // list handlers — the session is present but LDAP fails, so handle500 runs.
 // This exercises the post-RequireAuth branches that the unauthenticated tests
 // never reach.
+//
+// Routes backed by V2 handlers (`/`, `/users`, `/users/:dn`, `/groups`,
+// `/groups/:dn`, `/computers`, `/computers/:dn`) render from the in-memory
+// ldap_cache instead of per-request LDAP binds. With no service account
+// configured in this harness the cache is nil, so:
+//   - `/` (HomeV2) renders an empty pinned list → 200.
+//   - `/users` (handleUsersV2) renders zero rows → 200.
+//   - `/users/:dn` (handleUserV2) cannot find the target in the cache → 404.
+//   - `/groups` (handleGroupsV2) renders zero rows → 200.
+//   - `/groups/:dn` (handleGroupV2) cannot find the target in the cache → 404.
+//   - `/computers` (handleComputersV2) renders zero rows → 200.
+//   - `/computers/:dn` (handleComputerV2) cannot find the target in cache → 404.
 func TestAuthenticatedGETHandlers(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 	swapSessionStore(app)
 
 	cookies := simulatedSession(t, app)
 
-	paths := []string{
-		"/",
-		"/users",
-		"/users?show-disabled=1",
-		"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"),
-		"/groups",
-		"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"),
-		"/computers",
-		"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"),
+	cases := []struct {
+		path       string
+		wantStatus int
+	}{
+		// V2 routes render from the cache without an LDAP bind.
+		{"/", http.StatusOK},
+		{"/users", http.StatusOK},
+		{"/users?show-disabled=1", http.StatusOK},
+		// Target user is not in the (nil) cache → 404.
+		{"/users/" + url.PathEscape("cn=alice,dc=example,dc=com"), http.StatusNotFound},
+		{"/groups", http.StatusOK},
+		// Target group is not in the (nil) cache → 404.
+		{"/groups/" + url.PathEscape("cn=admins,dc=example,dc=com"), http.StatusNotFound},
+		{"/computers", http.StatusOK},
+		// Target computer is not in the (nil) cache → 404.
+		{"/computers/" + url.PathEscape("cn=pc01,dc=example,dc=com"), http.StatusNotFound},
 	}
 
-	for _, p := range paths {
-		t.Run(p, func(t *testing.T) {
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, p, http.NoBody)
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tc.path, http.NoBody)
 			for _, c := range cookies {
 				req.AddCookie(c)
 			}
 
 			resp, err := app.fiber.Test(req, -1) // -1 == no timeout
 			if err != nil {
-				t.Fatalf("%s: %v", p, err)
+				t.Fatalf("%s: %v", tc.path, err)
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			// Post-auth, the LDAP call fails → fiber.StatusUnauthorized
-			// → handle500 → /login redirect. 302 is the expected outcome.
-			if resp.StatusCode != http.StatusFound {
-				t.Errorf("expected 302 redirect after LDAP failure, got %d", resp.StatusCode)
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("expected status %d, got %d", tc.wantStatus, resp.StatusCode)
 			}
 		})
 	}

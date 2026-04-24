@@ -1,9 +1,11 @@
 package web
 
+// HTTP handlers for group modification endpoints. The read-only list and
+// detail pages are served by the V2 handlers in groups_v2_handler.go. This
+// file retains only the POST handler and its helpers.
+
 import (
-	"errors"
 	"net/url"
-	"sort"
 
 	"github.com/gofiber/fiber/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -13,77 +15,39 @@ import (
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
-func (a *App) groupsHandler(c *fiber.Ctx) error {
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	sort.SliceStable(groups, func(i, j int) bool {
-		return groups[i].CN() < groups[j].CN()
-	})
-
-	// Use template caching
-	return a.templateCache.RenderWithCache(c, templates.Groups(groups))
-}
-
-func (a *App) groupHandler(c *fiber.Ctx) error {
-	groupDN, err := url.PathUnescape(c.Params("*"))
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	showDisabled := c.Query("show-disabled", "0") == "1"
-
-	group, unassignedUsers, err := a.loadGroupDataFromLDAP(userLDAP, groupDN, showDisabled)
-	if err != nil {
-		if errors.Is(err, ldap.ErrGroupNotFound) {
-			c.Status(fiber.StatusNotFound)
-
-			return a.fourOhFourHandler(c)
-		}
-
-		return handle500(c, err)
-	}
-
-	// Detail pages with CSRF tokens are not cached to avoid stale token issues
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	return templates.Group(group, unassignedUsers, templates.Flashes(), a.GetCSRFToken(c)).
-		Render(c.UserContext(), c.Response().BodyWriter())
-}
-
 type groupModifyForm struct {
-	AddUser    *string `form:"adduser"`
-	RemoveUser *string `form:"removeuser"`
+	AddUser     *string `form:"adduser"`
+	RemoveUser  *string `form:"removeuser"`
+	AddChild    *string `form:"addchild"`  // DN of a group to add as a child (member) of this group
+	AddParent   *string `form:"addparent"` // DN of a group to add THIS group to as a parent
+	RemoveChild *string `form:"removechild"`
 }
 
-// nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
+// groupModifyHandler applies an add/remove-user / add/remove-child /
+// add-parent action. On success with HX-Request it re-renders the drawer
+// fragment so the updated membership shows inline; on failure the same
+// fragment carries vm.FlashError so the drawer surfaces the humanised
+// LDAP error banner (drawer__flash--error). Non-HX requests redirect
+// to the V2 group detail page without a UI flash — the failure is still
+// captured in the server log.
+//
+//nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
 func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
 	}
 
+	detailURL := "/groups/" + url.PathEscape(groupDN)
+
 	form := groupModifyForm{}
 	if err := c.BodyParser(&form); err != nil {
 		return handle500(c, err)
 	}
 
-	if form.RemoveUser == nil && form.AddUser == nil {
-		return c.Redirect("/groups/" + url.PathEscape(groupDN))
+	if form.RemoveUser == nil && form.AddUser == nil &&
+		form.AddChild == nil && form.AddParent == nil && form.RemoveChild == nil {
+		return c.Redirect(detailURL)
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -92,69 +56,31 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	}
 	defer func() { _ = userLDAP.Close() }()
 
-	// Perform the group modification using the logged-in user's LDAP connection
+	var flashErr string
 	if err := a.performGroupModification(userLDAP, &form, groupDN); err != nil {
 		log.Warn().Err(err).Str("groupDN", groupDN).Msg("failed to modify group")
-
-		return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.ErrorFlash("Failed to modify group membership"))
+		flashErr = humaniseLDAPError(err)
+	} else {
+		a.invalidateTemplateCacheOnModification()
 	}
 
-	// Invalidate template cache after successful modification
-	a.invalidateTemplateCacheOnModification()
+	if c.Get("HX-Request") == "true" {
+		viewerDN := GetUserDN(c)
 
-	// Render success response
-	return a.renderGroupWithFlash(c, userLDAP, groupDN, templates.SuccessFlash("Successfully modified group"))
-}
+		vm, ok := a.buildGroupDrawerVM(groupDN, viewerDN)
+		if !ok {
+			return c.Redirect(detailURL)
+		}
 
-// loadGroupDataFromLDAP loads group data directly from an LDAP client connection.
-func (a *App) loadGroupDataFromLDAP(
-	userLDAP *ldap.LDAP, groupDN string, showDisabledUsers bool,
-) (*ldap_cache.FullLDAPGroup, []ldap.User, error) {
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return nil, nil, err
+		vm.CSRFToken = a.GetCSRFToken(c)
+		vm.FlashError = flashErr
+
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.GroupDrawerFragment(vm).Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
-	group := findGroupByDN(groups, groupDN)
-	if group == nil {
-		return nil, nil, ldap.ErrGroupNotFound
-	}
-
-	users, err := userLDAP.FindUsers()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fullGroup := ldap_cache.PopulateUsersForGroupFromData(group, users, groups, showDisabledUsers)
-
-	sort.SliceStable(fullGroup.Members, func(i, j int) bool {
-		return fullGroup.Members[i].CN() < fullGroup.Members[j].CN()
-	})
-
-	unassignedUsers := filterUnassignedUsers(users, fullGroup)
-	sort.SliceStable(unassignedUsers, func(i, j int) bool {
-		return unassignedUsers[i].CN() < unassignedUsers[j].CN()
-	})
-
-	return fullGroup, unassignedUsers, nil
-}
-
-// renderGroupWithFlash renders the group page with a flash message using a user LDAP connection.
-func (a *App) renderGroupWithFlash(c *fiber.Ctx, userLDAP *ldap.LDAP, groupDN string, flash templates.Flash) error {
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-
-	showDisabled := c.Query("show-disabled", "0") == "1"
-
-	group, unassignedUsers, err := a.loadGroupDataFromLDAP(userLDAP, groupDN, showDisabled)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	return templates.Group(
-		group, unassignedUsers,
-		templates.Flashes(flash),
-		a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	return c.Redirect(detailURL)
 }
 
 // filterUnassignedUsers returns users not in the given group.
@@ -187,10 +113,17 @@ func findGroupByDN(groups []ldap.Group, dn string) *ldap.Group {
 }
 
 // performGroupModification handles the actual LDAP group modification operation.
+// AD and OpenLDAP both store nested-group membership in the same `member`
+// attribute as user membership, so AddUserToGroup / RemoveUserFromGroup
+// work transparently for group-to-group edges: adding a group's DN as the
+// "user" argument creates a parent→child edge; doing the reverse (this
+// group's DN as the member, target group as the parent) links THIS group
+// UP the hierarchy.
 func (a *App) performGroupModification(
 	ldapClient *ldap.LDAP, form *groupModifyForm, groupDN string,
 ) error {
-	if form.AddUser != nil {
+	switch {
+	case form.AddUser != nil:
 		if err := ldapClient.AddUserToGroup(*form.AddUser, groupDN); err != nil {
 			return err
 		}
@@ -198,13 +131,39 @@ func (a *App) performGroupModification(
 		if a.ldapCache != nil {
 			a.ldapCache.OnAddUserToGroup(*form.AddUser, groupDN)
 		}
-	} else if form.RemoveUser != nil {
+	case form.RemoveUser != nil:
 		if err := ldapClient.RemoveUserFromGroup(*form.RemoveUser, groupDN); err != nil {
 			return err
 		}
 
 		if a.ldapCache != nil {
 			a.ldapCache.OnRemoveUserFromGroup(*form.RemoveUser, groupDN)
+		}
+	case form.AddChild != nil:
+		// Add the child group as a member of THIS group.
+		if err := ldapClient.AddUserToGroup(*form.AddChild, groupDN); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(*form.AddChild, groupDN)
+		}
+	case form.RemoveChild != nil:
+		if err := ldapClient.RemoveUserFromGroup(*form.RemoveChild, groupDN); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnRemoveUserFromGroup(*form.RemoveChild, groupDN)
+		}
+	case form.AddParent != nil:
+		// Add THIS group as a member of the target parent group.
+		if err := ldapClient.AddUserToGroup(groupDN, *form.AddParent); err != nil {
+			return err
+		}
+
+		if a.ldapCache != nil {
+			a.ldapCache.OnAddUserToGroup(groupDN, *form.AddParent)
 		}
 	}
 

@@ -1,0 +1,456 @@
+// internal/web/templates/computers_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+)
+
+// ComputerDrawerVM is the view-model shared by the computer drawer fragment
+// and the full-page computer detail. Populated by App.buildComputerDrawerVM.
+type ComputerDrawerVM struct {
+	Computer    ldap.Computer
+	Groups      []ldap.Group // resolved parent groups for the Groups drawer section
+	Pinned      bool
+	OUName      string // plain-text OU name, e.g. "ou=Computers" (for display)
+	OUPivotHref string // URL-encoded pivot link, e.g. "/computers?ou=ou%3DComputers"
+	CSRFToken   string // current-session CSRF token used by embedded POST forms
+	IsAD        bool   // true when backend is Active Directory — gates the Disable button
+}
+
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+	@baseV2("Computers") {
+		@topnavV2("/computers")
+
+		<main id="main-content" class="list-page" data-bulk-scope="computers">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Computers</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
+			</header>
+
+			@listFlashes(flashes)
+
+			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all computers currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible computers"/>
+					<span>all</span>
+				</label>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter computers…"
+					aria-label="Filter computers"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ clearComputersOUHref() } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
+					</a>
+				}
+			</div>
+
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/computers", ous, ouFilter, computerOUHref)
+
+				<ul class="list-rows" data-search-list aria-label="Computers">
+					for _, cp := range computers {
+						@computerRowV2(cp)
+					}
+					if len(computers) == 0 {
+						<li class="list-rows__empty">No computers match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a computer to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+templ computerRowV2(cp ldap.Computer) {
+	<li class={ computerRowClass(cp) } data-search-item data-search-text={ computerSearchText(cp) }>
+		<label class="list-row__check-wrap" aria-label={ "Select " + cp.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ cp.DN() }
+			/>
+		</label>
+		<a
+			class="list-row__link"
+			href={ computerDetailHref(cp) }
+			hx-get={ computerDrawerFragmentHref(cp) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + cp.CN() }
+		>
+			<span
+				class="list-row__dot"
+				data-enabled={ computerEnabledAttr(cp) }
+				data-recency={ recencyLevel(cp.LastLogon) }
+				title={ recencyTitle(cp.LastLogon) }
+			></span>
+			<span class="list-row__type-icon" aria-hidden="true" title={ cp.OS }>
+				@osIcon(cp.OS)
+			</span>
+			<span class="list-row__admin-slot" aria-hidden="true"></span>
+			<span class="list-row__primary">{ cp.CN() }</span>
+			if osSummary(cp.OS, cp.OSVersion) != "" {
+				<span class="list-row__secondary">{ osSummary(cp.OS, cp.OSVersion) }</span>
+			} else if cp.SAMAccountName != "" && cp.SAMAccountName != cp.CN() {
+				<span class="list-row__secondary">{ cp.SAMAccountName }</span>
+			}
+			if !cp.Enabled {
+				<span class="list-row__lock" aria-hidden="true">
+					@iconLock()
+				</span>
+				<span class="list-row__badge">disabled</span>
+			}
+		</a>
+	</li>
+}
+
+// computerRowClass applies the list-row--disabled modifier the same way
+// the user row does — dims the row and strike-throughs the CN for
+// disabled machines.
+func computerRowClass(cp ldap.Computer) string {
+	if cp.Enabled {
+		return "list-row list-row--selectable"
+	}
+
+	return "list-row list-row--selectable list-row--disabled"
+}
+
+// osKind bucketises a raw operatingSystem string into a family key the
+// template uses to pick a glyph. Keeps the matching lenient so minor
+// spelling variations still classify ("Windows Server 2022", "Windows
+// 11 Pro", "Ubuntu 22.04" all resolve sensibly).
+func osKind(os string) string {
+	low := strings.ToLower(os)
+	switch {
+	case low == "":
+		return ""
+	case strings.Contains(low, "windows"):
+		return "windows"
+	case strings.Contains(low, "mac") || strings.Contains(low, "os x") || strings.Contains(low, "darwin"):
+		return "mac"
+	case strings.Contains(low, "linux") || strings.Contains(low, "ubuntu") || strings.Contains(low, "debian") ||
+		strings.Contains(low, "centos") || strings.Contains(low, "fedora") || strings.Contains(low, "red hat") ||
+		strings.Contains(low, "rhel") || strings.Contains(low, "suse") || strings.Contains(low, "alpine"):
+		return "linux"
+	default:
+		return ""
+	}
+}
+
+templ osIcon(os string) {
+	switch osKind(os) {
+		case "windows":
+			@iconOSWindows()
+		case "mac":
+			@iconOSApple()
+		case "linux":
+			@iconOSLinux()
+		default:
+			@iconComputer()
+	}
+}
+
+// notSetOr returns s when non-empty, else the universal empty-state
+// placeholder used by full-page detail views. Kept generic so the same
+// helper reads across user/group/computer templates without importing
+// each other.
+func notSetOr(s string) string {
+	if s == "" {
+		return "(not set)"
+	}
+
+	return s
+}
+
+// osSummary combines the OS family name and version into a compact
+// secondary label: "Windows 11 Pro 10.0.22621", "Ubuntu 22.04", etc.
+// Falls back to the raw OS string when no version is known. Empty when
+// neither is populated.
+func osSummary(os, osVersion string) string {
+	switch {
+	case os == "" && osVersion == "":
+		return ""
+	case os == "":
+		return osVersion
+	case osVersion == "":
+		return os
+	default:
+		return os + " · " + osVersion
+	}
+}
+
+templ ComputerFullV2(vm ComputerDrawerVM, palettePinned []PinnedEntry) {
+	@baseV2PageScroll(vm.Computer.CN()) {
+		@topnavV2("/computers")
+
+		<main id="main-content" class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="Computer detail">
+					@computerDrawerContentsCtx(vm, false)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+// computerDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside ComputerFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Computers" instead to avoid a
+// self-referential link.
+templ computerDrawerContents(vm ComputerDrawerVM) {
+	@computerDrawerContentsCtx(vm, true)
+}
+
+templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
+	<header
+		class="drawer__head"
+		data-recent-type="computer"
+		data-recent-dn={ vm.Computer.DN() }
+		data-recent-cn={ vm.Computer.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.Computer.CN() }</h2>
+			<p class="drawer__sub">{ vm.Computer.SAMAccountName }</p>
+		</div>
+		@pinStarButton("computer", vm.Computer.DN(), vm.Pinned, vm.CSRFToken)
+	</header>
+
+	<p class="drawer__dn">{ vm.Computer.DN() }</p>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Attributes</h3>
+		<dl class="drawer__kv">
+			<dt>Status</dt>
+			<dd>
+				if vm.Computer.Enabled {
+					Enabled
+				} else {
+					Disabled
+				}
+			</dd>
+			if !inDrawer || vm.Computer.Description != "" {
+				<dt>Description</dt>
+				<dd>{ notSetOr(vm.Computer.Description) }</dd>
+			}
+			if !inDrawer || (vm.Computer.SAMAccountName != "" && vm.Computer.SAMAccountName != vm.Computer.CN()) {
+				<dt>sAMAccountName</dt>
+				<dd>{ notSetOr(vm.Computer.SAMAccountName) }</dd>
+			}
+			if !inDrawer || vm.Computer.DNSHostName != "" {
+				<dt>DNS hostname</dt>
+				<dd>{ notSetOr(vm.Computer.DNSHostName) }</dd>
+			}
+			if !inDrawer || vm.Computer.OS != "" {
+				<dt>OS</dt>
+				<dd>{ notSetOr(vm.Computer.OS) }</dd>
+			}
+			if !inDrawer || vm.Computer.OSVersion != "" {
+				<dt>OS version</dt>
+				<dd>{ notSetOr(vm.Computer.OSVersion) }</dd>
+			}
+			if !inDrawer || vm.Computer.ServicePack != "" {
+				<dt>Service pack</dt>
+				<dd>{ notSetOr(vm.Computer.ServicePack) }</dd>
+			}
+			if !inDrawer || vm.Computer.LastLogon > 0 {
+				<dt>Last logon</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.LastLogon) }</dd>
+			}
+			if !inDrawer || vm.Computer.ManagedByDN != "" {
+				<dt>Managed by</dt>
+				<dd>
+					if vm.Computer.ManagedByDN != "" {
+						<a href={ templ.URL("/users/" + vm.Computer.ManagedByDN) } title={ vm.Computer.ManagedByDN }>{ computerManagerLabel(vm.Computer.ManagedByDN) }</a>
+					} else {
+						(not set)
+					}
+				</dd>
+			}
+			if !inDrawer || vm.Computer.WhenCreated > 0 {
+				<dt>Created</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.WhenCreated) }</dd>
+			}
+			if !inDrawer || vm.Computer.WhenChanged > 0 {
+				<dt>Modified</dt>
+				<dd>{ formatComputerLastLogon(vm.Computer.WhenChanged) }</dd>
+			}
+		</dl>
+	</section>
+
+	if !inDrawer || len(vm.Groups) > 0 {
+		<section class="drawer__section">
+			<h3 class="drawer__section-title">
+				{ fmt.Sprintf("Groups · %d", len(vm.Groups)) }
+			</h3>
+			if len(vm.Groups) == 0 {
+				<p class="drawer__empty-inline">None.</p>
+			} else {
+				<ul class="drawer__tags">
+					for _, g := range vm.Groups {
+						<li class="drawer__tag-row">
+							<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
+
+	<section class="drawer__section drawer__section--actions">
+		<h3 class="drawer__section-title">Actions</h3>
+		<div class="drawer__actions">
+			if vm.IsAD {
+				<form method="post" action="/computers/bulk?action=disable" data-confirm={ "Disable " + vm.Computer.CN() + "?" }>
+					<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+					<input type="hidden" name="target_dn" value={ vm.Computer.DN() }/>
+					<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
+				</form>
+			}
+			<form method="post" action="/computers/bulk?action=delete" data-confirm={ "Delete " + vm.Computer.CN() + "? This cannot be undone." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.Computer.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--danger">Delete</button>
+			</form>
+		</div>
+	</section>
+
+	<section class="drawer__section drawer__section--pivots">
+		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
+		<ul class="drawer__pivots">
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ computerDetailHref(vm.Computer) } aria-label="Open full page" title="Open full page">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconOpenExternal()</span>
+						<span class="drawer__pivot-text">Open full page</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/computers") } aria-label="Back to Computers" title="Back to Computers">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowLeft()</span>
+						<span class="drawer__pivot-text">Back to Computers</span>
+					</a>
+				</li>
+			}
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other computers in " + ouChipLabel(vm.OUName) } title={ "Other computers in " + vm.OUName }>
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
+						<span class="drawer__pivot-text">Other computers in { ouChipLabel(vm.OUName) }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+func computerDetailHref(cp ldap.Computer) templ.SafeURL {
+	return templ.URL("/computers/" + url.PathEscape(cp.DN()))
+}
+
+func computerDrawerFragmentHref(cp ldap.Computer) string {
+	return "/computers/" + url.PathEscape(cp.DN()) + "?fragment=drawer"
+}
+
+func clearComputersOUHref() templ.SafeURL {
+	return templ.URL("/computers")
+}
+
+// computerOUHref maps an OU value to a /computers URL for the OU rail. An
+// empty value clears the filter.
+func computerOUHref(value string) templ.SafeURL {
+	if value == "" {
+		return templ.URL("/computers")
+	}
+
+	v := url.Values{}
+	v.Set("ou", value)
+
+	return templ.URL("/computers?" + v.Encode())
+}
+
+func computerEnabledAttr(cp ldap.Computer) string {
+	if cp.Enabled {
+		return "true"
+	}
+	return "false"
+}
+
+// formatComputerLastLogon mirrors formatLastLogonV2 — kept separate so the
+// computers package doesn't import users_v2 (and vice versa). Unix seconds
+// in, local-time string out.
+func formatComputerLastLogon(timestamp int64) string {
+	if timestamp <= 0 {
+		return "Never"
+	}
+
+	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// computerManagerLabel extracts the CN portion of a managedBy DN.
+// Mirrors users_v2.managerLabel; duplicated here to keep each entity
+// package self-contained.
+func computerManagerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
+}
+
+// computerSearchText concatenates the fields the free-text list filter
+// should match on — CN is visible in the row; sAMAccountName, DNS host,
+// OS, description and DN aren't, but they're legitimate search targets.
+func computerSearchText(cp ldap.Computer) string {
+	parts := []string{cp.CN(), cp.SAMAccountName, cp.DNSHostName, cp.OS, cp.OSVersion, cp.Description, cp.DN()}
+	out := ""
+
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
+}

@@ -147,10 +147,6 @@ func TestNewApp_NoServiceAccount(t *testing.T) {
 	if app.rateLimiter == nil {
 		t.Fatal("rateLimiter should be initialized")
 	}
-
-	if app.assetManifest == nil {
-		t.Fatal("assetManifest should be initialized")
-	}
 }
 
 func TestNewApp_WithPersistSessions(t *testing.T) {

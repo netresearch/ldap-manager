@@ -69,10 +69,10 @@ This starts:
 
 ### Native Build
 
-Prerequisites: Go 1.26+, Node.js v22+, pnpm, [templ CLI](https://github.com/a-h/templ)
+Prerequisites: Go 1.26+, [templ CLI](https://github.com/a-h/templ).
 
 ```bash
-pnpm install && pnpm build
+templ generate
 go build -o ldap-manager ./cmd/ldap-manager
 
 ./ldap-manager \
@@ -84,6 +84,14 @@ go build -o ldap-manager ./cmd/ldap-manager
 ```
 
 The server listens on port 3000 by default. Set the `PORT` environment variable to override.
+
+### Stack
+
+Go + Fiber + Templ on the backend; [Pico CSS](https://picocss.com/) +
+a hand-written `internal/web/static/app.css` + vendored htmx on the
+frontend. No Node.js toolchain — vendored files are refreshed with
+`bash scripts/vendor.sh`, which verifies SHA-256 checksums against
+`scripts/vendor.lock`.
 
 ## Configuration
 
@@ -155,11 +163,17 @@ Full documentation is available in [`docs/`](docs/):
 - **[Development Setup](docs/development/setup.md)** - Local environment
 - **[Contributing](docs/development/contributing.md)** - Code standards and workflow
 
+## Accessibility
+
+LDAP Manager's login page conforms to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) Level AAA in *comfortable* density (the default on touch devices, narrow viewports, and under `prefers-reduced-motion`). In *compact* density (the default on desktop), the login page meets Level AA; all AAA success criteria are met except 2.5.5 Target Size (Enhanced), which is a deliberate density-preference trade-off.
+
+Conformance is enforced in CI by a contrast unit test (`internal/web/contrast_test.go`) and an axe-core AAA pass on every E2E run (`internal/e2e/axe_test.go`). Additional routes will be brought under the same guarantee as they migrate in subsequent slices.
+
 ## Contributing
 
 Contributions welcome! Please open a Pull Request.
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) and formats code with `gofmt` and `prettier`.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and formats code with `gofumpt` + `goimports`.
 
 ## License
 

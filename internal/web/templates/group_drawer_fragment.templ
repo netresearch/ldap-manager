@@ -1,0 +1,8 @@
+// internal/web/templates/group_drawer_fragment.templ
+package templates
+
+// GroupDrawerFragment is what /groups/:dn?fragment=drawer returns. htmx
+// swaps it into #drawer with innerHTML — no base template, no topnav.
+templ GroupDrawerFragment(vm GroupDrawerVM) {
+	@groupDrawerContents(vm)
+}

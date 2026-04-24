@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ import (
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -169,14 +171,15 @@ func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Sto
 		CleanupEvery: time.Hour,
 	})
 
-	manifest := &AssetManifest{
-		Assets:    map[string]string{"styles.css": "styles.abc123.css"},
-		StylesCSS: "styles.abc123.css",
-	}
-
 	f := fiber.New(fiber.Config{
 		ErrorHandler: handle500,
 	})
+
+	// Per-user pinned store backed by a temp bbolt file.
+	pinnedDB, err := bolt.Open(filepath.Join(t.TempDir(), "pinned.bbolt"), 0o600, nil)
+	require.NoError(t, err)
+	pinnedStore, err := NewPinnedStore(pinnedDB)
+	require.NoError(t, err)
 
 	app := &App{
 		ldapConfig:    env.config,
@@ -185,14 +188,16 @@ func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Sto
 		sessionStore:  store,
 		templateCache: templateCache,
 		fiber:         f,
-		assetManifest: manifest,
 		rateLimiter:   rateLimiter,
 		stopCacheLog:  make(chan struct{}),
+		pinnedStore:   pinnedStore,
+		pinnedDB:      pinnedDB,
 	}
 
 	t.Cleanup(func() {
 		templateCache.Stop()
 		rateLimiter.Stop()
+		_ = pinnedDB.Close()
 	})
 
 	// Register routes without CSRF for testing
@@ -204,13 +209,13 @@ func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Sto
 	f.Get("/debug/ldap-pool", app.RequireAuth(), app.poolStatsHandler)
 
 	protected := f.Group("/", app.RequireAuth())
-	protected.Get("/", app.indexHandler)
-	protected.Get("/users", app.templateCacheMiddleware(), app.usersHandler)
-	protected.Get("/groups", app.templateCacheMiddleware(), app.groupsHandler)
-	protected.Get("/computers", app.templateCacheMiddleware(), app.computersHandler)
-	protected.Get("/users/*", app.userHandler)
-	protected.Get("/groups/*", app.groupHandler)
-	protected.Get("/computers/*", app.computerHandler)
+	protected.Get("/", app.handleHomeV2)
+	protected.Get("/users", app.templateCacheMiddleware(), app.handleUsersV2)
+	protected.Get("/groups", app.templateCacheMiddleware(), app.handleGroupsV2)
+	protected.Get("/computers", app.templateCacheMiddleware(), app.handleComputersV2)
+	protected.Get("/users/*", app.handleUserV2)
+	protected.Get("/groups/*", app.handleGroupV2)
+	protected.Get("/computers/*", app.handleComputerV2)
 	protected.Post("/users/*", app.userModifyHandler)
 	protected.Post("/groups/*", app.groupModifyHandler)
 	protected.Get("/logout", app.logoutHandler)

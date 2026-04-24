@@ -509,6 +509,36 @@ func PopulateGroupsForUserFromData(user *ldap.User, allGroups []ldap.Group) *Ful
 	return full
 }
 
+// PopulateMembersForGroupFromData resolves a group's Members DN list against a
+// user slice, returning a FullLDAPGroup with []ldap.User. Missing members are
+// silently skipped. Unlike PopulateUsersForGroupFromData this does not populate
+// ParentGroups or filter by Enabled — it is the minimal helper the group
+// drawer view-model needs (spec §6.2).
+func PopulateMembersForGroupFromData(group *ldap.Group, users []ldap.User) *FullLDAPGroup {
+	if group == nil {
+		return nil
+	}
+
+	resolved := make([]ldap.User, 0, len(group.Members))
+
+	usersByDN := make(map[string]*ldap.User, len(users))
+	for i := range users {
+		usersByDN[users[i].DN()] = &users[i]
+	}
+
+	for _, memberDN := range group.Members {
+		if u, ok := usersByDN[memberDN]; ok {
+			resolved = append(resolved, *u)
+		}
+	}
+
+	return &FullLDAPGroup{
+		Group:        *group,
+		Members:      resolved,
+		ParentGroups: make([]ldap.Group, 0),
+	}
+}
+
 // PopulateUsersForGroupFromData creates a FullLDAPGroup with populated member list
 // using provided data instead of cache. Works identically to PopulateUsersForGroup
 // but operates on explicit slices rather than the cache.

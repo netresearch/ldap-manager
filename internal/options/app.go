@@ -28,6 +28,16 @@ type Opts struct {
 	SessionPath     string
 	SessionDuration time.Duration
 
+	// PinnedPath is the filesystem path of the bbolt file backing the
+	// per-user pinned-items store (spec §6.5). Empty string enables
+	// automatic placement: "<SessionPath>.pinned" when PersistSessions
+	// is true, otherwise "pinned.bbolt" in the process cwd. Set
+	// explicitly (--pinned-path / PINNED_PATH) when the cwd is
+	// read-only or a different mount point is needed; set to "none" /
+	// "disabled" to skip opening the store entirely (pin UI hides,
+	// pinning becomes a no-op).
+	PinnedPath string
+
 	// Cookie security settings
 	CookieSecure bool
 
@@ -221,6 +231,11 @@ func Parse() (*Opts, error) {
 			"Path to the session database file. (Only required when --persist-sessions is set)")
 		fSessionDuration = flag.Duration("session-duration", sessionDuration,
 			"Duration of the session. (Only required when --persist-sessions is set)")
+		fPinnedPath = flag.String("pinned-path", envStringOrDefault("PINNED_PATH", ""),
+			"Filesystem path of the bbolt file for the per-user pinned-items store. "+
+				"Empty enables auto-placement (<session-path>.pinned when --persist-sessions, "+
+				"otherwise 'pinned.bbolt' in cwd). Set to 'none' to disable pinning entirely "+
+				"(useful on read-only filesystems).")
 
 		// Cookie security configuration
 		fCookieSecure = flag.Bool("cookie-secure", cookieSecure,
@@ -290,6 +305,7 @@ func Parse() (*Opts, error) {
 		PersistSessions: *fPersistSessions,
 		SessionPath:     *fSessionPath,
 		SessionDuration: *fSessionDuration,
+		PinnedPath:      *fPinnedPath,
 
 		CookieSecure:  *fCookieSecure,
 		TLSSkipVerify: *fTLSSkipVerify,

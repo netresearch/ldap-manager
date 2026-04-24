@@ -1,37 +1,41 @@
 package templates
 
+// Error pages rendered in the V2 shell (baseV2 + app.css). Kept minimal so
+// they survive the V1 template deletion: no navbar, no flash pipeline, just
+// a headline and a link back to /.
+
 templ FourOhFour(path string) {
-	@loggedIn(path, "404", []Flash{}) {
-		<div class="flex flex-col items-center gap-8">
-			<h1 class="text-3xl">It appears that this page does not exist.</h1>
-			<a
-				href="/"
-				class="btn-primary"
-			>
-				Back
-			</a>
-		</div>
+	@baseV2PageScroll("404") {
+		<main class="page-center">
+			<article class="error-card" role="alert">
+				<h1>Page not found</h1>
+				<p>The page <code>{ path }</code> does not exist.</p>
+				<p><a href="/">Back to home</a></p>
+			</article>
+		</main>
 	}
 }
 
 templ FourOhThree(message string) {
-	@loggedIn("", "403", []Flash{}) {
-		<div class="flex flex-col items-center gap-8">
-			<h1 class="text-3xl">Access Forbidden</h1>
-			<p class="text-red-500">{ message }</p>
-			<a
-				href="/"
-				class="btn-primary"
-			>
-				Back
-			</a>
-		</div>
+	@baseV2PageScroll("403") {
+		<main class="page-center">
+			<article class="error-card" role="alert">
+				<h1>Access forbidden</h1>
+				<p>{ message }</p>
+				<p><a href="/">Back to home</a></p>
+			</article>
+		</main>
 	}
 }
 
 templ FiveHundred(err error) {
-	<div class="page-card max-w-lg space-y-4 p-8">
-		<p class="text-red-500">An error occurred:</p>
-		<p class="text-red-500">{ err.Error() }</p>
-	</div>
+	@baseV2PageScroll("Error") {
+		<main class="page-center">
+			<article class="error-card" role="alert">
+				<h1>An error occurred</h1>
+				<p>{ err.Error() }</p>
+				<p><a href="/">Back to home</a></p>
+			</article>
+		</main>
+	}
 }

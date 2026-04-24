@@ -9,7 +9,9 @@ This file explains repo-wide conventions and where to find scoped rules.
 
 - Keep diffs small; add tests for new code paths
 - Go: run `make format-go` + `make lint` before commit
-- Frontend: run `make format-js` for JS/CSS/JSON
+- Frontend is Go-only now: plain JS in `internal/web/static/js/v2-*.js` +
+  hand-written `internal/web/static/app.css`. No bun/tsc/Tailwind.
+- Regenerate templ after editing `.templ`: `templ generate` (or `make templates`)
 - All exported functions require godoc comments
 - No `panic()` in production code
 

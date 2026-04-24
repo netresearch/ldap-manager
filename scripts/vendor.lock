@@ -1,0 +1,5 @@
+# format: <dest> <url> <sha256>   (LF line endings, no inline comments)
+internal/web/static/vendor/pico.min.css https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css fbc9a63fc9fc9f72d12fd7fc9806e11fa9f77ae4f9cad146b27003a1119ba3db
+internal/web/static/vendor/htmx.min.js https://cdn.jsdelivr.net/npm/htmx.org@2.0.9/dist/htmx.min.js 57d9191515339922bd1356d7b2d80b1ee3b29f1b3a2c65a078bb8b2e8fd9ae5f
+internal/web/static/vendor/alpine.min.js https://cdn.jsdelivr.net/npm/alpinejs@3.15.11/dist/cdn.min.js beeba63d08956f64fa060f6b6a29c87a341bf069fb96c9459c222c6fd42e58ae
+internal/e2e/testdata/axe.min.js https://cdn.jsdelivr.net/npm/axe-core@4.11.3/axe.min.js 056547ef045ff50ede49a54c99a356890ff8940c5416a54a9c910086c54533dd

@@ -9,11 +9,12 @@ require (
 	github.com/gofiber/storage/bbolt/v2 v2.1.4
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/joho/godotenv v1.5.1
-	github.com/netresearch/simple-ldap-go v1.10.0
+	github.com/netresearch/simple-ldap-go v1.12.0
 	github.com/playwright-community/playwright-go v0.5700.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
+	go.etcd.io/bbolt v1.4.3
 )
 
 require (
@@ -255,7 +256,6 @@ require (
 	go-simpler.org/sloglint v0.11.1 // indirect
 	go.augendre.info/arangolint v0.4.0 // indirect
 	go.augendre.info/fatcontext v0.9.0 // indirect
-	go.etcd.io/bbolt v1.4.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect

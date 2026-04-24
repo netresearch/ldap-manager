@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,6 +20,7 @@ import (
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 	"github.com/netresearch/ldap-manager/internal/options"
@@ -40,9 +42,40 @@ type App struct {
 	templateCache *TemplateCache
 	csrfHandler   fiber.Handler
 	fiber         *fiber.App
-	assetManifest *AssetManifest // Asset manifest for cache-busted files
-	rateLimiter   *RateLimiter   // Rate limiter for authentication endpoints
-	stopCacheLog  chan struct{}  // Stops periodicCacheLogging goroutine
+	rateLimiter   *RateLimiter  // Rate limiter for authentication endpoints
+	stopCacheLog  chan struct{} // Stops periodicCacheLogging goroutine
+	pinnedStore   *PinnedStore  // Per-user pinned-items store (spec §6.5)
+	pinnedDB      *bolt.DB      // Underlying bbolt handle for pinnedStore (nil when in-memory)
+}
+
+// pinnedStorePath returns the bbolt file path for the per-user pinned
+// store.
+//
+// Precedence:
+//  1. Explicit opts.PinnedPath — used verbatim (set via --pinned-path /
+//     PINNED_PATH). Sentinel values "none" / "off" / "disabled" return
+//     "" so the caller knows to skip opening the store entirely.
+//  2. Session-storage path with a `.pinned` suffix when the caller
+//     configured one. bbolt holds an exclusive lock per file, so the
+//     pinned store must not share the session file.
+//  3. "pinned.bbolt" relative to process cwd as a last-resort default.
+//     Read-only working directories (common in containers) should set
+//     PinnedPath explicitly to avoid a boot failure.
+func pinnedStorePath(sessionPath, pinnedPath string) string {
+	switch strings.ToLower(strings.TrimSpace(pinnedPath)) {
+	case "none", "off", "disabled":
+		return ""
+	case "":
+		// fall through to auto-placement
+	default:
+		return pinnedPath
+	}
+
+	if sessionPath == "" {
+		return "pinned.bbolt"
+	}
+
+	return sessionPath + ".pinned"
 }
 
 func getSessionStorage(opts *options.Opts) fiber.Storage {
@@ -133,14 +166,47 @@ func NewApp(opts *options.Opts) (*App, error) {
 	f := createFiberApp()
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
-	// Load asset manifest for cache-busted files
-	manifestPath := "internal/web/static/manifest.json"
-	manifest, err := LoadAssetManifest(manifestPath)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to load asset manifest, using defaults")
-		manifest = &AssetManifest{
-			Assets:    map[string]string{"styles.css": "styles.css"},
-			StylesCSS: "styles.css",
+	// Per-user PinnedStore (spec §6.5). bbolt keeps an exclusive lock on
+	// the file, so we cannot reuse the session bbolt file; instead we
+	// place the pinned store next to it with a `.pinned` suffix. When
+	// sessions are in-memory, the default "pinned.bbolt" path is used so
+	// pins survive restarts in dev mode too. Callers on read-only
+	// filesystems can override with --pinned-path=/writable/path, or
+	// disable persistence entirely with --pinned-path=none.
+	//
+	// When the store cannot be opened (explicit "none", unreadable
+	// path, permission denied on a read-only volume) we log a warning
+	// and continue with a nil store — the handlers nil-guard the call
+	// sites and the drawer simply hides the pin star. Pinning becoming
+	// a no-op is a much better failure mode than refusing to boot.
+	pinnedPath := pinnedStorePath(opts.SessionPath, opts.PinnedPath)
+	var (
+		pinnedDB    *bolt.DB
+		pinnedStore *PinnedStore
+	)
+	if pinnedPath == "" {
+		log.Info().Msg("pinned store disabled (--pinned-path=none); pin UI will be hidden")
+	} else {
+		db, openErr := bolt.Open(pinnedPath, 0o600, &bolt.Options{Timeout: 2 * time.Second})
+		if openErr != nil {
+			log.Warn().
+				Err(openErr).
+				Str("path", pinnedPath).
+				Msg("failed to open pinned store; continuing without persistent pinning " +
+					"(read-only filesystem? set --pinned-path=/writable/path or " +
+					"--pinned-path=none to silence)")
+		} else {
+			store, initErr := NewPinnedStore(db)
+			if initErr != nil {
+				_ = db.Close()
+				log.Warn().
+					Err(initErr).
+					Str("path", pinnedPath).
+					Msg("failed to init pinned store bucket; continuing without persistent pinning")
+			} else {
+				pinnedDB = db
+				pinnedStore = store
+			}
 		}
 	}
 
@@ -153,9 +219,10 @@ func NewApp(opts *options.Opts) (*App, error) {
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
 		fiber:         f,
-		assetManifest: manifest,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
 		stopCacheLog:  make(chan struct{}),
+		pinnedStore:   pinnedStore,
+		pinnedDB:      pinnedDB,
 	}
 
 	// Setup all routes
@@ -253,20 +320,34 @@ func (a *App) setupRoutes() {
 
 	// Apply template caching middleware to read-only list endpoints (no CSRF tokens)
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
-	cacheable.Get("/", a.indexHandler)
-	cacheable.Get("/users", a.usersHandler)
-	cacheable.Get("/groups", a.groupsHandler)
-	cacheable.Get("/computers", a.computersHandler)
+	cacheable.Get("/", a.handleHomeV2)
+	cacheable.Get("/users", a.handleUsersV2)
+	cacheable.Get("/groups", a.handleGroupsV2)
+	cacheable.Get("/computers", a.handleComputersV2)
 
 	// Detail pages contain CSRF tokens in forms — must NOT be cached
 	// to avoid serving stale tokens that cause 403 on form submission
-	protected.Get("/users/*", a.userHandler)
-	protected.Get("/groups/*", a.groupHandler)
-	protected.Get("/computers/*", a.computerHandler)
+	protected.Get("/users/*", a.handleUserV2)
+	protected.Get("/groups/*", a.handleGroupV2)
+	protected.Get("/computers/*", a.handleComputerV2)
+
+	// JSON search index for the command palette (spec §6.1); ETag-cached
+	// in-handler so template-cache middleware is not needed.
+	protected.Get("/api/search-index.json", a.handleSearchIndex)
+
+	// Bulk actions (Phase 3 + 4) — registered BEFORE each /<kind>/* wildcard
+	// POST so Fiber matches the exact /<kind>/bulk path first.
+	protected.Post("/users/bulk", a.handleBulkUsers)
+	protected.Post("/groups/bulk", a.handleBulkGroups)
+	protected.Post("/computers/bulk", a.handleBulkComputers)
 
 	// POST routes without caching (these invalidate cache)
 	protected.Post("/users/*", a.userModifyHandler)
 	protected.Post("/groups/*", a.groupModifyHandler)
+
+	// Pin / unpin (spec §6.5) — CSRF-protected via the `protected` group
+	protected.Post("/pin", a.handlePin)
+	protected.Post("/unpin", a.handleUnpin)
 
 	protected.Get("/logout", a.logoutHandler)
 
@@ -312,6 +393,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 	log.Info().Msg("Stopping rate limiter...")
 	a.rateLimiter.Stop()
+
+	// Close pinned-store bbolt handle
+	if a.pinnedDB != nil {
+		log.Info().Msg("Closing pinned store...")
+		if err := a.pinnedDB.Close(); err != nil {
+			log.Warn().Err(err).Msg("Failed to close pinned store db")
+		}
+	}
 
 	// Close LDAP connections last
 	log.Info().Msg("Closing LDAP connections...")
@@ -445,56 +534,6 @@ func handle500(c *fiber.Ctx, err error) error {
 	return nil
 }
 
-func (a *App) indexHandler(c *fiber.Ctx) error {
-	// Get authenticated user DN from middleware context
-	userDN, err := RequireUserDN(c)
-	if err != nil {
-		return err
-	}
-
-	userLDAP, err := a.getUserLDAP(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-	defer func() { _ = userLDAP.Close() }()
-
-	// Get username from middleware context (stored during auth)
-	username, _ := c.Locals("username").(string)
-
-	var user *ldap.User
-
-	if username != "" {
-		user, err = userLDAP.FindUserBySAMAccountName(username)
-		if err != nil {
-			log.Debug().Err(err).Str("username", username).
-				Msg("SAMAccountName lookup failed, falling back to DN search")
-		}
-	}
-
-	// Fall back to finding by DN if lookup by SAMAccountName was not attempted or user not found
-	if user == nil {
-		allUsers, findErr := userLDAP.FindUsers()
-		if findErr != nil {
-			return handle500(c, findErr)
-		}
-
-		user, err = findUserByDN(allUsers, userDN)
-		if err != nil {
-			return handle500(c, err)
-		}
-	}
-
-	groups, err := userLDAP.FindGroups()
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	fullUser := ldap_cache.PopulateGroupsForUserFromData(user, groups)
-
-	// Use template caching
-	return a.templateCache.RenderWithCache(c, templates.Index(fullUser))
-}
-
 func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
 	c.Status(fiber.StatusNotFound)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
@@ -511,13 +550,4 @@ func (a *App) GetCSRFToken(c *fiber.Ctx) string {
 	}
 
 	return ""
-}
-
-// GetStylesPath returns the cache-busted CSS file path from the asset manifest
-func (a *App) GetStylesPath() string {
-	if a.assetManifest != nil {
-		return a.assetManifest.GetStylesPath()
-	}
-
-	return "styles.css"
 }

@@ -1,0 +1,785 @@
+// internal/web/templates/users_v2.templ
+package templates
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+)
+
+// UserDrawerVM is the view-model shared by the drawer fragment and the
+// full-page user detail. Populated by App.buildUserDrawerVM.
+//
+// User is a FullLDAPUser (not the bare ldap.User) so that the template can
+// range over resolved []ldap.Group tags — the raw ldap.User.Groups is a
+// []string of memberOf DNs which is not enough to render CN/DN links.
+type UserDrawerVM struct {
+	User             *ldap_cache.FullLDAPUser
+	Pinned           bool
+	OUName           string       // plain-text OU name, e.g. "ou=Users" (for display)
+	OUPivotHref      string       // URL-encoded pivot link, e.g. "/users?ou=ou%3DUsers"
+	CSRFToken        string       // current-session CSRF token used by embedded POST forms
+	UnassignedGroups []ldap.Group // groups the user is NOT a member of (datalist for add-to-group)
+	FlashError       string       // set by modify handlers when an LDAP op fails; shown inline
+	IsAD             bool         // true when the backend is Active Directory — gates the Disable button since OpenLDAP has no portable disable mechanism
+}
+
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
+	@baseV2("Users") {
+		@topnavV2("/users")
+
+		<main id="main-content" class="list-page" data-bulk-scope="users">
+			<header class="list-page__head">
+				<h1 class="list-page__title">Users</h1>
+				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
+			</header>
+
+			@listFlashes(flashes)
+
+			<div class="list-page__filters" data-search-filter>
+				<label class="list-page__select-all" title="Select all users currently visible in the list (after filtering)">
+					<input type="checkbox" data-select-all-visible aria-label="Select all visible users"/>
+					<span>all</span>
+				</label>
+				<input
+					type="search"
+					class="list-page__search"
+					placeholder="Filter users…"
+					aria-label="Filter users"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				<a
+					class={ filterChipClass(showDisabled) }
+					href={ usersFilterHref(!showDisabled, ouFilter, lastLogon, memberOfDN) }
+					title="Toggle: include disabled users in the list"
+				>
+					if showDisabled {
+						include disabled ×
+					} else {
+						include disabled
+					}
+				</a>
+				if ouFilter != "" {
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, "", lastLogon, memberOfDN) } title={ ouFilter }>
+						{ ouChipLabel(ouFilter) } ×
+					</a>
+				}
+				if memberOfDN != "" {
+					<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, lastLogon, "") } title={ memberOfDN }>
+						if memberOfCN != "" {
+							member of { memberOfCN } ×
+						} else {
+							member of group ×
+						}
+					</a>
+				}
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "24h", "last 24h")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "7d", "last 7d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "30d", "last 30d")
+				@lastLogonChip(showDisabled, ouFilter, lastLogon, memberOfDN, "never", "never logged in")
+			</div>
+
+			<div class={ listPanePaneClass(ous) }>
+				@ouRail("/users", ous, ouFilter, userOUHrefFactory(showDisabled, lastLogon, memberOfDN))
+
+				<ul class="list-rows" data-search-list aria-label="Users">
+					for _, u := range users {
+						@userRowV2(u, adminDNs)
+					}
+					if len(users) == 0 {
+						<li class="list-rows__empty">No users match.</li>
+					}
+				</ul>
+
+				<aside class="drawer" id="drawer" aria-live="polite" aria-label="Detail">
+					<div class="drawer__empty">Select a user to see details.</div>
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+templ userRowV2(u ldap.User, adminDNs map[string]struct{}) {
+	<li class={ userRowClass(u) } data-search-item data-search-text={ userSearchText(u) }>
+		<label class="list-row__check-wrap" aria-label={ "Select " + u.CN() }>
+			<input
+				type="checkbox"
+				class="list-row__check"
+				data-bulk
+				value={ u.DN() }
+			/>
+		</label>
+		<a
+			class="list-row__link"
+			href={ userDetailHref(u) }
+			hx-get={ userDrawerFragmentHref(u) }
+			hx-target="#drawer"
+			hx-swap="innerHTML"
+			hx-push-url="true"
+			title={ "View " + u.CN() }
+		>
+			<span
+				class="list-row__dot"
+				data-enabled={ enabledAttr(u.Enabled) }
+				data-recency={ recencyLevel(u.LastLogon) }
+				title={ recencyTitle(u.LastLogon) }
+			></span>
+			<span class="list-row__type-icon" aria-hidden="true">
+				@iconUser()
+			</span>
+			if _, ok := adminDNs[u.DN()]; ok {
+				<span class="list-row__admin" aria-label="Privileged" title="Privileged (member of an admin group)">
+					@iconShield()
+				</span>
+			} else {
+				<span class="list-row__admin-slot" aria-hidden="true"></span>
+			}
+			<span class="list-row__primary">{ u.CN() }</span>
+			<span class="list-row__secondary">{ u.SAMAccountName }</span>
+			if !u.Enabled {
+				<span class="list-row__lock" aria-hidden="true">
+					@iconLock()
+				</span>
+				<span class="list-row__badge">disabled</span>
+			}
+		</a>
+	</li>
+}
+
+// userRowClass returns the row wrapper class. When the user is disabled
+// the row gets a modifier that the CSS uses to dim the content and
+// strike-through the primary name — so a busy list visually separates
+// disabled accounts from active ones at a glance.
+func userRowClass(u ldap.User) string {
+	if u.Enabled {
+		return "list-row list-row--selectable"
+	}
+
+	return "list-row list-row--selectable list-row--disabled"
+}
+
+func enabledAttr(enabled bool) string {
+	if enabled {
+		return "true"
+	}
+
+	return "false"
+}
+
+// recencyLevel buckets a lastLogonTimestamp into a visual tier for the
+// list-row dot. Buckets mirror the last-logon filter chips (24h / 7d /
+// 30d / never).
+func recencyLevel(lastLogon int64) string {
+	if lastLogon <= 0 {
+		return "never"
+	}
+
+	t := time.Unix(lastLogon, 0)
+	now := time.Now()
+	switch {
+	case t.After(now.Add(-24 * time.Hour)):
+		return "fresh"
+	case t.After(now.Add(-7 * 24 * time.Hour)):
+		return "recent"
+	case t.After(now.Add(-30 * 24 * time.Hour)):
+		return "stale"
+	default:
+		return "old"
+	}
+}
+
+// recencyTitle is the tooltip shown on the recency dot — converts the
+// raw timestamp into a human-readable last-seen string.
+func recencyTitle(lastLogon int64) string {
+	if lastLogon <= 0 {
+		return "Never logged in"
+	}
+
+	return "Last logon: " + time.Unix(lastLogon, 0).Format("2006-01-02 15:04")
+}
+
+// userSearchText concatenates the user fields the free-text filter
+// should match on — CN and sAMAccountName are already visible in the
+// row, email and description are hidden but still worth searching.
+// Whitespace-joined so the JS `includes` check finds sub-strings in any
+// field. DN is intentionally included so operators can paste a partial
+// DN into the filter.
+func userSearchText(u ldap.User) string {
+	parts := []string{u.CN(), u.SAMAccountName, u.Description, u.DN()}
+	if u.Mail != nil {
+		parts = append(parts, *u.Mail)
+	}
+
+	out := ""
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " · "
+		}
+
+		out += p
+	}
+
+	return out
+}
+
+templ UserFullV2(vm UserDrawerVM, palettePinned []PinnedEntry) {
+	@baseV2PageScroll(vm.User.CN()) {
+		@topnavV2("/users")
+
+		<main id="main-content" class="list-page list-page--single">
+			<div class="list-page__pane">
+				<aside class="drawer drawer--full" aria-label="User detail">
+					@userDrawerContentsCtx(vm, false)
+				</aside>
+			</div>
+		</main>
+
+		@paletteV2WithPinned(palettePinned)
+	}
+}
+
+// userDrawerContents is the shared inner content of the drawer, rendered
+// both inside the fragment response and inside UserFullV2.
+// When inDrawer is true the pivots show "Open full page"; when false
+// (full-page context) they show "Back to Users" instead to avoid a
+// self-referential link.
+templ userDrawerContents(vm UserDrawerVM) {
+	@userDrawerContentsCtx(vm, true)
+}
+
+templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
+	<header
+		class="drawer__head"
+		data-recent-type="user"
+		data-recent-dn={ vm.User.DN() }
+		data-recent-cn={ vm.User.CN() }
+	>
+		<div class="drawer__title-wrap">
+			<h2 class="drawer__title">{ vm.User.CN() }</h2>
+			<p class="drawer__sub">{ vm.User.SAMAccountName }</p>
+		</div>
+		@pinStarButton("user", vm.User.DN(), vm.Pinned, vm.CSRFToken)
+	</header>
+
+	<p class="drawer__dn">{ vm.User.DN() }</p>
+
+	if vm.FlashError != "" {
+		<div class="drawer__flash drawer__flash--error" role="alert">{ vm.FlashError }</div>
+	}
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">Attributes</h3>
+		<dl class="drawer__kv">
+			<dt>Status</dt>
+			<dd>
+				if vm.User.Enabled {
+					Enabled
+				} else {
+					Disabled
+				}
+				if vm.User.MustChangePassword {
+					<span class="drawer__badge drawer__badge--warn" title="The account must change password at next logon (AD pwdLastSet=0)">must change password</span>
+				}
+				if vm.User.LockoutTime > 0 {
+					<span class="drawer__badge drawer__badge--danger" title={ "Locked at " + formatLastLogonV2(vm.User.LockoutTime) }>locked</span>
+				}
+			</dd>
+			if !inDrawer || vm.User.DisplayName != "" {
+				<dt>Display name</dt>
+				<dd>{ notSetOr(vm.User.DisplayName) }</dd>
+			}
+			if !inDrawer || vm.User.GivenName != "" || vm.User.Surname != "" {
+				<dt>Given / Surname</dt>
+				<dd>{ notSetOr(joinName(vm.User.GivenName, vm.User.Surname)) }</dd>
+			}
+			if !inDrawer || derefString(vm.User.Mail) != "" {
+				<dt>Email</dt>
+				<dd>
+					@userKVEdit(vm.User.User, "email", "email", derefString(vm.User.Mail), "(no email)", vm.CSRFToken)
+				</dd>
+			}
+			if !inDrawer || vm.User.TelephoneNumber != "" {
+				<dt>Phone</dt>
+				<dd>{ notSetOr(vm.User.TelephoneNumber) }</dd>
+			}
+			if !inDrawer || vm.User.Mobile != "" {
+				<dt>Mobile</dt>
+				<dd>{ notSetOr(vm.User.Mobile) }</dd>
+			}
+			if !inDrawer || vm.User.Title != "" {
+				<dt>Title</dt>
+				<dd>{ notSetOr(vm.User.Title) }</dd>
+			}
+			if !inDrawer || vm.User.Department != "" {
+				<dt>Department</dt>
+				<dd>{ notSetOr(vm.User.Department) }</dd>
+			}
+			if !inDrawer || vm.User.Company != "" {
+				<dt>Company</dt>
+				<dd>{ notSetOr(vm.User.Company) }</dd>
+			}
+			if !inDrawer || vm.User.Office != "" {
+				<dt>Office</dt>
+				<dd>{ notSetOr(vm.User.Office) }</dd>
+			}
+			if !inDrawer || vm.User.ManagerDN != "" {
+				<dt>Manager</dt>
+				<dd>
+					if vm.User.ManagerDN != "" {
+						<a href={ templ.URL("/users/" + vm.User.ManagerDN) } title={ vm.User.ManagerDN }>{ managerLabel(vm.User.ManagerDN) }</a>
+					} else {
+						(not set)
+					}
+				</dd>
+			}
+			if !inDrawer || vm.User.Description != "" {
+				<dt>Description</dt>
+				<dd>
+					@userKVEdit(vm.User.User, "description", "text", vm.User.Description, "(no description)", vm.CSRFToken)
+				</dd>
+			}
+			if !inDrawer || vm.User.LastLogon > 0 {
+				<dt>Last logon</dt>
+				<dd>{ formatLastLogonV2(vm.User.LastLogon) }</dd>
+			}
+			if !inDrawer || vm.User.PwdLastSet > 0 {
+				<dt>Password set</dt>
+				<dd>{ formatLastLogonV2(vm.User.PwdLastSet) }</dd>
+			}
+			if !inDrawer || vm.User.AccountExpires != 0 {
+				<dt>Account expires</dt>
+				<dd>{ formatAccountExpires(vm.User.AccountExpires) }</dd>
+			}
+			if !inDrawer || vm.User.WhenCreated > 0 {
+				<dt>Created</dt>
+				<dd>{ formatLastLogonV2(vm.User.WhenCreated) }</dd>
+			}
+			if !inDrawer || vm.User.WhenChanged > 0 {
+				<dt>Modified</dt>
+				<dd>{ formatLastLogonV2(vm.User.WhenChanged) }</dd>
+			}
+		</dl>
+	</section>
+
+	<section class="drawer__section">
+		<h3 class="drawer__section-title">
+			{ fmt.Sprintf("Groups · %d", len(vm.User.Groups)) }
+		</h3>
+		@userAddGroupForm(vm)
+		if len(vm.User.Groups) == 0 {
+			<p class="drawer__empty-inline">None.</p>
+		} else {
+			<ul class="drawer__tags">
+				for _, g := range limitGroups(vm.User.Groups, 20) {
+					<li class="drawer__tag-row">
+						<a class="drawer__tag" href={ groupDetailHref(g) } title={ g.DN() }>{ g.CN() }</a>
+						<form
+							class="drawer__tag-remove-form"
+							method="post"
+							action={ templ.SafeURL(userEditHref(vm.User.User)) }
+							hx-post={ userEditHref(vm.User.User) }
+							hx-target="closest .drawer"
+							hx-swap="innerHTML"
+						>
+							<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+							<input type="hidden" name="removegroup" value={ g.DN() }/>
+							<button
+								type="submit"
+								class="drawer__tag-remove"
+								aria-label={ "Remove " + vm.User.CN() + " from " + g.CN() }
+								title={ "Remove from " + g.CN() }
+							>
+								×
+							</button>
+						</form>
+					</li>
+				}
+			</ul>
+			if len(vm.User.Groups) > 20 {
+				<p class="drawer__empty-inline">
+					+ { fmt.Sprintf("%d", len(vm.User.Groups) - 20) } more groups
+				</p>
+			}
+		}
+	</section>
+
+	<section class="drawer__section drawer__section--actions">
+		<h3 class="drawer__section-title">Actions</h3>
+		<div class="drawer__actions">
+			if vm.IsAD {
+				<form method="post" action="/users/bulk?action=disable" data-confirm={ "Disable " + vm.User.CN() + "? The account can be re-enabled later." }>
+					<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+					<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
+					<button type="submit" class="drawer__action drawer__action--warn">Disable</button>
+				</form>
+			}
+			<form method="post" action="/users/bulk?action=delete" data-confirm={ "Delete " + vm.User.CN() + "? This cannot be undone." }>
+				<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+				<input type="hidden" name="target_dn" value={ vm.User.DN() }/>
+				<button type="submit" class="drawer__action drawer__action--danger">Delete</button>
+			</form>
+		</div>
+	</section>
+
+	<section class="drawer__section drawer__section--pivots">
+		<h3 class="drawer__section-title drawer__section-title--pivots">Pivot</h3>
+		<ul class="drawer__pivots">
+			if inDrawer {
+				<li>
+					<a class="drawer__pivot" href={ userDetailHref(vm.User.User) } aria-label="Open full page" title="Open full page">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconOpenExternal()</span>
+						<span class="drawer__pivot-text">Open full page</span>
+					</a>
+				</li>
+			} else {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL("/users") } aria-label="Back to Users" title="Back to Users">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowLeft()</span>
+						<span class="drawer__pivot-text">Back to Users</span>
+					</a>
+				</li>
+			}
+			if vm.OUPivotHref != "" {
+				<li>
+					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other users in " + ouChipLabel(vm.OUName) } title={ "Other users in " + vm.OUName }>
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconArrowRight()</span>
+						<span class="drawer__pivot-text">Other users in { ouChipLabel(vm.OUName) }</span>
+					</a>
+				</li>
+			}
+			if len(vm.User.Groups) > 0 {
+				<li>
+					<a class="drawer__pivot" href={ userGroupsListHref(vm.User.User) } aria-label={ fmt.Sprintf("View all %d groups for this user as group list", len(vm.User.Groups)) } title="View all groups as group list">
+						<span class="drawer__pivot-icon" aria-hidden="true">@iconList()</span>
+						<span class="drawer__pivot-text">{ fmt.Sprintf("View all %d groups as group list", len(vm.User.Groups)) }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// userAddGroupForm renders an inline "add to group" form — a native
+// datalist combobox pre-filled with every group the user is NOT a
+// member of. Submits to /users/<dn> with `addgroup=<group-dn>`
+// (handled by userModifyHandler); on HX-Request the handler swaps
+// the refreshed drawer fragment in place.
+templ userAddGroupForm(vm UserDrawerVM) {
+	if len(vm.UnassignedGroups) > 0 {
+		<form
+			class="drawer__add-form"
+			method="post"
+			action={ templ.SafeURL(userEditHref(vm.User.User)) }
+			hx-post={ userEditHref(vm.User.User) }
+			hx-target="closest .drawer"
+			hx-swap="innerHTML"
+			autocomplete="off"
+			data-bwignore
+			data-1p-ignore
+			data-lpignore="true"
+		>
+			<input type="hidden" name="csrf_token" value={ vm.CSRFToken }/>
+			<input
+				class="drawer__add-input"
+				list={ "userAddGroupList-" + vm.User.DN() }
+				name="addgroup-label"
+				placeholder="Add to group — start typing a name…"
+				aria-label="Add to group"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-bwignore
+				data-form-type="other"
+				data-drawer-datalist-input
+			/>
+			<input type="hidden" name="addgroup" data-drawer-datalist-value/>
+			<datalist id={ "userAddGroupList-" + vm.User.DN() }>
+				for _, g := range vm.UnassignedGroups {
+					<option value={ g.CN() } data-dn={ g.DN() }></option>
+				}
+			</datalist>
+			<button type="submit" class="drawer__add-submit" aria-label="Add to group">
+				@iconPlus()
+			</button>
+		</form>
+	}
+}
+
+// userGroupsListHref points at /groups?member=<user-dn> so the operator
+// sees the user's groups in the Groups list UI (with bulk actions,
+// free-text filter, OU rail, etc.) instead of as just tags.
+func userGroupsListHref(u ldap.User) templ.SafeURL {
+	v := url.Values{}
+	v.Set("member", u.DN())
+
+	return templ.URL("/groups?" + v.Encode())
+}
+
+// userKVEdit renders an inline-editable drawer key/value row as a small
+// htmx form. The form POSTs to the existing /users/<dn> route (the handler
+// dispatches on the presence of a `field` form value) and swaps the drawer
+// fragment response into the surrounding #drawer. When no #drawer exists
+// (full-page user detail), htmx still succeeds and the new fragment
+// replaces the detail drawer contents via the `closest .drawer` target.
+templ userKVEdit(u ldap.User, field, inputType, value, placeholder, csrfToken string) {
+	<form
+		class="kv-edit"
+		hx-post={ userEditHref(u) }
+		hx-target="closest .drawer"
+		hx-swap="innerHTML"
+		autocomplete="off"
+		data-bwignore
+		data-lpignore="true"
+		data-1p-ignore
+	>
+		<input type="hidden" name="csrf_token" value={ csrfToken }/>
+		<input type="hidden" name="field" value={ field }/>
+		<input
+			class="kv-edit__input"
+			name="value"
+			type={ inputType }
+			value={ value }
+			placeholder={ placeholder }
+			aria-label={ field }
+			autocomplete="off"
+			autocorrect="off"
+			autocapitalize="off"
+			spellcheck="false"
+			data-1p-ignore
+			data-lpignore="true"
+			data-bwignore
+			data-form-type="other"
+		/>
+		<button class="kv-edit__save" type="submit" aria-label={ "Save " + field }>
+			<span class="kv-edit__save-glyph" aria-hidden="true">
+				@iconCheck()
+			</span>
+		</button>
+	</form>
+}
+
+// pinStarButton renders the pin/unpin toggle as a small form.
+//
+// The handlers at /pin and /unpin return this component's outer <form> on
+// HX-Request so htmx can swap the star glyph in place. A hidden input
+// carries the entity `type` so the handler can re-render without having
+// to parse the DN. hx-swap="outerHTML" on the <form> gives a stable target
+// whether the initial markup was a <form> (unpinned → pinned) or the
+// swapped-in response (pinned → unpinned).
+templ pinStarButton(entityType, entityDN string, pinned bool, csrfToken string) {
+	@PinStarFragment(entityType, entityDN, pinned, csrfToken)
+}
+
+// PinStarFragment is the exported partial used both by detail pages (via
+// pinStarButton) and by the pin/unpin handlers when responding to an
+// HX-Request roundtrip. The csrfToken argument is injected into every
+// form so the Fiber CSRF middleware (KeyLookup form:csrf_token) accepts
+// the htmx-driven POST; without it every click 403s.
+templ PinStarFragment(entityType, entityDN string, pinned bool, csrfToken string) {
+	if pinned {
+		<form class="pin-star-form" hx-post="/unpin" hx-target="this" hx-swap="outerHTML">
+			<input type="hidden" name="csrf_token" value={ csrfToken }/>
+			<input type="hidden" name="target" value={ entityDN }/>
+			<input type="hidden" name="type" value={ entityType }/>
+			<button type="submit" class="pin-star pin-star--on" aria-label={ "Unpin " + entityType } aria-pressed="true">
+				<span class="pin-star__glyph" aria-hidden="true">
+					@iconStarFilled()
+				</span>
+			</button>
+		</form>
+	} else {
+		<form class="pin-star-form" hx-post="/pin" hx-target="this" hx-swap="outerHTML">
+			<input type="hidden" name="csrf_token" value={ csrfToken }/>
+			<input type="hidden" name="target" value={ entityDN }/>
+			<input type="hidden" name="type" value={ entityType }/>
+			<button type="submit" class="pin-star" aria-label={ "Pin " + entityType } aria-pressed="false">
+				<span class="pin-star__glyph" aria-hidden="true">
+					@iconStarOutline()
+				</span>
+			</button>
+		</form>
+	}
+}
+
+func userDetailHref(u ldap.User) templ.SafeURL {
+	return templ.URL("/users/" + url.PathEscape(u.DN()))
+}
+
+func userDrawerFragmentHref(u ldap.User) string {
+	return "/users/" + url.PathEscape(u.DN()) + "?fragment=drawer"
+}
+
+// userEditHref is the POST target for the drawer inline-edit forms. It
+// shares the existing /users/<dn> POST route; dispatch happens inside
+// userModifyHandler based on the presence of a `field` form value.
+func userEditHref(u ldap.User) string {
+	return "/users/" + url.PathEscape(u.DN())
+}
+
+// derefString flattens *string (LDAP.Mail is pointer-wrapped) to a plain
+// string suitable for a form input value. Nil becomes "".
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+
+	return *p
+}
+
+// formatLastLogonV2 formats an int64 lastLogonTimestamp (unix seconds) as
+// a local-time ISO-like string. Zero / negative values are shown as
+// "Never" so the drawer row still appears but reads as empty-state.
+func formatLastLogonV2(timestamp int64) string {
+	if timestamp <= 0 {
+		return "Never"
+	}
+
+	return time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+}
+
+// formatAccountExpires handles the three-value encoding returned by
+// simple-ldap-go's parseAccountExpires: 0 = unset, -1 = never, >0 =
+// real Unix-seconds expiry timestamp.
+func formatAccountExpires(v int64) string {
+	switch {
+	case v < 0:
+		return "Never"
+	case v == 0:
+		return "(not set)"
+	default:
+		return time.Unix(v, 0).Format("2006-01-02 15:04:05")
+	}
+}
+
+// joinName combines givenName + sn into a display-friendly "Given Sn"
+// pair. Returns "" when both are empty.
+func joinName(given, surname string) string {
+	switch {
+	case given == "" && surname == "":
+		return ""
+	case given == "":
+		return surname
+	case surname == "":
+		return given
+	default:
+		return given + " " + surname
+	}
+}
+
+// managerLabel extracts the CN portion of a manager DN for display
+// (e.g. "CN=Alice,OU=…" → "Alice"). Falls back to the full DN when
+// the CN component can't be isolated so the UI still shows something
+// clickable.
+func managerLabel(dn string) string {
+	if dn == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(strings.ToLower(dn), "cn=") {
+		rest := dn[3:]
+		if idx := strings.IndexByte(rest, ','); idx >= 0 {
+			return rest[:idx]
+		}
+
+		return rest
+	}
+
+	return dn
+}
+
+// limitGroups caps a user's resolved Groups slice at n entries for drawer
+// rendering. Mirrors limitMembers in groups_v2.templ — the same reasoning
+// applies (hundreds of tags swamp the viewport).
+func limitGroups(groups []ldap.Group, n int) []ldap.Group {
+	if len(groups) <= n {
+		return groups
+	}
+
+	return groups[:n]
+}
+
+func groupDetailHref(g ldap.Group) templ.SafeURL {
+	return templ.URL("/groups/" + url.PathEscape(g.DN()))
+}
+
+func filterChipClass(on bool) string {
+	if on {
+		return "filter-chip filter-chip--on"
+	}
+
+	return "filter-chip"
+}
+
+// userOUHrefFactory returns an ouHref closure that preserves the active
+// show-disabled, last-logon, and memberOf filters when the user clicks an
+// OU row. Keeps the rail consistent with the main filter chips.
+func userOUHrefFactory(showDisabled bool, lastLogon, memberOfDN string) ouHref {
+	return func(value string) templ.SafeURL {
+		return usersFilterHref(showDisabled, value, lastLogon, memberOfDN)
+	}
+}
+
+// usersFilterHref composes a /users URL with the supplied combination of
+// filters. Empty / zero values are omitted so we keep the URL short and
+// symmetric with the default view.
+func usersFilterHref(showDisabled bool, ouFilter, lastLogon, memberOfDN string) templ.SafeURL {
+	v := url.Values{}
+
+	if showDisabled {
+		v.Set("show-disabled", "1")
+	}
+
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	if lastLogon != "" {
+		v.Set("last-logon", lastLogon)
+	}
+
+	if memberOfDN != "" {
+		v.Set("memberOf", memberOfDN)
+	}
+
+	qs := v.Encode()
+	if qs == "" {
+		return templ.URL("/users")
+	}
+
+	return templ.URL("/users?" + qs)
+}
+
+// lastLogonChip renders one of the four last-logon filter chips. Clicking
+// the active chip clears the filter (by emitting the "" value); clicking
+// an inactive chip switches to that window. The filter stacks with the
+// show-disabled, ou and memberOf filters via usersFilterHref.
+templ lastLogonChip(showDisabled bool, ouFilter, active, memberOfDN, value, label string) {
+	if value == active {
+		<a class="filter-chip filter-chip--on" href={ usersFilterHref(showDisabled, ouFilter, "", memberOfDN) }>
+			{ label } ×
+		</a>
+	} else {
+		<a class="filter-chip" href={ usersFilterHref(showDisabled, ouFilter, value, memberOfDN) }>
+			{ label }
+		</a>
+	}
+}
+

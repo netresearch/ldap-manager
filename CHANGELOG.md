@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **UI revamp Phase 2:** Inline-edit for user email + description in the drawer via htmx; last-logon filter chips on `/users` (last 24h / 7d / 30d / never); toggleable OU tree rail on `/users`, `/groups`, `/computers` populated from distinct immediate-OU values in the cache.
+- **UI revamp Phase 3:** Bulk add-to-group on `/users` — per-row checkboxes feed a floating bulk-bar that POSTs `target_dn[]` + `group_dn` to `/users/bulk?action=add-to-group`. CSP-safe (external `v2-bulk.js`, `createElement`/`textContent` only).
+- **Phase 3 graph view deferral note:** `docs/superpowers/specs/2026-04-20-ui-revamp-phase-3-graph-view-deferred.md` — captures the rough shape and dependencies for the deferred relationship graph view.
+
+### Changed
+
+- **UI revamp** (Phase 1): Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in CI via axe-core.
+
+### Removed
+
+- Tailwind CSS, PostCSS, TypeScript, and all associated build tooling (bun, concurrently, nodemon, tsc, postcss-*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` directly.
+
 ---
 
 ## [v1.2.0] - 2026-04-16

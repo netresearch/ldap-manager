@@ -1,0 +1,104 @@
+// internal/web/templates/home_v2.templ
+package templates
+
+import "fmt"
+
+// HomeVM bundles the view-model for the home page — keeps the templ
+// signature from growing unbounded as we add sections.
+type HomeVM struct {
+	UserCN         string
+	UserDN         string // current user's DN (empty if not resolvable)
+	Pinned         []PinnedEntry
+	CSRFToken      string
+	Server         string // LDAP server URL, e.g. "ldaps://ldap.example.com:636/"
+	BaseDN         string
+	IsAD           bool
+	UsersCount     int
+	GroupsCount    int
+	ComputersCount int
+}
+
+// HomeV2 is the signed-in home page. Greeting + "my profile" quick link +
+// server info + prominent search entry (opens the palette) + pinned
+// (server-driven, htmx-swap) + recents (client-side, populated by
+// v2-recents.js).
+templ HomeV2(vm HomeVM) {
+	@baseV2PageScroll("Home") {
+		@topnavV2("/")
+
+		<main id="main-content" class="home">
+			<h1 class="home__greet">Hi { vm.UserCN } — what are you looking for?</h1>
+			<p class="home__lede">
+				Search users, groups, computers, or run an action.
+				Press <kbd>⌘K</kbd> from anywhere.
+			</p>
+
+			<button type="button" class="home__search" data-open-palette aria-label="Open command palette">
+				<span class="home__search-icon" aria-hidden="true">
+					@iconSearch()
+				</span>
+				<span>Search for a user, group, or action…</span>
+				<kbd>⌘K</kbd>
+			</button>
+
+			<section class="home__quickrow">
+				if vm.UserDN != "" {
+					<a class="home__quick-card" href={ homeSelfHref(vm.UserDN) }>
+						<span class="home__quick-card-icon" aria-hidden="true">
+							@iconUser()
+						</span>
+						<span class="home__quick-card-main">
+							<span class="home__quick-card-title">My profile</span>
+							<span class="home__quick-card-sub">{ vm.UserCN }</span>
+						</span>
+						<span class="home__quick-card-arrow" aria-hidden="true">→</span>
+					</a>
+				}
+
+				<section class="home__quick-card home__quick-card--info" aria-label="Server info">
+					<span class="home__quick-card-icon" aria-hidden="true">
+						@iconServer()
+					</span>
+					<dl class="home__server-kv">
+						<dt>Server</dt>
+						<dd>{ vm.Server }</dd>
+						<dt>Base DN</dt>
+						<dd>{ vm.BaseDN }</dd>
+						<dt>Directory</dt>
+						<dd>{ homeDirectoryLabel(vm.IsAD) }</dd>
+						<dt>Entries</dt>
+						<dd>{ fmt.Sprintf("%d users · %d groups · %d computers", vm.UsersCount, vm.GroupsCount, vm.ComputersCount) }</dd>
+					</dl>
+				</section>
+			</section>
+
+			<section class="home__blocks">
+				<nav aria-label="Pinned" id="pinned-block">
+					<h2 class="home__heading">Pinned</h2>
+					@pinnedFragment(vm.Pinned, vm.CSRFToken)
+				</nav>
+
+				<nav aria-label="Recent" id="recents-block" data-recents>
+					<h2 class="home__heading">Recent</h2>
+					<ul class="home__list" data-recents-list>
+						<li class="home__list-empty" data-recents-empty>Nothing yet — browse a user or group and it will show up here.</li>
+					</ul>
+				</nav>
+			</section>
+		</main>
+
+		@paletteV2WithPinned(vm.Pinned)
+	}
+}
+
+func homeSelfHref(userDN string) templ.SafeURL {
+	return templ.URL("/users/" + userDN)
+}
+
+func homeDirectoryLabel(isAD bool) string {
+	if isAD {
+		return "Active Directory"
+	}
+
+	return "OpenLDAP / RFC-compliant"
+}

@@ -68,3 +68,30 @@ func RequireUserDN(c *fiber.Ctx) (string, error) {
 
 	return userDN, nil
 }
+
+// resolveViewerDN returns the authenticated viewer's DN for a protected
+// route, preferring the value populated by RequireAuth into c.Locals and
+// falling back to a direct session lookup (the CSRF middleware can return
+// a fresh session on some code paths and drop the "dn" key).
+//
+// Returns (dn, handled, err):
+//   - handled=true means the caller must return the returned fiber result
+//     directly (session read error → 500, no DN → 303 redirect to /login).
+//   - handled=false, err=nil means `dn` is populated and the handler
+//     should continue.
+func (a *App) resolveViewerDN(c *fiber.Ctx) (string, bool, error) {
+	dn := GetUserDN(c)
+	if dn == "" {
+		sess, err := a.sessionStore.Get(c)
+		if err != nil {
+			return "", true, handle500(c, err)
+		}
+		dn, _ = sess.Get("dn").(string)
+	}
+
+	if dn == "" {
+		return "", true, c.Redirect("/login", fiber.StatusSeeOther)
+	}
+
+	return dn, false, nil
+}

@@ -1,0 +1,8 @@
+// internal/web/templates/computer_drawer_fragment.templ
+package templates
+
+// ComputerDrawerFragment is the htmx-swapped drawer fragment for a computer.
+// It shares the inner content with the full-page computer detail view.
+templ ComputerDrawerFragment(vm ComputerDrawerVM) {
+	@computerDrawerContents(vm)
+}
