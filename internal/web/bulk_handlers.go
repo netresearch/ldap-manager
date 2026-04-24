@@ -485,14 +485,19 @@ func (a *App) bulkUACDisable(
 }
 
 // finaliseBulkDisable is the disable analogue of finaliseBulkDelete:
-// refresh caches on any success, log the summary, flash the result.
+// invalidate the rendered-template cache so the redirected list page
+// is re-rendered, log the summary, and flash the result.
+//
+// The LDAP cache itself was already updated optimistically in the
+// per-entity loop via OnDisable{User,Computer} — we intentionally do
+// NOT call ldapCache.Refresh() here: Refresh() queries the readonly-
+// bind DC, which under normal AD replication delay returns the
+// pre-disable state (Enabled=true) and overwrites our optimistic
+// update. The 30 s background refresh picks up the upstream state
+// once replication has caught up.
 func (a *App) finaliseBulkDisable(c *fiber.Ctx, kind string, disabled, total int, firstErr error) {
 	if disabled > 0 {
 		a.invalidateTemplateCacheOnModification()
-
-		if a.ldapCache != nil {
-			a.ldapCache.Refresh()
-		}
 	}
 
 	log.Info().
@@ -517,20 +522,21 @@ func (a *App) finaliseBulkDisable(c *fiber.Ctx, kind string, disabled, total int
 }
 
 // finaliseBulkDelete is the shared post-loop cleanup for all three
-// bulk-delete handlers: invalidate the template + LDAP caches if any
-// delete succeeded, and drop a "Deleted N / M <kind>s" flash on the
-// next list page load. `kind` is the singular noun ("user", "group",
-// "computer"); pluralisation is naive "s"-suffix which is correct for
-// all three.
+// bulk-delete handlers: invalidate the rendered-template cache and
+// drop a "Deleted N / M <kind>s" flash on the next list page load.
+// `kind` is the singular noun ("user", "group", "computer");
+// pluralisation is naive "s"-suffix which is correct for all three.
+//
+// The LDAP cache itself was already updated optimistically in the
+// per-entity loop via OnDelete{User,Group,Computer} — we intentionally
+// do NOT call ldapCache.Refresh() here: Refresh() queries the readonly-
+// bind DC, which under normal AD replication delay still sees the
+// just-deleted entity and overwrites our optimistic scrub. The 30 s
+// background refresh picks up the upstream state once replication
+// has caught up.
 func (a *App) finaliseBulkDelete(c *fiber.Ctx, kind string, deleted, total int, firstErr error) {
 	if deleted > 0 {
-		// No dedicated OnDelete hook in the cache — force a full refresh
-		// so stale lists don't linger.
 		a.invalidateTemplateCacheOnModification()
-
-		if a.ldapCache != nil {
-			a.ldapCache.Refresh()
-		}
 	}
 
 	log.Info().
