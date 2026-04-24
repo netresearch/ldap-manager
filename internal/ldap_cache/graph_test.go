@@ -24,6 +24,7 @@ func graphFixture(t *testing.T) *Manager {
 		newUserWithDN("cn=alice,ou=Engineering,dc=ex,dc=com", "alice", "alice", true, []string{
 			"cn=engineers,ou=Groups,dc=ex,dc=com",
 		}),
+		newUserWithDN("cn=deep,ou=Nested,ou=Engineering,dc=ex,dc=com", "deep", "deep", true, []string{}),
 	})
 	manager.Groups.setAll([]ldap.Group{
 		newGroupWithDN("cn=admins,ou=Groups,dc=ex,dc=com", "admins", []string{
@@ -188,6 +189,45 @@ func TestBuildGraph_OUFocus_Depth1(t *testing.T) {
 
 		if e.Kind != EdgeContains {
 			t.Errorf("edge kind: got %q, want %q: %+v", e.Kind, EdgeContains, e)
+		}
+
+		if e.Source == e.Target {
+			t.Errorf("self-loop edge: %+v", e)
+		}
+	}
+
+	// Nested descendants must not leak through — deep lives two levels
+	// below ou=Engineering and should be filtered by the immediate-child
+	// check.
+	deepDN := "cn=deep,ou=Nested,ou=Engineering,dc=ex,dc=com"
+	for _, n := range data.Nodes {
+		if n.DN == deepDN {
+			t.Errorf("nested-descendant %q must not appear as ring-1 child of %q", deepDN, ouDN)
+		}
+	}
+}
+
+func TestBuildGraph_OUFocus_ComputersBranch(t *testing.T) {
+	m := graphFixture(t)
+	data, err := m.BuildGraph("ou=Computers,dc=ex,dc=com", 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	// Expect: ou=Computers (ring 0) + ws01 (ring 1) = 2 nodes
+	if got := len(data.Nodes); got != 2 {
+		t.Errorf("node count: got %d, want 2", got)
+	}
+
+	if got := len(data.Edges); got != 1 {
+		t.Errorf("edge count: got %d, want 1", got)
+	}
+
+	ouDN := "ou=Computers,dc=ex,dc=com"
+	ws01DN := "cn=ws01,ou=Computers,dc=ex,dc=com"
+
+	for _, e := range data.Edges {
+		if e.Source != ouDN || e.Target != ws01DN || e.Kind != EdgeContains {
+			t.Errorf("unexpected edge: %+v", e)
 		}
 
 		if e.Source == e.Target {
