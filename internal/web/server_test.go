@@ -120,6 +120,12 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	// Production wires the same handler inside the protected group (see server.go).
 	f.Get("/api/search-index.json", app.handleSearchIndex)
 
+	// Relationship graph JSON — registered without RequireAuth here for the
+	// same reason as search-index above; production wires it inside the
+	// protected group (see server.go). The handler reads only from
+	// app.ldapCache, so no session state is required.
+	f.Get("/api/graph.json", app.handleGraphJSON)
+
 	protected := f.Group("/", app.RequireAuth())
 	protected.Get("/", app.handleHomeV2)
 	protected.Get("/users", app.templateCacheMiddleware(), app.handleUsersV2)
