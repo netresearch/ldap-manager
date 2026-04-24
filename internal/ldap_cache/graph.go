@@ -386,29 +386,11 @@ func immediateOUFromDN(dn string) string {
 	}
 
 	tail := parsed.RDNs[1:]
-
-	var buf strings.Builder
-
-	for i, r := range tail {
-		if i > 0 {
-			buf.WriteString(",")
-		}
-
-		for _, a := range r.Attributes {
-			buf.WriteString(a.Type)
-			buf.WriteString("=")
-			buf.WriteString(a.Value)
-		}
+	if len(tail[0].Attributes) == 0 || !strings.EqualFold(tail[0].Attributes[0].Type, "ou") {
+		return ""
 	}
 
-	out := buf.String()
-
-	// Only return if first RDN is ou=
-	if len(tail) > 0 && strings.EqualFold(tail[0].Attributes[0].Type, "ou") {
-		return out
-	}
-
-	return ""
+	return (&goldap.DN{RDNs: tail}).String()
 }
 
 func labelForOU(dn string) string {
@@ -467,16 +449,29 @@ func addOU(data *GraphData, seen map[string]int, ouDN string, ring int, edge Edg
 }
 
 func (m *Manager) addOUChildren(data *GraphData, seen map[string]int, ouDN string, ring int) {
-	suffix := "," + ouDN
+	ouParsed, err := goldap.ParseDN(ouDN)
+	if err != nil {
+		return
+	}
 
-	for _, u := range m.Users.Get() {
-		if !strings.HasSuffix(u.DN(), suffix) {
-			continue
+	isImmediateChild := func(childDN string) bool {
+		p, err := goldap.ParseDN(childDN)
+		if err != nil || len(p.RDNs) != len(ouParsed.RDNs)+1 {
+			return false
 		}
 
-		rel := strings.TrimSuffix(u.DN(), suffix)
-		if strings.Contains(rel, ",") {
-			continue // not an immediate child
+		for i, rdn := range ouParsed.RDNs {
+			if !rdn.Equal(p.RDNs[i+1]) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	for _, u := range m.Users.Get() {
+		if !isImmediateChild(u.DN()) {
+			continue
 		}
 
 		if _, dup := seen[u.DN()]; dup {
@@ -489,12 +484,7 @@ func (m *Manager) addOUChildren(data *GraphData, seen map[string]int, ouDN strin
 	}
 
 	for _, c := range m.Computers.Get() {
-		if !strings.HasSuffix(c.DN(), suffix) {
-			continue
-		}
-
-		rel := strings.TrimSuffix(c.DN(), suffix)
-		if strings.Contains(rel, ",") {
+		if !isImmediateChild(c.DN()) {
 			continue
 		}
 

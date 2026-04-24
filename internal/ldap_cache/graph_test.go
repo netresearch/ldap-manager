@@ -353,6 +353,53 @@ func TestBuildGraph_CycleSafe(t *testing.T) {
 	}
 }
 
+func TestBuildGraph_OUFocus_EscapedCommaChild(t *testing.T) {
+	manager := New(&mockLDAPClient{})
+	// "Last, First" with the comma escaped per RFC 4514.
+	childDN := `cn=Last\, First,ou=Engineering,dc=ex,dc=com`
+	manager.Users.setAll([]ldap.User{
+		newUserWithDN(childDN, "Last, First", "lastf", true, nil),
+	})
+
+	ouDN := "ou=Engineering,dc=ex,dc=com"
+	data, err := manager.BuildGraph(ouDN, 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+
+	foundNode := false
+
+	for _, n := range data.Nodes {
+		if n.DN == childDN {
+			foundNode = true
+
+			break
+		}
+	}
+
+	if !foundNode {
+		t.Fatalf("escaped-comma immediate child %q must appear in depth-1 nodes for %q", childDN, ouDN)
+	}
+
+	foundEdge := false
+
+	for _, e := range data.Edges {
+		if e.Source == ouDN && e.Target == childDN {
+			if e.Kind != EdgeContains {
+				t.Errorf("edge kind for escaped-comma child: got %q, want %q", e.Kind, EdgeContains)
+			}
+
+			foundEdge = true
+
+			break
+		}
+	}
+
+	if !foundEdge {
+		t.Errorf("escaped-comma immediate child %q must have contains edge from %q", childDN, ouDN)
+	}
+}
+
 func TestAssignConcentric_EvenDistribution(t *testing.T) {
 	m := graphFixture(t)
 	data, _ := m.BuildGraph("cn=bob,ou=Engineering,dc=ex,dc=com", 1)
