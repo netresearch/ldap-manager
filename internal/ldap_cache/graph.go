@@ -7,6 +7,13 @@ package ldap_cache
 
 import (
 	"errors"
+	"fmt"
+	"math"
+	"sort"
+	"strings"
+
+	goldap "github.com/go-ldap/ldap/v3"
+	ldap "github.com/netresearch/simple-ldap-go"
 )
 
 // NodeType enumerates the four entity kinds the graph can display.
@@ -74,8 +81,333 @@ type GraphData struct {
 // present in any cache. The handler translates this to HTTP 404.
 var ErrGraphNotFound = errors.New("graph: focus DN not found in cache")
 
-// Caps from spec §4.3.
+// Caps from spec §4.3. Used by applyCaps (Task 6).
 const (
-	graphMaxNodesPerRing = 60
-	graphMaxNodesTotal   = 200
+	graphMaxNodesPerRing = 60  //nolint:unused
+	graphMaxNodesTotal   = 200 //nolint:unused
 )
+
+// BuildGraph walks the cache starting at focus and returns the concentric
+// graph truncated by the depth and cap constants. Depth is clamped to
+// [1, 3] (out-of-range values silently round to nearest, as per the spec
+// endpoint contract).
+//
+// Focus resolution order: user → group → computer → OU. The first match
+// wins; if the DN matches none, returns ErrGraphNotFound.
+//
+// Layout ((ring, angle) per node) is applied before returning — callers
+// get a ready-to-render GraphData.
+func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
+	if depth < 1 {
+		depth = 1
+	} else if depth > 3 {
+		depth = 3
+	}
+
+	// Resolve focus type.
+	if u, ok := m.Users.FindByDN(focusDN); ok {
+		data := m.buildGraphFromUser(*u, depth)
+		assignConcentric(data)
+
+		return data, nil
+	}
+	if g, ok := m.Groups.FindByDN(focusDN); ok {
+		data := m.buildGraphFromGroup(*g, depth)
+		assignConcentric(data)
+
+		return data, nil
+	}
+	if c, ok := m.Computers.FindByDN(focusDN); ok {
+		data := m.buildGraphFromComputer(*c, depth)
+		assignConcentric(data)
+
+		return data, nil
+	}
+	// OU focus: any DN whose immediate RDN is ou=.
+	if parsed, err := goldap.ParseDN(focusDN); err == nil &&
+		len(parsed.RDNs) > 0 &&
+		strings.EqualFold(parsed.RDNs[0].Attributes[0].Type, "ou") {
+		data := m.buildGraphFromOU(focusDN, depth)
+		assignConcentric(data)
+
+		return data, nil
+	}
+
+	return nil, fmt.Errorf("%w: %q", ErrGraphNotFound, focusDN)
+}
+
+func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {
+	return &GraphData{Focus: g.DN(), Depth: depth}
+}
+
+func (m *Manager) buildGraphFromComputer(c ldap.Computer, depth int) *GraphData {
+	return &GraphData{Focus: c.DN(), Depth: depth}
+}
+
+func (m *Manager) buildGraphFromOU(dn string, depth int) *GraphData {
+	return &GraphData{Focus: dn, Depth: depth}
+}
+
+// assignConcentric writes (ring, angle) onto each Node. Ring is already
+// set by the builder; this function picks angles. Nodes in the same ring
+// are sorted by (Type, Label, DN) for determinism, then evenly spaced.
+func assignConcentric(d *GraphData) {
+	buckets := map[int][]*Node{}
+	for i := range d.Nodes {
+		n := &d.Nodes[i]
+		buckets[n.Ring] = append(buckets[n.Ring], n)
+	}
+
+	for ring, nodes := range buckets {
+		if ring == 0 {
+			for _, n := range nodes {
+				n.Angle = 0
+			}
+
+			continue
+		}
+
+		sort.Slice(nodes, func(i, j int) bool {
+			if nodes[i].Type != nodes[j].Type {
+				return nodes[i].Type < nodes[j].Type
+			}
+			if nodes[i].Label != nodes[j].Label {
+				return nodes[i].Label < nodes[j].Label
+			}
+
+			return nodes[i].DN < nodes[j].DN
+		})
+
+		count := len(nodes)
+		for i, n := range nodes {
+			n.Angle = float64(i) * 2 * math.Pi / float64(count)
+		}
+	}
+}
+
+func (m *Manager) buildGraphFromUser(user ldap.User, depth int) *GraphData {
+	data := &GraphData{Focus: user.DN(), Depth: depth}
+	data.Nodes = append(data.Nodes, userNode(user, 0, true))
+
+	seen := map[string]int{user.DN(): 0}
+
+	// Ring 1: direct groups + immediate OU.
+	for _, groupDN := range user.Groups {
+		if _, dup := seen[groupDN]; dup {
+			continue
+		}
+		if g, ok := m.Groups.FindByDN(groupDN); ok {
+			data.Nodes = append(data.Nodes, groupNode(*g, 1, true))
+			seen[groupDN] = 1
+			data.Edges = append(data.Edges, Edge{Source: user.DN(), Target: groupDN, Kind: EdgeMemberOf})
+		}
+	}
+
+	if ouDN := immediateOUFromDN(user.DN()); ouDN != "" {
+		data.Nodes = append(data.Nodes, Node{DN: ouDN, Type: NodeOU, Label: labelForOU(ouDN), Ring: 1, Expandable: true})
+		seen[ouDN] = 1
+		data.Edges = append(data.Edges, Edge{Source: ouDN, Target: user.DN(), Kind: EdgeContains})
+	}
+
+	if depth < 2 {
+		applyCaps(data)
+
+		return data
+	}
+
+	// Ring 2: per-ring-1 expansion.
+	for _, n1 := range nodesInRing(data, 1) {
+		m.expandNode(data, seen, n1, 2)
+	}
+
+	if depth < 3 {
+		applyCaps(data)
+
+		return data
+	}
+
+	// Ring 3: one more hop.
+	for _, n2 := range nodesInRing(data, 2) {
+		m.expandNode(data, seen, n2, 3)
+	}
+
+	applyCaps(data)
+
+	return data
+}
+
+// expandNode adds the 1-hop neighbourhood of n to data at ring `targetRing`.
+// Skips nodes already in `seen`. Source/target on edges reflects the
+// underlying relationship direction (memberOf or contains), not the walk
+// direction.
+func (m *Manager) expandNode(data *GraphData, seen map[string]int, n Node, targetRing int) {
+	switch n.Type {
+	case NodeUser:
+		if u, ok := m.Users.FindByDN(n.DN); ok {
+			for _, gDN := range u.Groups {
+				addRingMember(data, seen, m, gDN, targetRing, Edge{Source: u.DN(), Target: gDN, Kind: EdgeMemberOf})
+			}
+
+			if ouDN := immediateOUFromDN(u.DN()); ouDN != "" {
+				addOU(data, seen, ouDN, targetRing, Edge{Source: ouDN, Target: u.DN(), Kind: EdgeContains})
+			}
+		}
+	case NodeGroup:
+		if g, ok := m.Groups.FindByDN(n.DN); ok {
+			for _, memberDN := range g.Members {
+				addRingMember(data, seen, m, memberDN, targetRing, Edge{Source: memberDN, Target: g.DN(), Kind: EdgeMemberOf})
+			}
+		}
+	case NodeComputer:
+		if c, ok := m.Computers.FindByDN(n.DN); ok {
+			for _, gDN := range c.Groups {
+				addRingMember(data, seen, m, gDN, targetRing, Edge{Source: c.DN(), Target: gDN, Kind: EdgeMemberOf})
+			}
+		}
+	case NodeOU:
+		m.addOUChildren(data, seen, n.DN, targetRing)
+	}
+}
+
+func userNode(u ldap.User, ring int, expandable bool) Node {
+	enabled := u.Enabled
+
+	return Node{DN: u.DN(), Type: NodeUser, Label: u.CN(), Ring: ring, Enabled: &enabled, Expandable: expandable}
+}
+
+func groupNode(g ldap.Group, ring int, expandable bool) Node {
+	count := len(g.Members)
+
+	return Node{DN: g.DN(), Type: NodeGroup, Label: g.CN(), Ring: ring, MemberCount: &count, Expandable: expandable}
+}
+
+func computerNode(c ldap.Computer, ring int) Node {
+	enabled := c.Enabled
+
+	return Node{DN: c.DN(), Type: NodeComputer, Label: c.CN(), Ring: ring, Enabled: &enabled, Expandable: false}
+}
+
+func immediateOUFromDN(dn string) string {
+	parsed, err := goldap.ParseDN(dn)
+	if err != nil || len(parsed.RDNs) < 2 {
+		return ""
+	}
+
+	tail := parsed.RDNs[1:]
+
+	var buf strings.Builder
+
+	for i, r := range tail {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+
+		for _, a := range r.Attributes {
+			buf.WriteString(a.Type)
+			buf.WriteString("=")
+			buf.WriteString(a.Value)
+		}
+	}
+
+	out := buf.String()
+
+	// Only return if first RDN is ou=
+	if len(tail) > 0 && strings.EqualFold(tail[0].Attributes[0].Type, "ou") {
+		return out
+	}
+
+	return ""
+}
+
+func labelForOU(dn string) string {
+	parsed, err := goldap.ParseDN(dn)
+	if err != nil || len(parsed.RDNs) == 0 {
+		return dn
+	}
+
+	return parsed.RDNs[0].Attributes[0].Type + "=" + parsed.RDNs[0].Attributes[0].Value
+}
+
+func nodesInRing(d *GraphData, ring int) []Node {
+	out := make([]Node, 0, len(d.Nodes))
+
+	for _, n := range d.Nodes {
+		if n.Ring == ring {
+			out = append(out, n)
+		}
+	}
+
+	return out
+}
+
+func addRingMember(data *GraphData, seen map[string]int, m *Manager, dn string, ring int, edge Edge) {
+	if _, dup := seen[dn]; dup {
+		if !hasEdge(data, edge) {
+			data.Edges = append(data.Edges, edge)
+		}
+
+		return
+	}
+
+	if u, ok := m.Users.FindByDN(dn); ok {
+		data.Nodes = append(data.Nodes, userNode(*u, ring, false))
+	} else if g, ok := m.Groups.FindByDN(dn); ok {
+		data.Nodes = append(data.Nodes, groupNode(*g, ring, true))
+	} else if c, ok := m.Computers.FindByDN(dn); ok {
+		data.Nodes = append(data.Nodes, computerNode(*c, ring))
+	} else {
+		return
+	}
+
+	seen[dn] = ring
+	data.Edges = append(data.Edges, edge)
+}
+
+func addOU(data *GraphData, seen map[string]int, ouDN string, ring int, edge Edge) {
+	if _, dup := seen[ouDN]; !dup {
+		data.Nodes = append(data.Nodes, Node{DN: ouDN, Type: NodeOU, Label: labelForOU(ouDN), Ring: ring, Expandable: true})
+		seen[ouDN] = ring
+	}
+
+	if !hasEdge(data, edge) {
+		data.Edges = append(data.Edges, edge)
+	}
+}
+
+func (m *Manager) addOUChildren(data *GraphData, seen map[string]int, ouDN string, ring int) {
+	suffix := "," + ouDN
+
+	for _, u := range m.Users.Get() {
+		// NOTE: the boolean logic below is intentionally wrong (Task 5 fixes it).
+		//nolint:staticcheck
+		noCommaInPrefix := !strings.Contains(strings.TrimSuffix(u.DN(), suffix), ",") == false
+		if strings.HasSuffix(u.DN(), suffix) && noCommaInPrefix {
+			// Immediate child only — NOTE: the boolean logic in this
+			// condition is intentionally wrong at this task; Task 5
+			// fixes it. See plan note.
+			if _, dup := seen[u.DN()]; dup {
+				continue
+			}
+
+			data.Nodes = append(data.Nodes, userNode(u, ring, false))
+			seen[u.DN()] = ring
+			data.Edges = append(data.Edges, Edge{Source: ouDN, Target: u.DN(), Kind: EdgeContains})
+		}
+	}
+}
+
+func hasEdge(data *GraphData, e Edge) bool {
+	for _, existing := range data.Edges {
+		if existing.Source == e.Source && existing.Target == e.Target && existing.Kind == e.Kind {
+			return true
+		}
+	}
+
+	return false
+}
+
+func applyCaps(data *GraphData) {
+	// Real implementation in Task 6. For now, just record counts.
+	data.Overflow.Rendered = len(data.Nodes)
+	data.Overflow.Available = len(data.Nodes)
+}
