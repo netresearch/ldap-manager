@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"testing"
+	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 )
@@ -320,6 +321,35 @@ func TestAssignConcentric_Deterministic(t *testing.T) {
 		if data1.Nodes[i].Angle != data2.Nodes[i].Angle {
 			t.Errorf("node[%d] angle differs: %f vs %f", i, data1.Nodes[i].Angle, data2.Nodes[i].Angle)
 		}
+	}
+}
+
+func TestBuildGraph_CycleSafe(t *testing.T) {
+	manager := New(&mockLDAPClient{})
+	manager.Groups.setAll([]ldap.Group{
+		newGroupWithDN("cn=A,ou=Groups,dc=ex,dc=com", "A", []string{"cn=B,ou=Groups,dc=ex,dc=com"}),
+		newGroupWithDN("cn=B,ou=Groups,dc=ex,dc=com", "B", []string{"cn=A,ou=Groups,dc=ex,dc=com"}),
+	})
+
+	var data *GraphData
+
+	done := make(chan struct{})
+	go func() {
+		data, _ = manager.BuildGraph("cn=A,ou=Groups,dc=ex,dc=com", 3)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		if data == nil {
+			t.Fatal("BuildGraph returned nil graph")
+		}
+
+		if len(data.Nodes) < 2 {
+			t.Errorf("expected at least 2 nodes (A, B), got %d", len(data.Nodes))
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("BuildGraph cycled forever")
 	}
 }
 
