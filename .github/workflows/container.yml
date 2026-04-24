@@ -61,6 +61,10 @@ jobs:
 
         echo "::group::install templ + generate"
         go install github.com/a-h/templ/cmd/templ@latest
+        # `go install` drops binaries into $(go env GOPATH)/bin, which is
+        # not on PATH for the ad-hoc bash shell the reusable
+        # build-container.yml spawns for pre-build-command. Add it.
+        export PATH="$(go env GOPATH)/bin:${PATH}"
         templ generate
         echo "::endgroup::"
 
