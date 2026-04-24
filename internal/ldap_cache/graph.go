@@ -83,8 +83,8 @@ var ErrGraphNotFound = errors.New("graph: focus DN not found in cache")
 
 // Caps from spec §4.3. Used by applyCaps (Task 6).
 const (
-	graphMaxNodesPerRing = 60  //nolint:unused
-	graphMaxNodesTotal   = 200 //nolint:unused
+	graphMaxNodesPerRing = 60
+	graphMaxNodesTotal   = 200
 )
 
 // BuildGraph walks the cache starting at focus and returns the concentric
@@ -519,7 +519,73 @@ func hasEdge(data *GraphData, e Edge) bool {
 }
 
 func applyCaps(data *GraphData) {
-	// Real implementation in Task 6. For now, just record counts.
-	data.Overflow.Rendered = len(data.Nodes)
-	data.Overflow.Available = len(data.Nodes)
+	available := len(data.Nodes)
+
+	// Per-ring cap: sort within each ring by (Type, Label, DN) and drop
+	// beyond graphMaxNodesPerRing. Record overflow.
+	buckets := map[int][]Node{}
+	for _, n := range data.Nodes {
+		buckets[n.Ring] = append(buckets[n.Ring], n)
+	}
+
+	truncated := false
+	kept := make([]Node, 0, len(data.Nodes))
+
+	for ring := 0; ring <= 3; ring++ {
+		b, ok := buckets[ring]
+		if !ok {
+			continue
+		}
+
+		sort.Slice(b, func(i, j int) bool {
+			if b[i].Type != b[j].Type {
+				return b[i].Type < b[j].Type
+			}
+			if b[i].Label != b[j].Label {
+				return b[i].Label < b[j].Label
+			}
+
+			return b[i].DN < b[j].DN
+		})
+
+		ringCap := graphMaxNodesPerRing
+		if ring == 0 {
+			ringCap = 1
+		}
+
+		if len(b) > ringCap {
+			truncated = true
+			b = b[:ringCap]
+		}
+
+		kept = append(kept, b...)
+	}
+
+	// Total cap: trim the tail until we're within the total budget.
+	if len(kept) > graphMaxNodesTotal {
+		truncated = true
+		kept = kept[:graphMaxNodesTotal]
+	}
+
+	// Drop edges whose endpoints didn't survive the cap.
+	keptDN := make(map[string]bool, len(kept))
+	for _, n := range kept {
+		keptDN[n.DN] = true
+	}
+
+	filteredEdges := make([]Edge, 0, len(data.Edges))
+
+	for _, e := range data.Edges {
+		if keptDN[e.Source] && keptDN[e.Target] {
+			filteredEdges = append(filteredEdges, e)
+		}
+	}
+
+	data.Nodes = kept
+	data.Edges = filteredEdges
+	data.Overflow = Overflow{
+		Truncated: truncated,
+		Rendered:  len(kept),
+		Available: available,
+	}
 }

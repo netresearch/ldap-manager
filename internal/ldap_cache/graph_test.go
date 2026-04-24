@@ -1,6 +1,7 @@
 package ldap_cache
 
 import (
+	"fmt"
 	"testing"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -232,6 +233,73 @@ func TestBuildGraph_OUFocus_ComputersBranch(t *testing.T) {
 
 		if e.Source == e.Target {
 			t.Errorf("self-loop edge: %+v", e)
+		}
+	}
+}
+
+func TestBuildGraph_PerRingCap(t *testing.T) {
+	// Seed 100 users in one group; expect the ring-1 cap to trim to 60.
+	manager := New(&mockLDAPClient{})
+
+	users := make([]ldap.User, 100)
+	userDNs := make([]string, 100)
+
+	for i := range users {
+		dn := fmt.Sprintf("cn=u%03d,ou=Users,dc=ex,dc=com", i)
+		users[i] = newUserWithDN(dn, fmt.Sprintf("u%03d", i), fmt.Sprintf("u%d", i), true,
+			[]string{"cn=big,ou=Groups,dc=ex,dc=com"})
+		userDNs[i] = dn
+	}
+
+	manager.Users.setAll(users)
+	manager.Groups.setAll([]ldap.Group{
+		newGroupWithDN("cn=big,ou=Groups,dc=ex,dc=com", "big", userDNs),
+	})
+
+	data, err := manager.BuildGraph("cn=big,ou=Groups,dc=ex,dc=com", 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+
+	ring1 := 0
+
+	for _, n := range data.Nodes {
+		if n.Ring == 1 {
+			ring1++
+		}
+	}
+
+	if ring1 != graphMaxNodesPerRing {
+		t.Errorf("ring-1 size: got %d, want %d", ring1, graphMaxNodesPerRing)
+	}
+
+	if !data.Overflow.Truncated {
+		t.Error("Overflow.Truncated should be true")
+	}
+
+	if data.Overflow.Available < 100 {
+		t.Errorf("Overflow.Available: got %d, want >= 100", data.Overflow.Available)
+	}
+
+	// Rendered must equal the surviving node count exactly.
+	if data.Overflow.Rendered != len(data.Nodes) {
+		t.Errorf("Overflow.Rendered: got %d, want %d (len(data.Nodes))",
+			data.Overflow.Rendered, len(data.Nodes))
+	}
+
+	// Every surviving edge must reference only surviving nodes.
+	kept := make(map[string]bool, len(data.Nodes))
+	for _, n := range data.Nodes {
+		kept[n.DN] = true
+	}
+
+	for _, e := range data.Edges {
+		if !kept[e.Source] {
+			t.Errorf("edge source %q refers to dropped node: %+v", e.Source, e)
+		}
+
+		if !kept[e.Target] {
+			t.Errorf("edge target %q refers to dropped node: %+v", e.Target, e)
 		}
 	}
 }
