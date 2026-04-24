@@ -23,9 +23,13 @@ type groupModifyForm struct {
 	RemoveChild *string `form:"removechild"`
 }
 
-// groupModifyHandler applies an add/remove-user action and redirects back to
-// the V2 group detail page. Flash messages from the legacy V1 template have
-// been dropped; failures are logged and surfaced via the server log.
+// groupModifyHandler applies an add/remove-user / add/remove-child /
+// add-parent action. On success with HX-Request it re-renders the drawer
+// fragment so the updated membership shows inline; on failure the same
+// fragment carries vm.FlashError so the drawer surfaces the humanised
+// LDAP error banner (drawer__flash--error). Non-HX requests redirect
+// to the V2 group detail page without a UI flash — the failure is still
+// captured in the server log.
 //
 //nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
 func (a *App) groupModifyHandler(c *fiber.Ctx) error {
