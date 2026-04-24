@@ -23,14 +23,15 @@ func (a *App) handleUnpin(c *fiber.Ctx) error { return a.togglePin(c, false) }
 // add=false unpins. On HX-Request, the response body is the updated
 // pin-star form so the star glyph flips inline without a reload.
 func (a *App) togglePin(c *fiber.Ctx, add bool) error {
-	sess, err := a.sessionStore.Get(c)
-	if err != nil {
-		return handle500(c, err)
-	}
-
-	userDN, _ := sess.Get("dn").(string)
-	if userDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+	// Use resolveViewerDN rather than reading the session "dn" directly:
+	// after CSRF middleware rotates the session cookie on a failed token,
+	// Fiber produces a FRESH session that drops "dn" — but RequireAuth has
+	// already populated c.Locals("userDN") from the still-valid original
+	// request. Reading the session alone therefore spuriously redirects
+	// authenticated POSTs to /login.
+	userDN, handled, res := a.resolveViewerDN(c)
+	if handled {
+		return res
 	}
 
 	target := c.FormValue("target")
@@ -52,7 +53,7 @@ func (a *App) togglePin(c *fiber.Ctx, add bool) error {
 		}
 	}
 
-	// htmx rountrip: swap in the updated fragment so the UI reflects the
+	// htmx roundtrip: swap in the updated fragment so the UI reflects the
 	// new state without a full page reload.
 	if c.Get("HX-Request") == "true" {
 		c.Set(fiber.HeaderContentType, "text/html; charset=utf-8")
