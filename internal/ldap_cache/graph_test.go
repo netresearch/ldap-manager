@@ -36,6 +36,11 @@ func graphFixture(t *testing.T) *Manager {
 			"cn=engineers,ou=Groups,dc=ex,dc=com",
 		}),
 	})
+	manager.Computers.setAll([]ldap.Computer{
+		newComputerWithDN("cn=ws01,ou=Computers,dc=ex,dc=com", "ws01", "ws01$", true, []string{
+			"cn=engineers,ou=Groups,dc=ex,dc=com",
+		}),
+	})
 
 	return manager
 }
@@ -125,5 +130,37 @@ func TestBuildGraph_GroupFocus_Depth1(t *testing.T) {
 
 	if !foundParent {
 		t.Errorf("missing engineers→all-staff memberOf edge")
+	}
+}
+
+func TestBuildGraph_ComputerFocus_Depth1(t *testing.T) {
+	m := graphFixture(t)
+	data, err := m.BuildGraph("cn=ws01,ou=Computers,dc=ex,dc=com", 1)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	// Expect: ws01 (ring 0) + engineers (ring 1) + ou=Computers (ring 1) = 3
+	if got := len(data.Nodes); got != 3 {
+		t.Errorf("node count: got %d, want 3", got)
+	}
+	// Expect 2 edges: ws01→engineers (memberOf), ou=Computers→ws01 (contains).
+	if got := len(data.Edges); got != 2 {
+		t.Errorf("edge count: got %d, want 2", got)
+	}
+
+	ws01DN := "cn=ws01,ou=Computers,dc=ex,dc=com"
+	ouDN := "ou=Computers,dc=ex,dc=com"
+
+	for _, e := range data.Edges {
+		switch {
+		case e.Source == ws01DN && e.Kind != EdgeMemberOf:
+			t.Errorf("edge from ws01 expected EdgeMemberOf, got %q: %+v", e.Kind, e)
+		case e.Source == ouDN && e.Kind != EdgeContains:
+			t.Errorf("edge from OU expected EdgeContains, got %q: %+v", e.Kind, e)
+		}
+
+		if e.Source == e.Target {
+			t.Errorf("self-loop edge: %+v", e)
+		}
 	}
 }

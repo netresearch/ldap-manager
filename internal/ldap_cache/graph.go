@@ -180,7 +180,40 @@ func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {
 }
 
 func (m *Manager) buildGraphFromComputer(c ldap.Computer, depth int) *GraphData {
-	return &GraphData{Focus: c.DN(), Depth: depth}
+	data := &GraphData{Focus: c.DN(), Depth: depth}
+	data.Nodes = append(data.Nodes, computerNode(c, 0))
+	seen := map[string]int{c.DN(): 0}
+
+	for _, gDN := range c.Groups {
+		if g, ok := m.Groups.FindByDN(gDN); ok {
+			if _, dup := seen[gDN]; !dup {
+				data.Nodes = append(data.Nodes, groupNode(*g, 1, true))
+				seen[gDN] = 1
+			}
+
+			data.Edges = append(data.Edges, Edge{Source: c.DN(), Target: gDN, Kind: EdgeMemberOf})
+		}
+	}
+
+	if ouDN := immediateOUFromDN(c.DN()); ouDN != "" {
+		addOU(data, seen, ouDN, 1, Edge{Source: ouDN, Target: c.DN(), Kind: EdgeContains})
+	}
+
+	if depth >= 2 {
+		for _, n := range nodesInRing(data, 1) {
+			m.expandNode(data, seen, n, 2)
+		}
+	}
+
+	if depth >= 3 {
+		for _, n := range nodesInRing(data, 2) {
+			m.expandNode(data, seen, n, 3)
+		}
+	}
+
+	applyCaps(data)
+
+	return data
 }
 
 func (m *Manager) buildGraphFromOU(dn string, depth int) *GraphData {
