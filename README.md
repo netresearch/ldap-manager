@@ -169,6 +169,8 @@ LDAP Manager's login page conforms to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) 
 
 Conformance is enforced in CI by a contrast unit test (`internal/web/contrast_test.go`) and an axe-core AAA pass on every E2E run (`internal/e2e/axe_test.go`). Additional routes will be brought under the same guarantee as they migrate in subsequent slices.
 
+The relationship graph view at `/graph` (and the `List | Graph` mode toggle on the user, group, and computer list pages) meets WCAG 2.2 Level AA. An equivalent flat edge table is always rendered below the visual canvas, providing an AAA-equivalent text alternative for every interaction and relationship the canvas displays. The graph pages are covered by the same axe-core ratchet (`internal/e2e/axe_graph_test.go`).
+
 ## Contributing
 
 Contributions welcome! Please open a Pull Request.
