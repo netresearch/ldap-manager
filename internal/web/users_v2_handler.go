@@ -102,16 +102,27 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 	sortUsersByCN(users)
 
-	currentView := c.Query("view")
+	currentView := pickView(c)
 	if a.ldapCache == nil {
-		currentView = ""
+		// Cache-less mode can't render graph or table — they need cache lookups
+		// for membership and the list filters. Force list view, but DON'T
+		// rewrite the cookie; if the user re-enables the service account,
+		// their previous preference returns.
+		currentView = "list"
 	}
 
-	if currentView == "graph" && a.ldapCache != nil {
+	if currentView == "graph" {
 		data := a.ldapCache.BuildListGraph(users, nil)
 		vm := templates.GraphPageVM{Data: data, BackHref: "/users", FocusLabel: "Users"}
 
 		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
+	if currentView == "table" {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.UsersListTableV2(users, currentView, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)

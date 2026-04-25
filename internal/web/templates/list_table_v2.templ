@@ -1,0 +1,151 @@
+// internal/web/templates/list_table_v2.templ — full-width "Table"
+// view for /users, /groups, /computers. Companion to UsersListV2 /
+// GroupsListV2 / ComputersListV2 (List view) and GraphPageV2 (Graph
+// view). The third option in the segmented toggle.
+//
+// Goal: scan many rows fast. No filter rail, no drawer. Each row links
+// directly to the entity's detail page — clicking goes "all the way",
+// not into a side pane.
+package templates
+
+import (
+	"fmt"
+
+	ldap "github.com/netresearch/simple-ldap-go"
+)
+
+// UsersListTableV2 renders the full-width users table.
+templ UsersListTableV2(users []ldap.User, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+	@baseV2PageScroll("Users — Table") {
+		@topnavV2("/users")
+		<main id="main-content" class="list-table-page">
+			<header class="list-page__head">
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Users</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d users", len(users)) }</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/users", currentView, "")
+				</div>
+			</header>
+			@listFlashes(flashes)
+			<table class="list-table">
+				<thead>
+					<tr>
+						<th scope="col">CN</th>
+						<th scope="col">SAM account</th>
+						<th scope="col">Mail</th>
+						<th scope="col">Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, u := range users {
+						<tr>
+							<td><a class="list-table__link" href={ userDetailHref(u) }>{ u.CN() }</a></td>
+							<td>{ u.SAMAccountName }</td>
+							<td>{ derefString(u.Mail) }</td>
+							<td>{ userStatusLabel(u) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			@paletteV2WithPinned(palettePinned)
+		</main>
+	}
+}
+
+// GroupsListTableV2 renders the full-width groups table.
+templ GroupsListTableV2(groups []ldap.Group, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+	@baseV2PageScroll("Groups — Table") {
+		@topnavV2("/groups")
+		<main id="main-content" class="list-table-page">
+			<header class="list-page__head">
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Groups</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d groups", len(groups)) }</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/groups", currentView, "")
+				</div>
+			</header>
+			@listFlashes(flashes)
+			<table class="list-table">
+				<thead>
+					<tr>
+						<th scope="col">CN</th>
+						<th scope="col">Members</th>
+						<th scope="col">DN</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, g := range groups {
+						<tr>
+							<td><a class="list-table__link" href={ groupDetailHref(g) }>{ g.CN() }</a></td>
+							<td class="list-table__num">{ fmt.Sprintf("%d", len(g.Members)) }</td>
+							<td class="list-table__dn">{ g.DN() }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			@paletteV2WithPinned(palettePinned)
+		</main>
+	}
+}
+
+// ComputersListTableV2 renders the full-width computers table.
+templ ComputersListTableV2(computers []ldap.Computer, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+	@baseV2PageScroll("Computers — Table") {
+		@topnavV2("/computers")
+		<main id="main-content" class="list-table-page">
+			<header class="list-page__head">
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Computers</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d computers", len(computers)) }</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/computers", currentView, "")
+				</div>
+			</header>
+			@listFlashes(flashes)
+			<table class="list-table">
+				<thead>
+					<tr>
+						<th scope="col">CN</th>
+						<th scope="col">SAM account</th>
+						<th scope="col">Status</th>
+						<th scope="col">DN</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, c := range computers {
+						<tr>
+							<td><a class="list-table__link" href={ computerDetailHref(c) }>{ c.CN() }</a></td>
+							<td>{ c.SAMAccountName }</td>
+							<td>{ computerStatusLabel(c) }</td>
+							<td class="list-table__dn">{ c.DN() }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			@paletteV2WithPinned(palettePinned)
+		</main>
+	}
+}
+
+// userStatusLabel — "Enabled" / "Disabled" cell content.
+func userStatusLabel(u ldap.User) string {
+	if u.Enabled {
+		return "Enabled"
+	}
+
+	return "Disabled"
+}
+
+// computerStatusLabel — "Enabled" / "Disabled" cell content.
+func computerStatusLabel(c ldap.Computer) string {
+	if c.Enabled {
+		return "Enabled"
+	}
+
+	return "Disabled"
+}
