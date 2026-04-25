@@ -37,12 +37,21 @@ templ GraphPageV2(vm GraphPageVM) {
 	@baseV2PageScroll(graphTitle(vm)) {
 		@topnavV2("/graph")
 		<main id="main-content" class="graph-page">
-			<header class="graph-page__head">
-				<h1 class="graph-page__title">{ graphTitle(vm) }</h1>
-				if vm.BackHref != "" {
-					@listGraphToggle(vm.BackHref, "graph", "")
-				}
-				@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
+			<header class="list-page__head">
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">{ graphTitle(vm) }</h1>
+					if vm.Data.Overflow.Truncated {
+						<p class="list-page__count">
+							{ fmt.Sprintf("%d of %d", vm.Data.Overflow.Rendered, vm.Data.Overflow.Available) }
+						</p>
+					}
+				</div>
+				<div class="list-page__head-controls">
+					@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
+					if vm.BackHref != "" {
+						@listGraphToggle(vm.BackHref, "graph", "")
+					}
+				</div>
 			</header>
 			if vm.Data.Overflow.Truncated {
 				<p class="graph-page__overflow" role="status">

@@ -28,9 +28,13 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 
 		<main id="main-content" class="list-page" data-bulk-scope="computers">
 			<header class="list-page__head">
-				<h1 class="list-page__title">Computers</h1>
-				<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
-				@listGraphToggle("/computers", currentView, computersFilterQS(ouFilter))
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Computers</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/computers", currentView, computersFilterQS(ouFilter))
+				</div>
 			</header>
 
 			@listFlashes(flashes)
