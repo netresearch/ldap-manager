@@ -181,8 +181,170 @@
       }
     });
   }
-  function wireNodeClicks(_svg, _state) {
-    /* Task 26 */
+  function wireNodeClicks(svg, state) {
+    svg.addEventListener("click", function (e) {
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      var dn = node.getAttribute("data-dn");
+      var type = node.getAttribute("data-type");
+      var expandable = node.getAttribute("data-expandable") === "true";
+      var clickedBadge = !!e.target.closest(".graph-node__expand-badge");
+
+      if (expandable && clickedBadge) {
+        expandNode(dn, state, svg);
+      } else {
+        pivotToDrawer(dn, type);
+      }
+    });
+    svg.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      var dn = node.getAttribute("data-dn");
+      var type = node.getAttribute("data-type");
+      var expandable = node.getAttribute("data-expandable") === "true";
+      e.preventDefault();
+      if (expandable) expandNode(dn, state, svg);
+      else pivotToDrawer(dn, type);
+    });
+  }
+
+  function pivotToDrawer(dn, type) {
+    var base = {
+      user: "/users/",
+      group: "/groups/",
+      computer: "/computers/",
+      ou: "/users?ou=",
+    }[type];
+    if (!base) return;
+    window.location.href = base + encodeURIComponent(dn);
+  }
+
+  // announce updates the off-screen aria-live region so SR users hear
+  // expansion results. Clear-then-set forces re-announcement when the
+  // same message fires twice.
+  function announce(msg) {
+    var el = document.getElementById("graph-announce");
+    if (el) {
+      el.textContent = "";
+      setTimeout(function () {
+        el.textContent = msg;
+      }, 10);
+    }
+  }
+
+  function expandNode(dn, state, svg) {
+    var url =
+      "/api/graph.json?entity=" + encodeURIComponent(dn) + "&depth=1";
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        var added = 0;
+        var existingDNs = {};
+        state.nodes.forEach(function (n) {
+          existingDNs[n.dn] = true;
+        });
+        data.nodes.forEach(function (n) {
+          if (existingDNs[n.dn]) return;
+          var parent = state.nodes.find(function (x) {
+            return x.dn === dn;
+          });
+          n.ring = (parent && parent.ring + 1) || 2;
+          state.nodes.push(n);
+          renderNode(svg, n);
+          added++;
+        });
+        data.edges.forEach(function (e) {
+          var dup = state.edges.some(function (x) {
+            return (
+              x.source === e.source &&
+              x.target === e.target &&
+              x.kind === e.kind
+            );
+          });
+          if (!dup) {
+            state.edges.push(e);
+            renderEdge(svg, e, state.nodes);
+          }
+        });
+        // Mark clicked node as non-expandable so a subsequent click
+        // pivots to the drawer instead of re-fetching.
+        var el = svg.querySelector(
+          '.graph-node[data-dn="' + CSS.escape(dn) + '"]',
+        );
+        if (el) {
+          el.setAttribute("data-expandable", "false");
+          var badge = el.querySelector(".graph-node__expand-badge");
+          if (badge) badge.remove();
+        }
+        announce("Expanded " + dn + ": added " + added + " nodes.");
+      });
+  }
+
+  function renderNode(svg, n) {
+    var ns = "http://www.w3.org/2000/svg";
+    var viewport = svg.querySelector(".graph-viewport");
+    // Match the SSR concentricXY radius multiplier (graph_v2.templ
+    // uses 150 so ring-3 nodes — including the 28-radius disc and
+    // expand-badge — fit inside the ±500 viewBox).
+    var r = n.ring * 150;
+    var x = r * Math.cos(n.angle),
+      y = r * Math.sin(n.angle);
+    var g = document.createElementNS(ns, "g");
+    g.setAttribute(
+      "class",
+      "graph-node graph-node--" + n.type + " graph-node--added",
+    );
+    g.setAttribute("transform", "translate(" + x + "," + y + ")");
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("role", "button");
+    g.setAttribute("data-dn", n.dn);
+    g.setAttribute("data-type", n.type);
+    g.setAttribute("data-expandable", String(!!n.expandable));
+    // Match activateNodes() so newly inserted nodes get the same
+    // accessible affordance the SSR-rendered ones receive.
+    g.setAttribute(
+      "aria-label",
+      (n.label || n.dn) + ". Press Enter to open.",
+    );
+    var circ = document.createElementNS(ns, "circle");
+    circ.setAttribute("r", "28");
+    circ.setAttribute("class", "graph-node__disc");
+    g.appendChild(circ);
+    var text = document.createElementNS(ns, "text");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("y", "4");
+    text.setAttribute("class", "graph-node__label");
+    text.textContent = n.label;
+    g.appendChild(text);
+    viewport.appendChild(g);
+  }
+
+  function renderEdge(svg, e, nodes) {
+    var ns = "http://www.w3.org/2000/svg";
+    var viewport = svg.querySelector(".graph-viewport");
+    function xy(dn) {
+      var n = nodes.find(function (x) {
+        return x.dn === dn;
+      });
+      if (!n) return [0, 0];
+      var r = n.ring * 150;
+      return [r * Math.cos(n.angle), r * Math.sin(n.angle)];
+    }
+    var s = xy(e.source),
+      t = xy(e.target);
+    var line = document.createElementNS(ns, "line");
+    line.setAttribute("class", "graph-edge graph-edge--" + e.kind);
+    line.setAttribute("x1", s[0]);
+    line.setAttribute("y1", s[1]);
+    line.setAttribute("x2", t[0]);
+    line.setAttribute("y2", t[1]);
+    line.setAttribute("data-source", e.source);
+    line.setAttribute("data-target", e.target);
+    // Insert at the front so the edge sits behind nodes in z-order.
+    viewport.insertBefore(line, viewport.firstChild);
   }
   function wireDepthSlider() {
     /* Task 27 */
