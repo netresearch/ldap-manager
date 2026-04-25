@@ -316,14 +316,20 @@ func (m *Manager) Refresh() {
 // FindUsers returns all cached users, optionally filtering out disabled users.
 // When showDisabled is true, returns all users including disabled ones.
 // When false, returns only enabled users. Uses efficient filtering on cached data.
+//
+// Also excludes any DN present in the Computers cache. Active Directory's
+// `objectClass=user` filter matches computer accounts too (computers inherit
+// from user in the AD schema), and simple-ldap-go's FindUsers uses that
+// broad filter. Without this exclusion the /users list shows machine
+// accounts alongside real users on AD-backed deployments.
 func (m *Manager) FindUsers(showDisabled bool) []ldap.User {
-	if !showDisabled {
-		return m.Users.Filter(func(u ldap.User) bool {
-			return u.Enabled
-		})
-	}
+	return m.Users.Filter(func(u ldap.User) bool {
+		if _, isComputer := m.Computers.FindByDN(u.DN()); isComputer {
+			return false
+		}
 
-	return m.Users.Get()
+		return showDisabled || u.Enabled
+	})
 }
 
 // FindUserByDN finds a user by their Distinguished Name (DN) in the cache.
