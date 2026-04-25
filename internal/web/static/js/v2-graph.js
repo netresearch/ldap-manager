@@ -238,6 +238,11 @@
       "/api/graph.json?entity=" + encodeURIComponent(dn) + "&depth=1";
     fetch(url, { credentials: "same-origin" })
       .then(function (r) {
+        // Surface non-2xx (401 redirect to login, 404 missing entity,
+        // 500 server error) as thrown errors so the .catch below can
+        // announce them — otherwise r.json() would parse the HTML
+        // error body and throw a confusing SyntaxError instead.
+        if (!r.ok) throw new Error("graph expand HTTP " + r.status);
         return r.json();
       })
       .then(function (data) {
@@ -280,6 +285,12 @@
           if (badge) badge.remove();
         }
         announce("Expanded " + dn + ": added " + added + " nodes.");
+      })
+      .catch(function (err) {
+        // Without this the badge stays clickable forever and SR users
+        // hear nothing. Trace + announce so the operator can retry.
+        console.error("graph expand failed", err);
+        announce("Expand failed.");
       });
   }
 
@@ -319,6 +330,27 @@
     text.setAttribute("class", "graph-node__label");
     text.textContent = n.label;
     g.appendChild(text);
+    // Mirror the SSR template's expand-badge (graph_v2.templ graphNode):
+    // without it, freshly-fetched expandable children can be pivoted but
+    // never further expanded by mouse — wireNodeClicks requires a click
+    // on .graph-node__expand-badge to trigger expansion.
+    if (n.expandable) {
+      var badge = document.createElementNS(ns, "g");
+      badge.setAttribute("class", "graph-node__expand-badge");
+      badge.setAttribute("transform", "translate(18,-18)");
+      badge.setAttribute("aria-hidden", "true");
+      var bbg = document.createElementNS(ns, "circle");
+      bbg.setAttribute("r", "8");
+      bbg.setAttribute("class", "graph-node__expand-badge-bg");
+      badge.appendChild(bbg);
+      var bmark = document.createElementNS(ns, "text");
+      bmark.setAttribute("text-anchor", "middle");
+      bmark.setAttribute("y", "3");
+      bmark.setAttribute("class", "graph-node__expand-badge-mark");
+      bmark.textContent = "+";
+      badge.appendChild(bmark);
+      g.appendChild(badge);
+    }
     viewport.appendChild(g);
   }
 
