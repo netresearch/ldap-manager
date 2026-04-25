@@ -10,16 +10,16 @@ import "strings"
 // `filters` is the URL-encoded query string of OTHER filters to preserve
 // (without leading "?", without view=…). Both branches preserve filters.
 templ listGraphToggle(base, currentView, filters string) {
-	<nav class="graph-segmented" role="group" aria-label="List or graph view">
+	<nav class="graph-segmented" aria-label="List or graph view">
 		<a
 			class={ "graph-segmented__option", toggleClass(currentView, "") }
 			href={ templ.URL(buildToggleHref(base, "", filters)) }
-			aria-pressed={ toggleAriaPressed(currentView, "") }
+			aria-current={ toggleAriaCurrent(currentView, "") }
 		>List</a>
 		<a
 			class={ "graph-segmented__option", toggleClass(currentView, "graph") }
 			href={ templ.URL(buildToggleHref(base, "graph", filters)) }
-			aria-pressed={ toggleAriaPressed(currentView, "graph") }
+			aria-current={ toggleAriaCurrent(currentView, "graph") }
 		>Graph</a>
 	</nav>
 }
@@ -35,11 +35,15 @@ func toggleClass(current, target string) string {
 	return ""
 }
 
-// toggleAriaPressed mirrors toggleClass for the aria-pressed attribute so
-// assistive tech announces which segment is currently selected.
-func toggleAriaPressed(current, target string) string {
+// toggleAriaCurrent returns "page" when the link points at the active
+// view, "false" otherwise. aria-current is the WAI-ARIA attribute for
+// links representing the current location (aria-pressed is reserved for
+// role="button"). Per WAI-ARIA 1.2, aria-current="false" is the explicit
+// "not current" value, equivalent to omitting the attribute — we render
+// it explicitly to keep templ's positional attribute output predictable.
+func toggleAriaCurrent(current, target string) string {
 	if current == target {
-		return "true"
+		return "page"
 	}
 
 	return "false"
