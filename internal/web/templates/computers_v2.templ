@@ -22,7 +22,7 @@ type ComputerDrawerVM struct {
 	IsAD        bool   // true when backend is Active Directory — gates the Disable button (which also requires Computer.Enabled)
 }
 
-templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry) {
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry, currentView string) {
 	@baseV2("Computers") {
 		@topnavV2("/computers")
 
@@ -30,6 +30,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 			<header class="list-page__head">
 				<h1 class="list-page__title">Computers</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
+				@listGraphToggle("/computers", currentView, computersFilterQS(ouFilter))
 			</header>
 
 			@listFlashes(flashes)
@@ -380,6 +381,19 @@ func computerDrawerFragmentHref(cp ldap.Computer) string {
 
 func clearComputersOUHref() templ.SafeURL {
 	return templ.URL("/computers")
+}
+
+// computersFilterQS encodes the active /computers filter combination as a
+// bare query string (no leading "?", no view selector). Used by the
+// listGraphToggle to preserve filters when switching between
+// list / graph segments.
+func computersFilterQS(ouFilter string) string {
+	v := url.Values{}
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	return v.Encode()
 }
 
 // computerOUHref maps an OU value to a /computers URL for the OU rail. An

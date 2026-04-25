@@ -29,7 +29,7 @@ type UserDrawerVM struct {
 	IsAD             bool         // true when the backend is Active Directory — gates the Disable button (which also requires User.Enabled) since OpenLDAP has no portable disable mechanism
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}, currentView string) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
@@ -37,6 +37,7 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 			<header class="list-page__head">
 				<h1 class="list-page__title">Users</h1>
 				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
+				@listGraphToggle("/users", currentView, usersFilterQS(showDisabled, ouFilter, lastLogon, memberOfDN))
 			</header>
 
 			@listFlashes(flashes)
@@ -735,6 +736,31 @@ func userOUHrefFactory(showDisabled bool, lastLogon, memberOfDN string) ouHref {
 	return func(value string) templ.SafeURL {
 		return usersFilterHref(showDisabled, value, lastLogon, memberOfDN)
 	}
+}
+
+// usersFilterQS encodes the active /users filter combination as a bare
+// query string (no leading "?", no view selector). Used by the
+// listGraphToggle to preserve filters when switching between
+// list / graph segments.
+func usersFilterQS(showDisabled bool, ouFilter, lastLogon, memberOfDN string) string {
+	v := url.Values{}
+	if showDisabled {
+		v.Set("show-disabled", "1")
+	}
+
+	if ouFilter != "" {
+		v.Set("ou", ouFilter)
+	}
+
+	if lastLogon != "" {
+		v.Set("last-logon", lastLogon)
+	}
+
+	if memberOfDN != "" {
+		v.Set("memberOf", memberOfDN)
+	}
+
+	return v.Encode()
 }
 
 // usersFilterHref composes a /users URL with the supplied combination of

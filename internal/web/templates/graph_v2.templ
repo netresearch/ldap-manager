@@ -39,6 +39,9 @@ templ GraphPageV2(vm GraphPageVM) {
 		<main id="main-content" class="graph-page">
 			<header class="graph-page__head">
 				<h1 class="graph-page__title">{ graphTitle(vm) }</h1>
+				if vm.BackHref != "" {
+					@listGraphToggle(vm.BackHref, "graph", "")
+				}
 				@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
 			</header>
 			if vm.Data.Overflow.Truncated {

@@ -2716,3 +2716,11 @@ button.kv-edit__save {
 @media (prefers-reduced-motion: reduce) {
   .graph-node, .graph-edge { transition: none !important; }
 }
+
+.graph-segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; }
+.graph-segmented__option { padding: 0.4rem 1rem; color: var(--fg-muted); text-decoration: none; }
+.graph-segmented__option:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+.graph-segmented__option:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+.graph-segmented__option:hover { background: var(--bg-subtle); }
+.graph-segmented__option--active { background: var(--accent); color: var(--bg); }
+.graph-segmented__option:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }

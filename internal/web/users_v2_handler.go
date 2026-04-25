@@ -102,6 +102,18 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 	sortUsersByCN(users)
 
+	currentView := c.Query("view")
+	if a.ldapCache == nil {
+		currentView = ""
+	}
+
+	if currentView == "graph" && a.ldapCache != nil {
+		data := a.ldapCache.BuildListGraph(users, nil)
+		vm := templates.GraphPageVM{Data: data, BackHref: "/users", FocusLabel: "Users"}
+
+		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
 	adminDNs := adminUserDNs(a.ldapCache)
 
@@ -111,7 +123,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		users, showDisabled, ouFilter, lastLogon,
 		memberOf, memberOfCN, ous,
 		a.takeFlash(c), a.paletteContextFor(viewerDN),
-		adminDNs,
+		adminDNs, currentView,
 	)
 
 	return page.Render(c.UserContext(), c.Response().BodyWriter())

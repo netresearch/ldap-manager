@@ -136,6 +136,61 @@ func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
 	return nil, fmt.Errorf("%w: %q", ErrGraphNotFound, focusDN)
 }
 
+// BuildListGraph builds a graph for list-page mode: the filtered set
+// plus each member's direct groups. Focus is "" (no single focal entity)
+// and no node has ring 0. Users/computers live in ring 2; groups in
+// ring 1. Used by /users?view=graph, /groups?view=graph, /computers?view=graph.
+func (m *Manager) BuildListGraph(filtered []ldap.User, filteredComputers []ldap.Computer) *GraphData {
+	data := &GraphData{Focus: "", Depth: 1}
+	seen := map[string]int{}
+
+	for _, u := range filtered {
+		if _, dup := seen[u.DN()]; !dup {
+			data.Nodes = append(data.Nodes, userNode(u, 2, false))
+			seen[u.DN()] = 2
+		}
+
+		m.addListGroupMemberships(data, seen, u.DN(), u.Groups)
+	}
+
+	for _, c := range filteredComputers {
+		if _, dup := seen[c.DN()]; !dup {
+			data.Nodes = append(data.Nodes, computerNode(c, 2))
+			seen[c.DN()] = 2
+		}
+
+		m.addListGroupMemberships(data, seen, c.DN(), c.Groups)
+	}
+
+	applyCaps(data)
+	assignConcentric(data)
+
+	return data
+}
+
+// addListGroupMemberships adds ring-1 group nodes for each groupDN in
+// memberGroups (resolving via the cache; missing groups are skipped) and
+// a deduped memberOf edge from sourceDN. Used by BuildListGraph for both
+// users and computers — same shape, different source type.
+func (m *Manager) addListGroupMemberships(data *GraphData, seen map[string]int, sourceDN string, memberGroups []string) {
+	for _, gDN := range memberGroups {
+		g, ok := m.Groups.FindByDN(gDN)
+		if !ok {
+			continue
+		}
+
+		if _, dup := seen[gDN]; !dup {
+			data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
+			seen[gDN] = 1
+		}
+
+		edge := Edge{Source: sourceDN, Target: gDN, Kind: EdgeMemberOf}
+		if !hasEdge(data, edge) {
+			data.Edges = append(data.Edges, edge)
+		}
+	}
+}
+
 func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {
 	data := &GraphData{Focus: g.DN(), Depth: depth}
 	data.Nodes = append(data.Nodes, groupNode(g, 0, false))

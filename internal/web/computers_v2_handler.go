@@ -85,11 +85,23 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 
 	sortComputersByCN(computers)
 
+	currentView := c.Query("view")
+	if a.ldapCache == nil {
+		currentView = ""
+	}
+
+	if currentView == "graph" && a.ldapCache != nil {
+		data := a.ldapCache.BuildListGraph(nil, computers)
+		vm := templates.GraphPageVM{Data: data, BackHref: "/computers", FocusLabel: "Computers"}
+
+		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
 	ous := distinctImmediateOUsFromComputers(all)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.ComputersListV2(computers, ouFilter, ous, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+	return templates.ComputersListV2(computers, ouFilter, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), currentView).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

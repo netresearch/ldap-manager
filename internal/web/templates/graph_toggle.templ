@@ -1,0 +1,69 @@
+// internal/web/templates/graph_toggle.templ — segmented "List | Graph"
+// view toggle reused by all three list pages (Phase 3 §6.6).
+package templates
+
+import "strings"
+
+// listGraphToggle renders the segmented control. `base` is the bare list
+// route ("/users", "/groups", "/computers"). `currentView` is the value
+// of c.Query("view") at request time (empty string for default list).
+// `filters` is the URL-encoded query string of OTHER filters to preserve
+// (without leading "?", without view=…). Both branches preserve filters.
+templ listGraphToggle(base, currentView, filters string) {
+	<nav class="graph-segmented" aria-label="List or graph view">
+		<a
+			class={ "graph-segmented__option", toggleClass(currentView, "") }
+			href={ templ.URL(buildToggleHref(base, "", filters)) }
+			aria-current={ toggleAriaCurrent(currentView, "") }
+		>List</a>
+		<a
+			class={ "graph-segmented__option", toggleClass(currentView, "graph") }
+			href={ templ.URL(buildToggleHref(base, "graph", filters)) }
+			aria-current={ toggleAriaCurrent(currentView, "graph") }
+		>Graph</a>
+	</nav>
+}
+
+// toggleClass returns the active modifier class when the segment matches
+// the current view; otherwise an empty string (templ filters out empties
+// from the multi-arg class attribute).
+func toggleClass(current, target string) string {
+	if current == target {
+		return "graph-segmented__option--active"
+	}
+
+	return ""
+}
+
+// toggleAriaCurrent returns "page" when the link points at the active
+// view, "false" otherwise. aria-current is the WAI-ARIA attribute for
+// links representing the current location (aria-pressed is reserved for
+// role="button"). Per WAI-ARIA 1.2, aria-current="false" is the explicit
+// "not current" value, equivalent to omitting the attribute — we render
+// it explicitly to keep templ's positional attribute output predictable.
+func toggleAriaCurrent(current, target string) string {
+	if current == target {
+		return "page"
+	}
+
+	return "false"
+}
+
+// buildToggleHref combines base path + view selector + preserved filters.
+// "view=graph" goes first when set; other filter pairs follow.
+func buildToggleHref(base, view, filters string) string {
+	parts := []string{}
+	if view != "" {
+		parts = append(parts, "view="+view)
+	}
+
+	if filters != "" {
+		parts = append(parts, filters)
+	}
+
+	if len(parts) == 0 {
+		return base
+	}
+
+	return base + "?" + strings.Join(parts, "&")
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -397,6 +398,46 @@ func TestBuildGraph_OUFocus_EscapedCommaChild(t *testing.T) {
 
 	if !foundEdge {
 		t.Errorf("escaped-comma immediate child %q must have contains edge from %q", childDN, ouDN)
+	}
+}
+
+func TestBuildListGraph_FilteredUsers(t *testing.T) {
+	m := graphFixture(t)
+	filtered := m.Users.Filter(func(u ldap.User) bool {
+		return strings.Contains(u.DN(), "ou=Engineering")
+	})
+	data := m.BuildListGraph(filtered, nil)
+
+	if data.Focus != "" {
+		t.Errorf("Focus should be empty for list mode, got %q", data.Focus)
+	}
+
+	if data.Depth != 1 {
+		t.Errorf("Depth should be 1 for list mode, got %d", data.Depth)
+	}
+
+	// graphFixture has bob/dave/alice under ou=Engineering (3 immediate)
+	// PLUS deep under ou=Nested,ou=Engineering (1 nested descendant) = 4 users.
+	// Their groups: bob→admins+engineers, dave→engineers, alice→engineers,
+	// deep→none. So unique groups = admins, engineers (all-staff is NOT
+	// pulled in — bob is not directly a member of all-staff).
+	// Expected: 4 users + 2 groups = 6 nodes.
+	if got := len(data.Nodes); got != 6 {
+		t.Errorf("node count: got %d, want 6", got)
+	}
+
+	// Every user-→group edge should be EdgeMemberOf with source = user DN.
+	for _, e := range data.Edges {
+		if e.Kind != EdgeMemberOf {
+			t.Errorf("edge kind: got %q, want %q for %+v", e.Kind, EdgeMemberOf, e)
+		}
+	}
+
+	// No ring-0 node in list mode.
+	for _, n := range data.Nodes {
+		if n.Ring == 0 {
+			t.Errorf("list mode should have no ring-0 node, got %+v", n)
+		}
 	}
 }
 
