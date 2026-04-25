@@ -82,9 +82,19 @@ func TestGraphHappyPath(t *testing.T) {
 		}
 	}`)
 	require.NoError(t, err)
-	// playwright-go transports JS numbers as int when integral.
-	dataLenInt, ok := dataLen.(int)
-	require.True(t, ok, "expected int from page.Evaluate, got %T (%v)", dataLen, dataLen)
+	// playwright-go's JSON transport unmarshals numbers as float64 by
+	// default, but accept int/int64 too to stay robust across versions.
+	var dataLenInt int
+	switch v := dataLen.(type) {
+	case int:
+		dataLenInt = v
+	case int64:
+		dataLenInt = int(v)
+	case float64:
+		dataLenInt = int(v)
+	default:
+		t.Fatalf("expected numeric from page.Evaluate, got %T (%v)", dataLen, dataLen)
+	}
 	assert.Greater(t, dataLenInt, 0, "graph-data should contain at least the focus node")
 
 	// Step 5: click an expandable node and watch the aria-live region.

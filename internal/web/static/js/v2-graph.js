@@ -32,6 +32,25 @@
     }
   }
 
+  // nodeLabel mirrors graphNodeLabel() in graph_v2.templ so screen-reader
+  // labels for nodes added via expandNode() carry the same type/state
+  // context as SSR-rendered nodes.
+  function nodeLabel(n) {
+    switch (n.type) {
+      case "group":
+        var count = typeof n.memberCount === "number" ? n.memberCount : 0;
+        return "Group " + n.label + " (" + count + " members).";
+      case "user":
+        var state = n.enabled === false ? "disabled" : "enabled";
+        return "User " + n.label + " (" + state + ").";
+      case "computer":
+        return "Computer " + n.label + ".";
+      case "ou":
+        return "Organisational unit " + n.label + ".";
+    }
+    return n.label;
+  }
+
   // activateNodes makes each rendered .graph-node keyboard-focusable
   // and properly labelled now that the JS handlers exist. Slice 3
   // deliberately omitted these attributes from the SSR template.
@@ -42,8 +61,15 @@
       n.setAttribute("role", "button");
       var label = n.getAttribute("aria-label") || "";
       if (label && label.indexOf("Press Enter to open.") === -1) {
-        n.setAttribute("aria-label", label + " Press Enter to open.");
+        label = label + " Press Enter to open.";
       }
+      if (
+        n.getAttribute("data-expandable") === "true" &&
+        label.indexOf("Press + to expand") === -1
+      ) {
+        label = label + " Press + to expand more relations.";
+      }
+      n.setAttribute("aria-label", label);
     });
   }
 
@@ -57,7 +83,6 @@
 
     activateNodes(svg);
     wirePanZoom(svg, viewport);
-    wireKeyboardNav(svg);
     wireNodeClicks(svg, state);
     wireDepthSlider();
   });
@@ -78,15 +103,11 @@
     }
 
     svg.addEventListener("mousedown", function (e) {
-      // Only start panning when the user grabs empty canvas space
-      // (the SVG itself or the viewport <g>) — not when they click a
-      // node or edge.
-      if (
-        e.target !== svg &&
-        !e.target.classList.contains("graph-viewport")
-      ) {
-        return;
-      }
+      // Allow pan-start anywhere except on a node — clicks on edges or
+      // empty canvas both pan. Dense graphs leave little empty space, so
+      // restricting pan to the SVG/viewport background made it hard to
+      // grab.
+      if (e.target.closest(".graph-node")) return;
       dragging = true;
       sx = e.clientX - tx;
       sy = e.clientY - ty;
@@ -103,14 +124,24 @@
     });
 
     // Wheel zoom only when modifier key is held — without ctrl/meta the
-    // page scroll behaviour is preserved.
+    // page scroll behaviour is preserved. Zoom around the cursor so the
+    // world-space point under the pointer stays put after the scale
+    // change (standard map/graph UX).
     svg.addEventListener(
       "wheel",
       function (e) {
         if (!(e.ctrlKey || e.metaKey)) return;
         e.preventDefault();
+        var rect = svg.getBoundingClientRect();
+        var cx = e.clientX - rect.left;
+        var cy = e.clientY - rect.top;
+        var oldScale = scale;
         var delta = -e.deltaY * 0.001;
         scale = Math.min(3, Math.max(0.3, scale * (1 + delta)));
+        if (oldScale !== scale) {
+          tx = cx - ((cx - tx) * scale) / oldScale;
+          ty = cy - ((cy - ty) * scale) / oldScale;
+        }
         apply();
       },
       { passive: false },
@@ -156,31 +187,7 @@
       }
     });
   }
-  function wireKeyboardNav(svg) {
-    // Snapshot the node list at wire time. Nodes added later by
-    // expandNode (Task 26) won't join this cycle until the user
-    // navigates back to the graph; that's an acceptable tradeoff to
-    // keep this handler stateless.
-    var nodes = Array.prototype.slice.call(
-      svg.querySelectorAll(".graph-node"),
-    );
-    var index = 0;
-    function focusAt(i) {
-      if (nodes.length === 0) return;
-      index = ((i % nodes.length) + nodes.length) % nodes.length;
-      nodes[index].focus();
-    }
-    svg.addEventListener("keydown", function (e) {
-      if (!e.target.classList.contains("graph-node")) return;
-      if (e.key === "Tab" && !e.shiftKey) {
-        focusAt(index + 1);
-        e.preventDefault();
-      } else if (e.key === "Tab" && e.shiftKey) {
-        focusAt(index - 1);
-        e.preventDefault();
-      }
-    });
-  }
+
   function wireNodeClicks(svg, state) {
     svg.addEventListener("click", function (e) {
       var node = e.target.closest(".graph-node");
@@ -196,16 +203,24 @@
         pivotToDrawer(dn, type);
       }
     });
+    // Keyboard parity with mouse: Enter pivots (matches the SSR
+    // aria-label "Press Enter to open"), and +/= expands when the node
+    // is expandable. Space is intentionally not bound — convention on
+    // non-form elements is page-down, not activation.
     svg.addEventListener("keydown", function (e) {
-      if (e.key !== "Enter" && e.key !== " ") return;
       var node = e.target.closest(".graph-node");
       if (!node) return;
       var dn = node.getAttribute("data-dn");
       var type = node.getAttribute("data-type");
       var expandable = node.getAttribute("data-expandable") === "true";
-      e.preventDefault();
-      if (expandable) expandNode(dn, state, svg);
-      else pivotToDrawer(dn, type);
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        pivotToDrawer(dn, type);
+      } else if (expandable && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        expandNode(dn, state, svg);
+      }
     });
   }
 
@@ -248,6 +263,7 @@
       .then(function (data) {
         var added = 0;
         var existingDNs = {};
+        var affectedRings = {};
         state.nodes.forEach(function (n) {
           existingDNs[n.dn] = true;
         });
@@ -259,6 +275,7 @@
           n.ring = (parent && parent.ring + 1) || 2;
           state.nodes.push(n);
           renderNode(svg, n);
+          affectedRings[n.ring] = true;
           added++;
         });
         data.edges.forEach(function (e) {
@@ -273,6 +290,14 @@
             state.edges.push(e);
             renderEdge(svg, e, state.nodes);
           }
+        });
+        // Re-distribute angles on each ring that gained a node. Without
+        // this, expanded nodes keep the angles the backend assigned in
+        // the depth=1 ego graph (centred on the clicked node) — which
+        // were computed for a different node set and overlap or cluster
+        // oddly when merged into the original layout.
+        Object.keys(affectedRings).forEach(function (r) {
+          reLayoutRing(svg, state, parseInt(r, 10));
         });
         // Mark clicked node as non-expandable so a subsequent click
         // pivots to the drawer instead of re-fetching.
@@ -292,6 +317,59 @@
         console.error("graph expand failed", err);
         announce("Expand failed.");
       });
+  }
+
+  // reLayoutRing redistributes nodes on a ring evenly around the circle
+  // and re-routes any edges touching them. Called after expandNode
+  // merges new nodes onto an existing ring.
+  function reLayoutRing(svg, state, ring) {
+    var ringNodes = state.nodes.filter(function (n) {
+      return n.ring === ring;
+    });
+    ringNodes.sort(function (a, b) {
+      if (a.type !== b.type) return a.type < b.type ? -1 : 1;
+      if (a.label !== b.label) return a.label < b.label ? -1 : 1;
+      return a.dn < b.dn ? -1 : 1;
+    });
+    var count = ringNodes.length;
+    if (count === 0) return;
+    ringNodes.forEach(function (n, i) {
+      n.angle = (i * 2 * Math.PI) / count;
+      var r = ring * 150;
+      var x = r * Math.cos(n.angle);
+      var y = r * Math.sin(n.angle);
+      var el = svg.querySelector(
+        '.graph-node[data-dn="' + CSS.escape(n.dn) + '"]',
+      );
+      if (el) el.setAttribute("transform", "translate(" + x + "," + y + ")");
+    });
+    // Re-route edges touching any moved node on this ring.
+    state.edges.forEach(function (e) {
+      var src = state.nodes.find(function (x) {
+        return x.dn === e.source;
+      });
+      var tgt = state.nodes.find(function (x) {
+        return x.dn === e.target;
+      });
+      if (!src || !tgt) return;
+      if (src.ring !== ring && tgt.ring !== ring) return;
+      var line = svg.querySelector(
+        'line[data-source="' +
+          CSS.escape(e.source) +
+          '"][data-target="' +
+          CSS.escape(e.target) +
+          '"]',
+      );
+      if (!line) return;
+      var sx = src.ring * 150 * Math.cos(src.angle);
+      var sy = src.ring * 150 * Math.sin(src.angle);
+      var tx = tgt.ring * 150 * Math.cos(tgt.angle);
+      var ty = tgt.ring * 150 * Math.sin(tgt.angle);
+      line.setAttribute("x1", sx);
+      line.setAttribute("y1", sy);
+      line.setAttribute("x2", tx);
+      line.setAttribute("y2", ty);
+    });
   }
 
   function renderNode(svg, n) {
@@ -314,12 +392,13 @@
     g.setAttribute("data-dn", n.dn);
     g.setAttribute("data-type", n.type);
     g.setAttribute("data-expandable", String(!!n.expandable));
-    // Match activateNodes() so newly inserted nodes get the same
-    // accessible affordance the SSR-rendered ones receive.
-    g.setAttribute(
-      "aria-label",
-      (n.label || n.dn) + ". Press Enter to open.",
-    );
+    // Mirror activateNodes(): build the same "<typed label>. Press
+    // Enter to open. [Press + to expand more relations.]" hint stack
+    // so newly inserted nodes carry full screen-reader context.
+    var base = nodeLabel(n);
+    var hint = " Press Enter to open.";
+    if (n.expandable) hint += " Press + to expand more relations.";
+    g.setAttribute("aria-label", base + hint);
     var circ = document.createElementNS(ns, "circle");
     circ.setAttribute("r", "28");
     circ.setAttribute("class", "graph-node__disc");
