@@ -156,8 +156,30 @@
       }
     });
   }
-  function wireKeyboardNav(_svg) {
-    /* Task 25 */
+  function wireKeyboardNav(svg) {
+    // Snapshot the node list at wire time. Nodes added later by
+    // expandNode (Task 26) won't join this cycle until the user
+    // navigates back to the graph; that's an acceptable tradeoff to
+    // keep this handler stateless.
+    var nodes = Array.prototype.slice.call(
+      svg.querySelectorAll(".graph-node"),
+    );
+    var index = 0;
+    function focusAt(i) {
+      if (nodes.length === 0) return;
+      index = ((i % nodes.length) + nodes.length) % nodes.length;
+      nodes[index].focus();
+    }
+    svg.addEventListener("keydown", function (e) {
+      if (!e.target.classList.contains("graph-node")) return;
+      if (e.key === "Tab" && !e.shiftKey) {
+        focusAt(index + 1);
+        e.preventDefault();
+      } else if (e.key === "Tab" && e.shiftKey) {
+        focusAt(index - 1);
+        e.preventDefault();
+      }
+    });
   }
   function wireNodeClicks(_svg, _state) {
     /* Task 26 */
