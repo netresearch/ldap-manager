@@ -14,9 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAxeAAA_GraphPages asserts the Phase 3 graph view pages have zero
-// WCAG violations under the same axe-core ruleset used by the login
-// page test. Covers:
+// TestAxeAA_GraphPages asserts the Phase 3 graph view pages have zero
+// WCAG 2.2 Level AA violations under axe-core. The graph view's stated
+// conformance level is AA (not AAA — the dynamic SVG/JS interactions
+// don't clear the AAA bar; the AAA-equivalent flat edge table below
+// the canvas provides the text alternative). The login page has a
+// separate AAA ratchet in TestAxeAAA_LoginPage. Covers:
 //   - /graph?entity=<seeded-DN>&depth=2 (entity-focused mode)
 //   - /users?view=graph                 (list-page Graph mode)
 //   - /groups?view=graph
@@ -25,7 +28,7 @@ import (
 // Authenticated as the test user; uses the first user from /users to
 // pick a real DN for the entity-focused page (matches the existing
 // graph_test.go pattern).
-func TestAxeAAA_GraphPages(t *testing.T) {
+func TestAxeAA_GraphPages(t *testing.T) {
 	config := DefaultTestConfig()
 	browser := NewTestBrowser(t, config)
 	defer browser.Close()

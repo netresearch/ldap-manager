@@ -459,9 +459,8 @@ templ userDrawerContentsCtx(vm UserDrawerVM, inDrawer bool) {
 				</li>
 			}
 			<li>
-				<a class="drawer__pivot" href={ templ.URL("/graph?entity=" + url.QueryEscape(vm.User.User.DN())) }
-					aria-label="View relationship graph"
-					title="View relationship graph">
+				<a class="drawer__pivot" href={ templ.URL("/graph?entity=" + url.QueryEscape(vm.User.DN())) }
+					title="View relationships">
 					<span class="drawer__pivot-icon" aria-hidden="true">@iconGraph()</span>
 					<span class="drawer__pivot-text">View relationships</span>
 				</a>

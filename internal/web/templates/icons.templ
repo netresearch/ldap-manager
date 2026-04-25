@@ -201,17 +201,18 @@ templ iconOSApple() {
 }
 
 // iconGraph — four nodes connected as a square. Semantic for the
-// relationship-graph view introduced in Phase 3.
+// relationship-graph view introduced in Phase 3. Matches the project
+// icon spec: 16-viewBox, 1.5 stroke, currentColor.
 templ iconGraph() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-		<circle cx="6" cy="6" r="2.5"></circle>
-		<circle cx="18" cy="6" r="2.5"></circle>
-		<circle cx="6" cy="18" r="2.5"></circle>
-		<circle cx="18" cy="18" r="2.5"></circle>
-		<line x1="8.5" y1="6" x2="15.5" y2="6"></line>
-		<line x1="6" y1="8.5" x2="6" y2="15.5"></line>
-		<line x1="18" y1="8.5" x2="18" y2="15.5"></line>
-		<line x1="8.5" y1="18" x2="15.5" y2="18"></line>
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<circle cx="4" cy="4" r="1.5"></circle>
+		<circle cx="12" cy="4" r="1.5"></circle>
+		<circle cx="4" cy="12" r="1.5"></circle>
+		<circle cx="12" cy="12" r="1.5"></circle>
+		<line x1="5.5" y1="4" x2="10.5" y2="4"></line>
+		<line x1="4" y1="5.5" x2="4" y2="10.5"></line>
+		<line x1="12" y1="5.5" x2="12" y2="10.5"></line>
+		<line x1="5.5" y1="12" x2="10.5" y2="12"></line>
 	</svg>
 }
 
