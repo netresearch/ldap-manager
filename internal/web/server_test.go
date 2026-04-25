@@ -126,6 +126,11 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	// app.ldapCache, so no session state is required.
 	f.Get("/api/graph.json", app.handleGraphJSON)
 
+	// Graph view page — registered without RequireAuth here for the same
+	// reason as the JSON endpoint above; production wires it inside the
+	// protected group (see server.go).
+	f.Get("/graph", app.handleGraphV2)
+
 	protected := f.Group("/", app.RequireAuth())
 	protected.Get("/", app.handleHomeV2)
 	protected.Get("/users", app.templateCacheMiddleware(), app.handleUsersV2)

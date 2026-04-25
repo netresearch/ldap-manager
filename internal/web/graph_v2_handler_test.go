@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -163,5 +164,32 @@ func TestHandleGraphJSON_DepthClamping(t *testing.T) {
 				t.Errorf("depth=%q returned Depth=%d, expected [1,3]", raw, data.Depth)
 			}
 		})
+	}
+}
+
+func TestHandleGraphV2_RendersHTML(t *testing.T) {
+	app, _ := setupFullTestApp(t)
+	seedBob(t, app)
+
+	req := httptest.NewRequest("GET", "/graph?entity="+bobDN, nil)
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	html := string(body)
+
+	for _, marker := range []string{
+		`id="graph-canvas"`,
+		`id="graph-data"`,
+		`class="graph-table"`,
+		`Relationships: bob`,
+	} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("missing HTML marker %q", marker)
+		}
 	}
 }
