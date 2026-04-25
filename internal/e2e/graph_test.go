@@ -57,7 +57,11 @@ func TestGraphHappyPath(t *testing.T) {
 	// which is wrong for path segments).
 	dn, err := url.PathUnescape(encodedDN)
 	require.NoError(t, err)
-	require.Contains(t, dn, "dc=test", "expected a test-domain DN")
+	// Don't assume a specific base DN — local dev uses dc=test,dc=local
+	// while CI's e2e fixture uses dc=example,dc=com. Just sanity-check
+	// the shape: it should be a CN under some OU.
+	require.Contains(t, dn, "cn=", "expected a CN-based DN")
+	require.Contains(t, dn, "ou=", "expected the DN to live under an OU")
 
 	// Step 2: direct nav to /graph for that user, depth=2.
 	graphPath := "/graph?entity=" + url.QueryEscape(dn) + "&depth=2"
