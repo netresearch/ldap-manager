@@ -100,7 +100,6 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users := filterUsersByOU(all, ouFilter)
 	users = filterUsersByLastLogon(users, lastLogon)
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
-	sortUsersByCN(users)
 
 	currentView := pickView(c)
 	if a.ldapCache == nil {
@@ -109,6 +108,13 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		// rewrite the cookie; if the user re-enables the service account,
 		// their previous preference returns.
 		currentView = "list"
+	}
+
+	// Pre-sort by CN for the views that don't sort themselves.
+	// Table view applies its own sortUsersTable() below; redoing this
+	// sort would be an unnecessary O(n log n) pass.
+	if currentView != "table" {
+		sortUsersByCN(users)
 	}
 
 	filterQS := templates.UsersFilterQS(showDisabled, ouFilter, lastLogon, memberOf)

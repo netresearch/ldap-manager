@@ -294,11 +294,16 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	ous := distinctImmediateOUsFromGroups(all)
 	groups := filterGroupsByOU(all, ouFilter)
 	groups = filterGroupsByMember(groups, memberDN)
-	sortGroupsByCN(groups)
 
 	currentView := pickView(c)
 	if a.ldapCache == nil {
 		currentView = "list"
+	}
+
+	// Skip the CN pre-sort when the table view will sort by its own
+	// (sortKey, sortDir) below — avoids an unnecessary O(n log n) pass.
+	if currentView != "table" {
+		sortGroupsByCN(groups)
 	}
 
 	filterQS := templates.GroupsFilterQS(ouFilter, memberDN)

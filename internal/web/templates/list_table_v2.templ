@@ -23,7 +23,7 @@ templ UsersListTableV2(users []ldap.User, currentView, filterQS, sortKey, sortDi
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Users</h1>
-					<p class="list-page__count" data-search-count>{ fmt.Sprintf("%d users", len(users)) }</p>
+					<p class="list-page__count">{ fmt.Sprintf("%d users", len(users)) }</p>
 				</div>
 				<div class="list-page__head-controls">
 					@listGraphToggle("/users", currentView, filterQS)
@@ -79,7 +79,7 @@ templ GroupsListTableV2(groups []ldap.Group, currentView, filterQS, sortKey, sor
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Groups</h1>
-					<p class="list-page__count" data-search-count>{ fmt.Sprintf("%d groups", len(groups)) }</p>
+					<p class="list-page__count">{ fmt.Sprintf("%d groups", len(groups)) }</p>
 				</div>
 				<div class="list-page__head-controls">
 					@listGraphToggle("/groups", currentView, filterQS)
@@ -133,7 +133,7 @@ templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS, sor
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Computers</h1>
-					<p class="list-page__count" data-search-count>{ fmt.Sprintf("%d computers", len(computers)) }</p>
+					<p class="list-page__count">{ fmt.Sprintf("%d computers", len(computers)) }</p>
 				</div>
 				<div class="list-page__head-controls">
 					@listGraphToggle("/computers", currentView, filterQS)
@@ -194,7 +194,7 @@ templ tableSortHeader(base, key, label, currentSort, currentDir, filterQS string
 	</th>
 }
 
-// buildSortHref computes the link URL for a column header. Clicking
+// buildTableSortHref computes the link URL for a column header. Clicking
 // the active column toggles direction; clicking an inactive column
 // switches to that column with asc direction.
 func buildTableSortHref(base, key, currentSort, currentDir, filterQS string) string {
@@ -217,8 +217,9 @@ func buildTableSortHref(base, key, currentSort, currentDir, filterQS string) str
 }
 
 // sortIndicator returns the up / down arrow for the active column,
-// "" otherwise. Plain ascii arrows so screen readers and pico read
-// them consistently across themes.
+// "" otherwise. Uses Unicode ↑ / ↓ glyphs (U+2191 / U+2193) which
+// render consistently across the Pico/system font stack and screen
+// readers.
 func sortIndicator(colKey, currentSort, currentDir string) string {
 	if colKey != currentSort {
 		return ""

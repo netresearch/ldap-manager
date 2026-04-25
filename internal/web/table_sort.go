@@ -21,6 +21,25 @@ func normaliseSortDir(d string) string {
 	return "asc"
 }
 
+// stringLess applies the requested direction to a case-insensitive
+// comparison. The DN secondary key needs to be applied when the two
+// inputs are equal under the same case-insensitive rule the primary
+// comparison uses — earlier `a == b` (case-sensitive) skipped the
+// tie-break for inputs that differed only in case, leaving ordering
+// at the mercy of input-slice order.
+func stringLess(a, b, tieA, tieB, dir string) bool {
+	if strings.EqualFold(a, b) {
+		return tieA < tieB
+	}
+
+	la, lb := strings.ToLower(a), strings.ToLower(b)
+	if dir == "desc" {
+		return la > lb
+	}
+
+	return la < lb
+}
+
 // sortUsersTable sorts users in place by the requested column. Unknown
 // sort keys fall back to CN — the default column the table is
 // initially shown in.
@@ -46,17 +65,7 @@ func sortUsersTable(users []ldap.User, key, dir string) {
 			a, b = users[i].CN(), users[j].CN()
 		}
 
-		if a == b {
-			// Stable secondary key on DN so otherwise-equal rows have a
-			// deterministic order across renders.
-			return users[i].DN() < users[j].DN()
-		}
-
-		if dir == "desc" {
-			return strings.ToLower(a) > strings.ToLower(b)
-		}
-
-		return strings.ToLower(a) < strings.ToLower(b)
+		return stringLess(a, b, users[i].DN(), users[j].DN(), dir)
 	}
 
 	sort.SliceStable(users, less)
@@ -80,23 +89,9 @@ func sortGroupsTable(groups []ldap.Group, key, dir string) {
 
 			return a < b
 		case "dn":
-			a, b := groups[i].DN(), groups[j].DN()
-			if dir == "desc" {
-				return strings.ToLower(a) > strings.ToLower(b)
-			}
-
-			return strings.ToLower(a) < strings.ToLower(b)
+			return stringLess(groups[i].DN(), groups[j].DN(), groups[i].DN(), groups[j].DN(), dir)
 		default: // "cn"
-			a, b := groups[i].CN(), groups[j].CN()
-			if a == b {
-				return groups[i].DN() < groups[j].DN()
-			}
-
-			if dir == "desc" {
-				return strings.ToLower(a) > strings.ToLower(b)
-			}
-
-			return strings.ToLower(a) < strings.ToLower(b)
+			return stringLess(groups[i].CN(), groups[j].CN(), groups[i].DN(), groups[j].DN(), dir)
 		}
 	}
 
@@ -121,15 +116,7 @@ func sortComputersTable(computers []ldap.Computer, key, dir string) {
 			a, b = computers[i].CN(), computers[j].CN()
 		}
 
-		if a == b {
-			return computers[i].DN() < computers[j].DN()
-		}
-
-		if dir == "desc" {
-			return strings.ToLower(a) > strings.ToLower(b)
-		}
-
-		return strings.ToLower(a) < strings.ToLower(b)
+		return stringLess(a, b, computers[i].DN(), computers[j].DN(), dir)
 	}
 
 	sort.SliceStable(computers, less)
