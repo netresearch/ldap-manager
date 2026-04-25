@@ -167,6 +167,48 @@ func TestHandleGraphJSON_DepthClamping(t *testing.T) {
 	}
 }
 
+func TestHandleUsersV2_GraphMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	// Seed bob with one group membership so BuildListGraph has both
+	// a user (ring 2) and a group (ring 1).
+	cachetest.Seed(app.ldapCache,
+		[]ldap.User{
+			cachetest.NewUserWithDN(bobDN, "bob", "bob", true, []string{
+				"cn=engineers,ou=Groups,dc=test,dc=local",
+			}),
+		},
+		[]ldap.Group{
+			cachetest.NewGroupWithDN("cn=engineers,ou=Groups,dc=test,dc=local", "engineers", []string{bobDN}),
+		},
+		nil,
+	)
+
+	cookies := createAuthSession(t, app, store)
+	req := httptest.NewRequest("GET", "/users?view=graph", nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	html := string(body)
+
+	for _, marker := range []string{
+		`id="graph-canvas"`,
+		`id="graph-data"`,
+		`class="graph-table"`,
+	} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("missing HTML marker %q in /users?view=graph response", marker)
+		}
+	}
+}
+
 func TestHandleGraphV2_RendersHTML(t *testing.T) {
 	app, _ := setupFullTestApp(t)
 	seedBob(t, app)

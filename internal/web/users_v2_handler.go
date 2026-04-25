@@ -102,6 +102,13 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	users = filterUsersByMemberOf(users, memberOf, a.ldapCache)
 	sortUsersByCN(users)
 
+	if c.Query("view") == "graph" && a.ldapCache != nil {
+		data := a.ldapCache.BuildListGraph(users, nil)
+		vm := templates.GraphPageVM{Data: data}
+
+		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
 	adminDNs := adminUserDNs(a.ldapCache)
 

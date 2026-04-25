@@ -296,6 +296,25 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	groups = filterGroupsByMember(groups, memberDN)
 	sortGroupsByCN(groups)
 
+	if c.Query("view") == "graph" && a.ldapCache != nil {
+		members := make([]ldap.User, 0)
+		computers := make([]ldap.Computer, 0)
+		for _, g := range groups {
+			for _, mDN := range g.Members {
+				if u, ok := a.ldapCache.Users.FindByDN(mDN); ok {
+					members = append(members, *u)
+				}
+				if comp, ok := a.ldapCache.Computers.FindByDN(mDN); ok {
+					computers = append(computers, *comp)
+				}
+			}
+		}
+		data := a.ldapCache.BuildListGraph(members, computers)
+		vm := templates.GraphPageVM{Data: data}
+
+		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
 	memberCN := lookupUserCN(memberDN, a.ldapCache)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)

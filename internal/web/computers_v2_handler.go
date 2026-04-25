@@ -85,6 +85,13 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 
 	sortComputersByCN(computers)
 
+	if c.Query("view") == "graph" && a.ldapCache != nil {
+		data := a.ldapCache.BuildListGraph(nil, computers)
+		vm := templates.GraphPageVM{Data: data}
+
+		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
 	ous := distinctImmediateOUsFromComputers(all)
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
