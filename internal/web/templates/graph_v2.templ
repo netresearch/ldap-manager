@@ -3,6 +3,7 @@ package templates
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -88,9 +89,126 @@ templ graphDepthSlider(current int, focusDN string) {
 	</form>
 }
 
-// graphSVG is the Task-17 component; stubbed here so templ generate
-// succeeds at the Task-15 commit boundary.
-templ graphSVG(_ *ldap_cache.GraphData, _ string) {
+// graphSVG renders the concentric SVG canvas. Nodes are positioned by
+// (Ring, Angle) from the cache builder; the viewBox is centred at the
+// origin so ring 0 sits in the middle.
+templ graphSVG(data *ldap_cache.GraphData, focusLabel string) {
+	<svg
+		id="graph-canvas"
+		class="graph-canvas"
+		viewBox="-500 -500 1000 1000"
+		role="img"
+		aria-labelledby="graph-canvas-title"
+		aria-describedby="graph-canvas-desc"
+		tabindex="0"
+	>
+		<title id="graph-canvas-title">{ "Relationship graph for " + focusLabel }</title>
+		<desc id="graph-canvas-desc">
+			{ fmt.Sprintf("Shows %d relationships across %d entities.", len(data.Edges), len(data.Nodes)) }
+		</desc>
+		<g class="graph-viewport" transform="translate(0,0) scale(1)">
+			for _, e := range data.Edges {
+				@graphEdgeLine(e, data.Nodes)
+			}
+			for _, n := range data.Nodes {
+				@graphNode(n)
+			}
+		</g>
+	</svg>
+}
+
+// graphEdgeLine draws a single edge as a straight line between its
+// endpoint nodes' canvas coordinates.
+templ graphEdgeLine(e ldap_cache.Edge, nodes []ldap_cache.Node) {
+	{{ sx, sy := nodeXY(e.Source, nodes) }}
+	{{ tx, ty := nodeXY(e.Target, nodes) }}
+	<line
+		class={ "graph-edge", "graph-edge--" + string(e.Kind) }
+		x1={ fmt.Sprintf("%.2f", sx) }
+		y1={ fmt.Sprintf("%.2f", sy) }
+		x2={ fmt.Sprintf("%.2f", tx) }
+		y2={ fmt.Sprintf("%.2f", ty) }
+		data-source={ e.Source }
+		data-target={ e.Target }
+	></line>
+}
+
+// graphNode renders a single node disc + label. Expandable nodes get a
+// "+" badge so users can see at a glance which nodes have more
+// relationships available beyond the current depth.
+templ graphNode(n ldap_cache.Node) {
+	{{ x, y := concentricXY(n.Ring, n.Angle) }}
+	<g
+		class={ "graph-node", "graph-node--" + string(n.Type) }
+		transform={ fmt.Sprintf("translate(%.2f,%.2f)", x, y) }
+		role="button"
+		tabindex="0"
+		data-dn={ n.DN }
+		data-type={ string(n.Type) }
+		data-expandable={ fmt.Sprintf("%t", n.Expandable) }
+		aria-label={ graphNodeLabel(n) }
+	>
+		<circle r="28" class="graph-node__disc"></circle>
+		<text class="graph-node__label" text-anchor="middle" y="4">{ n.Label }</text>
+		if n.Expandable {
+			<g class="graph-node__expand-badge" transform="translate(18,-18)" aria-hidden="true">
+				<circle r="8" class="graph-node__expand-badge-bg"></circle>
+				<text class="graph-node__expand-badge-mark" text-anchor="middle" y="3">+</text>
+			</g>
+		}
+	</g>
+}
+
+// concentricXY converts (ring, angle) to canvas coords. Ring 0 → origin;
+// Ring r → radius r × 180 (viewBox is 1000×1000 centred at origin).
+func concentricXY(ring int, angle float64) (float64, float64) {
+	if ring == 0 {
+		return 0, 0
+	}
+
+	r := float64(ring) * 180
+
+	return r * math.Cos(angle), r * math.Sin(angle)
+}
+
+// nodeXY looks up a node's coordinates by DN for edge endpoint
+// rendering. Returns (0,0) when the DN is not present, so an edge to a
+// missing node still draws somewhere visible.
+func nodeXY(dn string, nodes []ldap_cache.Node) (float64, float64) {
+	for _, n := range nodes {
+		if n.DN == dn {
+			return concentricXY(n.Ring, n.Angle)
+		}
+	}
+
+	return 0, 0
+}
+
+// graphNodeLabel composes the screen-reader label for a node. Includes
+// type, name, and (where meaningful) member count or enabled state.
+func graphNodeLabel(n ldap_cache.Node) string {
+	switch n.Type {
+	case ldap_cache.NodeGroup:
+		count := 0
+		if n.MemberCount != nil {
+			count = *n.MemberCount
+		}
+
+		return fmt.Sprintf("Group %s (%d members). Press Enter to open.", n.Label, count)
+	case ldap_cache.NodeUser:
+		state := "enabled"
+		if n.Enabled != nil && !*n.Enabled {
+			state = "disabled"
+		}
+
+		return fmt.Sprintf("User %s (%s). Press Enter to open.", n.Label, state)
+	case ldap_cache.NodeComputer:
+		return fmt.Sprintf("Computer %s. Press Enter to open.", n.Label)
+	case ldap_cache.NodeOU:
+		return fmt.Sprintf("Organisational unit %s. Press Enter to open.", n.Label)
+	}
+
+	return n.Label
 }
 
 // graphEdgeTable is the Task-18 component; stubbed here so templ
