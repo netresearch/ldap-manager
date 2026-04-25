@@ -327,9 +327,13 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	}
 
 	if currentView == "table" {
+		sortKey := c.Query("sort", "cn")
+		sortDir := normaliseSortDir(c.Query("dir", "asc"))
+		sortGroupsTable(groups, sortKey, sortDir)
+
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.GroupsListTableV2(groups, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+		return templates.GroupsListTableV2(groups, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 

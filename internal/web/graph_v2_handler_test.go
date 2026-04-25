@@ -345,7 +345,8 @@ func TestHandleUsersV2_TableMode(t *testing.T) {
 
 	for _, marker := range []string{
 		`class="list-table"`,
-		`<th scope="col">CN</th>`,
+		`list-table__sort-link`, // sortable column-header anchor
+		`data-search-input`,     // client-side filter input
 		"bob",
 		`graph-segmented`,
 	} {

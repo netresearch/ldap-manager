@@ -121,9 +121,13 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	}
 
 	if currentView == "table" {
+		sortKey := c.Query("sort", "cn")
+		sortDir := normaliseSortDir(c.Query("dir", "asc"))
+		sortUsersTable(users, sortKey, sortDir)
+
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.UsersListTableV2(users, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+		return templates.UsersListTableV2(users, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
