@@ -52,7 +52,10 @@ func TestGraphHappyPath(t *testing.T) {
 	const userPrefix = "/users/"
 	require.True(t, strings.HasPrefix(firstRowHref, userPrefix), "unexpected user href shape: %s", firstRowHref)
 	encodedDN := strings.TrimPrefix(firstRowHref, userPrefix)
-	dn, err := url.QueryUnescape(encodedDN)
+	// userDetailHref emits paths via url.PathEscape; decode with the
+	// matching PathUnescape (QueryUnescape would convert '+' to space,
+	// which is wrong for path segments).
+	dn, err := url.PathUnescape(encodedDN)
 	require.NoError(t, err)
 	require.Contains(t, dn, "dc=test", "expected a test-domain DN")
 
