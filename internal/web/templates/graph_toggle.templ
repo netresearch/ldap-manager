@@ -1,21 +1,29 @@
-// internal/web/templates/graph_toggle.templ — segmented "List | Graph"
-// view toggle reused by all three list pages (Phase 3 §6.6).
+// internal/web/templates/graph_toggle.templ — segmented "List | Table | Graph"
+// view toggle reused by all three list pages.
 package templates
 
 import "strings"
 
-// listGraphToggle renders the segmented control. `base` is the bare list
-// route ("/users", "/groups", "/computers"). `currentView` is the value
-// of c.Query("view") at request time (empty string for default list).
-// `filters` is the URL-encoded query string of OTHER filters to preserve
-// (without leading "?", without view=…). Both branches preserve filters.
+// listGraphToggle renders the segmented control for switching between
+// the three list-page views. `base` is the bare list route ("/users",
+// "/groups", "/computers"). `currentView` is the value returned by
+// pickView (one of "list", "table", "graph"). `filters` is the URL-
+// encoded query string of OTHER filters to preserve (without leading
+// "?", without view=…). All segments include an explicit ?view= so
+// clicking re-asserts the user's choice and (server-side) refreshes
+// the persistence cookie.
 templ listGraphToggle(base, currentView, filters string) {
-	<nav class="graph-segmented" aria-label="List or graph view">
+	<nav class="graph-segmented" aria-label="List, table, or graph view">
 		<a
-			class={ "graph-segmented__option", toggleClass(currentView, "") }
-			href={ templ.URL(buildToggleHref(base, "", filters)) }
-			aria-current={ toggleAriaCurrent(currentView, "") }
+			class={ "graph-segmented__option", toggleClass(currentView, "list") }
+			href={ templ.URL(buildToggleHref(base, "list", filters)) }
+			aria-current={ toggleAriaCurrent(currentView, "list") }
 		>List</a>
+		<a
+			class={ "graph-segmented__option", toggleClass(currentView, "table") }
+			href={ templ.URL(buildToggleHref(base, "table", filters)) }
+			aria-current={ toggleAriaCurrent(currentView, "table") }
+		>Table</a>
 		<a
 			class={ "graph-segmented__option", toggleClass(currentView, "graph") }
 			href={ templ.URL(buildToggleHref(base, "graph", filters)) }
@@ -49,20 +57,14 @@ func toggleAriaCurrent(current, target string) string {
 	return "false"
 }
 
-// buildToggleHref combines base path + view selector + preserved filters.
-// "view=graph" goes first when set; other filter pairs follow.
+// buildToggleHref combines base path + view selector + preserved
+// filters. The view selector is always emitted so the server's
+// pickView() helper can refresh its persistence cookie even when the
+// user clicks the segment that's already active.
 func buildToggleHref(base, view, filters string) string {
-	parts := []string{}
-	if view != "" {
-		parts = append(parts, "view="+view)
-	}
-
+	parts := []string{"view=" + view}
 	if filters != "" {
 		parts = append(parts, filters)
-	}
-
-	if len(parts) == 0 {
-		return base
 	}
 
 	return base + "?" + strings.Join(parts, "&")

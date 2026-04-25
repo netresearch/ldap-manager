@@ -296,12 +296,14 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	groups = filterGroupsByMember(groups, memberDN)
 	sortGroupsByCN(groups)
 
-	currentView := c.Query("view")
+	currentView := pickView(c)
 	if a.ldapCache == nil {
-		currentView = ""
+		currentView = "list"
 	}
 
-	if currentView == "graph" && a.ldapCache != nil {
+	filterQS := templates.GroupsFilterQS(ouFilter, memberDN)
+
+	if currentView == "graph" {
 		members := make([]ldap.User, 0)
 		computers := make([]ldap.Computer, 0)
 		seenMember := make(map[string]struct{})
@@ -319,9 +321,16 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 			}
 		}
 		data := a.ldapCache.BuildListGraph(members, computers)
-		vm := templates.GraphPageVM{Data: data, BackHref: "/groups", FocusLabel: "Groups"}
+		vm := templates.GraphPageVM{Data: data, BackHref: "/groups", FocusLabel: "Groups", FilterQS: filterQS}
 
 		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+	}
+
+	if currentView == "table" {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+
+		return templates.GroupsListTableV2(groups, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
 	memberCN := lookupUserCN(memberDN, a.ldapCache)

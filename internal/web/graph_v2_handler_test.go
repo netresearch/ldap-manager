@@ -313,3 +313,129 @@ func TestHandleComputersV2_GraphMode(t *testing.T) {
 		}
 	}
 }
+
+// TestHandleUsersV2_TableMode covers the new ?view=table branch — the
+// full-width Table view with no filter rail or detail drawer.
+func TestHandleUsersV2_TableMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	cachetest.Seed(app.ldapCache,
+		[]ldap.User{
+			cachetest.NewUserWithDN(bobDN, "bob", "bob", true, nil),
+		},
+		nil,
+		nil,
+	)
+
+	cookies := createAuthSession(t, app, store)
+	req := httptest.NewRequest("GET", "/users?view=table", nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
+		"table render must declare HTML content-type — earlier omission caused browsers to display raw HTML")
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	html := string(body)
+
+	for _, marker := range []string{
+		`class="list-table"`,
+		`<th scope="col">CN</th>`,
+		"bob",
+		`graph-segmented`,
+	} {
+		require.Contains(t, html, marker, "missing table-view marker %q", marker)
+	}
+}
+
+// TestHandleGroupsV2_TableMode mirrors TestHandleUsersV2_TableMode.
+func TestHandleGroupsV2_TableMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	const engineersDN = "cn=engineers,ou=Groups,dc=test,dc=local"
+	cachetest.Seed(app.ldapCache, nil,
+		[]ldap.Group{
+			cachetest.NewGroupWithDN(engineersDN, "engineers", []string{bobDN}),
+		},
+		nil,
+	)
+
+	cookies := createAuthSession(t, app, store)
+	req := httptest.NewRequest("GET", "/groups?view=table", nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `class="list-table"`)
+	require.Contains(t, string(body), "engineers")
+}
+
+// TestHandleComputersV2_TableMode mirrors the user/group versions.
+func TestHandleComputersV2_TableMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	const ws01DN = "cn=ws01,ou=Computers,dc=test,dc=local"
+	cachetest.Seed(app.ldapCache, nil, nil, []ldap.Computer{
+		cachetest.NewComputerWithDN(ws01DN, "ws01", "ws01$", true, nil),
+	})
+
+	cookies := createAuthSession(t, app, store)
+	req := httptest.NewRequest("GET", "/computers?view=table", nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `class="list-table"`)
+	require.Contains(t, string(body), "ws01")
+}
+
+// TestHandleUsersV2_PersistentViewViaCookie covers the cookie path:
+// when no ?view= is in the URL, pickView falls back to the graph-view
+// cookie. Earlier the template-cache key didn't include the cookie, so
+// the first cached response stuck regardless of preference.
+func TestHandleUsersV2_PersistentViewViaCookie(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	cachetest.Seed(app.ldapCache,
+		[]ldap.User{
+			cachetest.NewUserWithDN(bobDN, "bob", "bob", true, nil),
+		},
+		nil, nil,
+	)
+
+	cookies := createAuthSession(t, app, store)
+	req := httptest.NewRequest("GET", "/users", nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	req.AddCookie(&http.Cookie{Name: "graph-view", Value: "table"})
+
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `class="list-table"`,
+		"cookie should resolve to table view when no ?view= is set")
+}

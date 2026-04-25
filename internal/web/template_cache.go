@@ -82,6 +82,15 @@ func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string
 		h.Write([]byte(userDN))
 	}
 
+	// Include the list-view preference cookie so /users (no query) with
+	// graph-view=table caches separately from /users with graph-view=list.
+	// Without this, the first cached response wins regardless of the
+	// per-user preference and the segmented toggle appears broken.
+	if v := c.Cookies(graphViewCookie); v != "" {
+		h.Write([]byte("view:"))
+		h.Write([]byte(v))
+	}
+
 	// Include any additional data for cache differentiation
 	for _, data := range additionalData {
 		h.Write([]byte(data))

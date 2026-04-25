@@ -37,9 +37,13 @@ templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous
 
 		<main id="main-content" class="list-page" data-bulk-scope="groups">
 			<header class="list-page__head">
-				<h1 class="list-page__title">Groups</h1>
-				<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
-				@listGraphToggle("/groups", currentView, groupsFilterQS(ouFilter, memberDN))
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Groups</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d", len(groups)) } groups</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/groups", currentView, GroupsFilterQS(ouFilter, memberDN))
+				</div>
 			</header>
 
 			@listFlashes(flashes)
@@ -647,11 +651,11 @@ templ groupAddUserForm(vm GroupDrawerVM) {
 	}
 }
 
-// groupsFilterQS encodes the active /groups filter combination as a bare
+// GroupsFilterQS encodes the active /groups filter combination as a bare
 // query string (no leading "?", no view selector). Used by the
 // listGraphToggle to preserve filters when switching between
 // list / graph segments.
-func groupsFilterQS(ouFilter, memberDN string) string {
+func GroupsFilterQS(ouFilter, memberDN string) string {
 	v := url.Values{}
 	if ouFilter != "" {
 		v.Set("ou", ouFilter)

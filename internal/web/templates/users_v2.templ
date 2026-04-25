@@ -35,9 +35,13 @@ templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLog
 
 		<main id="main-content" class="list-page" data-bulk-scope="users">
 			<header class="list-page__head">
-				<h1 class="list-page__title">Users</h1>
-				<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
-				@listGraphToggle("/users", currentView, usersFilterQS(showDisabled, ouFilter, lastLogon, memberOfDN))
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">Users</h1>
+					<p class="list-page__count">{ fmt.Sprintf("%d", len(users)) } users</p>
+				</div>
+				<div class="list-page__head-controls">
+					@listGraphToggle("/users", currentView, UsersFilterQS(showDisabled, ouFilter, lastLogon, memberOfDN))
+				</div>
 			</header>
 
 			@listFlashes(flashes)
@@ -745,11 +749,11 @@ func userOUHrefFactory(showDisabled bool, lastLogon, memberOfDN string) ouHref {
 	}
 }
 
-// usersFilterQS encodes the active /users filter combination as a bare
+// UsersFilterQS encodes the active /users filter combination as a bare
 // query string (no leading "?", no view selector). Used by the
 // listGraphToggle to preserve filters when switching between
 // list / graph segments.
-func usersFilterQS(showDisabled bool, ouFilter, lastLogon, memberOfDN string) string {
+func UsersFilterQS(showDisabled bool, ouFilter, lastLogon, memberOfDN string) string {
 	v := url.Values{}
 	if showDisabled {
 		v.Set("show-disabled", "1")

@@ -968,8 +968,27 @@ a.home__quick-card:focus-visible .home__quick-card-arrow {
 .list-page__head {
     display: flex;
     align-items: baseline;
-    gap: 0.75rem;
+    gap: 1rem;
     margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+/* Title cluster (h1 + count) sits at the left; controls cluster
+   (filters/slider/segmented toggle) auto-margins to the right so the
+   toggle stays in a stable screen position across List/Table/Graph
+   views regardless of how many other controls a view has. */
+.list-page__head-titles {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.list-page__head-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    flex-wrap: wrap;
 }
 
 .list-page__title {
@@ -2664,10 +2683,13 @@ button.kv-edit__save {
   --graph-edge-focus: #0a0a0a;
   --graph-node-border: #525252;     /* AAA 7.8 on #fff */
   --graph-node-focus-ring: #0a0a0a;
-  --graph-node-bg-user: #fafafa;
+  /* Disc fills MUST contrast with --bg-subtle (the canvas background)
+     — earlier values matched the canvas exactly, leaving discs visible
+     only via their stroke. */
+  --graph-node-bg-user: #ffffff;
   --graph-node-bg-group: #e5e5e5;
   --graph-node-bg-computer: #d4d4d4;
-  --graph-node-bg-ou: #ffffff;
+  --graph-node-bg-ou: #f0f0f0;
 }
 
 :root[data-theme="dark"] {
@@ -2675,40 +2697,56 @@ button.kv-edit__save {
   --graph-edge-focus: #f5f5f5;
   --graph-node-border: #d4d4d4;
   --graph-node-focus-ring: #4ade80;
-  --graph-node-bg-user: #1a1a1a;
-  --graph-node-bg-group: #262626;
-  --graph-node-bg-computer: #333333;
+  /* Same logic as light theme — bumped one tone away from --bg-subtle
+     (#1a1a1a) so the disc body is visible, not just the border. */
+  --graph-node-bg-user: #2a2a2a;
+  --graph-node-bg-group: #383838;
+  --graph-node-bg-computer: #454545;
   --graph-node-bg-ou: #0d0d0d;
 }
 
-.graph-page { padding: 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+/* Match .list-page width/centering so the List|Table|Graph headers align
+   identically across views (see header consistency feedback). */
+.graph-page { max-width: 72rem; width: 100%; margin: 1.5rem auto 0; padding: 0 1rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .graph-page__head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
 .graph-page__title { margin: 0; }
 .graph-page__overflow { color: var(--fg-muted); font-size: 0.9rem; }
+/* Explicit color on the visible "Relationships" section header so it
+   honours the theme — Pico's defaults for h2 may not pick up --fg in
+   the dark/console mode. */
+.graph-table-section h2 { color: var(--fg); }
 
-.graph-slider { display: inline-flex; gap: 0.5rem; align-items: center; }
+.graph-slider { display: inline-flex; gap: 0.5rem; align-items: center; color: var(--fg); }
 .graph-slider__label { font-weight: 600; }
 .graph-slider__value { font-variant-numeric: tabular-nums; min-width: 1.5em; text-align: center; }
+/* accent-color themes the native range track + thumb to match the
+   active --accent token (green in dark/console mode, near-black in
+   light). Without it the slider keeps the platform default which
+   reads as a bright-white control on a dark page. */
+.graph-slider input[type="range"] { accent-color: var(--accent); }
 
 .graph-canvas { width: 100%; height: min(70vh, 640px); background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; }
 .graph-canvas:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
 
 .graph-edge { stroke: var(--graph-edge); stroke-width: 1.5; fill: none; }
-.graph-edge:hover { stroke: var(--graph-edge-focus); stroke-width: 2; }
+.graph-edge:hover,
+.graph-edge--hover-related { stroke: var(--graph-edge-focus); stroke-width: 2; }
 
 .graph-node { cursor: pointer; }
 .graph-node__disc { fill: var(--graph-node-bg-user); stroke: var(--graph-node-border); stroke-width: 1.5; }
 .graph-node--group .graph-node__disc { fill: var(--graph-node-bg-group); stroke-dasharray: 4 3; }
 .graph-node--computer .graph-node__disc { fill: var(--graph-node-bg-computer); }
 .graph-node--ou .graph-node__disc { fill: var(--graph-node-bg-ou); }
-.graph-node__label { fill: var(--fg); font-size: 12px; font-weight: 500; pointer-events: none; }
+/* font-family: inherit so the node label picks up the body's monospace
+   font in dark/console mode (see :root[data-theme="dark"] body rule). */
+.graph-node__label { fill: var(--fg); font-family: inherit; font-size: 12px; font-weight: 500; pointer-events: none; }
 .graph-node:focus-visible .graph-node__disc { outline: 2px solid var(--graph-node-focus-ring); outline-offset: 2px; }
 .graph-node__expand-badge-bg { fill: var(--accent); }
 .graph-node__expand-badge-mark { fill: var(--bg); font-size: 12px; font-weight: 700; }
 
-.graph-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.graph-table { width: 100%; border-collapse: collapse; font-family: inherit; font-size: 0.9rem; color: var(--fg); }
 .graph-table th, .graph-table td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid var(--border); }
-.graph-table th { background: var(--bg-subtle); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.03em; }
+.graph-table th { background: var(--bg-subtle); color: var(--fg); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.03em; }
 .graph-table tr:focus-within { outline: 2px solid var(--border-strong); outline-offset: -2px; }
 .graph-table__sort { color: var(--fg); text-decoration: none; }
 .graph-table__sort:hover { text-decoration: underline; }
@@ -2721,6 +2759,30 @@ button.kv-edit__save {
 .graph-segmented__option { padding: 0.4rem 1rem; color: var(--fg-muted); text-decoration: none; }
 .graph-segmented__option:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
 .graph-segmented__option:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
-.graph-segmented__option:hover { background: var(--bg-subtle); }
+/* Don't apply hover styling to the active option — its accent
+   background swaps to --bg-subtle (which equals --bg in dark mode and
+   reads as black-on-black). The active option stays solid through
+   hover instead. */
+.graph-segmented__option:hover:not(.graph-segmented__option--active) { background: var(--bg-subtle); }
 .graph-segmented__option--active { background: var(--accent); color: var(--bg); }
 .graph-segmented__option:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+
+/* ============================================================
+   List → Table view (third segment of List | Table | Graph)
+   ============================================================ */
+
+/* Same max-width/centering as .list-page and .graph-page for consistent
+   subheader alignment across all three views. */
+.list-table-page { max-width: 72rem; width: 100%; margin: 1.5rem auto 0; padding: 0 1rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.list-table-page__head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.list-table-page__title { margin: 0; }
+.list-table-page__count { color: var(--fg-muted); font-size: 0.9rem; }
+
+.list-table { width: 100%; border-collapse: collapse; font-family: inherit; font-size: 0.95rem; color: var(--fg); }
+.list-table th, .list-table td { text-align: left; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); }
+.list-table th { background: var(--bg-subtle); color: var(--fg); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.03em; font-weight: 600; }
+.list-table tbody tr:hover { background: var(--bg-subtle); }
+.list-table__link { color: var(--fg); text-decoration: none; font-weight: 500; }
+.list-table__link:hover { text-decoration: underline; }
+.list-table__num { font-variant-numeric: tabular-nums; text-align: right; }
+.list-table__dn { color: var(--fg-muted); font-family: var(--font-mono, monospace); font-size: 0.85rem; word-break: break-all; }

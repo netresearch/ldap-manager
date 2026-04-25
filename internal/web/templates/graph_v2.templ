@@ -24,6 +24,7 @@ type GraphPageVM struct {
 	SortTo     string
 	SortType   string
 	BackHref   string // URL to return to the referring list/detail page
+	FilterQS   string // url.Values-encoded query string of preserved filters (without leading "?", without "view=") — used by the List|Table|Graph toggle so switching views keeps the same subset
 }
 
 // GraphPageV2 renders the /graph page. The page works without
@@ -34,15 +35,24 @@ type GraphPageVM struct {
 // script (v2-graph.js, Slice 4) can read it without a second fetch.
 // Slice 4 will read it via document.getElementById('graph-data').content.textContent.
 templ GraphPageV2(vm GraphPageVM) {
-	@baseV2(graphTitle(vm)) {
+	@baseV2PageScroll(graphTitle(vm)) {
 		@topnavV2("/graph")
 		<main id="main-content" class="graph-page">
-			<header class="graph-page__head">
-				<h1 class="graph-page__title">{ graphTitle(vm) }</h1>
-				if vm.BackHref != "" {
-					@listGraphToggle(vm.BackHref, "graph", "")
-				}
-				@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
+			<header class="list-page__head">
+				<div class="list-page__head-titles">
+					<h1 class="list-page__title">{ graphTitle(vm) }</h1>
+					if vm.Data.Overflow.Truncated {
+						<p class="list-page__count">
+							{ fmt.Sprintf("%d of %d", vm.Data.Overflow.Rendered, vm.Data.Overflow.Available) }
+						</p>
+					}
+				</div>
+				<div class="list-page__head-controls">
+					@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
+					if vm.BackHref != "" {
+						@listGraphToggle(vm.BackHref, "graph", vm.FilterQS)
+					}
+				</div>
 			</header>
 			if vm.Data.Overflow.Truncated {
 				<p class="graph-page__overflow" role="status">
@@ -164,7 +174,7 @@ templ graphNode(n ldap_cache.Node) {
 		data-expandable={ fmt.Sprintf("%t", n.Expandable) }
 		aria-label={ graphNodeLabel(n) }
 	>
-		<circle r="28" class="graph-node__disc"></circle>
+		<circle r={ fmt.Sprintf("%d", discRadius(n.Degree)) } class="graph-node__disc"></circle>
 		<text class="graph-node__label" text-anchor="middle" y="4">{ n.Label }</text>
 		if n.Expandable {
 			<g class="graph-node__expand-badge" transform="translate(18,-18)" aria-hidden="true">
@@ -200,6 +210,26 @@ func nodeXY(dn string, nodes []ldap_cache.Node) (float64, float64) {
 	}
 
 	return 0, 0
+}
+
+// discRadius scales node disc size with degree so high-connectivity
+// nodes (groups with many members, hub users) read as visually
+// weightier. Mirrors the JS-side discRadius() in v2-graph.js — both
+// use math.Round / Math.round so SSR-rendered and JS-rendered nodes
+// share the same radius for the same degree.
+func discRadius(degree int) int {
+	const (
+		base = 22
+		step = 1.5
+		maxR = 32
+	)
+
+	r := int(math.Round(base + float64(degree)*step))
+	if r > maxR {
+		return maxR
+	}
+
+	return r
 }
 
 // graphNodeLabel composes the screen-reader label for a node. Includes
