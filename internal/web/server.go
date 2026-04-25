@@ -335,6 +335,10 @@ func (a *App) setupRoutes() {
 	// in-handler so template-cache middleware is not needed.
 	protected.Get("/api/search-index.json", a.handleSearchIndex)
 
+	// Relationship graph JSON (spec §4.1) — same ETag pattern as
+	// /api/search-index.json.
+	protected.Get("/api/graph.json", a.handleGraphJSON)
+
 	// Bulk actions (Phase 3 + 4) — registered BEFORE each /<kind>/* wildcard
 	// POST so Fiber matches the exact /<kind>/bulk path first.
 	protected.Post("/users/bulk", a.handleBulkUsers)

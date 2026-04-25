@@ -216,6 +216,7 @@ func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Sto
 	protected.Get("/users/*", app.handleUserV2)
 	protected.Get("/groups/*", app.handleGroupV2)
 	protected.Get("/computers/*", app.handleComputerV2)
+	protected.Get("/api/graph.json", app.handleGraphJSON)
 	protected.Post("/users/*", app.userModifyHandler)
 	protected.Post("/groups/*", app.groupModifyHandler)
 	protected.Get("/logout", app.logoutHandler)
