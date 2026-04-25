@@ -319,7 +319,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), c.Query("view")).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 

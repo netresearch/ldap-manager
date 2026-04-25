@@ -1,0 +1,65 @@
+// internal/web/templates/graph_toggle.templ — segmented "List | Graph"
+// view toggle reused by all three list pages (Phase 3 §6.6).
+package templates
+
+import "strings"
+
+// listGraphToggle renders the segmented control. `base` is the bare list
+// route ("/users", "/groups", "/computers"). `currentView` is the value
+// of c.Query("view") at request time (empty string for default list).
+// `filters` is the URL-encoded query string of OTHER filters to preserve
+// (without leading "?", without view=…). Both branches preserve filters.
+templ listGraphToggle(base, currentView, filters string) {
+	<nav class="graph-segmented" role="group" aria-label="List or graph view">
+		<a
+			class={ "graph-segmented__option", toggleClass(currentView, "") }
+			href={ templ.URL(buildToggleHref(base, "", filters)) }
+			aria-pressed={ toggleAriaPressed(currentView, "") }
+		>List</a>
+		<a
+			class={ "graph-segmented__option", toggleClass(currentView, "graph") }
+			href={ templ.URL(buildToggleHref(base, "graph", filters)) }
+			aria-pressed={ toggleAriaPressed(currentView, "graph") }
+		>Graph</a>
+	</nav>
+}
+
+// toggleClass returns the active modifier class when the segment matches
+// the current view; otherwise an empty string (templ filters out empties
+// from the multi-arg class attribute).
+func toggleClass(current, target string) string {
+	if current == target {
+		return "graph-segmented__option--active"
+	}
+
+	return ""
+}
+
+// toggleAriaPressed mirrors toggleClass for the aria-pressed attribute so
+// assistive tech announces which segment is currently selected.
+func toggleAriaPressed(current, target string) string {
+	if current == target {
+		return "true"
+	}
+
+	return "false"
+}
+
+// buildToggleHref combines base path + view selector + preserved filters.
+// "view=graph" goes first when set; other filter pairs follow.
+func buildToggleHref(base, view, filters string) string {
+	parts := []string{}
+	if view != "" {
+		parts = append(parts, "view="+view)
+	}
+
+	if filters != "" {
+		parts = append(parts, filters)
+	}
+
+	if len(parts) == 0 {
+		return base
+	}
+
+	return base + "?" + strings.Join(parts, "&")
+}

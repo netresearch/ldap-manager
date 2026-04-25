@@ -118,7 +118,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		users, showDisabled, ouFilter, lastLogon,
 		memberOf, memberOfCN, ous,
 		a.takeFlash(c), a.paletteContextFor(viewerDN),
-		adminDNs,
+		adminDNs, c.Query("view"),
 	)
 
 	return page.Render(c.UserContext(), c.Response().BodyWriter())
