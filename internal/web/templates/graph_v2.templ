@@ -113,6 +113,8 @@ templ graphSVG(data *ldap_cache.GraphData, focusLabel string) {
 		role="img"
 		aria-labelledby="graph-canvas-title"
 		aria-describedby="graph-canvas-desc"
+		tabindex="-1"
+		focusable="false"
 	>
 		<title id="graph-canvas-title">{ "Relationship graph for " + focusLabel }</title>
 		<desc id="graph-canvas-desc">
