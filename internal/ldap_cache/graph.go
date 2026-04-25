@@ -150,16 +150,7 @@ func (m *Manager) BuildListGraph(filtered []ldap.User, filteredComputers []ldap.
 			seen[u.DN()] = 2
 		}
 
-		for _, gDN := range u.Groups {
-			if g, ok := m.Groups.FindByDN(gDN); ok {
-				if _, dup := seen[gDN]; !dup {
-					data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
-					seen[gDN] = 1
-				}
-
-				data.Edges = append(data.Edges, Edge{Source: u.DN(), Target: gDN, Kind: EdgeMemberOf})
-			}
-		}
+		m.addListGroupMemberships(data, seen, u.DN(), u.Groups)
 	}
 
 	for _, c := range filteredComputers {
@@ -168,22 +159,36 @@ func (m *Manager) BuildListGraph(filtered []ldap.User, filteredComputers []ldap.
 			seen[c.DN()] = 2
 		}
 
-		for _, gDN := range c.Groups {
-			if g, ok := m.Groups.FindByDN(gDN); ok {
-				if _, dup := seen[gDN]; !dup {
-					data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
-					seen[gDN] = 1
-				}
-
-				data.Edges = append(data.Edges, Edge{Source: c.DN(), Target: gDN, Kind: EdgeMemberOf})
-			}
-		}
+		m.addListGroupMemberships(data, seen, c.DN(), c.Groups)
 	}
 
 	applyCaps(data)
 	assignConcentric(data)
 
 	return data
+}
+
+// addListGroupMemberships adds ring-1 group nodes for each groupDN in
+// memberGroups (resolving via the cache; missing groups are skipped) and
+// a deduped memberOf edge from sourceDN. Used by BuildListGraph for both
+// users and computers — same shape, different source type.
+func (m *Manager) addListGroupMemberships(data *GraphData, seen map[string]int, sourceDN string, memberGroups []string) {
+	for _, gDN := range memberGroups {
+		g, ok := m.Groups.FindByDN(gDN)
+		if !ok {
+			continue
+		}
+
+		if _, dup := seen[gDN]; !dup {
+			data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
+			seen[gDN] = 1
+		}
+
+		edge := Edge{Source: sourceDN, Target: gDN, Kind: EdgeMemberOf}
+		if !hasEdge(data, edge) {
+			data.Edges = append(data.Edges, edge)
+		}
+	}
 }
 
 func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {

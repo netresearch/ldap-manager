@@ -296,21 +296,30 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	groups = filterGroupsByMember(groups, memberDN)
 	sortGroupsByCN(groups)
 
-	if c.Query("view") == "graph" && a.ldapCache != nil {
+	currentView := c.Query("view")
+	if a.ldapCache == nil {
+		currentView = ""
+	}
+
+	if currentView == "graph" && a.ldapCache != nil {
 		members := make([]ldap.User, 0)
 		computers := make([]ldap.Computer, 0)
+		seenMember := make(map[string]struct{})
 		for _, g := range groups {
 			for _, mDN := range g.Members {
+				if _, dup := seenMember[mDN]; dup {
+					continue
+				}
+				seenMember[mDN] = struct{}{}
 				if u, ok := a.ldapCache.Users.FindByDN(mDN); ok {
 					members = append(members, *u)
-				}
-				if comp, ok := a.ldapCache.Computers.FindByDN(mDN); ok {
+				} else if comp, ok := a.ldapCache.Computers.FindByDN(mDN); ok {
 					computers = append(computers, *comp)
 				}
 			}
 		}
 		data := a.ldapCache.BuildListGraph(members, computers)
-		vm := templates.GraphPageVM{Data: data}
+		vm := templates.GraphPageVM{Data: data, BackHref: "/groups", FocusLabel: "Groups"}
 
 		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
 	}
@@ -319,7 +328,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), c.Query("view")).
+	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), currentView).
 		Render(c.UserContext(), c.Response().BodyWriter())
 }
 
