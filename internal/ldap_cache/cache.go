@@ -138,9 +138,13 @@ func (c *Cache[T]) update(fn func(*T)) {
 // without waiting for the next background Refresh (which can be delayed
 // by AD replication between the modifying DC and the readonly-bind DC).
 //
-// Uses the dnIndex for O(1) location lookup and slices.Delete for the
-// slice shrink (which zeroes the vacated slot, so pointer fields inside
-// T do not keep the removed entry's data alive indefinitely).
+// The dnIndex provides fast presence detection, but locating the
+// matching slice element still requires a linear scan over c.items
+// (we compare slice-element pointers, not by DN). After deletion we
+// rebuild every index, which is also O(n). Overall removal is O(n).
+// slices.Delete shrinks the slice and zeroes the vacated slot, so
+// pointer fields inside T do not keep the removed entry's data alive
+// indefinitely.
 func (c *Cache[T]) remove(dn string) {
 	c.m.Lock()
 	defer c.m.Unlock()
