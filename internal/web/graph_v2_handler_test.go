@@ -235,3 +235,81 @@ func TestHandleGraphV2_RendersHTML(t *testing.T) {
 		}
 	}
 }
+
+func TestHandleGroupsV2_GraphMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	cookies := createAuthSession(t, app, store)
+
+	// Seed a group with bob as a member; the handler walks Members
+	// and looks each DN up in Users/Computers caches.
+	const engineersDN = "cn=engineers,ou=Groups,dc=test,dc=local"
+	cachetest.Seed(app.ldapCache,
+		[]ldap.User{
+			cachetest.NewUserWithDN(bobDN, "bob", "bob", true, []string{engineersDN}),
+		},
+		[]ldap.Group{
+			cachetest.NewGroupWithDN(engineersDN, "engineers", []string{bobDN}),
+		},
+		nil,
+	)
+
+	req := httptest.NewRequest("GET", "/groups?view=graph", nil)
+	for _, ck := range cookies {
+		req.AddCookie(ck)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	html := string(body)
+
+	for _, marker := range []string{`id="graph-canvas"`, `id="graph-data"`, `class="graph-table"`} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("missing HTML marker %q", marker)
+		}
+	}
+	// Member-lookup regression check: bob should appear in the graph
+	// data because the groups handler walks Members and resolves them.
+	require.Contains(t, html, "bob", "expected the looked-up member to appear in the rendered graph")
+}
+
+func TestHandleComputersV2_GraphMode(t *testing.T) {
+	app, store := setupFullTestApp(t)
+	cookies := createAuthSession(t, app, store)
+
+	const ws01DN = "cn=ws01,ou=Computers,dc=test,dc=local"
+	const engineersDN = "cn=engineers,ou=Groups,dc=test,dc=local"
+	cachetest.Seed(app.ldapCache,
+		nil,
+		[]ldap.Group{
+			cachetest.NewGroupWithDN(engineersDN, "engineers", []string{ws01DN}),
+		},
+		[]ldap.Computer{
+			cachetest.NewComputerWithDN(ws01DN, "ws01", "ws01$", true, []string{engineersDN}),
+		},
+	)
+
+	req := httptest.NewRequest("GET", "/computers?view=graph", nil)
+	for _, ck := range cookies {
+		req.AddCookie(ck)
+	}
+	resp, err := app.fiber.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	html := string(body)
+
+	for _, marker := range []string{`id="graph-canvas"`, `id="graph-data"`, `class="graph-table"`, "ws01"} {
+		if !strings.Contains(html, marker) {
+			t.Errorf("missing HTML marker %q", marker)
+		}
+	}
+}
