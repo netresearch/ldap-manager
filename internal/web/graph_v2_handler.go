@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 
 	goldap "github.com/go-ldap/ldap/v3"
@@ -27,18 +26,24 @@ func (a *App) handleGraphJSON(c *fiber.Ctx) error {
 
 	body, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("marshal graph: %w", err)
+		log.Error().
+			Err(err).
+			Str("entity", c.Query("entity")).
+			Msg("graph: marshal failed")
+
+		return c.Status(fiber.StatusInternalServerError).SendString("internal error")
 	}
+
 	sum := sha256.Sum256(body)
 	etag := `"` + hex.EncodeToString(sum[:16]) + `"`
+	c.Set("ETag", etag)
+	c.Set("Cache-Control", "private, must-revalidate")
 
 	if match := c.Get("If-None-Match"); match != "" && match == etag {
 		return c.SendStatus(fiber.StatusNotModified)
 	}
 
 	c.Set("Content-Type", "application/json; charset=utf-8")
-	c.Set("ETag", etag)
-	c.Set("Cache-Control", "private, must-revalidate")
 
 	return c.Send(body)
 }

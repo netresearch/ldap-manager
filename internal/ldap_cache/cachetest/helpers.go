@@ -55,6 +55,9 @@ func Seed(m *ldap_cache.Manager, users []ldap.User, groups []ldap.Group, compute
 func setObjectFields(obj reflect.Value, dn, cn string) {
 	dnField := obj.FieldByName("dn")
 	cnField := obj.FieldByName("cn")
-	reflect.NewAt(dnField.Type(), unsafe.Pointer(dnField.UnsafeAddr())).Elem().SetString(dn) //nolint:gosec
-	reflect.NewAt(cnField.Type(), unsafe.Pointer(cnField.UnsafeAddr())).Elem().SetString(cn) //nolint:gosec
+	// test-only writers for unexported simple-ldap-go fields; never used in production code.
+	dnPtr := unsafe.Pointer(dnField.UnsafeAddr()) //nolint:gosec // test-only DN field write
+	cnPtr := unsafe.Pointer(cnField.UnsafeAddr()) //nolint:gosec // test-only CN field write
+	reflect.NewAt(dnField.Type(), dnPtr).Elem().SetString(dn)
+	reflect.NewAt(cnField.Type(), cnPtr).Elem().SetString(cn)
 }

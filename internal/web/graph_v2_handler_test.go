@@ -113,6 +113,28 @@ func TestHandleGraphJSON_ETagStable(t *testing.T) {
 	}
 }
 
+func TestHandleGraphJSON_NotModifiedKeepsHeaders(t *testing.T) {
+	app, _ := setupFullTestApp(t)
+	seedBob(t, app)
+
+	req1 := httptest.NewRequest("GET", "/api/graph.json?entity="+bobDN, nil)
+	resp1, err := app.fiber.Test(req1)
+	require.NoError(t, err)
+	etag := resp1.Header.Get("ETag")
+	_ = resp1.Body.Close()
+	require.NotEmpty(t, etag)
+
+	req2 := httptest.NewRequest("GET", "/api/graph.json?entity="+bobDN, nil)
+	req2.Header.Set("If-None-Match", etag)
+	resp2, err := app.fiber.Test(req2)
+	require.NoError(t, err)
+	defer func() { _ = resp2.Body.Close() }()
+
+	require.Equal(t, http.StatusNotModified, resp2.StatusCode)
+	require.Equal(t, etag, resp2.Header.Get("ETag"), "304 must echo ETag")
+	require.NotEmpty(t, resp2.Header.Get("Cache-Control"), "304 must keep Cache-Control")
+}
+
 func TestHandleGraphJSON_DepthClamping(t *testing.T) {
 	app, _ := setupFullTestApp(t)
 	seedBob(t, app)
