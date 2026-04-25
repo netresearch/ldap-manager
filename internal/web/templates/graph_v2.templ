@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -54,7 +55,7 @@ templ GraphPageV2(vm GraphPageVM) {
 				@graphEdgeTable(vm)
 			</section>
 		</main>
-		@templ.JSONScript("graph-data", vm.Data)
+		@templ.Raw(graphInlineScript(vm.Data))
 	}
 }
 
@@ -386,4 +387,38 @@ func buildSortHref(vm GraphPageVM, key string) string {
 // et al. are wired through.
 func graphSortClass(_ string, _ GraphPageVM) string {
 	return ""
+}
+
+// graphInlineJSONFallback is the empty-but-well-formed envelope returned
+// when json.Marshal fails (it really shouldn't for GraphData, but the
+// template must never produce broken HTML).
+const graphInlineJSONFallback = `{"focus":"","depth":0,"nodes":[],"edges":[],"overflow":{"truncated":false,"rendered":0,"available":0}}`
+
+// graphInlineJSON returns the marshalled GraphData. The template embeds
+// it inside <script type="application/json"> so the client-side script
+// (v2-graph.js) can read it without a second fetch.
+//
+// Splitting this from graphInlineScript keeps the JSON encoding pure —
+// callers (tests, future server-pushed updates) can grab the same
+// envelope the SSR template ships.
+func graphInlineJSON(data *ldap_cache.GraphData) string {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return graphInlineJSONFallback
+	}
+
+	return string(b)
+}
+
+// graphInlineScript wraps graphInlineJSON in the <script id="graph-data"
+// type="application/json"> tag the client expects. Returned as a raw
+// HTML string and injected via @templ.Raw because templ treats the
+// contents of <script> tags as opaque text — Go-statement interpolation
+// does not execute inside a <script> block.
+//
+// Safety note: json.Marshal is configured (by Go's stdlib) to escape
+// "<" and "&" inside JSON strings, so user-controlled DN values cannot
+// terminate the surrounding </script> tag.
+func graphInlineScript(data *ldap_cache.GraphData) string {
+	return `<script id="graph-data" type="application/json">` + graphInlineJSON(data) + `</script>`
 }
