@@ -200,6 +200,22 @@ templ iconOSApple() {
 	</svg>
 }
 
+// iconGraph — four nodes connected as a square. Semantic for the
+// relationship-graph view introduced in Phase 3. Matches the project
+// icon spec: 16-viewBox, 1.5 stroke, currentColor.
+templ iconGraph() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+		<circle cx="4" cy="4" r="1.5"></circle>
+		<circle cx="12" cy="4" r="1.5"></circle>
+		<circle cx="4" cy="12" r="1.5"></circle>
+		<circle cx="12" cy="12" r="1.5"></circle>
+		<line x1="5.5" y1="4" x2="10.5" y2="4"></line>
+		<line x1="4" y1="5.5" x2="4" y2="10.5"></line>
+		<line x1="12" y1="5.5" x2="12" y2="10.5"></line>
+		<line x1="5.5" y1="12" x2="10.5" y2="12"></line>
+	</svg>
+}
+
 // iconForEntity dispatches to the appropriate glyph for a UI "type"
 // string: "user", "group", or "computer". Unknown values fall back to a
 // neutral dot so callers never crash on a typo.

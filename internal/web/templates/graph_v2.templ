@@ -99,15 +99,20 @@ templ graphDepthSlider(current int, focusDN string) {
 // graphSVG renders the concentric SVG canvas. Nodes are positioned by
 // (Ring, Angle) from the cache builder; the viewBox is centred at the
 // origin so ring 0 sits in the middle.
+//
+// The <svg> itself is NOT focusable (no tabindex). Slice 4's
+// activateNodes() makes each .graph-node focusable instead, so axe's
+// nested-interactive rule (interactive parent + interactive child)
+// stays clean. Arrow-key pan still works because keydown bubbles from
+// the focused node up to the SVG-level listener in v2-graph.js.
 templ graphSVG(data *ldap_cache.GraphData, focusLabel string) {
 	<svg
 		id="graph-canvas"
 		class="graph-canvas"
 		viewBox="-500 -500 1000 1000"
-		role="img"
 		aria-labelledby="graph-canvas-title"
 		aria-describedby="graph-canvas-desc"
-		tabindex="0"
+		focusable="false"
 	>
 		<title id="graph-canvas-title">{ "Relationship graph for " + focusLabel }</title>
 		<desc id="graph-canvas-desc">
