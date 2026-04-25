@@ -339,6 +339,10 @@ func (a *App) setupRoutes() {
 	// /api/search-index.json.
 	protected.Get("/api/graph.json", a.handleGraphJSON)
 
+	// Graph view page (spec §6.6); same data shape as /api/graph.json,
+	// rendered as HTML for in-browser navigation.
+	protected.Get("/graph", a.handleGraphV2)
+
 	// Bulk actions (Phase 3 + 4) — registered BEFORE each /<kind>/* wildcard
 	// POST so Fiber matches the exact /<kind>/bulk path first.
 	protected.Post("/users/bulk", a.handleBulkUsers)

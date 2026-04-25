@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
 // handleGraphJSON serves /api/graph.json?entity=<dn>&depth=<N>. Response
@@ -99,4 +100,64 @@ func (a *App) buildGraphFromQuery(c *fiber.Ctx) (*ldap_cache.GraphData, int, str
 	}
 
 	return data, 0, ""
+}
+
+// handleGraphV2 serves /graph?entity=<dn>&depth=<N> as HTML. Shares the
+// build path with handleGraphJSON; wraps the result in the Templ page.
+func (a *App) handleGraphV2(c *fiber.Ctx) error {
+	data, status, errMsg := a.buildGraphFromQuery(c)
+	if status != 0 {
+		return c.Status(status).SendString(errMsg)
+	}
+
+	// Best-effort viewer DN for the VM: in production this route is
+	// behind RequireAuth so c.Locals already carries the DN, and the
+	// session fallback never fires. In test harnesses (and any future
+	// no-auth callers) we fall back to an empty string rather than
+	// invoking resolveViewerDN — the latter writes a 303 to /login on
+	// missing session, which would clobber the response we're about to
+	// render.
+	viewer := GetUserDN(c)
+	if viewer == "" {
+		if sess, err := a.sessionStore.Get(c); err == nil {
+			viewer, _ = sess.Get("dn").(string)
+		}
+	}
+
+	vm := templates.GraphPageVM{
+		Data:       data,
+		FocusLabel: graphFocusLabel(data),
+		FocusType:  graphFocusType(data),
+		ViewerDN:   viewer,
+	}
+
+	return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
+}
+
+// graphFocusLabel returns the human-friendly label for the focus node
+// (the ring-0 entry), or "" when no focus (list-page Graph mode, Slice 5).
+func graphFocusLabel(data *ldap_cache.GraphData) string {
+	if data.Focus == "" {
+		return ""
+	}
+
+	for _, n := range data.Nodes {
+		if n.Ring == 0 {
+			return n.Label
+		}
+	}
+
+	return data.Focus
+}
+
+// graphFocusType returns the type ("user", "group", "computer", "ou") of
+// the ring-0 focus node, or "" when no focus.
+func graphFocusType(data *ldap_cache.GraphData) string {
+	for _, n := range data.Nodes {
+		if n.Ring == 0 {
+			return string(n.Type)
+		}
+	}
+
+	return ""
 }
