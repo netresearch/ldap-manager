@@ -163,13 +163,15 @@ templ graphNode(n ldap_cache.Node) {
 }
 
 // concentricXY converts (ring, angle) to canvas coords. Ring 0 → origin;
-// Ring r → radius r × 180 (viewBox is 1000×1000 centred at origin).
+// Ring r → radius r × 150 (viewBox is 1000×1000 centred at origin; the
+// 150 multiplier keeps ring-3 nodes — including their 28-radius disc and
+// expand-badge — inside the ±500 clip).
 func concentricXY(ring int, angle float64) (float64, float64) {
 	if ring == 0 {
 		return 0, 0
 	}
 
-	r := float64(ring) * 180
+	r := float64(ring) * 150
 
 	return r * math.Cos(angle), r * math.Sin(angle)
 }
