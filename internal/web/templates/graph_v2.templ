@@ -1,0 +1,81 @@
+// internal/web/templates/graph_v2.templ
+package templates
+
+import (
+	"fmt"
+
+	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+)
+
+// GraphPageVM is the view-model for the /graph page. Slice 5 reuses it
+// for the list-page Graph mode with Focus=="".
+type GraphPageVM struct {
+	Data       *ldap_cache.GraphData
+	FocusLabel string // human-friendly title, e.g. "bob.ops"
+	FocusType  string // "user", "group", "computer", "ou", or "" for list mode
+	ViewerDN   string
+	SortRing   string // "asc" | "desc"
+	SortFrom   string
+	SortEdge   string
+	SortTo     string
+	SortType   string
+	BackHref   string // URL to return to the referring list/detail page
+}
+
+// GraphPageV2 renders the /graph page. The page works without
+// JavaScript: the SSR SVG plus the edge table are fully usable.
+//
+// The graph data is also embedded inline as <script id="graph-data"
+// type="application/json"> so the client-side enhancement script
+// (v2-graph.js, Slice 4) can read it without a second fetch.
+templ GraphPageV2(vm GraphPageVM) {
+	@baseV2(graphTitle(vm)) {
+		@topnavV2("/graph")
+		<main id="main-content" class="graph-page">
+			<header class="graph-page__head">
+				<h1 class="graph-page__title">{ graphTitle(vm) }</h1>
+				@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
+			</header>
+			if vm.Data.Overflow.Truncated {
+				<p class="graph-page__overflow" role="status">
+					{ fmt.Sprintf("Showing %d of %d related entities.", vm.Data.Overflow.Rendered, vm.Data.Overflow.Available) }
+				</p>
+			}
+			<div id="graph-announce" role="status" aria-live="polite" class="sr-only"></div>
+			<section class="graph-canvas-section" aria-labelledby="graph-title-id">
+				<h2 id="graph-title-id" class="sr-only">Relationship canvas</h2>
+				@graphSVG(vm.Data, vm.FocusLabel)
+			</section>
+			<section class="graph-table-section" aria-labelledby="graph-table-title">
+				<h2 id="graph-table-title">Relationships</h2>
+				@graphEdgeTable(vm)
+			</section>
+		</main>
+		@templ.JSONScript("graph-data", vm.Data)
+	}
+}
+
+// graphTitle composes the page <title> / <h1>. Returns a generic title
+// in list-page Graph mode (Focus==""), otherwise the focus label.
+func graphTitle(vm GraphPageVM) string {
+	if vm.Data.Focus == "" {
+		return "Graph view"
+	}
+
+	return "Relationships: " + vm.FocusLabel
+}
+
+// graphDepthSlider is the Task-16 component; stubbed here so templ
+// generate succeeds at the Task-15 commit boundary.
+templ graphDepthSlider(_ int, _ string) {
+}
+
+// graphSVG is the Task-17 component; stubbed here so templ generate
+// succeeds at the Task-15 commit boundary.
+templ graphSVG(_ *ldap_cache.GraphData, _ string) {
+}
+
+// graphEdgeTable is the Task-18 component; stubbed here so templ
+// generate succeeds at the Task-15 commit boundary.
+templ graphEdgeTable(_ GraphPageVM) {
+}
