@@ -2664,10 +2664,13 @@ button.kv-edit__save {
   --graph-edge-focus: #0a0a0a;
   --graph-node-border: #525252;     /* AAA 7.8 on #fff */
   --graph-node-focus-ring: #0a0a0a;
-  --graph-node-bg-user: #fafafa;
+  /* Disc fills MUST contrast with --bg-subtle (the canvas background)
+     — earlier values matched the canvas exactly, leaving discs visible
+     only via their stroke. */
+  --graph-node-bg-user: #ffffff;
   --graph-node-bg-group: #e5e5e5;
   --graph-node-bg-computer: #d4d4d4;
-  --graph-node-bg-ou: #ffffff;
+  --graph-node-bg-ou: #f0f0f0;
 }
 
 :root[data-theme="dark"] {
@@ -2675,9 +2678,11 @@ button.kv-edit__save {
   --graph-edge-focus: #f5f5f5;
   --graph-node-border: #d4d4d4;
   --graph-node-focus-ring: #4ade80;
-  --graph-node-bg-user: #1a1a1a;
-  --graph-node-bg-group: #262626;
-  --graph-node-bg-computer: #333333;
+  /* Same logic as light theme — bumped one tone away from --bg-subtle
+     (#1a1a1a) so the disc body is visible, not just the border. */
+  --graph-node-bg-user: #2a2a2a;
+  --graph-node-bg-group: #383838;
+  --graph-node-bg-computer: #454545;
   --graph-node-bg-ou: #0d0d0d;
 }
 
@@ -2694,7 +2699,8 @@ button.kv-edit__save {
 .graph-canvas:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
 
 .graph-edge { stroke: var(--graph-edge); stroke-width: 1.5; fill: none; }
-.graph-edge:hover { stroke: var(--graph-edge-focus); stroke-width: 2; }
+.graph-edge:hover,
+.graph-edge--hover-related { stroke: var(--graph-edge-focus); stroke-width: 2; }
 
 .graph-node { cursor: pointer; }
 .graph-node__disc { fill: var(--graph-node-bg-user); stroke: var(--graph-node-border); stroke-width: 1.5; }

@@ -21,9 +21,6 @@
     var el = document.getElementById("graph-data");
     if (!el) return null;
     try {
-      // <template> content lives in a separate DocumentFragment.
-      // Slice 3 chose <template> over <script type="application/json">
-      // for CSP-safety under script-src 'self'.
       var text = el.content ? el.content.textContent : el.textContent;
       return JSON.parse(text);
     } catch (e) {
@@ -51,6 +48,17 @@
     return n.label;
   }
 
+  // labelHint composes the keyboard-affordance suffix for an aria-label.
+  // Mirrors the suffix logic in activateNodes + renderNode so all nodes
+  // carry consistent SR text. `expandable` is "true" for `+`, "expanded"
+  // for `-`, anything else for "no badge".
+  function labelHint(expandable) {
+    var hint = " Press Enter to open.";
+    if (expandable === "true") hint += " Press + to expand more relations.";
+    if (expandable === "expanded") hint += " Press - to collapse.";
+    return hint;
+  }
+
   // activateNodes makes each rendered .graph-node keyboard-focusable
   // and properly labelled now that the JS handlers exist. Slice 3
   // deliberately omitted these attributes from the SSR template.
@@ -60,16 +68,54 @@
       n.setAttribute("tabindex", "0");
       n.setAttribute("role", "button");
       var label = n.getAttribute("aria-label") || "";
-      if (label && label.indexOf("Press Enter to open.") === -1) {
-        label = label + " Press Enter to open.";
-      }
-      if (
-        n.getAttribute("data-expandable") === "true" &&
-        label.indexOf("Press + to expand") === -1
-      ) {
-        label = label + " Press + to expand more relations.";
-      }
+      // Strip any prior hint so re-activations don't pile suffixes.
+      var cut = label.indexOf(" Press Enter");
+      if (cut !== -1) label = label.substring(0, cut);
+      label += labelHint(n.getAttribute("data-expandable"));
       n.setAttribute("aria-label", label);
+    });
+  }
+
+  // wireHoverHighlight: hovering a node highlights its incident edges
+  // by toggling a .graph-edge--hover-related class on every edge whose
+  // data-source or data-target equals the node's DN.
+  function wireHoverHighlight(svg) {
+    function setHighlight(dn, on) {
+      if (!dn) return;
+      var sel =
+        '.graph-edge[data-source="' +
+        CSS.escape(dn) +
+        '"], .graph-edge[data-target="' +
+        CSS.escape(dn) +
+        '"]';
+      svg.querySelectorAll(sel).forEach(function (line) {
+        line.classList.toggle("graph-edge--hover-related", on);
+      });
+    }
+    svg.addEventListener("mouseover", function (e) {
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      setHighlight(node.getAttribute("data-dn"), true);
+    });
+    svg.addEventListener("mouseout", function (e) {
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      // mouseout fires when leaving inner SVG elements too; only un-set
+      // the highlight when the relatedTarget isn't still inside the same
+      // node group.
+      var to = e.relatedTarget;
+      if (to && node.contains(to)) return;
+      setHighlight(node.getAttribute("data-dn"), false);
+    });
+    svg.addEventListener("focusin", function (e) {
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      setHighlight(node.getAttribute("data-dn"), true);
+    });
+    svg.addEventListener("focusout", function (e) {
+      var node = e.target.closest(".graph-node");
+      if (!node) return;
+      setHighlight(node.getAttribute("data-dn"), false);
     });
   }
 
@@ -84,8 +130,24 @@
     activateNodes(svg);
     wirePanZoom(svg, viewport);
     wireNodeClicks(svg, state);
+    wireHoverHighlight(svg);
     wireDepthSlider();
   });
+
+  // userSpacePoint converts a screen-coord MouseEvent into the SVG's
+  // own user-space coordinate system (the one the inner viewport <g>
+  // is positioned in). Without this, cursor-anchored zoom math would
+  // mix screen pixels with viewBox units and drift relative to the
+  // pointer.
+  function userSpacePoint(svg, e) {
+    var pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    var ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    var p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  }
 
   function wirePanZoom(svg, viewport) {
     var tx = 0,
@@ -124,31 +186,31 @@
     });
 
     // Wheel zoom only when modifier key is held — without ctrl/meta the
-    // page scroll behaviour is preserved. Zoom around the cursor so the
-    // world-space point under the pointer stays put after the scale
-    // change (standard map/graph UX).
+    // page scroll behaviour is preserved. Anchor zoom around the
+    // pointer's USER-SPACE position so the world-point under the cursor
+    // stays put across the scale change. (Earlier versions mixed screen
+    // pixels with viewBox units and drifted noticeably.)
     svg.addEventListener(
       "wheel",
       function (e) {
         if (!(e.ctrlKey || e.metaKey)) return;
         e.preventDefault();
-        var rect = svg.getBoundingClientRect();
-        var cx = e.clientX - rect.left;
-        var cy = e.clientY - rect.top;
         var oldScale = scale;
         var delta = -e.deltaY * 0.001;
         scale = Math.min(3, Math.max(0.3, scale * (1 + delta)));
         if (oldScale !== scale) {
-          tx = cx - ((cx - tx) * scale) / oldScale;
-          ty = cy - ((cy - ty) * scale) / oldScale;
+          var u = userSpacePoint(svg, e);
+          tx = u.x - ((u.x - tx) * scale) / oldScale;
+          ty = u.y - ((u.y - ty) * scale) / oldScale;
         }
         apply();
       },
       { passive: false },
     );
 
-    // Arrow-key pan and +/- zoom when the canvas itself is focused
-    // (the SVG element has tabindex="0" from the SSR template).
+    // Arrow-key pan and +/- zoom via keyboard. Translation step is in
+    // user-space units (matches the viewBox) so behaviour scales the
+    // same regardless of the SVG's pixel size on screen.
     svg.addEventListener("keydown", function (e) {
       var step = 32;
       switch (e.key) {
@@ -172,18 +234,6 @@
           apply();
           e.preventDefault();
           break;
-        case "+":
-        case "=":
-          scale = Math.min(3, scale * 1.1);
-          apply();
-          e.preventDefault();
-          break;
-        case "-":
-        case "_":
-          scale = Math.max(0.3, scale / 1.1);
-          apply();
-          e.preventDefault();
-          break;
       }
     });
   }
@@ -194,32 +244,44 @@
       if (!node) return;
       var dn = node.getAttribute("data-dn");
       var type = node.getAttribute("data-type");
-      var expandable = node.getAttribute("data-expandable") === "true";
+      var expandable = node.getAttribute("data-expandable");
       var clickedBadge = !!e.target.closest(".graph-node__expand-badge");
 
-      if (expandable && clickedBadge) {
+      if (clickedBadge && expandable === "true") {
         expandNode(dn, state, svg);
+      } else if (clickedBadge && expandable === "expanded") {
+        collapseNode(dn, state, svg);
       } else {
         pivotToDrawer(dn, type);
       }
     });
     // Keyboard parity with mouse: Enter pivots (matches the SSR
     // aria-label "Press Enter to open"), and +/= expands when the node
-    // is expandable. Space is intentionally not bound — convention on
-    // non-form elements is page-down, not activation.
+    // is expandable, -/_ collapses when already expanded. Space is
+    // intentionally not bound — convention on non-form elements is
+    // page-down, not activation.
     svg.addEventListener("keydown", function (e) {
       var node = e.target.closest(".graph-node");
       if (!node) return;
       var dn = node.getAttribute("data-dn");
       var type = node.getAttribute("data-type");
-      var expandable = node.getAttribute("data-expandable") === "true";
+      var expandable = node.getAttribute("data-expandable");
 
       if (e.key === "Enter") {
         e.preventDefault();
         pivotToDrawer(dn, type);
-      } else if (expandable && (e.key === "+" || e.key === "=")) {
+      } else if (
+        (e.key === "+" || e.key === "=") &&
+        expandable === "true"
+      ) {
         e.preventDefault();
         expandNode(dn, state, svg);
+      } else if (
+        (e.key === "-" || e.key === "_") &&
+        expandable === "expanded"
+      ) {
+        e.preventDefault();
+        collapseNode(dn, state, svg);
       }
     });
   }
@@ -235,9 +297,6 @@
     window.location.href = base + encodeURIComponent(dn);
   }
 
-  // announce updates the off-screen aria-live region so SR users hear
-  // expansion results. Clear-then-set forces re-announcement when the
-  // same message fires twice.
   function announce(msg) {
     var el = document.getElementById("graph-announce");
     if (el) {
@@ -248,15 +307,46 @@
     }
   }
 
+  // setBadge replaces a node's expand-badge between "+" (expandable),
+  // "-" (expanded — collapse possible), and removed (terminal node).
+  // Returns the new badge element or null.
+  function setBadge(nodeEl, kind) {
+    var existing = nodeEl.querySelector(".graph-node__expand-badge");
+    if (existing) existing.remove();
+    if (kind !== "+" && kind !== "-") return null;
+    var ns = "http://www.w3.org/2000/svg";
+    var badge = document.createElementNS(ns, "g");
+    badge.setAttribute("class", "graph-node__expand-badge");
+    badge.setAttribute("transform", "translate(18,-18)");
+    badge.setAttribute("aria-hidden", "true");
+    var bg = document.createElementNS(ns, "circle");
+    bg.setAttribute("r", "8");
+    bg.setAttribute("class", "graph-node__expand-badge-bg");
+    badge.appendChild(bg);
+    var mark = document.createElementNS(ns, "text");
+    mark.setAttribute("text-anchor", "middle");
+    mark.setAttribute("y", "3");
+    mark.setAttribute("class", "graph-node__expand-badge-mark");
+    mark.textContent = kind;
+    badge.appendChild(mark);
+    nodeEl.appendChild(badge);
+    return badge;
+  }
+
+  // refreshLabel rebuilds the aria-label for a node based on the
+  // current data-expandable state ("true"/"expanded"/"false").
+  function refreshLabel(nodeEl) {
+    var label = nodeEl.getAttribute("aria-label") || "";
+    var cut = label.indexOf(" Press Enter");
+    if (cut !== -1) label = label.substring(0, cut);
+    label += labelHint(nodeEl.getAttribute("data-expandable"));
+    nodeEl.setAttribute("aria-label", label);
+  }
+
   function expandNode(dn, state, svg) {
-    var url =
-      "/api/graph.json?entity=" + encodeURIComponent(dn) + "&depth=1";
+    var url = "/api/graph.json?entity=" + encodeURIComponent(dn) + "&depth=1";
     fetch(url, { credentials: "same-origin" })
       .then(function (r) {
-        // Surface non-2xx (401 redirect to login, 404 missing entity,
-        // 500 server error) as thrown errors so the .catch below can
-        // announce them — otherwise r.json() would parse the HTML
-        // error body and throw a confusing SyntaxError instead.
         if (!r.ok) throw new Error("graph expand HTTP " + r.status);
         return r.json();
       })
@@ -267,12 +357,14 @@
         state.nodes.forEach(function (n) {
           existingDNs[n.dn] = true;
         });
+        var parent = state.nodes.find(function (x) {
+          return x.dn === dn;
+        });
+        var parentRing = parent ? parent.ring : 1;
         data.nodes.forEach(function (n) {
           if (existingDNs[n.dn]) return;
-          var parent = state.nodes.find(function (x) {
-            return x.dn === dn;
-          });
-          n.ring = (parent && parent.ring + 1) || 2;
+          n.ring = parentRing + 1;
+          n.addedBy = dn;
           state.nodes.push(n);
           renderNode(svg, n);
           affectedRings[n.ring] = true;
@@ -287,41 +379,105 @@
             );
           });
           if (!dup) {
+            e.addedBy = dn;
             state.edges.push(e);
             renderEdge(svg, e, state.nodes);
           }
         });
-        // Re-distribute angles on each ring that gained a node. Without
-        // this, expanded nodes keep the angles the backend assigned in
-        // the depth=1 ego graph (centred on the clicked node) — which
-        // were computed for a different node set and overlap or cluster
-        // oddly when merged into the original layout.
         Object.keys(affectedRings).forEach(function (r) {
           reLayoutRing(svg, state, parseInt(r, 10));
         });
-        // Mark clicked node as non-expandable so a subsequent click
-        // pivots to the drawer instead of re-fetching.
+        // Switch the parent's badge to "-" (collapse) and update its
+        // aria-label so SR users hear the new affordance.
         var el = svg.querySelector(
           '.graph-node[data-dn="' + CSS.escape(dn) + '"]',
         );
         if (el) {
-          el.setAttribute("data-expandable", "false");
-          var badge = el.querySelector(".graph-node__expand-badge");
-          if (badge) badge.remove();
+          el.setAttribute("data-expandable", "expanded");
+          setBadge(el, "-");
+          refreshLabel(el);
         }
         announce("Expanded " + dn + ": added " + added + " nodes.");
       })
       .catch(function (err) {
-        // Without this the badge stays clickable forever and SR users
-        // hear nothing. Trace + announce so the operator can retry.
         console.error("graph expand failed", err);
         announce("Expand failed.");
       });
   }
 
+  // collapseNode removes every node and edge that was added when this
+  // parent was expanded, restores the "+" badge so the user can
+  // re-expand, and re-lays out any rings that lost members.
+  function collapseNode(dn, state, svg) {
+    var removedDNs = {};
+    var affectedRings = {};
+    // Collect descendants: a node is in the collapse set if it (or one
+    // of its ancestors transitively) was addedBy the clicked dn.
+    var queue = [dn];
+    var ancestors = {};
+    ancestors[dn] = true;
+    while (queue.length > 0) {
+      var head = queue.shift();
+      state.nodes.forEach(function (n) {
+        if (n.addedBy === head && !ancestors[n.dn]) {
+          ancestors[n.dn] = true;
+          removedDNs[n.dn] = true;
+          affectedRings[n.ring] = true;
+          queue.push(n.dn);
+        }
+      });
+    }
+    // Drop nodes from state + DOM.
+    state.nodes = state.nodes.filter(function (n) {
+      if (!removedDNs[n.dn]) return true;
+      var el = svg.querySelector(
+        '.graph-node[data-dn="' + CSS.escape(n.dn) + '"]',
+      );
+      if (el) el.remove();
+      return false;
+    });
+    // Drop edges whose endpoints are removed OR which were addedBy the
+    // collapsed parent (covers parent→child edges where the child
+    // survives but the relationship was introduced by this expansion).
+    state.edges = state.edges.filter(function (e) {
+      var keep =
+        !removedDNs[e.source] && !removedDNs[e.target] && e.addedBy !== dn;
+      if (keep) return true;
+      var line = svg.querySelector(
+        'line[data-source="' +
+          CSS.escape(e.source) +
+          '"][data-target="' +
+          CSS.escape(e.target) +
+          '"]',
+      );
+      if (line) line.remove();
+      return false;
+    });
+    Object.keys(affectedRings).forEach(function (r) {
+      reLayoutRing(svg, state, parseInt(r, 10));
+    });
+    // Restore the parent's "+" badge and aria-label.
+    var parentEl = svg.querySelector(
+      '.graph-node[data-dn="' + CSS.escape(dn) + '"]',
+    );
+    if (parentEl) {
+      parentEl.setAttribute("data-expandable", "true");
+      setBadge(parentEl, "+");
+      refreshLabel(parentEl);
+    }
+    announce(
+      "Collapsed " +
+        dn +
+        ": removed " +
+        Object.keys(removedDNs).length +
+        " nodes.",
+    );
+  }
+
   // reLayoutRing redistributes nodes on a ring evenly around the circle
   // and re-routes any edges touching them. Called after expandNode
-  // merges new nodes onto an existing ring.
+  // merges new nodes onto an existing ring or collapseNode removes
+  // some.
   function reLayoutRing(svg, state, ring) {
     var ringNodes = state.nodes.filter(function (n) {
       return n.ring === ring;
@@ -343,7 +499,6 @@
       );
       if (el) el.setAttribute("transform", "translate(" + x + "," + y + ")");
     });
-    // Re-route edges touching any moved node on this ring.
     state.edges.forEach(function (e) {
       var src = state.nodes.find(function (x) {
         return x.dn === e.source;
@@ -372,12 +527,20 @@
     });
   }
 
+  // discRadius scales node disc size with degree so high-connectivity
+  // nodes (e.g. groups with many members) read as visually weightier.
+  // Capped so the max never exceeds ~1.4x the base — beyond that
+  // overlapping discs become unreadable.
+  function discRadius(degree) {
+    var base = 22;
+    var step = 1.5;
+    var max = 32;
+    return Math.min(max, base + (degree || 0) * step);
+  }
+
   function renderNode(svg, n) {
     var ns = "http://www.w3.org/2000/svg";
     var viewport = svg.querySelector(".graph-viewport");
-    // Match the SSR concentricXY radius multiplier (graph_v2.templ
-    // uses 150 so ring-3 nodes — including the 28-radius disc and
-    // expand-badge — fit inside the ±500 viewBox).
     var r = n.ring * 150;
     var x = r * Math.cos(n.angle),
       y = r * Math.sin(n.angle);
@@ -391,16 +554,14 @@
     g.setAttribute("role", "button");
     g.setAttribute("data-dn", n.dn);
     g.setAttribute("data-type", n.type);
-    g.setAttribute("data-expandable", String(!!n.expandable));
-    // Mirror activateNodes(): build the same "<typed label>. Press
-    // Enter to open. [Press + to expand more relations.]" hint stack
-    // so newly inserted nodes carry full screen-reader context.
+    g.setAttribute("data-expandable", n.expandable ? "true" : "false");
     var base = nodeLabel(n);
-    var hint = " Press Enter to open.";
-    if (n.expandable) hint += " Press + to expand more relations.";
-    g.setAttribute("aria-label", base + hint);
+    g.setAttribute(
+      "aria-label",
+      base + labelHint(n.expandable ? "true" : "false"),
+    );
     var circ = document.createElementNS(ns, "circle");
-    circ.setAttribute("r", "28");
+    circ.setAttribute("r", String(discRadius(n.degree)));
     circ.setAttribute("class", "graph-node__disc");
     g.appendChild(circ);
     var text = document.createElementNS(ns, "text");
@@ -409,27 +570,7 @@
     text.setAttribute("class", "graph-node__label");
     text.textContent = n.label;
     g.appendChild(text);
-    // Mirror the SSR template's expand-badge (graph_v2.templ graphNode):
-    // without it, freshly-fetched expandable children can be pivoted but
-    // never further expanded by mouse — wireNodeClicks requires a click
-    // on .graph-node__expand-badge to trigger expansion.
-    if (n.expandable) {
-      var badge = document.createElementNS(ns, "g");
-      badge.setAttribute("class", "graph-node__expand-badge");
-      badge.setAttribute("transform", "translate(18,-18)");
-      badge.setAttribute("aria-hidden", "true");
-      var bbg = document.createElementNS(ns, "circle");
-      bbg.setAttribute("r", "8");
-      bbg.setAttribute("class", "graph-node__expand-badge-bg");
-      badge.appendChild(bbg);
-      var bmark = document.createElementNS(ns, "text");
-      bmark.setAttribute("text-anchor", "middle");
-      bmark.setAttribute("y", "3");
-      bmark.setAttribute("class", "graph-node__expand-badge-mark");
-      bmark.textContent = "+";
-      badge.appendChild(bmark);
-      g.appendChild(badge);
-    }
+    if (n.expandable) setBadge(g, "+");
     viewport.appendChild(g);
   }
 
@@ -454,17 +595,13 @@
     line.setAttribute("y2", t[1]);
     line.setAttribute("data-source", e.source);
     line.setAttribute("data-target", e.target);
-    // Insert at the front so the edge sits behind nodes in z-order.
     viewport.insertBefore(line, viewport.firstChild);
   }
+
   function wireDepthSlider() {
     var slider = document.querySelector("[data-graph-slider]");
     if (!slider) return;
     var out = document.querySelector(".graph-slider__value");
-    // 'input' fires per-step while the user drags; 'change' fires on
-    // release. Use 'input' for the live value display and 'change' to
-    // submit the form, so a drag from 1→3 produces one navigation,
-    // not three.
     slider.addEventListener("input", function () {
       if (out) out.textContent = slider.value;
     });

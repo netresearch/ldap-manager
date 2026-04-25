@@ -34,7 +34,7 @@ type GraphPageVM struct {
 // script (v2-graph.js, Slice 4) can read it without a second fetch.
 // Slice 4 will read it via document.getElementById('graph-data').content.textContent.
 templ GraphPageV2(vm GraphPageVM) {
-	@baseV2(graphTitle(vm)) {
+	@baseV2PageScroll(graphTitle(vm)) {
 		@topnavV2("/graph")
 		<main id="main-content" class="graph-page">
 			<header class="graph-page__head">
@@ -164,7 +164,7 @@ templ graphNode(n ldap_cache.Node) {
 		data-expandable={ fmt.Sprintf("%t", n.Expandable) }
 		aria-label={ graphNodeLabel(n) }
 	>
-		<circle r="28" class="graph-node__disc"></circle>
+		<circle r={ fmt.Sprintf("%d", discRadius(n.Degree)) } class="graph-node__disc"></circle>
 		<text class="graph-node__label" text-anchor="middle" y="4">{ n.Label }</text>
 		if n.Expandable {
 			<g class="graph-node__expand-badge" transform="translate(18,-18)" aria-hidden="true">
@@ -200,6 +200,25 @@ func nodeXY(dn string, nodes []ldap_cache.Node) (float64, float64) {
 	}
 
 	return 0, 0
+}
+
+// discRadius scales node disc size with degree so high-connectivity
+// nodes (groups with many members, hub users) read as visually
+// weightier. Mirrors the JS-side discRadius() in v2-graph.js — keep
+// the formulas in sync.
+func discRadius(degree int) int {
+	const (
+		base = 22
+		step = 1.5
+		maxR = 32
+	)
+
+	r := base + int(float64(degree)*step)
+	if r > maxR {
+		return maxR
+	}
+
+	return r
 }
 
 // graphNodeLabel composes the screen-reader label for a node. Includes
