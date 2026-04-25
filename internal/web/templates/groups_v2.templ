@@ -369,6 +369,14 @@ templ groupDrawerContentsCtx(vm GroupDrawerVM, inDrawer bool) {
 					</a>
 				</li>
 			}
+			<li>
+				<a class="drawer__pivot" href={ templ.URL("/graph?entity=" + url.QueryEscape(asLdapGroup(vm.Group).DN())) }
+					aria-label="View relationship graph"
+					title="View relationship graph">
+					<span class="drawer__pivot-icon" aria-hidden="true">@iconGraph()</span>
+					<span class="drawer__pivot-text">View relationships</span>
+				</a>
+			</li>
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other groups in " + ouChipLabel(vm.OUName) } title={ "Other groups in " + vm.OUName }>

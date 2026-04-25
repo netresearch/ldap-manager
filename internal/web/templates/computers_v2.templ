@@ -359,6 +359,14 @@ templ computerDrawerContentsCtx(vm ComputerDrawerVM, inDrawer bool) {
 					</a>
 				</li>
 			}
+			<li>
+				<a class="drawer__pivot" href={ templ.URL("/graph?entity=" + url.QueryEscape(vm.Computer.DN())) }
+					aria-label="View relationship graph"
+					title="View relationship graph">
+					<span class="drawer__pivot-icon" aria-hidden="true">@iconGraph()</span>
+					<span class="drawer__pivot-text">View relationships</span>
+				</a>
+			</li>
 			if vm.OUPivotHref != "" {
 				<li>
 					<a class="drawer__pivot" href={ templ.URL(vm.OUPivotHref) } aria-label={ "Other computers in " + ouChipLabel(vm.OUName) } title={ "Other computers in " + vm.OUName }>
