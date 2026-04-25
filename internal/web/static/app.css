@@ -2700,7 +2700,7 @@ button.kv-edit__save {
 .graph-node__disc { fill: var(--graph-node-bg-user); stroke: var(--graph-node-border); stroke-width: 1.5; }
 .graph-node--group .graph-node__disc { fill: var(--graph-node-bg-group); stroke-dasharray: 4 3; }
 .graph-node--computer .graph-node__disc { fill: var(--graph-node-bg-computer); }
-.graph-node--ou .graph-node__disc { fill: var(--graph-node-bg-ou); rx: 12; ry: 12; }
+.graph-node--ou .graph-node__disc { fill: var(--graph-node-bg-ou); }
 .graph-node__label { fill: var(--fg); font-size: 12px; font-weight: 500; pointer-events: none; }
 .graph-node:focus-visible .graph-node__disc { outline: 2px solid var(--graph-node-focus-ring); outline-offset: 2px; }
 .graph-node__expand-badge-bg { fill: var(--accent); }

@@ -29,9 +29,10 @@ type GraphPageVM struct {
 // GraphPageV2 renders the /graph page. The page works without
 // JavaScript: the SSR SVG plus the edge table are fully usable.
 //
-// The graph data is also embedded inline as <script id="graph-data"
-// type="application/json"> so the client-side enhancement script
-// (v2-graph.js, Slice 4) can read it without a second fetch.
+// The graph data is also embedded inline as <template id="graph-data">
+// (a non-executable HTML data island) so the client-side enhancement
+// script (v2-graph.js, Slice 4) can read it without a second fetch.
+// Slice 4 will read it via document.getElementById('graph-data').content.textContent.
 templ GraphPageV2(vm GraphPageVM) {
 	@baseV2(graphTitle(vm)) {
 		@topnavV2("/graph")
@@ -55,7 +56,7 @@ templ GraphPageV2(vm GraphPageVM) {
 				@graphEdgeTable(vm)
 			</section>
 		</main>
-		@templ.Raw(graphInlineScript(vm.Data))
+		@templ.Raw(graphInlineDataBlock(vm.Data))
 	}
 }
 
@@ -139,13 +140,17 @@ templ graphEdgeLine(e ldap_cache.Edge, nodes []ldap_cache.Node) {
 // graphNode renders a single node disc + label. Expandable nodes get a
 // "+" badge so users can see at a glance which nodes have more
 // relationships available beyond the current depth.
+//
+// Slice 3: nodes are visually rendered but NOT interactive. role="button"
+// and tabindex="0" are intentionally omitted — Slice 4 (JS-driven
+// interactivity) will re-add them once keyboard handlers exist, so we
+// don't advertise behaviour that doesn't yet work to AT users or create
+// dead Tab stops.
 templ graphNode(n ldap_cache.Node) {
 	{{ x, y := concentricXY(n.Ring, n.Angle) }}
 	<g
 		class={ "graph-node", "graph-node--" + string(n.Type) }
 		transform={ fmt.Sprintf("translate(%.2f,%.2f)", x, y) }
-		role="button"
-		tabindex="0"
 		data-dn={ n.DN }
 		data-type={ string(n.Type) }
 		data-expandable={ fmt.Sprintf("%t", n.Expandable) }
@@ -191,6 +196,9 @@ func nodeXY(dn string, nodes []ldap_cache.Node) (float64, float64) {
 
 // graphNodeLabel composes the screen-reader label for a node. Includes
 // type, name, and (where meaningful) member count or enabled state.
+//
+// Slice 3: no interactivity hint ("Press Enter to open") — that will be
+// reinstated in Slice 4 once JS keyboard handlers are wired up.
 func graphNodeLabel(n ldap_cache.Node) string {
 	switch n.Type {
 	case ldap_cache.NodeGroup:
@@ -199,18 +207,18 @@ func graphNodeLabel(n ldap_cache.Node) string {
 			count = *n.MemberCount
 		}
 
-		return fmt.Sprintf("Group %s (%d members). Press Enter to open.", n.Label, count)
+		return fmt.Sprintf("Group %s (%d members)", n.Label, count)
 	case ldap_cache.NodeUser:
 		state := "enabled"
 		if n.Enabled != nil && !*n.Enabled {
 			state = "disabled"
 		}
 
-		return fmt.Sprintf("User %s (%s). Press Enter to open.", n.Label, state)
+		return fmt.Sprintf("User %s (%s)", n.Label, state)
 	case ldap_cache.NodeComputer:
-		return fmt.Sprintf("Computer %s. Press Enter to open.", n.Label)
+		return fmt.Sprintf("Computer %s", n.Label)
 	case ldap_cache.NodeOU:
-		return fmt.Sprintf("Organisational unit %s. Press Enter to open.", n.Label)
+		return fmt.Sprintf("Organisational unit %s", n.Label)
 	}
 
 	return n.Label
@@ -220,25 +228,23 @@ func graphNodeLabel(n ldap_cache.Node) string {
 // table is the no-JS fallback for the SVG canvas: every node + edge in
 // the graph is reachable here, with links to the canonical detail
 // pages.
+//
+// Slice 3: column headers are static text — server-side sort is not
+// wired yet (edgeLess ignores vm.Sort* fields), so emitting clickable
+// links would be dead UI. Slice 5 will re-enable the graphSortHeader
+// helper below once the sort plumbing lands.
+//
+// aria-labelledby (not aria-describedby): the <h2 id="graph-table-title">
+// is the table's accessible NAME, not its description.
 templ graphEdgeTable(vm GraphPageVM) {
-	<table class="graph-table" aria-describedby="graph-table-title">
+	<table class="graph-table" aria-labelledby="graph-table-title">
 		<thead>
 			<tr>
-				<th scope="col">
-					@graphSortHeader("ring", "Ring", vm)
-				</th>
-				<th scope="col">
-					@graphSortHeader("from", "From", vm)
-				</th>
-				<th scope="col">
-					@graphSortHeader("edge", "Edge", vm)
-				</th>
-				<th scope="col">
-					@graphSortHeader("to", "To", vm)
-				</th>
-				<th scope="col">
-					@graphSortHeader("type", "Type", vm)
-				</th>
+				<th scope="col">Ring</th>
+				<th scope="col">From</th>
+				<th scope="col">Edge</th>
+				<th scope="col">To</th>
+				<th scope="col">Type</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -249,8 +255,10 @@ templ graphEdgeTable(vm GraphPageVM) {
 	</table>
 }
 
-// graphSortHeader renders a clickable column header. Slice 5 toggles
-// asc/desc; for Slice 3 we ship ascending only.
+// graphSortHeader renders a clickable column header. Reserved for Slice 5,
+// which will toggle asc/desc once edgeLess honours vm.Sort* fields. Not
+// invoked by graphEdgeTable in Slice 3 — emitting <a href="?sort=ring">
+// without server-side handling would be dead UI.
 templ graphSortHeader(key, label string, vm GraphPageVM) {
 	<a
 		href={ templ.URL(buildSortHref(vm, key)) }
@@ -260,14 +268,15 @@ templ graphSortHeader(key, label string, vm GraphPageVM) {
 	</a>
 }
 
-// graphEdgeRow is one row in the relationships table. The row itself
-// is focusable so keyboard users can navigate via Tab and activate via
-// Enter; both From and To cells link to the entity's detail page.
+// graphEdgeRow is one row in the relationships table. The inner From/To
+// <a> links are the actionable elements for keyboard users; the row
+// itself is no longer focusable in Slice 3 (the dead tabindex="0" was
+// removed). data-dn / data-type are kept for Slice 4 highlighting.
 templ graphEdgeRow(e ldap_cache.Edge, nodes []ldap_cache.Node) {
 	{{ source, sourceType := nodeDesc(e.Source, nodes) }}
 	{{ target, targetType := nodeDesc(e.Target, nodes) }}
 	{{ ring := ringForEdge(e, nodes) }}
-	<tr tabindex="0" data-dn={ e.Target } data-type={ string(targetType) }>
+	<tr data-dn={ e.Target } data-type={ string(targetType) }>
 		<td>{ fmt.Sprintf("%d", ring) }</td>
 		<td><a href={ templ.URL(entityHref(e.Source, sourceType)) }>{ source }</a></td>
 		<td>{ edgeLabel(e.Kind) }</td>
@@ -397,10 +406,10 @@ func graphSortClass(_ string, _ GraphPageVM) string {
 const graphInlineJSONFallback = `{"focus":"","depth":0,"nodes":[],"edges":[],"overflow":{"truncated":false,"rendered":0,"available":0}}`
 
 // graphInlineJSON returns the marshalled GraphData. The template embeds
-// it inside <script type="application/json"> so the client-side script
+// it inside <template id="graph-data"> so the client-side script
 // (v2-graph.js) can read it without a second fetch.
 //
-// Splitting this from graphInlineScript keeps the JSON encoding pure —
+// Splitting this from graphInlineDataBlock keeps the JSON encoding pure —
 // callers (tests, future server-pushed updates) can grab the same
 // envelope the SSR template ships.
 func graphInlineJSON(data *ldap_cache.GraphData) string {
@@ -412,15 +421,24 @@ func graphInlineJSON(data *ldap_cache.GraphData) string {
 	return string(b)
 }
 
-// graphInlineScript wraps graphInlineJSON in the <script id="graph-data"
-// type="application/json"> tag the client expects. Returned as a raw
-// HTML string and injected via @templ.Raw because templ treats the
-// contents of <script> tags as opaque text — Go-statement interpolation
-// does not execute inside a <script> block.
+// graphInlineDataBlock wraps graphInlineJSON in a <template id="graph-data">
+// HTML data island the client expects. Returned as a raw HTML string and
+// injected via @templ.Raw because templ would otherwise escape the
+// embedded JSON.
 //
-// Safety note: json.Marshal is configured (by Go's stdlib) to escape
-// "<" and "&" inside JSON strings, so user-controlled DN values cannot
-// terminate the surrounding </script> tag.
-func graphInlineScript(data *ldap_cache.GraphData) string {
-	return `<script id="graph-data" type="application/json">` + graphInlineJSON(data) + `</script>`
+// Why <template> instead of <script type="application/json">: the site
+// CSP is `script-src 'self'` (no nonce, no unsafe-inline). While CSP L3
+// formally exempts `<script type="application/json">` from script-src,
+// some implementations (and audit tools) still flag it. <template>
+// elements are inert HTML data islands — never executed, never fetched,
+// no script-src interaction at all. Slice 4 reads it via
+// document.getElementById('graph-data').content.textContent.
+//
+// Safety note: <template> content is parsed as HTML. json.Marshal
+// escapes "<", ">" and "&" inside JSON strings, so user-controlled DN
+// values cannot contain a literal "</template>" sequence — the JSON
+// payload cannot terminate the surrounding tag. Same safety property
+// the previous <script> wrapping relied on.
+func graphInlineDataBlock(data *ldap_cache.GraphData) string {
+	return `<template id="graph-data">` + graphInlineJSON(data) + `</template>`
 }
