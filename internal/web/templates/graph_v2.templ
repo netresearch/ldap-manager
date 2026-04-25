@@ -4,6 +4,8 @@ package templates
 import (
 	"fmt"
 	"math"
+	"net/url"
+	"sort"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
 )
@@ -211,7 +213,177 @@ func graphNodeLabel(n ldap_cache.Node) string {
 	return n.Label
 }
 
-// graphEdgeTable is the Task-18 component; stubbed here so templ
-// generate succeeds at the Task-15 commit boundary.
-templ graphEdgeTable(_ GraphPageVM) {
+// graphEdgeTable renders a sortable table of all rendered edges. The
+// table is the no-JS fallback for the SVG canvas: every node + edge in
+// the graph is reachable here, with links to the canonical detail
+// pages.
+templ graphEdgeTable(vm GraphPageVM) {
+	<table class="graph-table" aria-describedby="graph-table-title">
+		<thead>
+			<tr>
+				<th scope="col">
+					@graphSortHeader("ring", "Ring", vm)
+				</th>
+				<th scope="col">
+					@graphSortHeader("from", "From", vm)
+				</th>
+				<th scope="col">
+					@graphSortHeader("edge", "Edge", vm)
+				</th>
+				<th scope="col">
+					@graphSortHeader("to", "To", vm)
+				</th>
+				<th scope="col">
+					@graphSortHeader("type", "Type", vm)
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			for _, e := range sortEdges(vm.Data, vm) {
+				@graphEdgeRow(e, vm.Data.Nodes)
+			}
+		</tbody>
+	</table>
+}
+
+// graphSortHeader renders a clickable column header. Slice 5 toggles
+// asc/desc; for Slice 3 we ship ascending only.
+templ graphSortHeader(key, label string, vm GraphPageVM) {
+	<a
+		href={ templ.URL(buildSortHref(vm, key)) }
+		class={ "graph-table__sort", graphSortClass(key, vm) }
+	>
+		{ label }
+	</a>
+}
+
+// graphEdgeRow is one row in the relationships table. The row itself
+// is focusable so keyboard users can navigate via Tab and activate via
+// Enter; both From and To cells link to the entity's detail page.
+templ graphEdgeRow(e ldap_cache.Edge, nodes []ldap_cache.Node) {
+	{{ source, sourceType := nodeDesc(e.Source, nodes) }}
+	{{ target, targetType := nodeDesc(e.Target, nodes) }}
+	{{ ring := ringForEdge(e, nodes) }}
+	<tr tabindex="0" data-dn={ e.Target } data-type={ string(targetType) }>
+		<td>{ fmt.Sprintf("%d", ring) }</td>
+		<td><a href={ templ.URL(entityHref(e.Source, sourceType)) }>{ source }</a></td>
+		<td>{ edgeLabel(e.Kind) }</td>
+		<td><a href={ templ.URL(entityHref(e.Target, targetType)) }>{ target }</a></td>
+		<td>{ string(targetType) }</td>
+	</tr>
+}
+
+// edgeLabel renders the human-readable form of an edge kind.
+func edgeLabel(k ldap_cache.EdgeKind) string {
+	switch k {
+	case ldap_cache.EdgeMemberOf:
+		return "member of"
+	case ldap_cache.EdgeContains:
+		return "contains"
+	}
+
+	return string(k)
+}
+
+// nodeDesc returns the (label, type) of a node identified by DN.
+// Returns (dn, "") when the DN is not in the graph — defensive so
+// orphan edges still render something readable.
+func nodeDesc(dn string, nodes []ldap_cache.Node) (string, ldap_cache.NodeType) {
+	for _, n := range nodes {
+		if n.DN == dn {
+			return n.Label, n.Type
+		}
+	}
+
+	return dn, ""
+}
+
+// ringForEdge returns max(source.Ring, target.Ring) — the ring at
+// which the edge first appears in the BFS walk. Used as the table's
+// default sort key.
+func ringForEdge(e ldap_cache.Edge, nodes []ldap_cache.Node) int {
+	sr, tr := 0, 0
+
+	for _, n := range nodes {
+		if n.DN == e.Source {
+			sr = n.Ring
+		}
+
+		if n.DN == e.Target {
+			tr = n.Ring
+		}
+	}
+
+	if sr > tr {
+		return sr
+	}
+
+	return tr
+}
+
+// entityHref returns the canonical detail page URL for an entity. OUs
+// pivot to the users list filtered by ou — there is no dedicated
+// ou-detail page yet.
+func entityHref(dn string, t ldap_cache.NodeType) string {
+	switch t {
+	case ldap_cache.NodeUser:
+		return "/users/" + url.PathEscape(dn)
+	case ldap_cache.NodeGroup:
+		return "/groups/" + url.PathEscape(dn)
+	case ldap_cache.NodeComputer:
+		return "/computers/" + url.PathEscape(dn)
+	case ldap_cache.NodeOU:
+		return "/users?ou=" + url.QueryEscape(dn)
+	}
+
+	return "#"
+}
+
+// sortEdges returns a stable copy of data.Edges ordered for the table.
+// Slice 3 ships ring asc → source label asc → target label asc; Slice 5
+// will read vm.SortRing/SortFrom/etc. to honour user toggles.
+func sortEdges(data *ldap_cache.GraphData, vm GraphPageVM) []ldap_cache.Edge {
+	out := make([]ldap_cache.Edge, len(data.Edges))
+	copy(out, data.Edges)
+	sort.SliceStable(out, func(i, j int) bool {
+		return edgeLess(out[i], out[j], data.Nodes, vm)
+	})
+
+	return out
+}
+
+// edgeLess compares two edges using the default (ring, source, target)
+// ordering. The vm parameter is reserved for Slice 5's user-driven
+// sort toggles.
+func edgeLess(a, b ldap_cache.Edge, nodes []ldap_cache.Node, _ GraphPageVM) bool {
+	ra, rb := ringForEdge(a, nodes), ringForEdge(b, nodes)
+	if ra != rb {
+		return ra < rb
+	}
+
+	sla, _ := nodeDesc(a.Source, nodes)
+	slb, _ := nodeDesc(b.Source, nodes)
+
+	if sla != slb {
+		return sla < slb
+	}
+
+	tla, _ := nodeDesc(a.Target, nodes)
+	tlb, _ := nodeDesc(b.Target, nodes)
+
+	return tla < tlb
+}
+
+// buildSortHref composes the /graph URL for a given sort key. Slice 5
+// will extend this to flip asc/desc when the active key is clicked.
+func buildSortHref(vm GraphPageVM, key string) string {
+	return fmt.Sprintf("/graph?entity=%s&depth=%d&sort=%s",
+		url.QueryEscape(vm.Data.Focus), vm.Data.Depth, key)
+}
+
+// graphSortClass returns the CSS class for a sort header reflecting
+// active state. Empty in Slice 3; populated by Slice 5 once vm.SortRing
+// et al. are wired through.
+func graphSortClass(_ string, _ GraphPageVM) string {
+	return ""
 }
