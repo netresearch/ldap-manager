@@ -47,6 +47,14 @@ func TestAppCSSContrastAAA(t *testing.T) {
 		{"dark", "--fg-muted", "--bg-subtle", 7.0},
 		{"dark", "--accent-fg", "--accent", 7.0},
 		{"dark", "--accent", "--bg", 7.0}, // accent-as-text on dark bg (headings)
+		// Graph view — spec §5
+		// Edges are non-text UI; WCAG 2.2 §1.4.11 sets 3:1 for those.
+		{"light", "--graph-edge", "--bg", 3.0},
+		{"light", "--graph-edge-focus", "--bg", 7.0},
+		{"light", "--graph-node-border", "--bg", 7.0},
+		{"dark", "--graph-edge", "--bg", 3.0},
+		{"dark", "--graph-edge-focus", "--bg", 7.0},
+		{"dark", "--graph-node-border", "--bg", 7.0},
 	}
 
 	for _, p := range pairs {
@@ -91,9 +99,13 @@ func parseTokens(css, theme string) map[string][3]int {
 	var blocks []string
 	switch theme {
 	case "dark":
-		m := reDarkBlock.FindStringSubmatch(css)
-		if len(m) == 2 {
-			blocks = append(blocks, m[1])
+		// Merge every ":root[data-theme=\"dark\"] { ... }" block; like
+		// :root these are split across the file (colour tokens, radius
+		// overrides, terminal-personality block at the end).
+		for _, m := range reDarkBlock.FindAllStringSubmatch(css, -1) {
+			if len(m) == 2 {
+				blocks = append(blocks, m[1])
+			}
 		}
 	default:
 		// Merge every plain ":root { ... }" block (colour tokens +
