@@ -2694,8 +2694,7 @@ button.kv-edit__save {
 .graph-canvas:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
 
 .graph-edge { stroke: var(--graph-edge); stroke-width: 1.5; fill: none; }
-.graph-edge:hover,
-.graph-node:hover ~ .graph-edge[data-source] { stroke: var(--graph-edge-focus); stroke-width: 2; }
+.graph-edge:hover { stroke: var(--graph-edge-focus); stroke-width: 2; }
 
 .graph-node { cursor: pointer; }
 .graph-node__disc { fill: var(--graph-node-bg-user); stroke: var(--graph-node-border); stroke-width: 1.5; }
