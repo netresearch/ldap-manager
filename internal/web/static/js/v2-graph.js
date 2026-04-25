@@ -62,8 +62,99 @@
     wireDepthSlider();
   });
 
-  function wirePanZoom(_svg, _viewport) {
-    /* Task 24 */
+  function wirePanZoom(svg, viewport) {
+    var tx = 0,
+      ty = 0,
+      scale = 1;
+    var dragging = false,
+      sx = 0,
+      sy = 0;
+
+    function apply() {
+      viewport.setAttribute(
+        "transform",
+        "translate(" + tx + "," + ty + ") scale(" + scale + ")",
+      );
+    }
+
+    svg.addEventListener("mousedown", function (e) {
+      // Only start panning when the user grabs empty canvas space
+      // (the SVG itself or the viewport <g>) — not when they click a
+      // node or edge.
+      if (
+        e.target !== svg &&
+        !e.target.classList.contains("graph-viewport")
+      ) {
+        return;
+      }
+      dragging = true;
+      sx = e.clientX - tx;
+      sy = e.clientY - ty;
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      tx = e.clientX - sx;
+      ty = e.clientY - sy;
+      apply();
+    });
+    window.addEventListener("mouseup", function () {
+      dragging = false;
+    });
+
+    // Wheel zoom only when modifier key is held — without ctrl/meta the
+    // page scroll behaviour is preserved.
+    svg.addEventListener(
+      "wheel",
+      function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        var delta = -e.deltaY * 0.001;
+        scale = Math.min(3, Math.max(0.3, scale * (1 + delta)));
+        apply();
+      },
+      { passive: false },
+    );
+
+    // Arrow-key pan and +/- zoom when the canvas itself is focused
+    // (the SVG element has tabindex="0" from the SSR template).
+    svg.addEventListener("keydown", function (e) {
+      var step = 32;
+      switch (e.key) {
+        case "ArrowLeft":
+          tx += step;
+          apply();
+          e.preventDefault();
+          break;
+        case "ArrowRight":
+          tx -= step;
+          apply();
+          e.preventDefault();
+          break;
+        case "ArrowUp":
+          ty += step;
+          apply();
+          e.preventDefault();
+          break;
+        case "ArrowDown":
+          ty -= step;
+          apply();
+          e.preventDefault();
+          break;
+        case "+":
+        case "=":
+          scale = Math.min(3, scale * 1.1);
+          apply();
+          e.preventDefault();
+          break;
+        case "-":
+        case "_":
+          scale = Math.max(0.3, scale / 1.1);
+          apply();
+          e.preventDefault();
+          break;
+      }
+    });
   }
   function wireKeyboardNav(_svg) {
     /* Task 25 */
