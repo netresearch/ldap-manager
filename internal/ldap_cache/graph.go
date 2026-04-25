@@ -136,6 +136,56 @@ func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
 	return nil, fmt.Errorf("%w: %q", ErrGraphNotFound, focusDN)
 }
 
+// BuildListGraph builds a graph for list-page mode: the filtered set
+// plus each member's direct groups. Focus is "" (no single focal entity)
+// and no node has ring 0. Users/computers live in ring 2; groups in
+// ring 1. Used by /users?view=graph, /groups?view=graph, /computers?view=graph.
+func (m *Manager) BuildListGraph(filtered []ldap.User, filteredComputers []ldap.Computer) *GraphData {
+	data := &GraphData{Focus: "", Depth: 1}
+	seen := map[string]int{}
+
+	for _, u := range filtered {
+		if _, dup := seen[u.DN()]; !dup {
+			data.Nodes = append(data.Nodes, userNode(u, 2, false))
+			seen[u.DN()] = 2
+		}
+
+		for _, gDN := range u.Groups {
+			if g, ok := m.Groups.FindByDN(gDN); ok {
+				if _, dup := seen[gDN]; !dup {
+					data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
+					seen[gDN] = 1
+				}
+
+				data.Edges = append(data.Edges, Edge{Source: u.DN(), Target: gDN, Kind: EdgeMemberOf})
+			}
+		}
+	}
+
+	for _, c := range filteredComputers {
+		if _, dup := seen[c.DN()]; !dup {
+			data.Nodes = append(data.Nodes, computerNode(c, 2))
+			seen[c.DN()] = 2
+		}
+
+		for _, gDN := range c.Groups {
+			if g, ok := m.Groups.FindByDN(gDN); ok {
+				if _, dup := seen[gDN]; !dup {
+					data.Nodes = append(data.Nodes, groupNode(*g, 1, false))
+					seen[gDN] = 1
+				}
+
+				data.Edges = append(data.Edges, Edge{Source: c.DN(), Target: gDN, Kind: EdgeMemberOf})
+			}
+		}
+	}
+
+	applyCaps(data)
+	assignConcentric(data)
+
+	return data
+}
+
 func (m *Manager) buildGraphFromGroup(g ldap.Group, depth int) *GraphData {
 	data := &GraphData{Focus: g.DN(), Depth: depth}
 	data.Nodes = append(data.Nodes, groupNode(g, 0, false))
