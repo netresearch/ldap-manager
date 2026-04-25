@@ -83,11 +83,15 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 		computers = filterComputersByOU(all, ouFilter)
 	}
 
-	sortComputersByCN(computers)
-
 	currentView := pickView(c)
 	if a.ldapCache == nil {
 		currentView = "list"
+	}
+
+	// Skip the CN pre-sort when the table view will sort by its own
+	// (sortKey, sortDir) below — avoids an unnecessary O(n log n) pass.
+	if currentView != "table" {
+		sortComputersByCN(computers)
 	}
 
 	filterQS := templates.ComputersFilterQS(ouFilter)
@@ -100,9 +104,13 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 	}
 
 	if currentView == "table" {
+		sortKey := c.Query("sort", "cn")
+		sortDir := normaliseSortDir(c.Query("dir", "asc"))
+		sortComputersTable(computers, sortKey, sortDir)
+
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.ComputersListTableV2(computers, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+		return templates.ComputersListTableV2(computers, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 

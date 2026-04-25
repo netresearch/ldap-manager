@@ -10,12 +10,13 @@ package templates
 
 import (
 	"fmt"
+	"net/url"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 )
 
 // UsersListTableV2 renders the full-width users table.
-templ UsersListTableV2(users []ldap.User, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListTableV2(users []ldap.User, currentView, filterQS, sortKey, sortDir string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Users — Table") {
 		@topnavV2("/users")
 		<main id="main-content" class="list-table-page">
@@ -29,33 +30,49 @@ templ UsersListTableV2(users []ldap.User, currentView, filterQS string, flashes 
 				</div>
 			</header>
 			@listFlashes(flashes)
-			<table class="list-table">
-				<thead>
-					<tr>
-						<th scope="col">CN</th>
-						<th scope="col">SAM account</th>
-						<th scope="col">Mail</th>
-						<th scope="col">Status</th>
-					</tr>
-				</thead>
-				<tbody>
-					for _, u := range users {
+			<div class="list-table-filter" data-search-filter data-search-scope>
+				<input
+					type="search"
+					class="list-table-filter__input"
+					placeholder="Filter users…"
+					aria-label="Filter users"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				<table class="list-table" data-search-list>
+					<thead>
 						<tr>
-							<td><a class="list-table__link" href={ userDetailHref(u) }>{ u.CN() }</a></td>
-							<td>{ u.SAMAccountName }</td>
-							<td>{ derefString(u.Mail) }</td>
-							<td>{ userStatusLabel(u) }</td>
+							@tableSortHeader("/users", "cn", "CN", sortKey, sortDir, filterQS)
+							@tableSortHeader("/users", "sam", "SAM account", sortKey, sortDir, filterQS)
+							@tableSortHeader("/users", "mail", "Mail", sortKey, sortDir, filterQS)
+							@tableSortHeader("/users", "status", "Status", sortKey, sortDir, filterQS)
 						</tr>
-					}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						for _, u := range users {
+							<tr data-search-item data-search-text={ usersTableSearchText(u) }>
+								<td><a class="list-table__link" href={ userDetailHref(u) }>{ u.CN() }</a></td>
+								<td>{ u.SAMAccountName }</td>
+								<td>{ derefString(u.Mail) }</td>
+								<td>{ userStatusLabel(u) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
 			@paletteV2WithPinned(palettePinned)
 		</main>
 	}
 }
 
 // GroupsListTableV2 renders the full-width groups table.
-templ GroupsListTableV2(groups []ldap.Group, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
+templ GroupsListTableV2(groups []ldap.Group, currentView, filterQS, sortKey, sortDir string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Groups — Table") {
 		@topnavV2("/groups")
 		<main id="main-content" class="list-table-page">
@@ -69,31 +86,47 @@ templ GroupsListTableV2(groups []ldap.Group, currentView, filterQS string, flash
 				</div>
 			</header>
 			@listFlashes(flashes)
-			<table class="list-table">
-				<thead>
-					<tr>
-						<th scope="col">CN</th>
-						<th scope="col">Members</th>
-						<th scope="col">DN</th>
-					</tr>
-				</thead>
-				<tbody>
-					for _, g := range groups {
+			<div class="list-table-filter" data-search-filter data-search-scope>
+				<input
+					type="search"
+					class="list-table-filter__input"
+					placeholder="Filter groups…"
+					aria-label="Filter groups"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				<table class="list-table" data-search-list>
+					<thead>
 						<tr>
-							<td><a class="list-table__link" href={ groupDetailHref(g) }>{ g.CN() }</a></td>
-							<td class="list-table__num">{ fmt.Sprintf("%d", len(g.Members)) }</td>
-							<td class="list-table__dn">{ g.DN() }</td>
+							@tableSortHeader("/groups", "cn", "CN", sortKey, sortDir, filterQS)
+							@tableSortHeader("/groups", "members", "Members", sortKey, sortDir, filterQS)
+							@tableSortHeader("/groups", "dn", "DN", sortKey, sortDir, filterQS)
 						</tr>
-					}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						for _, g := range groups {
+							<tr data-search-item data-search-text={ groupsTableSearchText(g) }>
+								<td><a class="list-table__link" href={ groupDetailHref(g) }>{ g.CN() }</a></td>
+								<td class="list-table__num">{ fmt.Sprintf("%d", len(g.Members)) }</td>
+								<td class="list-table__dn">{ g.DN() }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
 			@paletteV2WithPinned(palettePinned)
 		</main>
 	}
 }
 
 // ComputersListTableV2 renders the full-width computers table.
-templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
+templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS, sortKey, sortDir string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Computers — Table") {
 		@topnavV2("/computers")
 		<main id="main-content" class="list-table-page">
@@ -107,29 +140,140 @@ templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS stri
 				</div>
 			</header>
 			@listFlashes(flashes)
-			<table class="list-table">
-				<thead>
-					<tr>
-						<th scope="col">CN</th>
-						<th scope="col">SAM account</th>
-						<th scope="col">Status</th>
-						<th scope="col">DN</th>
-					</tr>
-				</thead>
-				<tbody>
-					for _, c := range computers {
+			<div class="list-table-filter" data-search-filter data-search-scope>
+				<input
+					type="search"
+					class="list-table-filter__input"
+					placeholder="Filter computers…"
+					aria-label="Filter computers"
+					data-search-input
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-1p-ignore
+					data-lpignore="true"
+					data-form-type="other"
+				/>
+				<table class="list-table" data-search-list>
+					<thead>
 						<tr>
-							<td><a class="list-table__link" href={ computerDetailHref(c) }>{ c.CN() }</a></td>
-							<td>{ c.SAMAccountName }</td>
-							<td>{ computerStatusLabel(c) }</td>
-							<td class="list-table__dn">{ c.DN() }</td>
+							@tableSortHeader("/computers", "cn", "CN", sortKey, sortDir, filterQS)
+							@tableSortHeader("/computers", "sam", "SAM account", sortKey, sortDir, filterQS)
+							@tableSortHeader("/computers", "status", "Status", sortKey, sortDir, filterQS)
+							@tableSortHeader("/computers", "dn", "DN", sortKey, sortDir, filterQS)
 						</tr>
-					}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						for _, c := range computers {
+							<tr data-search-item data-search-text={ computersTableSearchText(c) }>
+								<td><a class="list-table__link" href={ computerDetailHref(c) }>{ c.CN() }</a></td>
+								<td>{ c.SAMAccountName }</td>
+								<td>{ computerStatusLabel(c) }</td>
+								<td class="list-table__dn">{ c.DN() }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
 			@paletteV2WithPinned(palettePinned)
 		</main>
 	}
+}
+
+// tableSortHeader renders a column header that toggles the sort
+// direction when clicked. The href encodes ?view=table&sort=...&dir=...
+// plus the preserved filterQS so click navigation lands on the same
+// filtered subset with a refreshed sort.
+templ tableSortHeader(base, key, label, currentSort, currentDir, filterQS string) {
+	<th scope="col" class="list-table__sort-th">
+		<a class="list-table__sort-link" href={ templ.URL(buildTableSortHref(base, key, currentSort, currentDir, filterQS)) }>
+			{ label }
+			<span class="list-table__sort-indicator" aria-hidden="true">{ sortIndicator(key, currentSort, currentDir) }</span>
+		</a>
+	</th>
+}
+
+// buildTableSortHref computes the link URL for a column header. Clicking
+// the active column toggles direction; clicking an inactive column
+// switches to that column with asc direction.
+func buildTableSortHref(base, key, currentSort, currentDir, filterQS string) string {
+	dir := "asc"
+	if key == currentSort && currentDir == "asc" {
+		dir = "desc"
+	}
+
+	v := url.Values{}
+	v.Set("view", "table")
+	v.Set("sort", key)
+	v.Set("dir", dir)
+
+	out := v.Encode()
+	if filterQS != "" {
+		out = out + "&" + filterQS
+	}
+
+	return base + "?" + out
+}
+
+// sortIndicator returns the up / down arrow for the active column,
+// "" otherwise. Uses Unicode ↑ / ↓ glyphs (U+2191 / U+2193) which
+// render consistently across the Pico/system font stack and screen
+// readers.
+func sortIndicator(colKey, currentSort, currentDir string) string {
+	if colKey != currentSort {
+		return ""
+	}
+
+	if currentDir == "desc" {
+		return " ↓"
+	}
+
+	return " ↑"
+}
+
+// usersTableSearchText concatenates every user field the client-side
+// filter should match against. CN + SAM are visible; mail and DN are
+// included even when empty so searching by partial mail still works
+// when the column is blank for some rows.
+func usersTableSearchText(u ldap.User) string {
+	parts := []string{u.CN(), u.SAMAccountName, u.DN()}
+	if u.Mail != nil {
+		parts = append(parts, *u.Mail)
+	}
+
+	return joinParts(parts)
+}
+
+// groupsTableSearchText: CN + DN (members are a count, not text).
+func groupsTableSearchText(g ldap.Group) string {
+	return joinParts([]string{g.CN(), g.DN()})
+}
+
+// computersTableSearchText: CN + SAM + DN.
+func computersTableSearchText(c ldap.Computer) string {
+	return joinParts([]string{c.CN(), c.SAMAccountName, c.DN()})
+}
+
+// joinParts concatenates non-empty strings with spaces — keeps the
+// haystack short while still allowing the JS filter's substring
+// search to find any field.
+func joinParts(parts []string) string {
+	out := ""
+
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+
+		if out != "" {
+			out += " "
+		}
+
+		out += p
+	}
+
+	return out
 }
 
 // userStatusLabel — "Enabled" / "Disabled" cell content.

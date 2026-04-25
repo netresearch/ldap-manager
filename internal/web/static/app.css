@@ -2786,3 +2786,38 @@ button.kv-edit__save {
 .list-table__link:hover { text-decoration: underline; }
 .list-table__num { font-variant-numeric: tabular-nums; text-align: right; }
 .list-table__dn { color: var(--fg-muted); font-family: var(--font-mono, monospace); font-size: 0.85rem; word-break: break-all; }
+
+/* Search input directly above the table — same data-search-filter
+   wiring as the list view, so v2-search-filter.js handles row-hide
+   without further JS. */
+.list-table-filter { display: flex; flex-direction: column; gap: 0.75rem; }
+.list-table-filter__input {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.list-table-filter__input:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+/* Sortable column headers — anchor links so click-navigation works
+   without JS, indicator arrows show the active sort + direction. */
+.list-table__sort-th { padding: 0; }
+.list-table__sort-link {
+  display: block;
+  padding: 0.5rem 0.8rem;
+  color: var(--fg);
+  text-decoration: none;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+.list-table__sort-link:hover { background: var(--border); }
+.list-table__sort-link:focus-visible { outline: 2px solid var(--border-strong); outline-offset: -2px; }
+.list-table__sort-indicator { color: var(--fg-muted); font-weight: 400; }
