@@ -46,6 +46,7 @@ type Node struct {
 	Label       string   `json:"label"`
 	Ring        int      `json:"ring"`
 	Angle       float64  `json:"angle"`
+	Degree      int      `json:"degree"`                // edges incident to this node within the rendered set
 	Enabled     *bool    `json:"enabled,omitempty"`     // user / computer only
 	MemberCount *int     `json:"memberCount,omitempty"` // group only
 	Expandable  bool     `json:"expandable"`
@@ -107,18 +108,21 @@ func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
 	// Resolve focus type.
 	if u, ok := m.Users.FindByDN(focusDN); ok {
 		data := m.buildGraphFromUser(*u, depth)
+		assignDegrees(data)
 		assignConcentric(data)
 
 		return data, nil
 	}
 	if g, ok := m.Groups.FindByDN(focusDN); ok {
 		data := m.buildGraphFromGroup(*g, depth)
+		assignDegrees(data)
 		assignConcentric(data)
 
 		return data, nil
 	}
 	if c, ok := m.Computers.FindByDN(focusDN); ok {
 		data := m.buildGraphFromComputer(*c, depth)
+		assignDegrees(data)
 		assignConcentric(data)
 
 		return data, nil
@@ -128,6 +132,7 @@ func (m *Manager) BuildGraph(focusDN string, depth int) (*GraphData, error) {
 		len(parsed.RDNs) > 0 &&
 		strings.EqualFold(parsed.RDNs[0].Attributes[0].Type, "ou") {
 		data := m.buildGraphFromOU(focusDN, depth)
+		assignDegrees(data)
 		assignConcentric(data)
 
 		return data, nil
@@ -163,6 +168,7 @@ func (m *Manager) BuildListGraph(filtered []ldap.User, filteredComputers []ldap.
 	}
 
 	applyCaps(data)
+	assignDegrees(data)
 	assignConcentric(data)
 
 	return data
@@ -295,9 +301,36 @@ func (m *Manager) buildGraphFromOU(dn string, depth int) *GraphData {
 	return data
 }
 
-// assignConcentric writes (ring, angle) onto each Node. Ring is already
-// set by the builder; this function picks angles. Nodes in the same ring
-// are sorted by (Type, Label, DN) for determinism, then evenly spaced.
+// assignDegrees counts edges incident to each node (within the
+// rendered set) and writes the count to Node.Degree. Used by the
+// client-side renderer to scale disc radius proportionally — high-
+// degree nodes (e.g. groups with many members) read as visually
+// "weightier" than leaves.
+func assignDegrees(d *GraphData) {
+	deg := make(map[string]int, len(d.Nodes))
+	for _, e := range d.Edges {
+		deg[e.Source]++
+		deg[e.Target]++
+	}
+
+	for i := range d.Nodes {
+		d.Nodes[i].Degree = deg[d.Nodes[i].DN]
+	}
+}
+
+// assignConcentric writes (ring, angle) onto each Node.
+//
+// Ring 0 sits at the origin (single focal node). Ring 1 is sorted by
+// (Type, Label, DN) since every node connects to ring 0 and there is
+// no parent structure to anchor against.
+//
+// Rings 2+ use parent-anchored placement: each node's "parent" is the
+// ring-(N-1) node it shares an edge with. Children of the same parent
+// occupy a contiguous arc whose centre matches the parent's angle and
+// whose width is proportional to the parent's child count. Result:
+// the layout reads as spokes radiating outward, so visually-clustered
+// nodes really do share a connection — answering the "the graph feels
+// random" complaint without needing animation.
 func assignConcentric(d *GraphData) {
 	buckets := map[int][]*Node{}
 	for i := range d.Nodes {
@@ -305,29 +338,142 @@ func assignConcentric(d *GraphData) {
 		buckets[n.Ring] = append(buckets[n.Ring], n)
 	}
 
-	for ring, nodes := range buckets {
-		if ring == 0 {
-			for _, n := range nodes {
-				n.Angle = 0
+	// Ring 0: focus.
+	for _, n := range buckets[0] {
+		n.Angle = 0
+	}
+
+	// Ring 1: alphabetical, evenly spaced.
+	if r1 := buckets[1]; len(r1) > 0 {
+		sort.Slice(r1, func(i, j int) bool {
+			if r1[i].Type != r1[j].Type {
+				return r1[i].Type < r1[j].Type
+			}
+			if r1[i].Label != r1[j].Label {
+				return r1[i].Label < r1[j].Label
 			}
 
+			return r1[i].DN < r1[j].DN
+		})
+
+		for i, n := range r1 {
+			n.Angle = float64(i) * 2 * math.Pi / float64(len(r1))
+		}
+	}
+
+	// Build a DN → ring lookup so the parent search can stop at
+	// the correct ring without rescanning the full node slice.
+	ringOf := make(map[string]int, len(d.Nodes))
+	for _, n := range d.Nodes {
+		ringOf[n.DN] = n.Ring
+	}
+
+	for ring := 2; ring <= 3; ring++ {
+		nodes := buckets[ring]
+		if len(nodes) == 0 {
 			continue
 		}
 
-		sort.Slice(nodes, func(i, j int) bool {
-			if nodes[i].Type != nodes[j].Type {
-				return nodes[i].Type < nodes[j].Type
-			}
-			if nodes[i].Label != nodes[j].Label {
-				return nodes[i].Label < nodes[j].Label
+		assignParentAnchoredAngles(d, nodes, ring, ringOf)
+	}
+}
+
+// assignParentAnchoredAngles places each ring-N node near the angle of
+// its ring-(N-1) parent. Children of the same parent share an arc; the
+// arc's width scales with the child count so a parent with many
+// children doesn't crowd a parent with few.
+func assignParentAnchoredAngles(d *GraphData, nodes []*Node, ring int, ringOf map[string]int) {
+	// Group ring-N nodes by parent DN. A node may have multiple parents
+	// (e.g. a user that's a member of two visible groups); pick the
+	// parent with the smallest DN for stability across renders.
+	type child struct {
+		node     *Node
+		parentDN string
+	}
+
+	children := make([]child, 0, len(nodes))
+
+	for _, n := range nodes {
+		var bestParent string
+
+		for _, e := range d.Edges {
+			var candidate string
+
+			switch {
+			case e.Source == n.DN && ringOf[e.Target] == ring-1:
+				candidate = e.Target
+			case e.Target == n.DN && ringOf[e.Source] == ring-1:
+				candidate = e.Source
 			}
 
-			return nodes[i].DN < nodes[j].DN
+			if candidate != "" && (bestParent == "" || candidate < bestParent) {
+				bestParent = candidate
+			}
+		}
+
+		children = append(children, child{node: n, parentDN: bestParent})
+	}
+
+	// Group by parent, preserving deterministic order. Orphaned nodes
+	// (no parent in the previous ring — shouldn't happen but defensive)
+	// land in a single residual bucket placed at angle 0.
+	groups := map[string][]*Node{}
+	parentOrder := []string{}
+
+	for _, c := range children {
+		if _, ok := groups[c.parentDN]; !ok {
+			parentOrder = append(parentOrder, c.parentDN)
+		}
+
+		groups[c.parentDN] = append(groups[c.parentDN], c.node)
+	}
+
+	// Sort parents by their own angle so children inherit the same
+	// circular order. Orphans (parentDN=="") sort last.
+	parentAngle := map[string]float64{}
+
+	for _, n := range d.Nodes {
+		parentAngle[n.DN] = n.Angle
+	}
+
+	sort.SliceStable(parentOrder, func(i, j int) bool {
+		ai, oi := parentAngle[parentOrder[i]], parentOrder[i] == ""
+		aj, oj := parentAngle[parentOrder[j]], parentOrder[j] == ""
+
+		if oi != oj {
+			return !oi
+		}
+
+		return ai < aj
+	})
+
+	// Allocate each parent an arc proportional to its child count, then
+	// distribute children evenly inside that arc, centred on the
+	// parent's angle.
+	totalChildren := len(nodes)
+	arcPerChild := 2 * math.Pi / float64(totalChildren)
+
+	for _, parent := range parentOrder {
+		group := groups[parent]
+		// Sort within group for stability.
+		sort.Slice(group, func(i, j int) bool {
+			if group[i].Type != group[j].Type {
+				return group[i].Type < group[j].Type
+			}
+			if group[i].Label != group[j].Label {
+				return group[i].Label < group[j].Label
+			}
+
+			return group[i].DN < group[j].DN
 		})
 
-		count := len(nodes)
-		for i, n := range nodes {
-			n.Angle = float64(i) * 2 * math.Pi / float64(count)
+		arcWidth := arcPerChild * float64(len(group))
+		centre := parentAngle[parent]
+
+		// Spread children symmetrically around the parent angle.
+		for i, n := range group {
+			offset := (float64(i) + 0.5) * arcPerChild
+			n.Angle = centre - arcWidth/2 + offset
 		}
 	}
 }
