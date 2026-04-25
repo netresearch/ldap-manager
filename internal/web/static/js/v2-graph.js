@@ -347,6 +347,19 @@
     viewport.insertBefore(line, viewport.firstChild);
   }
   function wireDepthSlider() {
-    /* Task 27 */
+    var slider = document.querySelector("[data-graph-slider]");
+    if (!slider) return;
+    var out = document.querySelector(".graph-slider__value");
+    // 'input' fires per-step while the user drags; 'change' fires on
+    // release. Use 'input' for the live value display and 'change' to
+    // submit the form, so a drag from 1→3 produces one navigation,
+    // not three.
+    slider.addEventListener("input", function () {
+      if (out) out.textContent = slider.value;
+    });
+    slider.addEventListener("change", function () {
+      var form = slider.form;
+      if (form) form.submit();
+    });
   }
 })();
