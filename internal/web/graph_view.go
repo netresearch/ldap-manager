@@ -45,16 +45,19 @@ func normaliseView(s string) string {
 }
 
 // setViewCookie writes the user's explicit choice so future requests
-// without ?view= still resolve to the same mode. SameSite=Strict
-// matches the rest of the session security profile; HTTPOnly keeps the
-// preference out of JS reach (the segmented toggle reads `currentView`
-// from the rendered template, not from the cookie).
+// without ?view= still resolve to the same mode. SameSite=Strict +
+// HTTPOnly match the rest of the session security profile. Secure is
+// derived from the request's own protocol so HTTPS deployments get the
+// flag without needing to plumb opts.CookieSecure through to here, and
+// HTTP-only dev deployments don't break by trying to set a Secure
+// cookie that the browser would refuse.
 func setViewCookie(c *fiber.Ctx, v string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     graphViewCookie,
 		Value:    v,
 		Path:     "/",
 		MaxAge:   30 * 24 * 3600, // 30 days
+		Secure:   c.Protocol() == "https",
 		HTTPOnly: true,
 		SameSite: "Strict",
 	})

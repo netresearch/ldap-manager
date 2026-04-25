@@ -387,6 +387,7 @@
         Object.keys(affectedRings).forEach(function (r) {
           reLayoutRing(svg, state, parseInt(r, 10));
         });
+        recomputeDegrees(state, svg);
         // Switch the parent's badge to "-" (collapse) and update its
         // aria-label so SR users hear the new affordance.
         var el = svg.querySelector(
@@ -436,12 +437,17 @@
       if (el) el.remove();
       return false;
     });
-    // Drop edges whose endpoints are removed OR which were addedBy the
-    // collapsed parent (covers parent→child edges where the child
-    // survives but the relationship was introduced by this expansion).
+    // Drop edges whose endpoints are removed, OR whose addedBy points
+    // to the collapsed parent or any of its transitive descendants.
+    // The transitive case covers edges introduced by a sub-expansion
+    // that connect two nodes that survive the collapse — without the
+    // ancestors check those edges would orphan after collapse.
     state.edges = state.edges.filter(function (e) {
       var keep =
-        !removedDNs[e.source] && !removedDNs[e.target] && e.addedBy !== dn;
+        !removedDNs[e.source] &&
+        !removedDNs[e.target] &&
+        e.addedBy !== dn &&
+        !ancestors[e.addedBy];
       if (keep) return true;
       var line = svg.querySelector(
         'line[data-source="' +
@@ -456,6 +462,7 @@
     Object.keys(affectedRings).forEach(function (r) {
       reLayoutRing(svg, state, parseInt(r, 10));
     });
+    recomputeDegrees(state, svg);
     // Restore the parent's "+" badge and aria-label.
     var parentEl = svg.querySelector(
       '.graph-node[data-dn="' + CSS.escape(dn) + '"]',
@@ -531,11 +538,37 @@
   // nodes (e.g. groups with many members) read as visually weightier.
   // Capped so the max never exceeds ~1.4x the base — beyond that
   // overlapping discs become unreadable.
+  //
+  // Math.round mirrors the Go-side discRadius() in graph_v2.templ
+  // (which truncates to int) so SSR-rendered and JS-rendered nodes
+  // share the same radius for the same degree.
   function discRadius(degree) {
     var base = 22;
     var step = 1.5;
     var max = 32;
-    return Math.min(max, base + (degree || 0) * step);
+    return Math.min(max, Math.round(base + (degree || 0) * step));
+  }
+
+  // recomputeDegrees walks state.edges, refreshes each node's degree
+  // count, and updates the rendered <circle r="..."> attribute so disc
+  // sizing stays in sync with the actual edge set after expand or
+  // collapse. Without this, a hub that gains/loses memberships keeps
+  // its old radius and the weighted layout misrepresents reality.
+  function recomputeDegrees(state, svg) {
+    var deg = {};
+    state.edges.forEach(function (e) {
+      deg[e.source] = (deg[e.source] || 0) + 1;
+      deg[e.target] = (deg[e.target] || 0) + 1;
+    });
+    state.nodes.forEach(function (n) {
+      var newDegree = deg[n.dn] || 0;
+      if (n.degree === newDegree) return;
+      n.degree = newDegree;
+      var el = svg.querySelector(
+        '.graph-node[data-dn="' + CSS.escape(n.dn) + '"] .graph-node__disc',
+      );
+      if (el) el.setAttribute("r", String(discRadius(newDegree)));
+    });
   }
 
   function renderNode(svg, n) {

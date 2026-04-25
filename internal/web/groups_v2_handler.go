@@ -301,6 +301,8 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 		currentView = "list"
 	}
 
+	filterQS := templates.GroupsFilterQS(ouFilter, memberDN)
+
 	if currentView == "graph" {
 		members := make([]ldap.User, 0)
 		computers := make([]ldap.Computer, 0)
@@ -319,7 +321,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 			}
 		}
 		data := a.ldapCache.BuildListGraph(members, computers)
-		vm := templates.GraphPageVM{Data: data, BackHref: "/groups", FocusLabel: "Groups"}
+		vm := templates.GraphPageVM{Data: data, BackHref: "/groups", FocusLabel: "Groups", FilterQS: filterQS}
 
 		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
 	}
@@ -327,7 +329,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 	if currentView == "table" {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.GroupsListTableV2(groups, currentView, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+		return templates.GroupsListTableV2(groups, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 

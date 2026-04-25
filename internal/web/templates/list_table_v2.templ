@@ -15,7 +15,7 @@ import (
 )
 
 // UsersListTableV2 renders the full-width users table.
-templ UsersListTableV2(users []ldap.User, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+templ UsersListTableV2(users []ldap.User, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Users — Table") {
 		@topnavV2("/users")
 		<main id="main-content" class="list-table-page">
@@ -25,7 +25,7 @@ templ UsersListTableV2(users []ldap.User, currentView string, flashes []Flash, p
 					<p class="list-page__count">{ fmt.Sprintf("%d users", len(users)) }</p>
 				</div>
 				<div class="list-page__head-controls">
-					@listGraphToggle("/users", currentView, "")
+					@listGraphToggle("/users", currentView, filterQS)
 				</div>
 			</header>
 			@listFlashes(flashes)
@@ -55,7 +55,7 @@ templ UsersListTableV2(users []ldap.User, currentView string, flashes []Flash, p
 }
 
 // GroupsListTableV2 renders the full-width groups table.
-templ GroupsListTableV2(groups []ldap.Group, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+templ GroupsListTableV2(groups []ldap.Group, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Groups — Table") {
 		@topnavV2("/groups")
 		<main id="main-content" class="list-table-page">
@@ -65,7 +65,7 @@ templ GroupsListTableV2(groups []ldap.Group, currentView string, flashes []Flash
 					<p class="list-page__count">{ fmt.Sprintf("%d groups", len(groups)) }</p>
 				</div>
 				<div class="list-page__head-controls">
-					@listGraphToggle("/groups", currentView, "")
+					@listGraphToggle("/groups", currentView, filterQS)
 				</div>
 			</header>
 			@listFlashes(flashes)
@@ -93,7 +93,7 @@ templ GroupsListTableV2(groups []ldap.Group, currentView string, flashes []Flash
 }
 
 // ComputersListTableV2 renders the full-width computers table.
-templ ComputersListTableV2(computers []ldap.Computer, currentView string, flashes []Flash, palettePinned []PinnedEntry) {
+templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS string, flashes []Flash, palettePinned []PinnedEntry) {
 	@baseV2PageScroll("Computers — Table") {
 		@topnavV2("/computers")
 		<main id="main-content" class="list-table-page">
@@ -103,7 +103,7 @@ templ ComputersListTableV2(computers []ldap.Computer, currentView string, flashe
 					<p class="list-page__count">{ fmt.Sprintf("%d computers", len(computers)) }</p>
 				</div>
 				<div class="list-page__head-controls">
-					@listGraphToggle("/computers", currentView, "")
+					@listGraphToggle("/computers", currentView, filterQS)
 				</div>
 			</header>
 			@listFlashes(flashes)

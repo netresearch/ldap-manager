@@ -33,7 +33,7 @@ templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, 
 					<p class="list-page__count">{ fmt.Sprintf("%d", len(computers)) } computers</p>
 				</div>
 				<div class="list-page__head-controls">
-					@listGraphToggle("/computers", currentView, computersFilterQS(ouFilter))
+					@listGraphToggle("/computers", currentView, ComputersFilterQS(ouFilter))
 				</div>
 			</header>
 
@@ -394,11 +394,11 @@ func clearComputersOUHref() templ.SafeURL {
 	return templ.URL("/computers")
 }
 
-// computersFilterQS encodes the active /computers filter combination as a
+// ComputersFilterQS encodes the active /computers filter combination as a
 // bare query string (no leading "?", no view selector). Used by the
 // listGraphToggle to preserve filters when switching between
 // list / graph segments.
-func computersFilterQS(ouFilter string) string {
+func ComputersFilterQS(ouFilter string) string {
 	v := url.Values{}
 	if ouFilter != "" {
 		v.Set("ou", ouFilter)

@@ -24,6 +24,7 @@ type GraphPageVM struct {
 	SortTo     string
 	SortType   string
 	BackHref   string // URL to return to the referring list/detail page
+	FilterQS   string // url.Values-encoded query string of preserved filters (without leading "?", without "view=") — used by the List|Table|Graph toggle so switching views keeps the same subset
 }
 
 // GraphPageV2 renders the /graph page. The page works without
@@ -49,7 +50,7 @@ templ GraphPageV2(vm GraphPageVM) {
 				<div class="list-page__head-controls">
 					@graphDepthSlider(vm.Data.Depth, vm.Data.Focus)
 					if vm.BackHref != "" {
-						@listGraphToggle(vm.BackHref, "graph", "")
+						@listGraphToggle(vm.BackHref, "graph", vm.FilterQS)
 					}
 				</div>
 			</header>
@@ -213,8 +214,9 @@ func nodeXY(dn string, nodes []ldap_cache.Node) (float64, float64) {
 
 // discRadius scales node disc size with degree so high-connectivity
 // nodes (groups with many members, hub users) read as visually
-// weightier. Mirrors the JS-side discRadius() in v2-graph.js — keep
-// the formulas in sync.
+// weightier. Mirrors the JS-side discRadius() in v2-graph.js — both
+// use math.Round / Math.round so SSR-rendered and JS-rendered nodes
+// share the same radius for the same degree.
 func discRadius(degree int) int {
 	const (
 		base = 22
@@ -222,7 +224,7 @@ func discRadius(degree int) int {
 		maxR = 32
 	)
 
-	r := base + int(float64(degree)*step)
+	r := int(math.Round(base + float64(degree)*step))
 	if r > maxR {
 		return maxR
 	}

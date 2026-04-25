@@ -111,9 +111,11 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		currentView = "list"
 	}
 
+	filterQS := templates.UsersFilterQS(showDisabled, ouFilter, lastLogon, memberOf)
+
 	if currentView == "graph" {
 		data := a.ldapCache.BuildListGraph(users, nil)
-		vm := templates.GraphPageVM{Data: data, BackHref: "/users", FocusLabel: "Users"}
+		vm := templates.GraphPageVM{Data: data, BackHref: "/users", FocusLabel: "Users", FilterQS: filterQS}
 
 		return a.templateCache.RenderWithCache(c, templates.GraphPageV2(vm))
 	}
@@ -121,7 +123,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 	if currentView == "table" {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.UsersListTableV2(users, currentView, a.takeFlash(c), a.paletteContextFor(viewerDN)).
+		return templates.UsersListTableV2(users, currentView, filterQS, a.takeFlash(c), a.paletteContextFor(viewerDN)).
 			Render(c.UserContext(), c.Response().BodyWriter())
 	}
 
