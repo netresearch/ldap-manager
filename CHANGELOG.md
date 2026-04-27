@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Tailwind CSS, PostCSS, TypeScript, and all associated build tooling (concurrently, nodemon, tsc, postcss-\*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` directly.
+- Tailwind CSS, PostCSS, TypeScript, Bun, and all associated build tooling (`package.json`, `bun.lock`, `tsconfig.json`, `tailwind.config.js`, `postcss.config.mjs`, concurrently, nodemon, tsc, postcss-\*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` + vendored htmx directly.
 
 ---
 
