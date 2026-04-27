@@ -7,19 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [v1.4.1] - 2026-04-27
+
+### Fixed
+
+- **Release pipeline:** Switch to `release-go-app.yml` atomic-release orchestrator. Previous pipeline created an immutable GitHub Release before the binaries job could attach assets, causing v1.3.0 and v1.4.0 to ship without binaries or container images (HTTP 422 "Cannot upload assets to an immutable release"). The orchestrator publishes atomically at the end after binaries + container builds succeed.
+- **README:** Repair broken CI/Container badges — workflow files were renamed (`quality.yml` → `ci.yml`, `docker.yml` → `container.yml`) without updating the README.
+
+---
+
+## [v1.4.0] - 2026-04-25
+
 ### Added
 
+- **Phase 3 graph view (Slices 1–6):** Server-rendered relationship graph with JSON endpoint, interactive JS canvas, list-page Graph mode (toggle + persistent selection), drawer pivots, weighted layout (degree-scaled disc + parent-anchored angles), and axe-core a11y ratchet. Includes "View relationships" drawer pivot, dark-mode + zoom anchoring, scroll-anchor fixes.
+- **Table view:** New per-page Table mode for `/users`, `/groups`, `/computers` with persistent List/Table/Graph selection. Server-rendered sortable column headers + client-side filter widget.
+
+### Fixed
+
+- `FindUsers` cache excludes AD computer accounts.
+- Subheader layout, page width, dark-mode and console-mode polish across list/detail pages.
+
+---
+
+## [v1.3.0] - 2026-04-24
+
+### Added
+
+- **UI revamp Phase 1:** Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in CI via axe-core.
 - **UI revamp Phase 2:** Inline-edit for user email + description in the drawer via htmx; last-logon filter chips on `/users` (last 24h / 7d / 30d / never); toggleable OU tree rail on `/users`, `/groups`, `/computers` populated from distinct immediate-OU values in the cache.
-- **UI revamp Phase 3:** Bulk add-to-group on `/users` — per-row checkboxes feed a floating bulk-bar that POSTs `target_dn[]` + `group_dn` to `/users/bulk?action=add-to-group`. CSP-safe (external `v2-bulk.js`, `createElement`/`textContent` only).
+- **UI revamp Phase 3:** Bulk add-to-group, bulk + single disable (AD-gated, adminCount-based Privileged), and bulk delete for groups + computers with session flash. Per-row checkboxes feed a floating bulk-bar that POSTs `target_dn[]` + `group_dn` to `/users/bulk?action=add-to-group`. CSP-safe (external `v2-bulk.js`, `createElement` / `textContent` only).
 - **Phase 3 graph view deferral note:** `docs/superpowers/specs/2026-04-20-ui-revamp-phase-3-graph-view-deferred.md` — captures the rough shape and dependencies for the deferred relationship graph view.
 
 ### Changed
 
-- **UI revamp** (Phase 1): Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in CI via axe-core.
+- Pinned-store hardening: hashed buckets, nil-safe, configurable path.
+- Use `ldap.ParseDN` for OU extraction with deterministic entry sort.
 
 ### Removed
 
-- Tailwind CSS, PostCSS, TypeScript, and all associated build tooling (bun, concurrently, nodemon, tsc, postcss-*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` directly.
+- Tailwind CSS, PostCSS, TypeScript, and all associated build tooling (concurrently, nodemon, tsc, postcss-\*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` directly.
 
 ---
 

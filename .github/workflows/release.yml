@@ -1,26 +1,18 @@
 name: Release
 
-# Single-build release pipeline for go-app.
+# Atomic-release pipeline for go-app consumers. Delegates the entire
+# release lifecycle (preflight -> binaries -> container -> atomic publish)
+# to the release-go-app.yml reusable orchestrator.
 #
-# Go binaries are cross-compiled ONCE by the `binaries` matrix, uploaded
-# to the GitHub Release as user-facing artifacts, and then re-downloaded
-# into `bin/` where the Dockerfile's `COPY bin/<name>-linux-*` stage
-# picks the correct one per TARGETARCH/TARGETVARIANT. No `go build`
-# runs inside Docker.
-#
-# Convention for frontend-embedding repos: ship `bun run build:assets`
-# in package.json; this workflow invokes it before `go build` so assets
-# exist when `go:embed` resolves them. No-op when package.json is
-# absent, so non-frontend repos use this identical workflow unchanged.
-#
-# This file is template-managed — per-repo differences live in the
-# Dockerfile and (optionally) the package.json build:assets script.
-# Naming is derived from github.event.repository.name so the workflow
-# is byte-identical across consumers.
+# The orchestrator publishes the GitHub Release ATOMICALLY at the end —
+# avoiding the failure mode where create-release published an immutable
+# release before the binaries job could attach assets (HTTP 422 "Cannot
+# upload assets to an immutable release"). v1.4.1-rc2 validated this
+# pattern end-to-end.
 
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -28,126 +20,37 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  create-release:
-    name: Create GitHub Release
-    uses: netresearch/.github/.github/workflows/create-release.yml@main
+  release:
+    uses: netresearch/.github/.github/workflows/release-go-app.yml@main
     permissions:
       contents: write
-    with:
-      tag: ${{ inputs.tag || github.ref_name }}
-
-  binaries:
-    name: Build ${{ matrix.target }}
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { target: linux-386,     goos: linux,   goarch: "386" }
-          - { target: linux-amd64,   goos: linux,   goarch: amd64 }
-          - { target: linux-arm64,   goos: linux,   goarch: arm64 }
-          - { target: linux-armv6,   goos: linux,   goarch: arm,   goarm: "6" }
-          - { target: linux-armv7,   goos: linux,   goarch: arm,   goarm: "7" }
-          - { target: darwin-amd64,  goos: darwin,  goarch: amd64 }
-          - { target: darwin-arm64,  goos: darwin,  goarch: arm64 }
-          - { target: windows-amd64, goos: windows, goarch: amd64 }
-    uses: netresearch/.github/.github/workflows/build-go-attest.yml@main
-    permissions:
-      contents: write
+      packages: write
       id-token: write
       attestations: write
+      security-events: write
     with:
-      binary-name: ${{ github.event.repository.name }}-${{ matrix.target }}
-      # Resolve after checkout (see build-go-attest.yml). `auto` picks
-      # `.` when ./main.go exists, else `./cmd/<repo-name>` when that
-      # main.go exists, else fails. Keeps this template file byte-
-      # identical regardless of whether the consumer uses a root-main
-      # or cmd/ layout.
-      main-package: auto
-      goos: ${{ matrix.goos }}
-      goarch: ${{ matrix.goarch }}
-      goarm: ${{ matrix.goarm || '' }}
-      # Fleet ldflag convention: repos that want to surface release
-      # metadata declare `var version, build, buildTime string` in their
-      # main package. Each repo decides which to forward into its own
-      # version package (ofelia uses main.* directly; ldap-manager
-      # forwards into internal/version.*). Empty values are a silent
-      # no-op for repos that don't declare the corresponding var.
-      # main.buildTime is injected via auto-build-timestamp (below)
-      # so it stays populated on workflow_dispatch backfills where
-      # github.event.head_commit is absent.
-      ldflags: >-
-        -s -w
-        -X main.version=${{ needs.create-release.outputs.tag }}
-        -X main.build=${{ needs.create-release.outputs.sha }}
-      auto-build-timestamp: true
-      ref: ${{ needs.create-release.outputs.tag }}
-      release-tag: ${{ needs.create-release.outputs.tag }}
-      sbom: true
-      # setup-bun runs unconditionally. `hashFiles()` in the caller's `with:`
-      # is evaluated BEFORE the reusable workflow's checkout, so the caller
-      # workspace is empty and any guard would have always returned false.
-      # The bun install/run commands below are `-f package.json`-gated, so
-      # non-frontend repos (ofelia, raybeam) pay only the ~10s Bun install
-      # overhead per matrix entry — no actual bun work happens.
+      app-name: ${{ github.event.repository.name }}
+      tag: ${{ inputs.tag || github.ref_name }}
+      # ldap-manager embeds Bun-built frontend assets via go:embed.
       setup-bun: true
+      # Pre-build hook: bun assets + templ generate.
+      # *_templ.go files are gitignored (internal/web/templates/.gitignore)
+      # so a clean checkout has none of them -- go build would fail to
+      # resolve types declared inside .templ sources without this step.
       pre-build-command: |
         if [ -f package.json ]; then
           bun install --frozen-lockfile
           bun run build:assets
         fi
-        # Generate Templ-backed Go code. The *_templ.go files are
-        # gitignored (internal/web/templates/.gitignore) so a clean
-        # checkout has none of them — go build would fail to resolve
-        # types declared inside .templ sources. Mirrors ci.yml's
-        # `pre-build-cmd`.
         go install github.com/a-h/templ/cmd/templ@latest
         templ generate
-
-  container:
-    name: Build container image
-    needs: [create-release, binaries]
-    uses: netresearch/.github/.github/workflows/build-container.yml@main
-    permissions:
-      contents: read
-      packages: write
-      security-events: write
-      id-token: write
-      attestations: write
-    with:
-      image-name: ${{ github.event.repository.name }}
-      ref: ${{ needs.create-release.outputs.tag }}
-      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner
-      # stage) only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}.
-      # linux/386 and linux/arm/v6 aren't available; asking for them
-      # fails buildx with "no match for platform in manifest". The
-      # binaries matrix above still produces linux-386 / linux-armv6
-      # Go binaries as user-facing release downloads — they just
-      # don't ship inside the container image.
-      platforms: "linux/amd64,linux/arm/v7,linux/arm64"
-      sign: true
-      attest: true
-      pre-build-command: |
-        set -euo pipefail
-        mkdir -p bin
-        for suffix in linux-amd64 linux-arm64 linux-armv7; do
-          gh release download "${{ needs.create-release.outputs.tag }}" \
-            --pattern "${{ github.event.repository.name }}-${suffix}" --dir bin
-          chmod +x "bin/${{ github.event.repository.name }}-${suffix}"
-        done
-
-  finalize:
-    name: Finalize release (checksums, cosign, notes)
-    needs: [create-release, binaries, container]
-    uses: netresearch/.github/.github/workflows/finalize-release.yml@main
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    with:
-      tag: ${{ needs.create-release.outputs.tag }}
-      image-ref: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner stage)
+      # only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}. linux/386
+      # and linux/arm/v6 aren't available; asking for them fails buildx
+      # with "no match for platform in manifest". The binaries matrix still
+      # produces linux-386 / linux-armv6 Go binaries as user-facing release
+      # downloads -- they just don't ship inside the container image.
+      container-platforms: "linux/amd64,linux/arm/v7,linux/arm64"

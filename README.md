@@ -11,8 +11,8 @@
 
 Supports both Active Directory and OpenLDAP with per-user credential binding.
 
-[![CI](https://github.com/netresearch/ldap-manager/actions/workflows/quality.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/quality.yml)
-[![Docker](https://github.com/netresearch/ldap-manager/actions/workflows/docker.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/docker.yml)
+[![CI](https://github.com/netresearch/ldap-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/ci.yml)
+[![Container](https://github.com/netresearch/ldap-manager/actions/workflows/container.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/container.yml)
 [![codecov](https://codecov.io/gh/netresearch/ldap-manager/graph/badge.svg)](https://codecov.io/gh/netresearch/ldap-manager)
 [![Go Report Card](https://goreportcard.com/badge/github.com/netresearch/ldap-manager)](https://goreportcard.com/report/github.com/netresearch/ldap-manager)
 [![License: MIT](https://img.shields.io/github/license/netresearch/ldap-manager)](LICENSE)
@@ -165,7 +165,7 @@ Full documentation is available in [`docs/`](docs/):
 
 ## Accessibility
 
-LDAP Manager's login page conforms to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) Level AAA in *comfortable* density (the default on touch devices, narrow viewports, and under `prefers-reduced-motion`). In *compact* density (the default on desktop), the login page meets Level AA; all AAA success criteria are met except 2.5.5 Target Size (Enhanced), which is a deliberate density-preference trade-off.
+LDAP Manager's login page conforms to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) Level AAA in _comfortable_ density (the default on touch devices, narrow viewports, and under `prefers-reduced-motion`). In _compact_ density (the default on desktop), the login page meets Level AA; all AAA success criteria are met except 2.5.5 Target Size (Enhanced), which is a deliberate density-preference trade-off.
 
 Conformance is enforced in CI by a contrast unit test (`internal/web/contrast_test.go`) and an axe-core AAA pass on every E2E run (`internal/e2e/axe_test.go`). Additional routes will be brought under the same guarantee as they migrate in subsequent slices.
 
