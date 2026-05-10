@@ -36,7 +36,10 @@ jobs:
       # cannot be reached from unit tests. Authored-code coverage is the
       # metric that matters.
       test-flags: "-race -covermode=atomic -coverprofile=coverage.out -coverpkg=github.com/netresearch/ldap-manager/cmd/...,github.com/netresearch/ldap-manager/internal/ldap_cache/...,github.com/netresearch/ldap-manager/internal/options/...,github.com/netresearch/ldap-manager/internal/retry/...,github.com/netresearch/ldap-manager/internal/version/...,github.com/netresearch/ldap-manager/internal/web"
-      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@latest && templ generate"
+      # Pin the templ CLI to the runtime version in go.mod so the generator
+      # never emits symbols (e.g. templ.ResolveAttributeValue) that the pinned
+      # runtime lacks. Bumping go.mod automatically bumps the CLI in lockstep.
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@$(go list -m -f '{{.Version}}' github.com/a-h/templ) && templ generate"
       # This PR adds a substantial templ + htmx UI layer to internal/web
       # whose handlers reach live LDAP and are exercised primarily by
       # internal/web/ldap_integration_test.go (skipped without an LDAP
