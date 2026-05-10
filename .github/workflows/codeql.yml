@@ -22,6 +22,10 @@ jobs:
       # resolved from go.mod (same pattern as ci.yml).
       pre-build-cmd-go: |
         go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
+        # `go install` drops binaries into $(go env GOPATH)/bin, which
+        # is not on PATH for the bash shell the reusable codeql.yml
+        # spawns. Same workaround as container.yml.
+        export PATH="$(go env GOPATH)/bin:${PATH}"
         templ generate
     permissions:
       contents: read
