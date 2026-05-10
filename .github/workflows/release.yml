@@ -45,7 +45,10 @@ jobs:
           bun install --frozen-lockfile
           bun run build:assets
         fi
-        go install github.com/a-h/templ/cmd/templ@latest
+        # Pin the templ CLI to the runtime version in go.mod so the
+        # generator never emits symbols the pinned runtime lacks (see
+        # ci.yml for the full rationale).
+        go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
         templ generate
       # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner stage)
       # only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}. linux/386

@@ -21,6 +21,7 @@ name: Container (main)
 on:
   push:
     branches: [main]
+  merge_group: {}
   workflow_dispatch: {}
 
 permissions:
@@ -64,7 +65,10 @@ jobs:
         set -euo pipefail
 
         echo "::group::install templ + generate"
-        go install github.com/a-h/templ/cmd/templ@latest
+        # Pin the templ CLI to the runtime version in go.mod so the
+        # generator never emits symbols the pinned runtime lacks (see
+        # ci.yml for the full rationale).
+        go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
         # `go install` drops binaries into $(go env GOPATH)/bin, which is
         # not on PATH for the ad-hoc bash shell the reusable
         # build-container.yml spawns for pre-build-command. Add it.

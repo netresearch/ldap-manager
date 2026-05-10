@@ -3,7 +3,9 @@ package version
 
 import "fmt"
 
-// Version contains the application version string, set during build time.
+// Version, CommitHash, and BuildTimestamp hold build-time metadata
+// injected via -ldflags at link time. They default to "dev" / "n/a"
+// for local builds.
 var (
 	Version        = "dev"
 	CommitHash     = "n/a"

@@ -49,3 +49,17 @@ intentional-drift:
     `go install github.com/a-h/templ/cmd/templ@latest && templ generate`
     to the pre-build-command so release binaries compile, mirroring
     ci.yml's existing `pre-build-cmd`."
+- path: .github/workflows/codeql.yml
+  reason: "Same templ-extraction problem as the other workflows.
+    Without `templ generate`, CodeQL's Go autobuilder fails to extract
+    `internal/web` and `internal/web/templates` (gitignored
+    *_templ.go), and the standalone `CodeQL` aggregator returns
+    NEUTRAL — which the `code_scanning` ruleset treats as
+    \"still expecting result\" and blocks merges on every PR,
+    including ones that don't touch any Go (see #597). Passes
+    `pre-build-cmd-go` (introduced in netresearch/.github#119) to
+    install the templ CLI at the go.mod-pinned version and run
+    `templ generate` between CodeQL init and the analyze/extract
+    pass. Other go-app consumers without templ-style codegen don't
+    need this, hence intentional-drift rather than a template
+    change."
