@@ -15,6 +15,14 @@ jobs:
     uses: netresearch/.github/.github/workflows/codeql.yml@main
     with:
       languages: auto
+      # *_templ.go is gitignored, so the autobuilder fails to extract
+      # internal/web and internal/web/templates without this — the
+      # standalone CodeQL aggregator then returns NEUTRAL and the
+      # `code_scanning` ruleset blocks merges. CLI version is
+      # resolved from go.mod (same pattern as ci.yml).
+      pre-build-cmd-go: |
+        go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
+        templ generate
     permissions:
       contents: read
       security-events: write
