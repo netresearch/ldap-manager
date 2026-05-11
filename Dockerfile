@@ -27,7 +27,7 @@ RUN set -eux; \
 # Used by compose.yml's ldap-manager-dev / ldap-manager-test services.
 # Not part of the release pipeline — `docker buildx build --target=dev`
 # only locally. Source code is bind-mounted at runtime.
-FROM golang:1.26.2-alpine AS dev
+FROM golang:1.26.3-alpine AS dev
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /app
