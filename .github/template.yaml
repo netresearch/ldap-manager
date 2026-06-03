@@ -63,3 +63,5 @@ intentional-drift:
     pass. Other go-app consumers without templ-style codegen don't
     need this, hence intentional-drift rather than a template
     change."
+- path: .github/dependabot.yml
+  reason: "Opt-in devcontainers ecosystem. The trimmed go-app template (netresearch/.github#166) declares only gomod/github-actions/docker; this repo has a .devcontainer so it self-manages dependabot.yml to keep devcontainers updates. Core blocks are kept in step with the template manually."
