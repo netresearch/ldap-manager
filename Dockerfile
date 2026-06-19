@@ -7,7 +7,7 @@
 # This stage picks the correct pre-built binary for TARGETARCH /
 # TARGETVARIANT — no `go build`, no `bun install`, no `templ generate`
 # happens inside Docker.
-FROM alpine:3.24.0 AS binary-selector
+FROM alpine:3.24.1 AS binary-selector
 
 ARG TARGETARCH
 ARG TARGETVARIANT
