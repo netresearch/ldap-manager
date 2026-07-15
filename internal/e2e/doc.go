@@ -6,7 +6,7 @@
 // Run with: go test -tags=e2e ./internal/e2e/...
 //
 // Prerequisites:
-//   - Install Playwright browsers: go run github.com/playwright-community/playwright-go/cmd/playwright install chromium
+//   - Install Playwright browsers: go run github.com/mxschmitt/playwright-go/cmd/playwright install chromium
 //   - Running LDAP Manager instance (default: http://localhost:8080)
 //   - Running LDAP server for authentication
 package e2e
