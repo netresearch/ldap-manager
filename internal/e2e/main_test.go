@@ -15,7 +15,7 @@ import (
 	"time"
 
 	ldap "github.com/netresearch/simple-ldap-go"
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
