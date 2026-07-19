@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mxschmitt/playwright-go"
 	ldap "github.com/netresearch/simple-ldap-go"
-	"github.com/playwright-community/playwright-go"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 

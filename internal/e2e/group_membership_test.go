@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 )
 
 // waitForTagRowCount polls the DOM via page.WaitForFunction until the
