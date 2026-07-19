@@ -14,7 +14,13 @@ jobs:
   codeql:
     uses: netresearch/.github/.github/workflows/codeql.yml@main
     with:
-      languages: auto
+      # Explicit go + javascript-typescript. This repo has a plain-JS
+      # frontend (internal/web/static/js/v2-*.js) but no package.json, so
+      # the reusable's `auto` detects only go and never scans the JS —
+      # GitHub then keeps expecting a JavaScript CodeQL result the
+      # code_scanning gate never receives, blocking every PR. Listing JS
+      # explicitly produces that result and closes a real coverage gap.
+      languages: go,javascript-typescript
       # *_templ.go is gitignored, so the autobuilder fails to extract
       # internal/web and internal/web/templates without this — the
       # standalone CodeQL aggregator then returns NEUTRAL and the
