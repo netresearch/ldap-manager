@@ -309,6 +309,20 @@
   }
 
   function navigateTo(href) {
+    // hrefFor() only ever produces same-origin absolute paths ("/users/…"),
+    // but the value round-trips through the data-href DOM attribute, so
+    // validate before navigating: a tampered attribute must not be able to
+    // inject a javascript:/data: or cross-origin URL. Require a leading "/"
+    // and reject a second "/" or "\" — browsers normalize "/\host" to the
+    // protocol-relative "//host", so both must be blocked.
+    if (
+      typeof href !== "string" ||
+      href.charAt(0) !== "/" ||
+      href.charAt(1) === "/" ||
+      href.charAt(1) === "\\"
+    ) {
+      return;
+    }
     closePalette();
     window.location.href = href;
   }
