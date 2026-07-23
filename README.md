@@ -118,7 +118,7 @@ When no readonly user is configured, the app uses per-user LDAP credentials for 
 
 `/password-expiry` lists accounts whose LDAP password is expiring, resolved live via [simple-ldap-go](https://github.com/netresearch/simple-ldap-go)'s expiry API. It is **admin-only** and needs the service account.
 
-An admin is a member of `LDAP_ADMIN_GROUP` **or** an account carrying Active Directory's `adminCount=1`. On OpenLDAP there is no `adminCount`, so `LDAP_ADMIN_GROUP` is the only way to grant access — without it, the roster is reachable by no one. Group membership is read from the user's `memberOf`, which Active Directory populates automatically; an OpenLDAP deployment must have the `memberof` overlay enabled for the group gate to work.
+An admin is a member of `LDAP_ADMIN_GROUP` **or** an account carrying Active Directory's `adminCount=1`. Note that `adminCount` is *sticky*: Active Directory sets it when an account joins a protected group and never clears it on removal, so an account that was ever privileged keeps roster access. Prefer `LDAP_ADMIN_GROUP` membership where you want access to track current privilege. On OpenLDAP there is no `adminCount`, so `LDAP_ADMIN_GROUP` is the only way to grant access — without it, the roster is reachable by no one. Group membership is read from the user's `memberOf`, which Active Directory populates automatically; an OpenLDAP deployment must have the `memberof` overlay enabled for the group gate to work.
 
 The default view shows accounts due within a window (`?days=`, default 30, capped at 366); a **Show all accounts** toggle adds the never-expires and unknown accounts with a status badge. On OpenLDAP, expiry needs the `ppolicy` overlay; accounts the directory reports nothing about show as `unknown`.
 

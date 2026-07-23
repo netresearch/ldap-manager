@@ -38,7 +38,8 @@ func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
 		return res
 	}
 
-	if a.ldapReadonly == nil {
+	resolver := a.effectiveExpiryResolver()
+	if resolver == nil {
 		// No service account => no enumeration path. RequireAdmin already
 		// returns false here, so this is defence in depth.
 		return c.Status(fiber.StatusServiceUnavailable).
@@ -51,7 +52,7 @@ func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	window := time.Duration(days) * 24 * time.Hour
 
-	rows, err := collectExpiryRows(ctx, a.ldapReadonly, window, showAll)
+	rows, err := collectExpiryRows(ctx, resolver, window, showAll)
 	if err != nil {
 		return handle500(c, err)
 	}
@@ -66,6 +67,22 @@ func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
 		a.takeFlash(c), a.paletteContextFor(viewerDN))
 
 	return page.Render(c.UserContext(), c.Response().BodyWriter())
+}
+
+// effectiveExpiryResolver returns the roster's data source: the injected test
+// resolver, else the service-account client, else nil when neither is set.
+// Returning the concrete *ldap.LDAP only when non-nil avoids the typed-nil
+// interface trap — a nil *ldap.LDAP boxed into the interface would not compare
+// equal to nil and would panic on first use.
+func (a *App) effectiveExpiryResolver() expiryResolver {
+	if a.expiryResolver != nil {
+		return a.expiryResolver
+	}
+	if a.ldapReadonly != nil {
+		return a.ldapReadonly
+	}
+
+	return nil
 }
 
 // expiryResolver is the slice of the LDAP client the roster needs. Depending
@@ -167,10 +184,19 @@ func parseWindowDays(raw string) int {
 }
 
 // sortExpiryRows orders the rows in place by the requested column. The default
-// is by deadline ascending, so the most urgent accounts lead. Rows without a
-// concrete deadline (must-change, never, unknown) sort after dated ones on the
-// expires key, since they have no moment to compare.
+// is by deadline ascending, so the most urgent accounts lead.
+//
+// On the deadline column, rows without a concrete date (must-change, never,
+// unknown) always sort to the bottom regardless of direction — reversing the
+// direction reverses only the dated rows, keeping the undated ones out of the
+// way rather than letting them jump to the top under desc.
 func sortExpiryRows(rows []templates.ExpiryRow, key, dir string) {
+	if key != "name" && key != "status" {
+		sortByDeadline(rows, dir)
+
+		return
+	}
+
 	less := expiryLess(key)
 	sort.SliceStable(rows, func(i, j int) bool {
 		if dir == "desc" {
@@ -181,35 +207,38 @@ func sortExpiryRows(rows []templates.ExpiryRow, key, dir string) {
 	})
 }
 
-// expiryLess returns the ascending comparator for a sort column.
-func expiryLess(key string) func(a, b templates.ExpiryRow) bool {
-	switch key {
-	case "name":
-		return func(a, b templates.ExpiryRow) bool {
-			return lowerCN(a) < lowerCN(b)
+// sortByDeadline sorts dated rows by their deadline in the given direction and
+// pins undated rows to the bottom in both directions.
+func sortByDeadline(rows []templates.ExpiryRow, dir string) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if a.HasDeadline != b.HasDeadline {
+			// The dated row always precedes the undated one.
+			return a.HasDeadline
 		}
-	case "status":
+		if !a.HasDeadline {
+			return false // both undated: keep stable order
+		}
+		if dir == "desc" {
+			return a.ExpiresAt > b.ExpiresAt
+		}
+
+		return a.ExpiresAt < b.ExpiresAt
+	})
+}
+
+// expiryLess returns the ascending comparator for the non-deadline columns.
+// The deadline column is handled by sortByDeadline, which needs direction- and
+// undated-aware ordering the plain comparator cannot express.
+func expiryLess(key string) func(a, b templates.ExpiryRow) bool {
+	if key == "status" {
 		return func(a, b templates.ExpiryRow) bool {
 			return a.Status < b.Status
 		}
-	default: // "expires"
-		return func(a, b templates.ExpiryRow) bool {
-			return expiryOrder(a) < expiryOrder(b)
-		}
-	}
-}
-
-// expiryOrder maps a row to a sortable deadline. Dated rows sort by their
-// timestamp; undated rows (must-change, never, unknown) sort last, keeping the
-// concrete deadlines — the ones an admin acts on — at the top.
-func expiryOrder(r templates.ExpiryRow) int64 {
-	if r.HasDeadline {
-		return r.ExpiresAt
 	}
 
-	return 1<<62 - 1
-}
-
-func lowerCN(r templates.ExpiryRow) string {
-	return strings.ToLower(r.CN)
+	// "name"
+	return func(a, b templates.ExpiryRow) bool {
+		return strings.ToLower(a.CN) < strings.ToLower(b.CN)
+	}
 }

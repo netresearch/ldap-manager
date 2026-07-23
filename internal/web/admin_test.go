@@ -45,6 +45,14 @@ func TestUserIsAdmin(t *testing.T) {
 			user: ldap.User{Groups: []string{adminGroup}},
 			want: false,
 		},
+		{
+			// The adminGroupDN != "" guard exists for exactly this: a directory
+			// that returns an empty-string group entry must not match an unset
+			// admin group, since IsMemberOf("") would otherwise be true.
+			name: "empty group entry with no admin group configured is not admin",
+			user: ldap.User{Groups: []string{""}},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {

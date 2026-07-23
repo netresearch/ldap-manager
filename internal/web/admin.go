@@ -47,13 +47,23 @@ func (a *App) userIsAdmin(user *ldap.User) bool {
 	return false
 }
 
+// resolveAdminCheck returns the admin predicate: the injected one in tests,
+// otherwise the real cache-backed isAdmin.
+func (a *App) resolveAdminCheck() func(string) bool {
+	if a.adminCheck != nil {
+		return a.adminCheck
+	}
+
+	return a.isAdmin
+}
+
 // RequireAdmin gates a route to administrators. It must sit behind RequireAuth,
 // which populates the viewer DN into c.Locals. A non-admin gets 403 rather than
 // a redirect: they are authenticated, just not permitted.
 func (a *App) RequireAdmin() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userDN := GetUserDN(c)
-		if userDN == "" || !a.isAdmin(userDN) {
+		if userDN == "" || !a.resolveAdminCheck()(userDN) {
 			log.Warn().
 				Str("userDN", userDN).
 				Str("path", c.Path()).
