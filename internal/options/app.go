@@ -24,6 +24,12 @@ type Opts struct {
 	ReadonlyUser     string
 	ReadonlyPassword string
 
+	// AdminGroupDN gates the password-expiry roster. A viewer is treated as an
+	// admin when they are a member of this group OR carry AD's adminCount=1.
+	// Empty means only adminCount counts, which is AD-only — set this to grant
+	// admin on OpenLDAP, where adminCount does not exist.
+	AdminGroupDN string
+
 	PersistSessions bool
 	SessionPath     string
 	SessionDuration time.Duration
@@ -224,6 +230,10 @@ func Parse() (*Opts, error) {
 			"User that can read all users in your LDAP directory.")
 		fReadonlyPassword = flag.String("readonly-password", envStringOrDefault("LDAP_READONLY_PASSWORD", ""),
 			"Password for the readonly user.")
+		fAdminGroup = flag.String("admin-group", envStringOrDefault("LDAP_ADMIN_GROUP", ""),
+			"DN of the group whose members may view the password-expiry roster. "+
+				"Members of this group, or accounts with AD adminCount=1, are admins. "+
+				"Required to grant access on OpenLDAP, which has no adminCount.")
 
 		fPersistSessions = flag.Bool("persist-sessions", persistSessions,
 			"Whether or not to persist sessions into a Bolt database. Useful for development.")
@@ -301,6 +311,7 @@ func Parse() (*Opts, error) {
 		LDAP:             ldapConfig,
 		ReadonlyUser:     *fReadonlyUser,
 		ReadonlyPassword: *fReadonlyPassword,
+		AdminGroupDN:     *fAdminGroup,
 
 		PersistSessions: *fPersistSessions,
 		SessionPath:     *fSessionPath,

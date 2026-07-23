@@ -139,6 +139,9 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	protected.Get("/users/*", app.handleUserV2)
 	protected.Get("/groups/*", app.handleGroupV2)
 	protected.Get("/computers/*", app.handleComputerV2)
+	// Admin-only password-expiry roster, mirroring production's
+	// RequireAdmin gate (see server.go).
+	protected.Get("/password-expiry", app.RequireAdmin(), app.handlePasswordExpiryV2)
 	// Bulk actions — registered BEFORE /<kind>/* so Fiber's wildcard
 	// doesn't swallow the exact /<kind>/bulk route.
 	protected.Post("/users/bulk", app.handleBulkUsers)
