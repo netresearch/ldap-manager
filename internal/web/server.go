@@ -34,18 +34,29 @@ import (
 // When ReadonlyUser is not configured, ldapReadonly and ldapCache are nil;
 // all interactive LDAP operations use the logged-in user's own credentials.
 type App struct {
-	ldapConfig    ldap.Config
-	ldapOpts      []ldap.Option       // LDAP client options (TLS, logging)
-	ldapReadonly  *ldap.LDAP          // Service account client (nil when not configured)
-	ldapCache     *ldap_cache.Manager // Background cache (nil when no service account)
-	sessionStore  *session.Store
-	templateCache *TemplateCache
-	csrfHandler   fiber.Handler
-	fiber         *fiber.App
-	rateLimiter   *RateLimiter  // Rate limiter for authentication endpoints
-	stopCacheLog  chan struct{} // Stops periodicCacheLogging goroutine
-	pinnedStore   *PinnedStore  // Per-user pinned-items store (spec §6.5)
-	pinnedDB      *bolt.DB      // Underlying bbolt handle for pinnedStore (nil when in-memory)
+	ldapConfig   ldap.Config
+	ldapOpts     []ldap.Option       // LDAP client options (TLS, logging)
+	ldapReadonly *ldap.LDAP          // Service account client (nil when not configured)
+	ldapCache    *ldap_cache.Manager // Background cache (nil when no service account)
+	adminGroupDN string              // Group whose members may see the password-expiry roster (empty => adminCount only)
+
+	// adminCheck resolves whether a viewer DN is an admin. Nil in production,
+	// where isAdmin is used. Tests inject it to exercise the admit path and
+	// the handler behind RequireAdmin, which is otherwise unreachable because
+	// a DN-addressable admin cache entry cannot be built outside the LDAP
+	// package (User.DN is unexported).
+	adminCheck func(userDN string) bool
+	// expiryResolver overrides ldapReadonly as the roster's data source. Nil in
+	// production; tests inject a fake to drive the handler without a directory.
+	expiryResolver expiryResolver
+	sessionStore   *session.Store
+	templateCache  *TemplateCache
+	csrfHandler    fiber.Handler
+	fiber          *fiber.App
+	rateLimiter    *RateLimiter  // Rate limiter for authentication endpoints
+	stopCacheLog   chan struct{} // Stops periodicCacheLogging goroutine
+	pinnedStore    *PinnedStore  // Per-user pinned-items store (spec §6.5)
+	pinnedDB       *bolt.DB      // Underlying bbolt handle for pinnedStore (nil when in-memory)
 }
 
 // pinnedStorePath returns the bbolt file path for the per-user pinned
@@ -215,6 +226,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 		ldapOpts:      ldapOpts,
 		ldapReadonly:  ldapReadonly,
 		ldapCache:     ldapCache,
+		adminGroupDN:  opts.AdminGroupDN,
 		templateCache: templateCache,
 		sessionStore:  sessionStore,
 		csrfHandler:   csrfHandler,
@@ -342,6 +354,11 @@ func (a *App) setupRoutes() {
 	// Graph view page (spec §6.6); same data shape as /api/graph.json,
 	// rendered as HTML for in-browser navigation.
 	protected.Get("/graph", a.handleGraphV2)
+
+	// Password-expiry roster (issue #628). Admin-only, and uncached: expiry is
+	// resolved live from the directory, so the template cache would serve a
+	// stale roster.
+	protected.Get("/password-expiry", a.RequireAdmin(), a.handlePasswordExpiryV2)
 
 	// Bulk actions (Phase 3 + 4) — registered BEFORE each /<kind>/* wildcard
 	// POST so Fiber matches the exact /<kind>/bulk path first.

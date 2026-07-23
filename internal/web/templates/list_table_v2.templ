@@ -186,12 +186,28 @@ templ ComputersListTableV2(computers []ldap.Computer, currentView, filterQS, sor
 // plus the preserved filterQS so click navigation lands on the same
 // filtered subset with a refreshed sort.
 templ tableSortHeader(base, key, label, currentSort, currentDir, filterQS string) {
-	<th scope="col" class="list-table__sort-th">
+	<th scope="col" class="list-table__sort-th" aria-sort={ ariaSortValue(key, currentSort, currentDir) }>
 		<a class="list-table__sort-link" href={ templ.URL(buildTableSortHref(base, key, currentSort, currentDir, filterQS)) }>
 			{ label }
 			<span class="list-table__sort-indicator" aria-hidden="true">{ sortIndicator(key, currentSort, currentDir) }</span>
 		</a>
 	</th>
+}
+
+// ariaSortValue reports the WCAG 4.1.2 sort state for a column header: the
+// active column announces "ascending"/"descending", the rest "none". Without
+// this the direction lives only in the aria-hidden arrow glyph and never
+// reaches assistive technology.
+func ariaSortValue(colKey, currentSort, currentDir string) string {
+	if colKey != currentSort {
+		return "none"
+	}
+
+	if currentDir == "desc" {
+		return "descending"
+	}
+
+	return "ascending"
 }
 
 // buildTableSortHref computes the link URL for a column header. Clicking

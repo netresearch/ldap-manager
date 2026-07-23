@@ -53,6 +53,7 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 		UsersCount:     usersCount,
 		GroupsCount:    groupsCount,
 		ComputersCount: computersCount,
+		IsAdmin:        a.isAdmin(userDN),
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)

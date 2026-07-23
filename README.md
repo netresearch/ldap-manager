@@ -104,6 +104,7 @@ All options can be set via environment variables, a `.env` file, or command-line
 | `LDAP_IS_AD`             | `--active-directory`  | `false`    | Enable Active Directory mode                |
 | `LDAP_READONLY_USER`     | `--readonly-user`     |            | Service account DN for background cache     |
 | `LDAP_READONLY_PASSWORD` | `--readonly-password` |            | Service account password                    |
+| `LDAP_ADMIN_GROUP`       | `--admin-group`       |            | Group DN whose members may view the password-expiry roster |
 | `LDAP_TLS_SKIP_VERIFY`   | `--tls-skip-verify`   | `false`    | Skip TLS certificate verification           |
 | `PORT`                   |                       | `3000`     | HTTP listen port                            |
 | `COOKIE_SECURE`          | `--cookie-secure`     | `true`     | Require HTTPS for cookies                   |
@@ -112,6 +113,14 @@ All options can be set via environment variables, a `.env` file, or command-line
 | `LOG_LEVEL`              | `--log-level`         | `info`     | Log level (trace, debug, info, warn, error) |
 
 When no readonly user is configured, the app uses per-user LDAP credentials for all operations and the background cache is disabled.
+
+### Password-expiry roster
+
+`/password-expiry` lists accounts whose LDAP password is expiring, resolved live via [simple-ldap-go](https://github.com/netresearch/simple-ldap-go)'s expiry API. It is **admin-only** and needs the service account.
+
+An admin is a member of `LDAP_ADMIN_GROUP` **or** an account carrying Active Directory's `adminCount=1`. Note that `adminCount` is *sticky*: Active Directory sets it when an account joins a protected group and never clears it on removal, so an account that was ever privileged keeps roster access. Prefer `LDAP_ADMIN_GROUP` membership where you want access to track current privilege. On OpenLDAP there is no `adminCount`, so `LDAP_ADMIN_GROUP` is the only way to grant access — without it, the roster is reachable by no one. Group membership is read from the user's `memberOf`, which Active Directory populates automatically; an OpenLDAP deployment must have the `memberof` overlay enabled for the group gate to work.
+
+The default view shows accounts due within a window (`?days=`, default 30, capped at 366); a **Show all accounts** toggle adds the never-expires and unknown accounts with a status badge. On OpenLDAP, expiry needs the `ppolicy` overlay; accounts the directory reports nothing about show as `unknown`.
 
 ### Traefik Integration
 

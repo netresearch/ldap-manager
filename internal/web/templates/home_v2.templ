@@ -16,6 +16,9 @@ type HomeVM struct {
 	UsersCount     int
 	GroupsCount    int
 	ComputersCount int
+	// IsAdmin gates the password-expiry quick link. The roster route is
+	// admin-only, so a non-admin must not be shown a link that would 403.
+	IsAdmin bool
 }
 
 // HomeV2 is the signed-in home page. Greeting + "my profile" quick link +
@@ -50,6 +53,19 @@ templ HomeV2(vm HomeVM) {
 						<span class="home__quick-card-main">
 							<span class="home__quick-card-title">My profile</span>
 							<span class="home__quick-card-sub">{ vm.UserCN }</span>
+						</span>
+						<span class="home__quick-card-arrow" aria-hidden="true">→</span>
+					</a>
+				}
+
+				if vm.IsAdmin {
+					<a class="home__quick-card" href="/password-expiry">
+						<span class="home__quick-card-icon" aria-hidden="true">
+							@iconServer()
+						</span>
+						<span class="home__quick-card-main">
+							<span class="home__quick-card-title">Password expiry</span>
+							<span class="home__quick-card-sub">Accounts expiring soon</span>
 						</span>
 						<span class="home__quick-card-arrow" aria-hidden="true">→</span>
 					</a>
