@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.5.0] - 2026-07-24
+
+### Added
+
+- **Password-expiry roster** ([#626](https://github.com/netresearch/ldap-manager/pull/626), closes [ldap-selfservice-password-changer#628](https://github.com/netresearch/ldap-selfservice-password-changer/issues/628)). A new admin-only `/password-expiry` page lists accounts whose LDAP password is expiring, resolved live via [simple-ldap-go](https://github.com/netresearch/simple-ldap-go) v1.13.0. It shows four states — expiring, must-change, never-expires, unknown — as status badges, defaults to accounts due within a window (`?days=`, default 30) with a **Show all accounts** toggle, and is reachable only by admins.
+  - New `LDAP_ADMIN_GROUP` (`--admin-group`): an admin is a member of this group **or** carries Active Directory's `adminCount=1`. On OpenLDAP, which has no `adminCount`, the group is the only way to grant access. Group membership is read from `memberOf` (Active Directory populates it automatically; OpenLDAP needs the `memberof` overlay).
+  - The roster is resolved live from the directory, not the background cache, which cannot compute expiry; on OpenLDAP expiry needs the `ppolicy` overlay.
+
+### Fixed
+
+- **DOM XSS in the command palette** ([#625](https://github.com/netresearch/ldap-manager/pull/625)). The palette now validates the navigation target before following it.
+- **End-to-end tests** migrate to the renamed `playwright-go` module ([#621](https://github.com/netresearch/ldap-manager/pull/621)).
+
+### Dependencies
+
+- Routine Renovate/Dependabot updates across Go modules, Docker base images (Alpine 3.24.1, `docker/dockerfile` v1.25) and CI actions.
+
+---
+
 ## [v1.4.1] - 2026-04-27
 
 ### Fixed
