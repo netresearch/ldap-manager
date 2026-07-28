@@ -21,6 +21,13 @@ jobs:
     uses: netresearch/.github/.github/workflows/go-mutation-testing.yml@main
     with:
       diff-only: ${{ github.event_name == 'pull_request' }}
+      # The *_templ.go sources are generated and not committed, so gremlins
+      # cannot compile internal/web/templates — nor internal/web and
+      # cmd/ldap-manager, which depend on it — without generating them first.
+      # Same command and CLI pinning as ci.yml: the templ CLI is tied to the
+      # runtime version in go.mod so the generator never emits symbols the
+      # pinned runtime lacks.
+      pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@$(go list -m -f '{{.Version}}' github.com/a-h/templ) && templ generate"
     permissions:
       contents: read
       pull-requests: write
