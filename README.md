@@ -14,7 +14,6 @@ Supports both Active Directory and OpenLDAP with per-user credential binding.
 [![CI](https://github.com/netresearch/ldap-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/ci.yml)
 [![Container](https://github.com/netresearch/ldap-manager/actions/workflows/container.yml/badge.svg)](https://github.com/netresearch/ldap-manager/actions/workflows/container.yml)
 [![codecov](https://codecov.io/gh/netresearch/ldap-manager/graph/badge.svg)](https://codecov.io/gh/netresearch/ldap-manager)
-[![Go Report Card](https://goreportcard.com/badge/github.com/netresearch/ldap-manager)](https://goreportcard.com/report/github.com/netresearch/ldap-manager)
 [![License: MIT](https://img.shields.io/github/license/netresearch/ldap-manager)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/netresearch/ldap-manager)](go.mod)
 [![Release](https://img.shields.io/github/v/release/netresearch/ldap-manager)](https://github.com/netresearch/ldap-manager/releases/latest)
