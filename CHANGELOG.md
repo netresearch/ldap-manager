@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.5.1] - 2026-07-28
+
+### Security
+
+- **Go toolchain moves to 1.26.5** — module `go 1.26`, `toolchain go1.26.5` ([#630](https://github.com/netresearch/ldap-manager/pull/630)). Clears the standard-library advisories govulncheck reported as affecting the binary — the exact count depends on the patch release compared against, so they are named rather than counted: GO-2026-5856 (`crypto/tls`), GO-2026-5039 (`net/textproto`), GO-2026-5037 (`crypto/x509`) and GO-2026-4971 (`net`).
+
+### Changed
+
+- **gosec is a blocking check** ([#630](https://github.com/netresearch/ldap-manager/pull/630), [netresearch/.github#312](https://github.com/netresearch/.github/pull/312)). It flagged four sites here; **none was a defect**. The `//nolint:gosec` comments they carried — which only golangci-lint reads — became `#nosec` annotations stating a reason gosec itself records. No code behaviour changed.
+  - G402 (TLS verification disabled): `TLSSkipVerify` is a plain bool, default `false`, set only by an operator through `LDAP_TLS_SKIP_VERIFY` / `--tls-skip-verify`, and enabling it logs a startup warning. It is never derived from request data.
+  - G404 (weak randomness): `math/rand/v2` supplies backoff jitter in `internal/retry` — no token, nonce or session ID.
+  - G103 (unsafe) ×2: the test-fixture helpers in `internal/ldap_cache/cachetest` write simple-ldap-go's unexported `Object.dn`/`cn` through reflection, because that library exposed no constructor taking them ([simple-ldap-go#191](https://github.com/netresearch/simple-ldap-go/issues/191)). It now has `NewObject`; the `unsafe` goes once a release carrying it is picked up here.
+- **Mutation testing covers the whole tree** ([#631](https://github.com/netresearch/ldap-manager/pull/631)). The `*_templ.go` sources are generated and not committed, so gremlins could not compile `internal/web/templates` — nor `internal/web` and `cmd/ldap-manager`, which depend on it. It reported the three as `[build failed]`, then aborted before gathering coverage, and the job stayed green publishing a score of 0%; `internal/web` is the handler, auth and routing layer. The run now generates templ sources first via `pre-build-cmd` ([netresearch/.github#314](https://github.com/netresearch/.github/pull/314)), which also makes `[build failed]` fail the job. First score over the full tree: **57.07%**.
+
+### Removed
+
+- Go Report Card badge ([#629](https://github.com/netresearch/ldap-manager/pull/629)) — the service is sunset.
+
+### Dependencies
+
+- `github.com/gofiber/storage/bbolt/v2` v2.1.8 → v2.1.9 ([#628](https://github.com/netresearch/ldap-manager/pull/628)).
+
+---
+
 ## [v1.5.0] - 2026-07-24
 
 ### Added
