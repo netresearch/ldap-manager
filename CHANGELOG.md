@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **Go toolchain moves to 1.26.5** — module `go 1.26`, `toolchain go1.26.5` ([#630](https://github.com/netresearch/ldap-manager/pull/630)). Clears the 14 standard-library advisories govulncheck reported as affecting the binary, among them GO-2026-5856 (`crypto/tls`), GO-2026-5039 (`net/textproto`), GO-2026-5037 (`crypto/x509`) and GO-2026-4971 (`net`).
+- **Go toolchain moves to 1.26.5** — module `go 1.26`, `toolchain go1.26.5` ([#630](https://github.com/netresearch/ldap-manager/pull/630)). Clears the standard-library advisories govulncheck reported as affecting the binary — the exact count depends on the patch release compared against, so they are named rather than counted: GO-2026-5856 (`crypto/tls`), GO-2026-5039 (`net/textproto`), GO-2026-5037 (`crypto/x509`) and GO-2026-4971 (`net`).
 
 ### Changed
 
