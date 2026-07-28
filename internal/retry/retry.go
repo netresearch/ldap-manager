@@ -127,7 +127,7 @@ func addJitter(duration time.Duration, fraction float64) time.Duration {
 		return duration
 	}
 
-	jitter := float64(duration) * fraction * rand.Float64() //nolint:gosec // Weak random acceptable for jitter
+	jitter := float64(duration) * fraction * rand.Float64() // #nosec G404 -- backoff jitter only, never a token/nonce/session ID
 
 	return duration + time.Duration(jitter)
 }

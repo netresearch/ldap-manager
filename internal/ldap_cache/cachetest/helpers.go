@@ -55,9 +55,16 @@ func Seed(m *ldap_cache.Manager, users []ldap.User, groups []ldap.Group, compute
 func setObjectFields(obj reflect.Value, dn, cn string) {
 	dnField := obj.FieldByName("dn")
 	cnField := obj.FieldByName("cn")
-	// test-only writers for unexported simple-ldap-go fields; never used in production code.
-	dnPtr := unsafe.Pointer(dnField.UnsafeAddr()) //nolint:gosec // test-only DN field write
-	cnPtr := unsafe.Pointer(cnField.UnsafeAddr()) //nolint:gosec // test-only CN field write
+	// Test-only writers for unexported simple-ldap-go fields. This package is
+	// imported by the tests of two other packages (internal/web and
+	// internal/ldap_cache), and Go cannot share helpers declared in _test.go
+	// files across package boundaries — so it has to be an ordinary package and
+	// is compiled into the binary, unreachable from any production call path.
+	// The unsafe write exists because simple-ldap-go sets Object.dn/cn only in
+	// objectFromEntry when decoding a directory response and exposes no
+	// constructor taking them; see netresearch/simple-ldap-go#191.
+	dnPtr := unsafe.Pointer(dnField.UnsafeAddr()) // #nosec G103 -- test fixture writer, see comment above
+	cnPtr := unsafe.Pointer(cnField.UnsafeAddr()) // #nosec G103 -- test fixture writer, see comment above
 	reflect.NewAt(dnField.Type(), dnPtr).Elem().SetString(dn)
 	reflect.NewAt(cnField.Type(), cnPtr).Elem().SetString(cn)
 }
