@@ -142,11 +142,15 @@ func NewApp(opts *options.Opts) (*App, error) {
 	// Build LDAP client options
 	ldapOpts := []ldap.Option{ldap.WithLogger(logger)}
 
-	// Add TLS skip verify option if configured (for development with self-signed certs)
+	// Add TLS skip verify option if configured (for development with self-signed certs).
+	//
+	// TLSSkipVerify defaults to false and is only ever set by the operator through
+	// LDAP_TLS_SKIP_VERIFY / --tls-skip-verify (see internal/options/app.go). It is not
+	// derived from request data, and enabling it emits a startup warning.
 	if opts.TLSSkipVerify {
 		logger.Warn("TLS certificate verification is disabled - use only for development!")
 		ldapOpts = append(ldapOpts, ldap.WithTLS(&tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // Intentional for development
+			InsecureSkipVerify: true, // #nosec G402 -- opt-in via LDAP_TLS_SKIP_VERIFY, default false (see comment above)
 		}))
 	}
 
