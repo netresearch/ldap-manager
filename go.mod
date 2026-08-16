@@ -7,7 +7,7 @@ toolchain go1.26.6
 require (
 	github.com/a-h/templ v0.3.1020
 	github.com/go-ldap/ldap/v3 v3.4.14
-	github.com/gofiber/fiber/v2 v2.52.14
+	github.com/gofiber/fiber/v2 v2.52.15
 	github.com/gofiber/storage/bbolt/v2 v2.1.9
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/joho/godotenv v1.5.1
