@@ -14,7 +14,7 @@ require (
 	github.com/mxschmitt/playwright-go v0.6100.0
 	github.com/netresearch/simple-ldap-go v1.14.0
 	github.com/rs/zerolog v1.35.1
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.etcd.io/bbolt v1.5.0
 )
