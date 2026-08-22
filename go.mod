@@ -14,7 +14,7 @@ require (
 	github.com/mxschmitt/playwright-go v0.6100.0
 	github.com/netresearch/simple-ldap-go v1.14.0
 	github.com/rs/zerolog v1.35.1
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.etcd.io/bbolt v1.5.0
 )
@@ -269,7 +269,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/mod v0.39.0 // indirect
