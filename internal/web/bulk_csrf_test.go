@@ -32,8 +32,14 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 	t.Helper()
 
 	mockClient := &testLDAPClient{
+		users: []ldap.User{
+			{SAMAccountName: "john.doe", Enabled: true},
+		},
 		groups: []ldap.Group{
 			{Members: []string{"cn=john.doe,ou=users,dc=example,dc=com"}},
+		},
+		computers: []ldap.Computer{
+			{SAMAccountName: "workstation-01$", Enabled: true},
 		},
 	}
 
@@ -45,10 +51,15 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 		ErrorHandler: handle500,
 	})
 
+	// Minutes-scale TTL on purpose: TestBulkToolbar_ListPageIsNeverServedFromCache
+	// asserts the second GET is a MISS because nothing STORES list pages.
+	// With a millisecond TTL, a stored-but-expired entry would also read
+	// as MISS and the guard would silently pass over the very mutation
+	// (RenderWithCache on a list handler) it exists to catch.
 	templateCache := NewTemplateCache(TemplateCacheConfig{
-		DefaultTTL:      100 * time.Millisecond,
+		DefaultTTL:      5 * time.Minute,
 		MaxSize:         100,
-		CleanupInterval: 50 * time.Millisecond,
+		CleanupInterval: time.Minute,
 	})
 
 	pinnedDB, err := bolt.Open(filepath.Join(t.TempDir(), "pinned.bbolt"), 0o600, nil)
@@ -76,18 +87,27 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 		_ = pinnedDB.Close()
 	})
 
+	_ = app.ldapCache.RefreshUsers()
 	_ = app.ldapCache.RefreshGroups()
+	_ = app.ldapCache.RefreshComputers()
 
 	csrfHandler := createCSRFConfig(&options.Opts{CookieSecure: false}, store)
 	protected := f.Group("/", app.RequireAuth(), csrfHandler)
 	// templateCacheMiddleware mirrors production's `cacheable` group so
 	// TestBulkToolbar_ListPageIsNeverServedFromCache can pin the
-	// invariant documented in setupRoutes.
+	// invariant documented in setupRoutes. All three list pages are
+	// registered: each one hosts the bulk toolbar and received the same
+	// data-csrf plumbing.
+	protected.Get("/users", app.templateCacheMiddleware(), app.handleUsersV2)
 	protected.Get("/groups", app.templateCacheMiddleware(), app.handleGroupsV2)
+	protected.Get("/computers", app.templateCacheMiddleware(), app.handleComputersV2)
 	protected.Post("/groups/bulk", app.handleBulkGroups)
 
 	return app, store
 }
+
+// bulkListPaths are the three list pages that host the bulk toolbar.
+var bulkListPaths = []string{"/users", "/groups", "/computers"}
 
 var dataCSRFRe = regexp.MustCompile(`data-csrf="([^"]+)"`)
 
@@ -103,32 +123,38 @@ func TestBulkToolbar_ListPageExposesUsableCSRFToken(t *testing.T) {
 
 	cookies := createAuthSession(t, app, store)
 
-	// Step 1: GET the groups list page like the browser does.
-	getReq := httptest.NewRequest(http.MethodGet, "/groups", http.NoBody)
-	for _, c := range cookies {
-		getReq.AddCookie(c)
+	// Step 1: every list page hosting the bulk toolbar must expose the
+	// token the toolbar JS reads — not just /groups, since all three
+	// received the same data-csrf plumbing.
+	var token string
+	for _, path := range bulkListPaths {
+		getReq := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+		for _, c := range cookies {
+			getReq.AddCookie(c)
+		}
+		getResp, err := app.fiber.Test(getReq)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, getResp.StatusCode, "GET %s", path)
+
+		body, err := io.ReadAll(getResp.Body)
+		require.NoError(t, err)
+		_ = getResp.Body.Close()
+
+		m := dataCSRFRe.FindSubmatch(body)
+		require.NotNil(t, m,
+			"%s must expose the CSRF token as data-csrf on main[data-bulk-scope] — "+
+				"without it the bulk toolbar cannot POST (issue #652)", path)
+		require.NotEmpty(t, string(m[1]), "data-csrf on %s", path)
+
+		token = string(m[1])
+		cookies = append(cookies, getResp.Cookies()...)
 	}
-	getResp, err := app.fiber.Test(getReq)
-	require.NoError(t, err)
-	defer func() { _ = getResp.Body.Close() }()
-	require.Equal(t, http.StatusOK, getResp.StatusCode)
 
-	body, err := io.ReadAll(getResp.Body)
-	require.NoError(t, err)
-
-	// Step 2: read the token the bulk toolbar JS reads.
-	m := dataCSRFRe.FindSubmatch(body)
-	require.NotNil(t, m,
-		"list page must expose the CSRF token as data-csrf on main[data-bulk-scope] — "+
-			"without it the bulk toolbar cannot POST (issue #652)")
-	token := string(m[1])
-	require.NotEmpty(t, token)
-
-	// Step 3: POST a bulk action with that token, carrying the session
-	// cookie plus the csrf_ cookie the GET set. A user_dn with zero
-	// target_dn values keeps the handler away from LDAP: it redirects
-	// straight back to /groups — any non-403 proves the CSRF middleware
-	// accepted the token.
+	// Step 2: POST a bulk action with that token, carrying the session
+	// cookie plus the csrf_ cookies collected from the GETs above. A
+	// user_dn with zero target_dn values keeps the handler away from
+	// LDAP: it redirects straight back to /groups — any non-403 proves
+	// the CSRF middleware accepted the token.
 	form := url.Values{
 		"csrf_token": {token},
 		"user_dn":    {"cn=u,ou=users,dc=test,dc=com"},
@@ -138,9 +164,6 @@ func TestBulkToolbar_ListPageExposesUsableCSRFToken(t *testing.T) {
 		strings.NewReader(form.Encode()))
 	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	for _, c := range cookies {
-		postReq.AddCookie(c)
-	}
-	for _, c := range getResp.Cookies() {
 		postReq.AddCookie(c)
 	}
 
@@ -165,18 +188,20 @@ func TestBulkToolbar_ListPageIsNeverServedFromCache(t *testing.T) {
 
 	cookies := createAuthSession(t, app, store)
 
-	for i, want := range []string{"MISS", "MISS"} {
-		req := httptest.NewRequest(http.MethodGet, "/groups", http.NoBody)
-		for _, c := range cookies {
-			req.AddCookie(c)
-		}
+	for _, path := range bulkListPaths {
+		for i := 1; i <= 2; i++ {
+			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+			for _, c := range cookies {
+				req.AddCookie(c)
+			}
 
-		resp, err := app.fiber.Test(req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		require.Equal(t, want, resp.Header.Get("X-Cache"),
-			"GET #%d: list pages embed a session-scoped CSRF token and must not be cached", i+1)
-		_ = resp.Body.Close()
+			resp, err := app.fiber.Test(req)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode, "GET %s", path)
+			require.Equal(t, "MISS", resp.Header.Get("X-Cache"),
+				"GET #%d %s: list pages embed a session-scoped CSRF token and must not be cached", i, path)
+			_ = resp.Body.Close()
+		}
 	}
 }
 

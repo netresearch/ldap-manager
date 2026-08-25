@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +41,12 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	// polluted them (CI: TestAddRemoveGroupMembership hit LDAP error 20
 	// "value already exists" adding testuser1 to a stale
 	// bulk-toolbar-csrf-* group). Delete it when the test ends.
+	// NOTE: this deletes directly in the directory, bypassing the app —
+	// the app's cache keeps the group (with testuser1 as member) until
+	// the next refresh. Benign for the following tests today only by
+	// cache ordering (runtime-created groups sort last in the drawer's
+	// addable list); if a test starts iterating cached groups eagerly,
+	// invalidate via the app instead.
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
@@ -65,14 +70,17 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	page.OnDialog(func(d playwright.Dialog) { _ = d.Accept(memberDN) })
 
 	// Wait for the app's cache refresh loop to surface the seeded
-	// group on the /groups list (same pattern as bulk_delete_test).
+	// group on the /groups list. Poll with Locator.Count() — the list
+	// page is server-rendered and static after navigation, so a
+	// WaitFor-style call would burn its full 30s page timeout staring
+	// at a DOM that cannot change, turning the loop into ~1 attempt.
 	checkboxSel := fmt.Sprintf(`input[data-bulk][value=%q]`, disposableDN)
 	deadline := time.Now().Add(45 * time.Second)
 	found := false
 
 	for time.Now().Before(deadline) {
 		tp.Navigate("/groups")
-		if err := tp.WaitForSelector(checkboxSel); err == nil {
+		if n, cntErr := page.Locator(checkboxSel).Count(); cntErr == nil && n > 0 {
 			found = true
 
 			break
@@ -112,12 +120,19 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	require.NotContains(t, html, "CSRF token validation failed",
 		"bulk toolbar POST must carry the CSRF token (issue #652)")
 
-	// End-to-end proof: the membership change actually landed.
+	// End-to-end proof: the membership change actually landed. Assert
+	// on the member tag's remove-form input, which renders ONLY for
+	// actual members — a bare Contains(html, "testuser1") would also
+	// match the add-user datalist of UNASSIGNED users, i.e. it holds in
+	// both the landed and the silently-failed case (add-members logs
+	// per-entry LDAP errors and redirects without a flash).
 	tp.Navigate("/groups/" + url.PathEscape(disposableDN))
 	require.NoError(t, tp.WaitForSelector(".drawer--full"))
 
-	detailHTML, err := page.Content()
+	memberMarker := fmt.Sprintf(
+		`.drawer__tag-remove-form input[name="removeuser"][value=%q]`, memberDN)
+	n, err := page.Locator(memberMarker).Count()
 	require.NoError(t, err)
-	assert.True(t, strings.Contains(detailHTML, "testuser1"),
-		"expected testuser1 to be a member of %s after bulk add-members", disposableCN)
+	assert.Equal(t, 1, n,
+		"expected testuser1's member remove-form in %s after bulk add-members", disposableCN)
 }
