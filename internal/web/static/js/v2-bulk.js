@@ -142,6 +142,12 @@
       tokenInput.name = "csrf_token";
       tokenInput.value = csrf;
       form.appendChild(tokenInput);
+    } else {
+      // Submitting anyway reproduces the #652 403 — make the cause
+      // visible instead of silent so a regression is diagnosable.
+      console.error(
+        "bulk toolbar: no CSRF token on main[data-bulk-scope]; POST will be rejected"
+      );
     }
 
     if (extras) {

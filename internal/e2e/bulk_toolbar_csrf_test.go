@@ -76,13 +76,20 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	// Click "Add members…" (first non-danger action in groups scope).
 	// The prompt() fires, OnDialog accepts with memberDN, and
 	// v2-bulk.js submits the form to /groups/bulk?action=add-members.
-	require.NoError(t, page.Locator(".bulk-bar__action",
-		playwright.PageLocatorOptions{HasText: "Add members"}).Click())
+	// The click is wrapped in ExpectNavigation because the page is
+	// ALREADY on /groups — a bare WaitForURL("**/groups") would match
+	// the current URL and resolve before the POST navigation happens,
+	// letting the assertions below run against the pre-POST DOM.
+	// (add-members redirects without a flash, unlike bulk delete, so
+	// there is no flash element to wait for.)
+	_, err := page.ExpectNavigation(func() error {
+		return page.Locator(".bulk-bar__action",
+			playwright.PageLocatorOptions{HasText: "Add members"}).Click()
+	})
+	require.NoError(t, err)
 
 	// The handler redirects back to /groups; before the #652 fix this
 	// rendered the 403 "Access forbidden" page instead.
-	require.NoError(t, page.WaitForURL("**/groups"))
-
 	html, err := page.Content()
 	require.NoError(t, err)
 	require.NotContains(t, html, "CSRF token validation failed",

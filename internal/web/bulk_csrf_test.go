@@ -80,7 +80,10 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 
 	csrfHandler := createCSRFConfig(&options.Opts{CookieSecure: false}, store)
 	protected := f.Group("/", app.RequireAuth(), csrfHandler)
-	protected.Get("/groups", app.handleGroupsV2)
+	// templateCacheMiddleware mirrors production's `cacheable` group so
+	// TestBulkToolbar_ListPageIsNeverServedFromCache can pin the
+	// invariant documented in setupRoutes.
+	protected.Get("/groups", app.templateCacheMiddleware(), app.handleGroupsV2)
 	protected.Post("/groups/bulk", app.handleBulkGroups)
 
 	return app, store
@@ -148,6 +151,33 @@ func TestBulkToolbar_ListPageExposesUsableCSRFToken(t *testing.T) {
 	require.NotEqual(t, http.StatusForbidden, postResp.StatusCode,
 		"bulk POST with the page-exposed token must pass CSRF validation")
 	require.Equal(t, http.StatusSeeOther, postResp.StatusCode)
+}
+
+// TestBulkToolbar_ListPageIsNeverServedFromCache pins the invariant
+// documented in setupRoutes: list pages carry a session-scoped CSRF
+// token in data-csrf, so their HTML must never be STORED in the
+// template cache. The middleware only serves entries and nothing
+// stores list renders — a second GET must therefore be a cache MISS.
+// If a future change makes a list handler store via RenderWithCache,
+// this reddens before stale-token 403s reach users.
+func TestBulkToolbar_ListPageIsNeverServedFromCache(t *testing.T) {
+	app, store := setupCSRFBulkTestApp(t)
+
+	cookies := createAuthSession(t, app, store)
+
+	for i, want := range []string{"MISS", "MISS"} {
+		req := httptest.NewRequest(http.MethodGet, "/groups", http.NoBody)
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+
+		resp, err := app.fiber.Test(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, want, resp.Header.Get("X-Cache"),
+			"GET #%d: list pages embed a session-scoped CSRF token and must not be cached", i+1)
+		_ = resp.Body.Close()
+	}
 }
 
 // TestBulkToolbar_PostWithoutTokenIs403 pins the counterpart: the same
