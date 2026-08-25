@@ -146,6 +146,13 @@ func TestBulkToolbar_ListPageExposesUsableCSRFToken(t *testing.T) {
 				"without it the bulk toolbar cannot POST (issue #652)", path)
 		require.NotEmpty(t, string(m[1]), "data-csrf on %s", path)
 
+		// CSRF storage is session-backed: one token per session, so all
+		// three pages must render the SAME token. This also closes the
+		// wrong-but-non-empty mutation (e.g. a hardcoded string in one
+		// handler) that per-path NotEmpty alone would let survive.
+		if token != "" {
+			require.Equal(t, token, string(m[1]), "token diverged on %s", path)
+		}
 		token = string(m[1])
 		cookies = append(cookies, getResp.Cookies()...)
 	}
