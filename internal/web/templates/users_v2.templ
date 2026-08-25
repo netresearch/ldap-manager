@@ -29,11 +29,11 @@ type UserDrawerVM struct {
 	IsAD             bool         // true when the backend is Active Directory — gates the Disable button (which also requires User.Enabled) since OpenLDAP has no portable disable mechanism
 }
 
-templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}, currentView string) {
+templ UsersListV2(users []ldap.User, showDisabled bool, ouFilter string, lastLogon string, memberOfDN, memberOfCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, adminDNs map[string]struct{}, currentView, csrfToken string) {
 	@baseV2("Users") {
 		@topnavV2("/users")
 
-		<main id="main-content" class="list-page" data-bulk-scope="users">
+		<main id="main-content" class="list-page" data-bulk-scope="users" data-csrf={ csrfToken }>
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Users</h1>
@@ -819,4 +819,3 @@ templ lastLogonChip(showDisabled bool, ouFilter, active, memberOfDN, value, labe
 		</a>
 	}
 }
-

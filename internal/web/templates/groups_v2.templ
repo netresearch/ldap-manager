@@ -31,11 +31,11 @@ type GroupDrawerVM struct {
 	FlashError        string       // set by modify handlers when an LDAP op fails; shown inline
 }
 
-templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, currentView string) {
+templ GroupsListV2(groups []ldap.Group, ouFilter, memberDN, memberCN string, ous []string, flashes []Flash, palettePinned []PinnedEntry, currentView, csrfToken string) {
 	@baseV2("Groups") {
 		@topnavV2("/groups")
 
-		<main id="main-content" class="list-page" data-bulk-scope="groups">
+		<main id="main-content" class="list-page" data-bulk-scope="groups" data-csrf={ csrfToken }>
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Groups</h1>

@@ -346,8 +346,11 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.GroupsListV2(groups, ouFilter, memberDN, memberCN, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), currentView).
-		Render(c.UserContext(), c.Response().BodyWriter())
+	return templates.GroupsListV2(
+		groups, ouFilter, memberDN, memberCN, ous,
+		a.takeFlash(c), a.paletteContextFor(viewerDN),
+		currentView, a.GetCSRFToken(c),
+	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // filterGroupsByMember narrows to groups that list the given user DN in
