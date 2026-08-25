@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -34,6 +35,22 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	disposableCN := fmt.Sprintf("bulk-toolbar-csrf-%d", time.Now().UnixNano())
 	disposableDN := fmt.Sprintf("cn=%s,ou=groups,dc=example,dc=com", disposableCN)
 	seedDisposableGroup(t, disposableCN)
+
+	// Unlike the bulk-delete e2e (whose action under test removes its
+	// disposable group), this test leaves the group behind — and later
+	// tests in the package pick groups dynamically, so the leftover
+	// polluted them (CI: TestAddRemoveGroupMembership hit LDAP error 20
+	// "value already exists" adding testuser1 to a stale
+	// bulk-toolbar-csrf-* group). Delete it when the test ends.
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+		defer cancel()
+		if err := execLDAP(ctx, containerForSeed,
+			"ldapdelete", "-x", "-D", bootstrapAdminDN, "-w", bootstrapAdminPass,
+			"-H", "ldap://localhost", disposableDN+"\n"); err != nil {
+			t.Logf("cleanup: failed to delete %s: %v", disposableDN, err)
+		}
+	})
 
 	// testuser1 exists in the seed LDIF and is NOT the groupOfNames
 	// bootstrap member (that's admin-user), so adding it is a real
