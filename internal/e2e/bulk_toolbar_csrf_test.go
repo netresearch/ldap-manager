@@ -41,13 +41,20 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	// polluted them (CI: TestAddRemoveGroupMembership hit LDAP error 20
 	// "value already exists" adding testuser1 to a stale
 	// bulk-toolbar-csrf-* group). Delete it when the test ends.
-	// NOTE: this deletes directly in the directory, bypassing the app —
-	// the app's cache keeps the group (with testuser1 as member) until
-	// the next refresh. Benign for the following tests today only by
-	// cache ordering (runtime-created groups sort last in the drawer's
-	// addable list); if a test starts iterating cached groups eagerly,
-	// invalidate via the app instead.
+	// The happy path deletes the group THROUGH THE UI at the end of the
+	// test (bulk "Delete groups"), which removes it from LDAP and the
+	// app cache in one stroke. This backstop only fires when the test
+	// dies before reaching that step. It deletes directly in the
+	// directory, so the app cache keeps a ghost of the group until the
+	// next refresh — that ghost poisoned TestAddRemoveGroupMembership in
+	// CI (it sorts first in the addable datalist; adding to it fails
+	// silently and cascades) — hence the settle wait for one refresh
+	// cycle before letting the next test start.
+	cleanedViaUI := false
 	t.Cleanup(func() {
+		if cleanedViaUI {
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
 		if err := execLDAP(ctx, containerForSeed,
@@ -55,6 +62,8 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 			"-H", "ldap://localhost", disposableDN+"\n"); err != nil {
 			t.Logf("cleanup: failed to delete %s: %v", disposableDN, err)
 		}
+		t.Logf("cleanup: waiting out one cache refresh so the deleted group's ghost cannot poison later tests")
+		time.Sleep(35 * time.Second)
 	})
 
 	// testuser1 exists in the seed LDIF and is NOT the groupOfNames
@@ -135,4 +144,26 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, n,
 		"expected testuser1's member remove-form in %s after bulk add-members", disposableCN)
+
+	// Tear down through the UI: bulk "Delete groups" removes the group
+	// from LDAP AND the app cache synchronously (a direct ldapdelete
+	// would leave a cache ghost that poisons later tests — seen in CI).
+	// This also exercises submitForm's second groups-scope action with
+	// the same CSRF token plumbing. OnDialog above auto-accepts the
+	// confirm() prompt.
+	tp.Navigate("/groups")
+	require.NoError(t, page.Locator(checkboxSel).Check())
+	require.NoError(t, tp.WaitForSelector(".bulk-bar"))
+
+	_, err = page.ExpectNavigation(func() error {
+		return page.Locator(".bulk-bar__action",
+			playwright.PageLocatorOptions{HasText: "Delete groups"}).Click()
+	})
+	require.NoError(t, err)
+	require.NoError(t, tp.WaitForSelector(".list-page__flash--success"))
+
+	gone, err := page.Locator(checkboxSel).Count()
+	require.NoError(t, err)
+	require.Zero(t, gone, "disposable group %s must be gone from /groups after bulk delete", disposableCN)
+	cleanedViaUI = true
 }
