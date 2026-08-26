@@ -4,7 +4,7 @@
 
 ## Overview
 
-HTTP layer for LDAP Manager using Fiber v2 framework and Templ templates.
+HTTP layer for LDAP Manager using Fiber v3 framework and Templ templates.
 
 **Key files:**
 
@@ -74,14 +74,14 @@ make templates-watch
 
 ### Handler Patterns
 
-Follow Fiber v2 conventions:
+Follow Fiber v3 conventions (handlers take the fiber.Ctx interface, not a pointer):
 
 ```go
 // Good: Handler signature
-func HandleUsers(c *fiber.Ctx) error {
+func HandleUsers(c fiber.Ctx) error {
     // 1. Parse and validate input
     var req UserRequest
-    if err := c.BodyParser(&req); err != nil {
+    if err := c.Bind().Body(&req); err != nil {
         return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
     }
 
@@ -97,7 +97,7 @@ func HandleUsers(c *fiber.Ctx) error {
 }
 
 // Bad: Business logic in handler
-func BadHandler(c *fiber.Ctx) error {
+func BadHandler(c fiber.Ctx) error {
     // BAD: LDAP operations directly in handler
     conn, _ := ldap.Dial("tcp", "...")
     result, _ := conn.Search(...)
@@ -155,13 +155,13 @@ templ UserList(users []User) {
 
 ```go
 // Good: Middleware with logging
-func AuthMiddleware(c *fiber.Ctx) error {
+func AuthMiddleware(c fiber.Ctx) error {
     session := c.Locals("session")
     if session == nil {
         log.Warn().
             Str("path", c.Path()).
             Msg("Unauthorized access attempt")
-        return c.Redirect("/auth/login")
+        return c.Redirect().To("/auth/login") // v3 builder; defaults to 303 See Other
     }
     return c.Next()
 }
@@ -180,7 +180,7 @@ type ErrorResponse struct {
     Message string `json:"message,omitempty"`
 }
 
-func handleError(c *fiber.Ctx, status int, err error) error {
+func handleError(c fiber.Ctx, status int, err error) error {
     log.Error().
         Err(err).
         Str("path", c.Path()).
@@ -221,10 +221,10 @@ if err := validate.Struct(req); err != nil {
 ```go
 // CSRF middleware enabled for state-changing operations
 app.Use(csrf.New(csrf.Config{
-    KeyLookup:      "header:X-CSRF-Token",
+    Extractor:      extractors.FromHeader("X-CSRF-Token"),
     CookieName:     "csrf_",
     CookieSameSite: "Strict",
-    Expiration:     1 * time.Hour,
+    IdleTimeout:    1 * time.Hour,
 }))
 ```
 
@@ -232,15 +232,17 @@ app.Use(csrf.New(csrf.Config{
 
 ```go
 // Good: Secure session configuration
-store := session.New(session.Config{
-    Expiration:   24 * time.Hour,
+store := session.NewStore(session.Config{
+    IdleTimeout:  24 * time.Hour,
     CookieSecure: true, // HTTPS only in production
     CookieHTTPOnly: true, // No JavaScript access
     CookieSameSite: "Strict",
 })
 
-// Regenerate session ID after login
+// Regenerate session ID after login; sessions are pooled in v3 —
+// release after the last use
 sess, _ := store.Get(c)
+defer sess.Release()
 sess.Regenerate() // Prevent session fixation
 sess.Set("user_id", user.ID)
 sess.Save()
@@ -250,7 +252,7 @@ sess.Save()
 
 ```go
 // Good: Set security headers
-app.Use(func(c *fiber.Ctx) error {
+app.Use(func(c fiber.Ctx) error {
     c.Set("X-Content-Type-Options", "nosniff")
     c.Set("X-Frame-Options", "DENY")
     c.Set("X-XSS-Protection", "1; mode=block")
@@ -327,7 +329,7 @@ session.Config{
     CookieSecure:   opts.CookieSecure,  // true for HTTPS
     CookieHTTPOnly: true,                // No JS access
     CookieSameSite: "Strict",            // CSRF protection
-    Expiration:     opts.SessionDuration,
+    IdleTimeout:    opts.SessionDuration,
 }
 ```
 
@@ -350,7 +352,7 @@ session.Config{
 ### ✅ Good: Clean handler
 
 ```go
-func (s *Server) handleListUsers(c *fiber.Ctx) error {
+func (s *Server) handleListUsers(c fiber.Ctx) error {
     filter := c.Query("filter", "")
 
     users, err := s.ldap.SearchUsers(filter)
@@ -369,7 +371,7 @@ func (s *Server) handleListUsers(c *fiber.Ctx) error {
 
 ```go
 // BAD: LDAP logic + HTML rendering in handler
-func BadHandler(c *fiber.Ctx) error {
+func BadHandler(c fiber.Ctx) error {
     conn, _ := ldap.Dial(...) // Business logic in handler
     result, _ := conn.Search(...)
 
@@ -438,7 +440,7 @@ Create sessions via a separate mini Fiber app that writes session cookies:
 func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
     t.Helper()
     mini := fiber.New()
-    mini.Get("/set-session", func(c *fiber.Ctx) error {
+    mini.Get("/set-session", func(c fiber.Ctx) error {
         sess, err := store.Get(c)
         if err != nil {
             return fmt.Errorf("session get: %w", err)

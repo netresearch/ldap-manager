@@ -1,6 +1,7 @@
 # Architecture Overview
 
-Comprehensive technical architecture documentation for LDAP Manager, covering system design, component interactions, and implementation patterns.
+Comprehensive technical architecture documentation for LDAP Manager, covering system design, component interactions,
+and implementation patterns.
 
 ## System Architecture
 
@@ -8,10 +9,10 @@ Comprehensive technical architecture documentation for LDAP Manager, covering sy
 
 LDAP Manager follows a layered architecture pattern with clear separation of concerns:
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │                Web Layer                        │
-│  • HTTP Handlers & Routing (Fiber v2)          │
+│  • HTTP Handlers & Routing (Fiber v3)          │
 │  • Session Management                           │
 │  • Template Rendering (templ)                  │
 │  • Static Asset Serving                        │
@@ -644,4 +645,5 @@ CMD ["./ldap-manager"]
 - Memory cache size optimization
 - Resource limits and requests
 
-This architecture provides a solid foundation for a secure, performant, and maintainable LDAP directory management system. The modular design allows for easy testing, enhancement, and scaling as requirements evolve.
+This architecture provides a solid foundation for a secure, performant, and maintainable LDAP directory management
+system. The modular design allows for easy testing, enhancement, and scaling as requirements evolve.

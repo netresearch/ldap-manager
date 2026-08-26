@@ -34,14 +34,14 @@ Use Ctrl+F or Command+F to search this document for:
 
 ### By Persona
 
-**👤 End Users (Administrators)**
+#### 👤 End Users (Administrators)
 
 1. [Installation Guide](user-guide/installation.md) - Get started
 2. [Configuration Reference](user-guide/configuration.md) - Configure LDAP connection
 3. [API Documentation](user-guide/api.md) - Integrate with other systems
 4. [Implementation Examples](user-guide/implementation-examples.md) - Real-world scenarios
 
-**👨‍💻 Developers**
+#### 👨‍💻 Developers
 
 1. [Development Setup](development/setup.md) - Setup local environment
 2. [AGENTS.md](../AGENTS.md) - AI-assisted coding guidelines
@@ -49,7 +49,7 @@ Use Ctrl+F or Command+F to search this document for:
 4. [Contributing Guidelines](development/contributing.md) - Submit changes
 5. [Go Documentation](development/go-doc-reference.md) - Package API reference
 
-**⚙️ Operations / DevOps**
+#### ⚙️ Operations / DevOps
 
 1. [Deployment Guide](operations/deployment.md) - Deploy to production
 2. [Monitoring & Troubleshooting](operations/monitoring.md) - Operational procedures
@@ -279,9 +279,9 @@ make docker-test     # Run tests in container
 
 ### Component Map
 
-```
+```text
 ┌─────────────────────────────────────────────┐
-│  HTTP Layer (Fiber v2)                      │
+│  HTTP Layer (Fiber v3)                      │
 │  ├─ server.go - App initialization          │
 │  ├─ auth.go - Authentication                │
 │  ├─ users.go, groups.go, computers.go       │
@@ -380,7 +380,7 @@ LDAP_POOL_ACQUIRE_TIMEOUT=5s        # Lower acquisition timeout
 
 ### Common Issues
 
-**Build Fails**
+#### Build Fails
 
 ```bash
 # Solution
@@ -389,7 +389,7 @@ go mod tidy
 pnpm install
 ```
 
-**Tests Fail**
+#### Tests Fail
 
 ```bash
 # Check LDAP server is running
@@ -398,7 +398,7 @@ docker compose --profile dev up openldap -d
 go test -v ./...
 ```
 
-**Can't Connect to LDAP**
+#### Can't Connect to LDAP
 
 ```bash
 # Verify configuration
@@ -407,7 +407,7 @@ cat .env | grep LDAP_
 ldapsearch -H ldaps://dc1.example.com:636 -D "cn=readonly,DC=example,DC=com" -w password -b "DC=example,DC=com"
 ```
 
-**Performance Issues**
+#### Performance Issues
 
 ```bash
 # Check cache hit rates
@@ -460,29 +460,31 @@ curl http://localhost:3000/debug/ldap-pool
 
 ### Official Documentation
 
-- **Go Language:** https://go.dev/doc/ ([Tutorial](https://go.dev/tour/), [Effective Go](https://go.dev/doc/effective_go))
-- **Fiber v2:** https://docs.gofiber.io/ ([API](https://docs.gofiber.io/api/fiber), [Middleware](https://docs.gofiber.io/api/middleware))
-- **Templ:** https://templ.guide/ ([Components](https://templ.guide/syntax-and-usage/components), [IDE Support](https://templ.guide/commands-and-tools/ide-support))
-- **TailwindCSS:** https://tailwindcss.com/docs ([Configuration](https://tailwindcss.com/docs/configuration), [Utility Classes](https://tailwindcss.com/docs/utility-first))
-- **go-ldap/ldap:** https://pkg.go.dev/github.com/go-ldap/ldap/v3
+- **Go Language:** <https://go.dev/doc/> ([Tutorial](https://go.dev/tour/), [Effective Go](https://go.dev/doc/effective_go))
+- **Fiber v3:** <https://docs.gofiber.io/> ([API](https://docs.gofiber.io/api/fiber), [Middleware](https://docs.gofiber.io/api/middleware))
+- **Templ:** <https://templ.guide/> ([Components](https://templ.guide/syntax-and-usage/components), [IDE Support](https://templ.guide/commands-and-tools/ide-support))
+- **TailwindCSS:** <https://tailwindcss.com/docs> ([Configuration](https://tailwindcss.com/docs/configuration),
+[Utility Classes](https://tailwindcss.com/docs/utility-first))
+- **go-ldap/ldap:** <https://pkg.go.dev/github.com/go-ldap/ldap/v3>
 
 ### Project Resources
 
-- **simple-ldap-go v1.5.0:** https://github.com/netresearch/simple-ldap-go
+- **simple-ldap-go v1.5.0:** <https://github.com/netresearch/simple-ldap-go>
   - Our Contribution: [PR #45 - Multi-key Indexed Cache](https://github.com/netresearch/simple-ldap-go/pull/45)
-- **BBolt:** https://github.com/etcd-io/bbolt ([Getting Started](https://github.com/etcd-io/bbolt#getting-started))
+- **BBolt:** <https://github.com/etcd-io/bbolt> ([Getting Started](https://github.com/etcd-io/bbolt#getting-started))
 
 ### Learning Resources
 
-- **Go Testing:** https://go.dev/doc/tutorial/add-a-test
-- **LDAP Basics:** https://ldap.com/learn-about-ldap/
-- **Active Directory:** https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/
+- **Go Testing:** <https://go.dev/doc/tutorial/add-a-test>
+- **LDAP Basics:** <https://ldap.com/learn-about-ldap/>
+- **Active Directory:** <https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/>
 
 ---
 
 ## 📝 Keywords for Search
 
-**Features:** Authentication, Authorization, Caching, Connection Pooling, Health Checks, LDAP, Active Directory, Session Management, Template Rendering, Static Assets
+**Features:** Authentication, Authorization, Caching, Connection Pooling, Health Checks, LDAP, Active Directory,
+Session Management, Template Rendering, Static Assets
 
 **Technologies:** Go, Golang, Fiber, Templ, TailwindCSS, BBolt, LDAP, Active Directory, Docker, pnpm
 
@@ -498,4 +500,4 @@ curl http://localhost:3000/debug/ldap-pool
 
 ---
 
-_Last updated: 2025-09-30 | Comprehensive knowledge base with search aids and cross-references_
+Last updated: 2025-09-30 | Comprehensive knowledge base with search aids and cross-references

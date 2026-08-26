@@ -50,7 +50,7 @@ Authenticate user and create session.
 
 **Form Data:**
 
-```
+```text
 username=jdoe
 password=SecurePass123
 csrf_token=<generated-token>
@@ -60,10 +60,10 @@ csrf_token=<generated-token>
 
 #### Success Response
 
-**Code:** `302 Found`
+**Code:** `303 See Other`
 **Headers:**
 
-```
+```text
 Location: /
 Set-Cookie: session_id=...; HttpOnly; Secure; SameSite=Strict
 ```
@@ -110,10 +110,10 @@ Terminate user session.
 
 #### Success Response
 
-**Code:** `302 Found`
+**Code:** `303 See Other`
 **Headers:**
 
-```
+```text
 Location: /login
 Set-Cookie: session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT
 ```
@@ -340,7 +340,7 @@ Dashboard/home page (redirects to users list).
 **Content-Type:** `text/html`
 **Headers:**
 
-```
+```text
 X-Cache: HIT | MISS
 ```
 
@@ -375,11 +375,11 @@ List all LDAP users.
 **Content-Type:** `text/html`
 **Headers:**
 
-```
+```text
 X-Cache: HIT | MISS
 ```
 
-**Rendered HTML with user table**
+#### Rendered HTML with user table
 
 #### Notes
 
@@ -456,7 +456,7 @@ Modify user attributes.
 
 **Form Data:**
 
-```
+```text
 csrf_token=<token>
 mail=newemail@example.com
 telephoneNumber=+1-555-0123
@@ -465,10 +465,10 @@ description=Updated description
 
 #### Success Response
 
-**Code:** `302 Found`
+**Code:** `303 See Other`
 **Headers:**
 
-```
+```text
 Location: /users/:userDN
 Set-Cookie: flash_message=User updated successfully
 ```
@@ -576,7 +576,7 @@ Modify group (add/remove members).
 
 **Form Data:**
 
-```
+```text
 csrf_token=<token>
 action=add_member | remove_member
 member_dn=cn=jdoe,ou=users,dc=example,dc=com
@@ -584,10 +584,10 @@ member_dn=cn=jdoe,ou=users,dc=example,dc=com
 
 #### Success Response
 
-**Code:** `302 Found`
+**Code:** `303 See Other`
 **Headers:**
 
-```
+```text
 Location: /groups/:groupDN
 Set-Cookie: flash_message=Member added successfully
 ```
@@ -616,7 +616,7 @@ List all computer accounts (Active Directory).
 **Code:** `200 OK`
 **Content-Type:** `text/html`
 
-**Rendered HTML with computer account table**
+#### Rendered HTML with computer account table
 
 #### Notes
 
@@ -640,7 +640,7 @@ Display computer account details.
 **Code:** `200 OK`
 **Content-Type:** `text/html`
 
-**Rendered HTML with computer attributes**
+#### Rendered HTML with computer attributes
 
 ---
 
@@ -764,4 +764,4 @@ curl -b cookies.txt -X POST \
 
 ---
 
-_Last Updated: 2025-09-30 | Version: 1.0.8_
+Last Updated: 2025-09-30 | Version: 1.0.8

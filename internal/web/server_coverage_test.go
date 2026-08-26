@@ -10,6 +10,7 @@ package web
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -243,6 +244,34 @@ func TestCreateFiberApp_HasExpectedConfig(t *testing.T) {
 	// The app has no routes registered so the 404 handler runs.
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404 for unregistered path, got %d", resp.StatusCode)
+	}
+}
+
+// TestApp_StaticAssetsServed pins the v3 static-middleware mount: the
+// embedded assets must resolve under /static with the long-lived cache
+// header the middleware is configured with.
+func TestApp_StaticAssetsServed(t *testing.T) {
+	app, _ := newAppForCoverage(t)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/static/app.css", http.NoBody)
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("GET /static/app.css: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /static/app.css: got status %d, want 200", resp.StatusCode)
+	}
+	if cc := resp.Header.Get("Cache-Control"); cc != "public, max-age=86400" {
+		t.Errorf("Cache-Control = %q, want %q", cc, "public, max-age=86400")
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if len(body) == 0 {
+		t.Error("empty body for /static/app.css")
 	}
 }
 
