@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	goldap "github.com/go-ldap/ldap/v3"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // SearchIndexEntry is one record in the client-side search index.
@@ -29,7 +29,7 @@ type SearchIndexEntry struct {
 // handleSearchIndex renders the JSON search index derived from the
 // in-memory ldap_cache. ETag is SHA-256 over the JSON body so clients
 // can skip re-downloads while anything is in the cache.
-func (a *App) handleSearchIndex(c *fiber.Ctx) error {
+func (a *App) handleSearchIndex(c fiber.Ctx) error {
 	entries := a.buildSearchIndex()
 	body, err := json.Marshal(entries)
 	if err != nil {

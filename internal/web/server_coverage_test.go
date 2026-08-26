@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 
 	"github.com/netresearch/ldap-manager/internal/options"
@@ -258,13 +258,13 @@ func TestApp_RoutesRegistered(t *testing.T) {
 		wantCodes []int // accept any of these status codes
 	}{
 		// Protected routes without auth → 302 redirect to /login
-		{http.MethodGet, "/", []int{http.StatusFound}},
-		{http.MethodGet, "/users", []int{http.StatusFound}},
-		{http.MethodGet, "/groups", []int{http.StatusFound}},
-		{http.MethodGet, "/computers", []int{http.StatusFound}},
-		{http.MethodGet, "/logout", []int{http.StatusFound}},
-		{http.MethodGet, "/debug/cache", []int{http.StatusFound}},
-		{http.MethodGet, "/debug/ldap-pool", []int{http.StatusFound}},
+		{http.MethodGet, "/", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/users", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/groups", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/computers", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/logout", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/debug/cache", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/debug/ldap-pool", []int{http.StatusSeeOther}},
 		// Login renders the form on GET → 200
 		{http.MethodGet, "/login", []int{http.StatusOK}},
 		// Health endpoints are public and respond 200 when components are healthy,
@@ -349,7 +349,7 @@ func TestApp_ListenGracefulShutdown(t *testing.T) {
 // fiber.StatusUnauthorized error is translated into a /login redirect.
 func TestHandle500_FiberUnauthorizedRedirects(t *testing.T) {
 	f := fiber.New()
-	f.Get("/x", func(c *fiber.Ctx) error {
+	f.Get("/x", func(c fiber.Ctx) error {
 		return handle500(c, fiber.NewError(fiber.StatusUnauthorized, "session expired"))
 	})
 
@@ -361,8 +361,8 @@ func TestHandle500_FiberUnauthorizedRedirects(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusFound {
-		t.Errorf("expected 302 redirect for unauthorized, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect for unauthorized, got %d", resp.StatusCode)
 	}
 
 	if loc := resp.Header.Get("Location"); loc != "/login" {

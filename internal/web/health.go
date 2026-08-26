@@ -1,13 +1,13 @@
 package web
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // healthHandler provides a comprehensive health check endpoint.
 // Returns cache metrics, connection pool health, system health status, and operational statistics.
 // When no service account is configured, reports a simplified status.
-func (a *App) healthHandler(c *fiber.Ctx) error {
+func (a *App) healthHandler(c fiber.Ctx) error {
 	if a.ldapCache == nil || a.ldapReadonly == nil {
 		return c.JSON(fiber.Map{
 			"overall_healthy": true,
@@ -54,7 +54,7 @@ func (a *App) getHealthStatusCode(overallHealthy bool, cacheStatus string, poolH
 // readinessHandler provides a simple readiness check.
 // Returns 200 OK if the system is operational and ready to serve requests.
 // When no service account is configured, always reports ready (auth happens per-request).
-func (a *App) readinessHandler(c *fiber.Ctx) error {
+func (a *App) readinessHandler(c fiber.Ctx) error {
 	if a.ldapCache == nil || a.ldapReadonly == nil {
 		return c.JSON(fiber.Map{
 			"status": "ready",
@@ -131,7 +131,7 @@ func (a *App) getReadinessStatus(cacheHealthy, warmedUp, poolHealthy bool) (stat
 
 // livenessHandler provides a simple liveness check.
 // Returns 200 OK if the application is running and responsive.
-func (a *App) livenessHandler(c *fiber.Ctx) error {
+func (a *App) livenessHandler(c fiber.Ctx) error {
 	response := fiber.Map{
 		"status": "alive",
 	}

@@ -17,8 +17,8 @@ import (
 	"time"
 
 	goldap "github.com/go-ldap/ldap/v3"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
@@ -142,7 +142,7 @@ func seedLDAPData(t *testing.T, env *ldapIntegrationEnv) {
 func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Store) {
 	t.Helper()
 
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -255,7 +255,7 @@ func createLDAPAuthSession(t *testing.T, env *ldapIntegrationEnv, store *session
 	t.Helper()
 
 	miniApp := fiber.New()
-	miniApp.Get("/set-session", func(c *fiber.Ctx) error {
+	miniApp.Get("/set-session", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -285,7 +285,7 @@ func makeLDAPAuthRequest(t *testing.T, app *App, path string, cookies []*http.Co
 	for _, cookie := range cookies {
 		req.AddCookie(cookie)
 	}
-	resp, err := app.fiber.Test(req, -1) // no timeout
+	resp, err := app.fiber.Test(req, fiber.TestConfig{Timeout: 0}) // no timeout
 	require.NoError(t, err)
 
 	return resp
@@ -376,7 +376,7 @@ func TestLDAPIntegration_UsersHandler(t *testing.T) {
 
 		// Handler connects to real LDAP — 200 on success, 302 on redirect
 		// to /login if session LDAP bind fails.
-		assert.Contains(t, []int{http.StatusOK, http.StatusFound}, resp.StatusCode)
+		assert.Contains(t, []int{http.StatusOK, http.StatusSeeOther}, resp.StatusCode)
 		if resp.StatusCode == http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			assert.Contains(t, resp.Header.Get("Content-Type"), "text/html")
@@ -388,7 +388,7 @@ func TestLDAPIntegration_UsersHandler(t *testing.T) {
 		resp := makeLDAPAuthRequest(t, app, "/users?show-disabled=1", cookies)
 		defer func() { _ = resp.Body.Close() }()
 
-		assert.Contains(t, []int{http.StatusOK, http.StatusFound}, resp.StatusCode)
+		assert.Contains(t, []int{http.StatusOK, http.StatusSeeOther}, resp.StatusCode)
 	})
 }
 
@@ -410,7 +410,7 @@ func assertDetailPageOKOrError(t *testing.T, resp *http.Response, expectedConten
 func assertNotFoundOrError(t *testing.T, resp *http.Response) {
 	t.Helper()
 	assert.True(t,
-		resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusFound ||
+		resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusSeeOther ||
 			resp.StatusCode == http.StatusInternalServerError,
 		"Expected 404, 302 (redirect), or 500, got %d", resp.StatusCode)
 }
@@ -539,7 +539,7 @@ func TestLDAPIntegration_AuthFlow(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
-		assert.Equal(t, http.StatusFound, resp.StatusCode)
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
 		assert.Equal(t, "/login", resp.Header.Get("Location"))
 	})
 
@@ -557,7 +557,7 @@ func TestLDAPIntegration_DirectBindAuth(t *testing.T) {
 	env := skipIfNoLDAP(t)
 	seedLDAPData(t, env)
 
-	store := session.New(session.Config{Storage: memory.New()})
+	store := session.NewStore(session.Config{Storage: memory.New()})
 	app := &App{
 		ldapConfig:   env.config,
 		sessionStore: store,

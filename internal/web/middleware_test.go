@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +20,23 @@ import (
 type errorSessionStorage struct {
 	shouldError bool
 	mu          sync.Mutex
+}
+
+// Context-aware variants required by the fiber v3 Storage interface.
+func (e *errorSessionStorage) GetWithContext(_ context.Context, key string) ([]byte, error) {
+	return e.Get(key)
+}
+
+func (e *errorSessionStorage) SetWithContext(_ context.Context, key string, val []byte, exp time.Duration) error {
+	return e.Set(key, val, exp)
+}
+
+func (e *errorSessionStorage) DeleteWithContext(_ context.Context, key string) error {
+	return e.Delete(key)
+}
+
+func (e *errorSessionStorage) ResetWithContext(_ context.Context) error {
+	return e.Reset()
 }
 
 func (e *errorSessionStorage) Get(_ string) ([]byte, error) {
@@ -68,7 +85,7 @@ func (e *errorSessionStorage) SetShouldError(shouldError bool) {
 
 // setupMiddlewareTestApp creates a minimal app for middleware testing
 func setupMiddlewareTestApp() (*App, *session.Store) {
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -87,7 +104,7 @@ func setupMiddlewareTestApp() (*App, *session.Store) {
 // setupMiddlewareTestAppWithErrorStorage creates app with error-prone storage
 func setupMiddlewareTestAppWithErrorStorage() (*App, *errorSessionStorage) {
 	errStorage := &errorSessionStorage{shouldError: false}
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: errStorage,
 	})
 
@@ -108,7 +125,7 @@ func TestRequireAuth_SessionGetError(t *testing.T) {
 	app, errStorage := setupMiddlewareTestAppWithErrorStorage()
 
 	// Register a protected route
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		return c.SendString("protected content")
 	})
 
@@ -121,7 +138,7 @@ func TestRequireAuth_SessionGetError(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 
 	// Should redirect to login on session error
-	assert.Equal(t, http.StatusFound, resp.StatusCode)
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
 	assert.Equal(t, "/login", resp.Header.Get("Location"))
 }
 
@@ -130,7 +147,7 @@ func TestRequireAuth_FreshSession(t *testing.T) {
 	app, _ := setupMiddlewareTestApp()
 
 	// Register a protected route
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		return c.SendString("protected content")
 	})
 
@@ -141,7 +158,7 @@ func TestRequireAuth_FreshSession(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 
 	// Fresh session should redirect to login
-	assert.Equal(t, http.StatusFound, resp.StatusCode)
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
 	assert.Equal(t, "/login", resp.Header.Get("Location"))
 }
 
@@ -150,7 +167,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	app, store := setupMiddlewareTestApp()
 
 	// Set up route that creates session with empty DN
-	app.fiber.Get("/set-empty-session", func(c *fiber.Ctx) error {
+	app.fiber.Get("/set-empty-session", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -160,7 +177,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 		return sess.Save()
 	})
 
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		return c.SendString("protected content")
 	})
 
@@ -184,7 +201,7 @@ func TestRequireAuth_EmptyDN(t *testing.T) {
 	defer func() { _ = resp2.Body.Close() }()
 
 	// Empty DN should redirect to login
-	assert.Equal(t, http.StatusFound, resp2.StatusCode)
+	assert.Equal(t, http.StatusSeeOther, resp2.StatusCode)
 	assert.Equal(t, "/login", resp2.Header.Get("Location"))
 }
 
@@ -193,7 +210,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	app, store := setupMiddlewareTestApp()
 
 	// Set up route that creates valid session
-	app.fiber.Get("/login-test", func(c *fiber.Ctx) error {
+	app.fiber.Get("/login-test", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -204,7 +221,7 @@ func TestRequireAuth_ValidSession(t *testing.T) {
 	})
 
 	var capturedDN string
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		capturedDN = GetUserDN(c)
 
 		return c.SendString("protected content")
@@ -238,7 +255,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	app, store := setupMiddlewareTestApp()
 
 	// Set up route that creates session with wrong type for DN
-	app.fiber.Get("/corrupt-session", func(c *fiber.Ctx) error {
+	app.fiber.Get("/corrupt-session", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -248,7 +265,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 		return sess.Save()
 	})
 
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		return c.SendString("protected content")
 	})
 
@@ -271,7 +288,7 @@ func TestRequireAuth_CorruptedSessionData(t *testing.T) {
 	defer func() { _ = resp2.Body.Close() }()
 
 	// Corrupted (non-string) DN should redirect to login
-	assert.Equal(t, http.StatusFound, resp2.StatusCode)
+	assert.Equal(t, http.StatusSeeOther, resp2.StatusCode)
 	assert.Equal(t, "/login", resp2.Header.Get("Location"))
 }
 
@@ -280,7 +297,7 @@ func TestGetUserDN_NoContext(t *testing.T) {
 	app := fiber.New()
 
 	var result string
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		result = GetUserDN(c)
 
 		return c.SendString("ok")
@@ -299,7 +316,7 @@ func TestGetUserDN_WithValidContext(t *testing.T) {
 	app := fiber.New()
 
 	var result string
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		c.Locals("userDN", "cn=test,dc=example,dc=com")
 		result = GetUserDN(c)
 
@@ -319,7 +336,7 @@ func TestGetUserDN_WrongType(t *testing.T) {
 	app := fiber.New()
 
 	var result string
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		c.Locals("userDN", 12345) // Wrong type
 		result = GetUserDN(c)
 
@@ -340,7 +357,7 @@ func TestRequireUserDN_Success(t *testing.T) {
 
 	var resultDN string
 	var resultErr error
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		c.Locals("userDN", "cn=test,dc=example,dc=com")
 		resultDN, resultErr = RequireUserDN(c)
 
@@ -362,7 +379,7 @@ func TestRequireUserDN_NoContext(t *testing.T) {
 
 	var resultDN string
 	var resultErr error
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		resultDN, resultErr = RequireUserDN(c)
 		if resultErr != nil {
 			return resultErr
@@ -387,7 +404,7 @@ func TestRequireUserDN_EmptyDN(t *testing.T) {
 
 	var resultDN string
 	var resultErr error
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		c.Locals("userDN", "")
 		resultDN, resultErr = RequireUserDN(c)
 		if resultErr != nil {
@@ -412,7 +429,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 	app, store := setupMiddlewareTestApp()
 
 	// Set up login route
-	app.fiber.Get("/login-test", func(c *fiber.Ctx) error {
+	app.fiber.Get("/login-test", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -422,7 +439,7 @@ func TestConcurrentSessionAccess(t *testing.T) {
 		return sess.Save()
 	})
 
-	app.fiber.Get("/protected", app.RequireAuth(), func(c *fiber.Ctx) error {
+	app.fiber.Get("/protected", app.RequireAuth(), func(c fiber.Ctx) error {
 		return c.SendString("ok")
 	})
 

@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/csrf"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -27,7 +28,7 @@ func TestCookieSecurityWithHTTPS(t *testing.T) {
 			IsActiveDirectory: false,
 		},
 		ReadonlyUser:            "cn=readonly,dc=test,dc=local",
-		ReadonlyPassword:        "password",
+		ReadonlyPassword:        "password", // pragma: allowlist secret
 		PersistSessions:         false,
 		SessionDuration:         30 * time.Minute,
 		CookieSecure:            true, // HTTPS environment
@@ -66,7 +67,7 @@ func TestCookieSecurityWithHTTP(t *testing.T) {
 			IsActiveDirectory: false,
 		},
 		ReadonlyUser:            "cn=readonly,dc=test,dc=local",
-		ReadonlyPassword:        "password",
+		ReadonlyPassword:        "password", // pragma: allowlist secret
 		PersistSessions:         false,
 		SessionDuration:         30 * time.Minute,
 		CookieSecure:            false, // HTTP-only environment
@@ -124,7 +125,7 @@ func TestCookieSecureConfiguration(t *testing.T) {
 					IsActiveDirectory: false,
 				},
 				ReadonlyUser:            "cn=readonly,dc=test,dc=local",
-				ReadonlyPassword:        "password",
+				ReadonlyPassword:        "password", // pragma: allowlist secret
 				CookieSecure:            tt.cookieSecure,
 				PersistSessions:         false,
 				SessionDuration:         30 * time.Minute,
@@ -165,7 +166,7 @@ func TestCSRFConfigurationAcceptsOpts(t *testing.T) {
 			IsActiveDirectory: false,
 		},
 		ReadonlyUser:            "cn=readonly,dc=test,dc=local",
-		ReadonlyPassword:        "password",
+		ReadonlyPassword:        "password", // pragma: allowlist secret
 		CookieSecure:            true,
 		PersistSessions:         false,
 		SessionDuration:         30 * time.Minute,
@@ -205,8 +206,8 @@ func TestCSRFTokenValidation(t *testing.T) {
 			IsActiveDirectory: false,
 		},
 		ReadonlyUser:            "cn=readonly,dc=test,dc=local",
-		ReadonlyPassword:        "password",
-		CookieSecure:            false, // HTTP for testing
+		ReadonlyPassword:        "password", // pragma: allowlist secret
+		CookieSecure:            false,      // HTTP for testing
 		PersistSessions:         false,
 		SessionDuration:         30 * time.Minute,
 		PoolMaxConnections:      10,
@@ -218,7 +219,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	}
 
 	// Create session store first for CSRF middleware
-	sessionStore := session.New(session.Config{
+	sessionStore := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -227,7 +228,7 @@ func TestCSRFTokenValidation(t *testing.T) {
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Test endpoint that returns CSRF token on GET and validates on POST
-	f.All("/test-csrf", csrfHandler, func(c *fiber.Ctx) error {
+	f.All("/test-csrf", csrfHandler, func(c fiber.Ctx) error {
 		sess, err := sessionStore.Get(c)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to get session")
@@ -235,14 +236,9 @@ func TestCSRFTokenValidation(t *testing.T) {
 		defer func() { _ = sess.Save() }()
 
 		if c.Method() == "GET" {
-			token := c.Locals("token")
-			if token == nil {
+			tokenStr := csrf.TokenFromContext(c)
+			if tokenStr == "" {
 				return c.Status(fiber.StatusInternalServerError).SendString("No CSRF token generated")
-			}
-
-			tokenStr, ok := token.(string)
-			if !ok {
-				return c.Status(fiber.StatusInternalServerError).SendString("CSRF token is not a string")
 			}
 
 			return c.SendString("csrf_token:" + tokenStr)
@@ -351,9 +347,9 @@ func TestCSRFTokenValidation(t *testing.T) {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
-		// This is the critical test: with the bug (Expiration: 3600 nanoseconds),
+		// This is the critical test: with the bug (IdleTimeout: 3600 nanoseconds),
 		// the token would expire immediately and this would return 403.
-		// With the fix (Expiration: time.Hour), this should return 200.
+		// With the fix (IdleTimeout: time.Hour), this should return 200.
 		if postResp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status %d for valid CSRF token, got %d. Response: %s",
 				http.StatusOK, postResp.StatusCode, string(respBody))

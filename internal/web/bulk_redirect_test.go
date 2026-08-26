@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // TestBulkRedirectAfter exercises the helper that preserves query
@@ -111,7 +111,7 @@ func TestBulkRedirectAfter(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
-			app.Get("/_probe", func(c *fiber.Ctx) error {
+			app.Get("/_probe", func(c fiber.Ctx) error {
 				return c.SendString(bulkRedirectAfter(c, tc.fallbackList, tc.dropPanel))
 			})
 

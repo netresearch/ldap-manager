@@ -2,7 +2,7 @@
 package web
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -12,17 +12,17 @@ import (
 // Expects form field "target" carrying the DN. On HX-Request, responds
 // with the updated pin-star fragment so htmx swaps the glyph in place;
 // otherwise returns 204.
-func (a *App) handlePin(c *fiber.Ctx) error { return a.togglePin(c, true) }
+func (a *App) handlePin(c fiber.Ctx) error { return a.togglePin(c, true) }
 
 // handleUnpin removes a pinned target DN for the authenticated user
 // (spec §6.5). Idempotent: unpinning a non-existent target is still a
 // success response.
-func (a *App) handleUnpin(c *fiber.Ctx) error { return a.togglePin(c, false) }
+func (a *App) handleUnpin(c fiber.Ctx) error { return a.togglePin(c, false) }
 
 // togglePin is the shared implementation for Add/Remove. add=true pins,
 // add=false unpins. On HX-Request, the response body is the updated
 // pin-star form so the star glyph flips inline without a reload.
-func (a *App) togglePin(c *fiber.Ctx, add bool) error {
+func (a *App) togglePin(c fiber.Ctx, add bool) error {
 	// Use resolveViewerDN rather than reading the session "dn" directly:
 	// after CSRF middleware rotates the session cookie on a failed token,
 	// Fiber produces a FRESH session that drops "dn" — but RequireAuth has
@@ -63,7 +63,7 @@ func (a *App) togglePin(c *fiber.Ctx, add bool) error {
 		if c.Query("context") == "home" {
 			pinned, _ := a.pinnedEntriesFor(userDN)
 
-			return templates.PinnedBlock(pinned, a.GetCSRFToken(c)).Render(c.UserContext(), c.Response().BodyWriter())
+			return templates.PinnedBlock(pinned, a.GetCSRFToken(c)).Render(c.Context(), c.Response().BodyWriter())
 		}
 
 		entityType := c.FormValue("type")
@@ -72,7 +72,7 @@ func (a *App) togglePin(c *fiber.Ctx, add bool) error {
 		}
 
 		return templates.PinStarFragment(entityType, target, add, a.GetCSRFToken(c)).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

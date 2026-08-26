@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 )
@@ -45,9 +45,9 @@ func newExampleServerApp(t *testing.T) *App {
 		t.Fatalf("ldap.New: %v", err)
 	}
 
-	sessionStore := session.New(session.Config{
-		Storage:    memory.New(),
-		Expiration: 30 * time.Minute,
+	sessionStore := session.NewStore(session.Config{
+		Storage:     memory.New(),
+		IdleTimeout: 30 * time.Minute,
 	})
 
 	f := fiber.New(fiber.Config{
@@ -86,7 +86,7 @@ func exampleSessionCookies(t *testing.T, app *App) []*http.Cookie {
 	// attempts ldap.New with the session DN+password; with an example server
 	// name it succeeds without a real connection.
 	helper := fiber.New()
-	helper.Get("/__set", func(c *fiber.Ctx) error {
+	helper.Get("/__set", func(c fiber.Ctx) error {
 		sess, err := app.sessionStore.Get(c)
 		if err != nil {
 			return err
@@ -190,8 +190,8 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 		// On example-server modify failure, handle500 renders the 500 page
 		// (still exercising the target branch). On success it would render
 		// the group detail page (200) or redirect (302).
-		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
-			t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
+		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusSeeOther, http.StatusInternalServerError}) {
+			t.Errorf("expected 200, 303, or 500, got %d", resp.StatusCode)
 		}
 	})
 
@@ -211,8 +211,8 @@ func TestGroupModifyHandler_DeeperPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusFound, http.StatusInternalServerError}) {
-			t.Errorf("expected 200, 302, or 500, got %d", resp.StatusCode)
+		if !intInSlice(resp.StatusCode, []int{http.StatusOK, http.StatusSeeOther, http.StatusInternalServerError}) {
+			t.Errorf("expected 200, 303, or 500, got %d", resp.StatusCode)
 		}
 	})
 }

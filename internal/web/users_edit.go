@@ -4,7 +4,7 @@ package web
 import (
 	"net/url"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
@@ -31,7 +31,7 @@ var userInlineEditFields = map[string]string{
 // Registered alongside the existing POST /users/* route — this handler
 // dispatches based on the presence of a `field` form value so we do not
 // need a new top-level route or URL scheme.
-func (a *App) handleUserV2Edit(c *fiber.Ctx, userDN, field, value string) error {
+func (a *App) handleUserV2Edit(c fiber.Ctx, userDN, field, value string) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -78,10 +78,10 @@ func (a *App) handleUserV2Edit(c *fiber.Ctx, userDN, field, value string) error 
 	// non-htmx fallback we redirect back to the detail page.
 	if c.Get("HX-Request") == "true" {
 		return templates.UserDrawerFragment(vm).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
-	return c.Redirect("/users/"+url.PathEscape(userDN), fiber.StatusSeeOther)
+	return c.Redirect().Status(fiber.StatusSeeOther).To("/users/" + url.PathEscape(userDN))
 }
 
 // modifyUserAttribute calls simple-ldap-go's ModifyUser with a single

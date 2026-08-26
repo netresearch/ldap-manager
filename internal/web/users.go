@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
@@ -32,7 +32,7 @@ type userModifyForm struct {
 // avoids widening the route table for drawer-driven attribute edits.
 //
 //nolint:dupl // Similar to groupModifyHandler but operates on different entities with different forms
-func (a *App) userModifyHandler(c *fiber.Ctx) error {
+func (a *App) userModifyHandler(c fiber.Ctx) error {
 	userDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
@@ -48,12 +48,12 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 	}
 
 	form := userModifyForm{}
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return handle500(c, err)
 	}
 
 	if form.RemoveGroup == nil && form.AddGroup == nil {
-		return c.Redirect(detailURL)
+		return c.Redirect().To(detailURL)
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -78,7 +78,7 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 
 		vm, ok := a.buildUserDrawerVM(userDN, viewerDN)
 		if !ok {
-			return c.Redirect(detailURL)
+			return c.Redirect().To(detailURL)
 		}
 
 		vm.CSRFToken = a.GetCSRFToken(c)
@@ -86,10 +86,10 @@ func (a *App) userModifyHandler(c *fiber.Ctx) error {
 
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.UserDrawerFragment(vm).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.UserDrawerFragment(vm).Render(c.Context(), c.Response().BodyWriter())
 	}
 
-	return c.Redirect(detailURL)
+	return c.Redirect().To(detailURL)
 }
 
 // humaniseLDAPError produces a short, user-facing message from an
