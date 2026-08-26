@@ -422,6 +422,12 @@ req := httptest.NewRequest("GET", "/users", nil)
 resp, err := app.fiber.Test(req)
 ```
 
+**`setupFullTestApp` registers routes WITHOUT the CSRF middleware** — a POST
+handler test passing here proves nothing about the token contract (this gap is
+how issue #652 shipped). To exercise the real chain (`RequireAuth` → csrf →
+cache middleware), use `setupCSRFBulkTestApp` in `bulk_csrf_test.go` as the
+pattern.
+
 ### Auth Session Testing
 
 Create sessions via a separate mini Fiber app that writes session cookies:
@@ -457,12 +463,20 @@ func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
 
 Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 
-- `skipIfNoLDAP(t)`: Check TCP connectivity, skip the whole test if unavailable — never let a test tolerate LDAP being down silently.
+- `skipIfNoLDAP(t)`: Check TCP connectivity, skip the whole test if unavailable — never let a test
+  tolerate LDAP being down silently.
 - Use `go-ldap/ldap/v3` directly to seed test data (OUs, users, groups).
 - **IMPORTANT**: Use `127.0.0.1` not `localhost` — `simple-ldap-go` treats localhost as a mock server.
 - CI service container on port 1389, domain `test.local`, baseDN `dc=test,dc=local`.
-- Assert the **expected** outcome for each test — either success (with a valid seeded user) or a specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides regressions. If the environment is unavailable, the `skipIfNoLDAP` skip is the correct path.
+- Assert the **expected** outcome for each test — either success (with a valid seeded user) or a
+  specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides
+  regressions. If the environment is unavailable, the `skipIfNoLDAP` skip is the correct path.
 - Extract helper functions to avoid `dupl` linter violations in similar test patterns.
+- **e2e cleanup goes THROUGH the app, not behind its back.** The app caches the directory for 30s;
+  a test that seeds an entry via `ldapadd` and deletes it via `ldapdelete` leaves a cache ghost that
+  poisons later tests (a stale group in the addable datalist made adds fail silently — see
+  `internal/e2e/bulk_toolbar_csrf_test.go`). Delete via the UI/handler so LDAP and cache update together; keep
+  direct LDAP deletion only as a failure-path backstop that waits out one refresh cycle.
 
 **Key test files:**
 
@@ -488,7 +502,11 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 5. **Testing**: Check `server_test.go` for `setupFullTestApp`, `ldap_integration_test.go` for LDAP tests
 6. **Frontend**: `static/app.css` for styles, `static/js/v2-*.js` for plain JS; no build step
 7. **Assets out of date**: Run `make build-assets` (regenerates templ + refreshes `static/vendor/`)
-8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration
+8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration. A persistent 403
+   "CSRF token validation failed" on a POST usually means the request carries no `csrf_token` at
+   all — JS-built forms must read the per-session CSRF token from `data-csrf` on `main[data-bulk-scope]`
+   (see `submitForm` in `static/js/v2-bulk.js`; issue #652). Server-rendered forms embed it as a
+   hidden input.
 9. **LDAP mock issues**: If `simple-ldap-go` returns "example server" errors, use `127.0.0.1` not `localhost`
 
 ## House Rules
