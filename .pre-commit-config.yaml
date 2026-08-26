@@ -97,15 +97,6 @@ repos:
         args: ["--fix"]
         exclude: node_modules/
 
-  # Frontend code formatting (if applicable)
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.3
-    hooks:
-      - id: prettier
-        name: Format frontend code
-        files: \.(js|ts|css|scss|json|yaml|yml|md)$
-        exclude: (pnpm-lock\.yaml|package-lock\.json|\.min\.(js|css)|.*_templ\.go)$
-
 # Global configuration
 ci:
   autofix_commit_msg: |
