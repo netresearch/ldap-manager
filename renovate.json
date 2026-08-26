@@ -3,6 +3,9 @@
   "extends": [
     "github>netresearch/renovate-config"
   ],
+  "gomod": {
+    "enabled": false
+  },
   "automergeType": "pr",
   "platformAutomerge": true,
   "packageRules": [
