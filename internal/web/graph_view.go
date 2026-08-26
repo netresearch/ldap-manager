@@ -2,7 +2,7 @@
 package web
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // graphViewCookie is the cookie name used to remember the user's
@@ -21,7 +21,7 @@ const graphViewCookie = "graph-view"
 //
 // Unknown values normalise to "list" so a typo'd URL doesn't render
 // nothing.
-func pickView(c *fiber.Ctx) string {
+func pickView(c fiber.Ctx) string {
 	if raw := c.Query("view"); raw != "" {
 		v := normaliseView(raw)
 		setViewCookie(c, v)
@@ -51,7 +51,7 @@ func normaliseView(s string) string {
 // flag without needing to plumb opts.CookieSecure through to here, and
 // HTTP-only dev deployments don't break by trying to set a Secure
 // cookie that the browser would refuse.
-func setViewCookie(c *fiber.Ctx, v string) {
+func setViewCookie(c fiber.Ctx, v string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     graphViewCookie,
 		Value:    v,

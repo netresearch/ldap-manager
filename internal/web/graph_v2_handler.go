@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	goldap "github.com/go-ldap/ldap/v3"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
@@ -19,7 +19,7 @@ import (
 // handleGraphJSON serves /api/graph.json?entity=<dn>&depth=<N>. Response
 // shape documented in the spec §4.1. ETag is sha256 of the marshalled
 // body to mirror /api/search-index.json.
-func (a *App) handleGraphJSON(c *fiber.Ctx) error {
+func (a *App) handleGraphJSON(c fiber.Ctx) error {
 	data, status, errMsg := a.buildGraphFromQuery(c)
 	if status != 0 {
 		return c.Status(status).SendString(errMsg)
@@ -57,7 +57,7 @@ func (a *App) handleGraphJSON(c *fiber.Ctx) error {
 // project's standard `c.Status(...).SendString(...)` idiom rather than
 // writing the response from inside the helper. Callers MUST branch on
 // `status != 0` (not on `data == nil`) so the error path stays explicit.
-func (a *App) buildGraphFromQuery(c *fiber.Ctx) (*ldap_cache.GraphData, int, string) {
+func (a *App) buildGraphFromQuery(c fiber.Ctx) (*ldap_cache.GraphData, int, string) {
 	entity := c.Query("entity")
 	if entity == "" {
 		return nil, fiber.StatusBadRequest, "missing entity"
@@ -104,7 +104,7 @@ func (a *App) buildGraphFromQuery(c *fiber.Ctx) (*ldap_cache.GraphData, int, str
 
 // handleGraphV2 serves /graph?entity=<dn>&depth=<N> as HTML. Shares the
 // build path with handleGraphJSON; wraps the result in the Templ page.
-func (a *App) handleGraphV2(c *fiber.Ctx) error {
+func (a *App) handleGraphV2(c fiber.Ctx) error {
 	data, status, errMsg := a.buildGraphFromQuery(c)
 	if status != 0 {
 		return c.Status(status).SendString(errMsg)
@@ -121,6 +121,7 @@ func (a *App) handleGraphV2(c *fiber.Ctx) error {
 	if viewer == "" {
 		if sess, err := a.sessionStore.Get(c); err == nil {
 			viewer, _ = sess.Get("dn").(string)
+			sess.Release()
 		}
 	}
 

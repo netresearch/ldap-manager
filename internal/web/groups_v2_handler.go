@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -277,7 +277,7 @@ func buildGroupOUPivotHref(ou string) string {
 }
 
 // handleGroupsV2 renders the new /groups list page (spec §6.2).
-func (a *App) handleGroupsV2(c *fiber.Ctx) error {
+func (a *App) handleGroupsV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -339,7 +339,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 		return templates.GroupsListTableV2(groups, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	memberCN := lookupUserCN(memberDN, a.ldapCache)
@@ -350,7 +350,7 @@ func (a *App) handleGroupsV2(c *fiber.Ctx) error {
 		groups, ouFilter, memberDN, memberCN, ous,
 		a.takeFlash(c), a.paletteContextFor(viewerDN),
 		currentView, a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	).Render(c.Context(), c.Response().BodyWriter())
 }
 
 // filterGroupsByMember narrows to groups that list the given user DN in
@@ -399,7 +399,7 @@ func lookupUserCN(userDN string, cache *ldap_cache.Manager) string {
 // the type contracts. Kept parallel by convention.
 //
 //nolint:dupl // Intentional structural parallel with handleUserV2 and handleComputerV2.
-func (a *App) handleGroupV2(c *fiber.Ctx) error {
+func (a *App) handleGroupV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -413,7 +413,7 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusBadRequest)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm, ok := a.buildGroupDrawerVM(groupDN, viewerDN)
@@ -421,7 +421,7 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusNotFound)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm.CSRFToken = a.GetCSRFToken(c)
@@ -430,11 +430,11 @@ func (a *App) handleGroupV2(c *fiber.Ctx) error {
 
 	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.GroupDrawerFragment(vm).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	return templates.GroupFullV2(vm, a.paletteContextFor(viewerDN)).
-		Render(c.UserContext(), c.Response().BodyWriter())
+		Render(c.Context(), c.Response().BodyWriter())
 }
 
 // sortGroupsByCN sorts a slice of groups in place by CN, case-insensitive.

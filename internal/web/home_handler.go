@@ -2,7 +2,7 @@
 package web
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -10,7 +10,7 @@ import (
 )
 
 // handleHomeV2 renders the signed-in home page (spec §6.6).
-func (a *App) handleHomeV2(c *fiber.Ctx) error {
+func (a *App) handleHomeV2(c fiber.Ctx) error {
 	// Prefer the DN already populated by RequireAuth into c.Locals —
 	// re-reading the session after CSRF middleware can return a fresh
 	// session on this code path and drop the "dn"/"username" keys.
@@ -23,9 +23,10 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 		}
 		userDN, _ = sess.Get("dn").(string)
 		username, _ = sess.Get("username").(string)
+		sess.Release()
 	}
 	if userDN == "" {
-		return c.Redirect("/login", fiber.StatusSeeOther)
+		return c.Redirect().Status(fiber.StatusSeeOther).To("/login")
 	}
 
 	pinned, _ := a.pinnedEntriesFor(userDN)
@@ -58,7 +59,7 @@ func (a *App) handleHomeV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.HomeV2(vm).Render(c.UserContext(), c.Response().BodyWriter())
+	return templates.HomeV2(vm).Render(c.Context(), c.Response().BodyWriter())
 }
 
 // pinnedEntriesFor hydrates DN strings from PinnedStore into PinnedEntry

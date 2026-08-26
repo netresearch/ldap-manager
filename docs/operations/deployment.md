@@ -1,6 +1,7 @@
 # Deployment Guide
 
-Comprehensive guide for deploying LDAP Manager in production environments, covering various deployment strategies, configurations, and operational best practices.
+Comprehensive guide for deploying LDAP Manager in production environments, covering various deployment strategies,
+configurations, and operational best practices.
 
 ## Overview
 
@@ -115,7 +116,7 @@ services:
 
 ```bash
 # Set password via environment
-export LDAP_PASSWORD="your_secure_password"
+export LDAP_PASSWORD="your_secure_password" # pragma: allowlist secret
 
 # Deploy
 docker compose up -d
@@ -750,7 +751,7 @@ RESPONSE=$(curl -s -o /dev/null -w "%{http_code}:%{time_total}" "$HEALTH_URL")
 STATUS_CODE=$(echo $RESPONSE | cut -d: -f1)
 RESPONSE_TIME=$(echo $RESPONSE | cut -d: -f2)
 
-if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "302" ]; then
+if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "303" ]; then
     echo "OK - LDAP Manager healthy (${RESPONSE_TIME}s)"
     exit 0
 else
@@ -896,4 +897,5 @@ sudo cp /opt/ldap-manager/ldap-manager.backup /opt/ldap-manager/ldap-manager
 sudo systemctl start ldap-manager
 ```
 
-This deployment guide provides production-ready configurations for various environments. Choose the deployment method that best fits your infrastructure and security requirements.
+This deployment guide provides production-ready configurations for various environments. Choose the deployment method
+that best fits your infrastructure and security requirements.

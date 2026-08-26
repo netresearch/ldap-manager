@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -32,7 +32,7 @@ const maxExpiryWindowDays = 366
 //   - days=N   the "expiring soon" window (default 30, capped at 366)
 //   - show=all include every account with its status, not only the ones due
 //   - sort/dir column sort, matching the users table
-func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
+func (a *App) handlePasswordExpiryV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -49,7 +49,7 @@ func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
 	days := parseWindowDays(c.Query("days"))
 	showAll := c.Query("show") == "all"
 
-	ctx := c.UserContext()
+	ctx := c.Context()
 	window := time.Duration(days) * 24 * time.Hour
 
 	rows, err := collectExpiryRows(ctx, resolver, window, showAll)
@@ -66,7 +66,7 @@ func (a *App) handlePasswordExpiryV2(c *fiber.Ctx) error {
 	page := templates.PasswordExpiryV2(rows, days, showAll, sortKey, sortDir,
 		a.takeFlash(c), a.paletteContextFor(viewerDN))
 
-	return page.Render(c.UserContext(), c.Response().BodyWriter())
+	return page.Render(c.Context(), c.Response().BodyWriter())
 }
 
 // effectiveExpiryResolver returns the roster's data source: the injected test

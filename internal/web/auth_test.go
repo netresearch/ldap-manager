@@ -184,7 +184,7 @@ func TestLogoutHandler_RedirectsToLogin(t *testing.T) {
 	resp := makeAuthRequest(t, app, "/logout", cookies)
 	defer func() { _ = resp.Body.Close() }()
 
-	assert.Equal(t, 302, resp.StatusCode)
+	assert.Equal(t, 303, resp.StatusCode)
 	assert.Equal(t, "/login", resp.Header.Get("Location"))
 }
 

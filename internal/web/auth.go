@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
@@ -14,24 +14,26 @@ import (
 	"github.com/netresearch/ldap-manager/internal/web/templates"
 )
 
-func (a *App) logoutHandler(c *fiber.Ctx) error {
+func (a *App) logoutHandler(c fiber.Ctx) error {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
 		return handle500(c, err)
 	}
+	defer sess.Release()
 
 	if err := sess.Destroy(); err != nil {
 		return handle500(c, err)
 	}
 
-	return c.Redirect("/login")
+	return c.Redirect().To("/login")
 }
 
-func (a *App) loginHandler(c *fiber.Ctx) error {
+func (a *App) loginHandler(c fiber.Ctx) error {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
 		return handle500(c, err)
 	}
+	defer sess.Release()
 
 	username := c.FormValue("username")
 	password := c.FormValue("password")
@@ -59,7 +61,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 					templates.Flashes(templates.ErrorFlash("Too many failed login attempts. Please try again later.")),
 					"",
 					a.GetCSRFToken(c),
-				).Render(c.UserContext(), c.Response().BodyWriter())
+				).Render(c.Context(), c.Response().BodyWriter())
 			}
 
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
@@ -68,7 +70,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 				templates.Flashes(templates.ErrorFlash("Invalid username or password")),
 				"",
 				a.GetCSRFToken(c),
-			).Render(c.UserContext(), c.Response().BodyWriter())
+			).Render(c.Context(), c.Response().BodyWriter())
 		}
 
 		// Successful login - reset rate limit counter
@@ -94,7 +96,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 			Str("dn", dn).
 			Msg("successful login")
 
-		return c.Redirect("/")
+		return c.Redirect().To("/")
 	}
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
@@ -103,7 +105,7 @@ func (a *App) loginHandler(c *fiber.Ctx) error {
 		templates.Flashes(),
 		version.FormatVersion(),
 		a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	).Render(c.Context(), c.Response().BodyWriter())
 }
 
 // authenticateUser verifies credentials and returns the user's DN.

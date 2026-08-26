@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -20,8 +20,8 @@ import (
 // Test helpers for HTTP response validation
 func assertHTTPRedirect(t *testing.T, resp *http.Response) {
 	t.Helper()
-	if resp.StatusCode != 302 {
-		t.Errorf("Expected redirect status 302, got %d", resp.StatusCode)
+	if resp.StatusCode != 303 {
+		t.Errorf("Expected redirect status 303, got %d", resp.StatusCode)
 	}
 
 	location := resp.Header.Get("Location")
@@ -99,7 +99,7 @@ func setupTestApp() (*App, *testLDAPClient) {
 		},
 	}
 
-	sessionStore := session.New(session.Config{
+	sessionStore := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 

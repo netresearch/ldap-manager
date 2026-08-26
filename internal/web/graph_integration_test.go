@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
@@ -39,7 +40,7 @@ func TestGraphJSON_IntegrationUserFocus(t *testing.T) {
 		req.AddCookie(ck)
 	}
 
-	resp, err := app.fiber.Test(req, -1)
+	resp, err := app.fiber.Test(req, fiber.TestConfig{Timeout: 0})
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 

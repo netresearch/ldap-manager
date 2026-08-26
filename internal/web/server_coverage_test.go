@@ -10,6 +10,7 @@ package web
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 
 	"github.com/netresearch/ldap-manager/internal/options"
@@ -246,6 +247,34 @@ func TestCreateFiberApp_HasExpectedConfig(t *testing.T) {
 	}
 }
 
+// TestApp_StaticAssetsServed pins the v3 static-middleware mount: the
+// embedded assets must resolve under /static with the long-lived cache
+// header the middleware is configured with.
+func TestApp_StaticAssetsServed(t *testing.T) {
+	app, _ := newAppForCoverage(t)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/static/app.css", http.NoBody)
+	resp, err := app.fiber.Test(req)
+	if err != nil {
+		t.Fatalf("GET /static/app.css: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /static/app.css: got status %d, want 200", resp.StatusCode)
+	}
+	if cc := resp.Header.Get("Cache-Control"); cc != "public, max-age=86400" {
+		t.Errorf("Cache-Control = %q, want %q", cc, "public, max-age=86400")
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if len(body) == 0 {
+		t.Error("empty body for /static/app.css")
+	}
+}
+
 func TestApp_RoutesRegistered(t *testing.T) {
 	app, _ := newAppForCoverage(t)
 
@@ -258,13 +287,13 @@ func TestApp_RoutesRegistered(t *testing.T) {
 		wantCodes []int // accept any of these status codes
 	}{
 		// Protected routes without auth → 302 redirect to /login
-		{http.MethodGet, "/", []int{http.StatusFound}},
-		{http.MethodGet, "/users", []int{http.StatusFound}},
-		{http.MethodGet, "/groups", []int{http.StatusFound}},
-		{http.MethodGet, "/computers", []int{http.StatusFound}},
-		{http.MethodGet, "/logout", []int{http.StatusFound}},
-		{http.MethodGet, "/debug/cache", []int{http.StatusFound}},
-		{http.MethodGet, "/debug/ldap-pool", []int{http.StatusFound}},
+		{http.MethodGet, "/", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/users", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/groups", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/computers", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/logout", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/debug/cache", []int{http.StatusSeeOther}},
+		{http.MethodGet, "/debug/ldap-pool", []int{http.StatusSeeOther}},
 		// Login renders the form on GET → 200
 		{http.MethodGet, "/login", []int{http.StatusOK}},
 		// Health endpoints are public and respond 200 when components are healthy,
@@ -349,7 +378,7 @@ func TestApp_ListenGracefulShutdown(t *testing.T) {
 // fiber.StatusUnauthorized error is translated into a /login redirect.
 func TestHandle500_FiberUnauthorizedRedirects(t *testing.T) {
 	f := fiber.New()
-	f.Get("/x", func(c *fiber.Ctx) error {
+	f.Get("/x", func(c fiber.Ctx) error {
 		return handle500(c, fiber.NewError(fiber.StatusUnauthorized, "session expired"))
 	})
 
@@ -361,8 +390,8 @@ func TestHandle500_FiberUnauthorizedRedirects(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusFound {
-		t.Errorf("expected 302 redirect for unauthorized, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect for unauthorized, got %d", resp.StatusCode)
 	}
 
 	if loc := resp.Header.Get("Location"); loc != "/login" {

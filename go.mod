@@ -7,7 +7,7 @@ toolchain go1.27.0
 require (
 	github.com/a-h/templ v0.3.1020
 	github.com/go-ldap/ldap/v3 v3.4.14
-	github.com/gofiber/fiber/v2 v2.52.15
+	github.com/gofiber/fiber/v3 v3.5.0
 	github.com/gofiber/storage/bbolt/v2 v2.1.10
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/joho/godotenv v1.5.1
@@ -120,6 +120,7 @@ require (
 	github.com/go-xmlfmt/xmlfmt v1.1.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/godoc-lint/godoc-lint v0.11.2 // indirect
+	github.com/gofiber/schema v1.8.3 // indirect
 	github.com/gofiber/utils/v2 v2.4.2 // indirect
 	github.com/gofrs/flock v0.13.0 // indirect
 	github.com/golangci/asciicheck v0.5.0 // indirect

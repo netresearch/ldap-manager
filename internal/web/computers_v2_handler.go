@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -66,7 +66,7 @@ func buildComputerOUPivotHref(ou string) string {
 }
 
 // handleComputersV2 renders the new /computers list page (spec §6.2).
-func (a *App) handleComputersV2(c *fiber.Ctx) error {
+func (a *App) handleComputersV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -111,7 +111,7 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 		return templates.ComputersListTableV2(computers, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	ous := distinctImmediateOUsFromComputers(all)
@@ -122,7 +122,7 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 		computers, ouFilter, ous,
 		a.takeFlash(c), a.paletteContextFor(viewerDN),
 		currentView, a.GetCSRFToken(c),
-	).Render(c.UserContext(), c.Response().BodyWriter())
+	).Render(c.Context(), c.Response().BodyWriter())
 }
 
 // handleComputerV2 renders either the drawer fragment (?fragment=drawer) or
@@ -133,7 +133,7 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 // the type contracts. Kept parallel by convention.
 //
 //nolint:dupl // Intentional structural parallel with handleUserV2 and handleGroupV2.
-func (a *App) handleComputerV2(c *fiber.Ctx) error {
+func (a *App) handleComputerV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -147,7 +147,7 @@ func (a *App) handleComputerV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusBadRequest)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm, ok := a.buildComputerDrawerVM(computerDN, viewerDN)
@@ -155,7 +155,7 @@ func (a *App) handleComputerV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusNotFound)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm.CSRFToken = a.GetCSRFToken(c)
@@ -164,11 +164,11 @@ func (a *App) handleComputerV2(c *fiber.Ctx) error {
 
 	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.ComputerDrawerFragment(vm).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	return templates.ComputerFullV2(vm, a.paletteContextFor(viewerDN)).
-		Render(c.UserContext(), c.Response().BodyWriter())
+		Render(c.Context(), c.Response().BodyWriter())
 }
 
 // sortComputersByCN sorts a slice of computers in place by CN, case-insensitive.

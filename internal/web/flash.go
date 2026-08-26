@@ -14,7 +14,7 @@ package web
 import (
 	"encoding/json"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/netresearch/ldap-manager/internal/web/templates"
@@ -26,13 +26,14 @@ const flashSessionKey = "flash"
 // consumed by the next handler that calls takeFlash (typically a list
 // page after a POST+redirect). Errors are logged but not surfaced —
 // a failed flash is a UX regression, not a correctness one.
-func (a *App) setFlash(c *fiber.Ctx, f templates.Flash) {
+func (a *App) setFlash(c fiber.Ctx, f templates.Flash) {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
 		log.Warn().Err(err).Msg("setFlash: session.Get failed")
 
 		return
 	}
+	defer sess.Release()
 
 	raw, err := json.Marshal(f)
 	if err != nil {
@@ -51,11 +52,12 @@ func (a *App) setFlash(c *fiber.Ctx, f templates.Flash) {
 // takeFlash reads and consumes any queued flash message. Returns nil
 // when no flash is pending. Always returns at most one flash (our
 // list pages show a single banner).
-func (a *App) takeFlash(c *fiber.Ctx) []templates.Flash {
+func (a *App) takeFlash(c fiber.Ctx) []templates.Flash {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
 		return nil
 	}
+	defer sess.Release()
 
 	raw := sess.Get(flashSessionKey)
 	if raw == nil {

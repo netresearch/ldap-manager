@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func TestRateLimiter_RecordAttempt(t *testing.T) {
@@ -274,7 +274,7 @@ func TestRateLimiter_Middleware(t *testing.T) {
 
 		app := fiber.New()
 		app.Use(rl.Middleware())
-		app.Get("/test", func(c *fiber.Ctx) error {
+		app.Get("/test", func(c fiber.Ctx) error {
 			return c.SendString("OK")
 		})
 
@@ -311,7 +311,7 @@ func TestRateLimiter_Middleware(t *testing.T) {
 
 		app := fiber.New()
 		app.Use(rl.Middleware())
-		app.Get("/test", func(c *fiber.Ctx) error {
+		app.Get("/test", func(c fiber.Ctx) error {
 			return c.SendString("OK")
 		})
 

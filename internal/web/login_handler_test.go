@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 )
@@ -31,7 +31,7 @@ func buildLoginApp(t *testing.T) *App {
 		BaseDN: "dc=example,dc=com",
 	}
 
-	client, err := ldap.New(cfg, "cn=admin,dc=example,dc=com", "password")
+	client, err := ldap.New(cfg, "cn=admin,dc=example,dc=com", "password") // pragma: allowlist secret
 	if err != nil {
 		t.Fatalf("ldap.New: %v", err)
 	}
@@ -41,7 +41,7 @@ func buildLoginApp(t *testing.T) *App {
 	app := &App{
 		ldapConfig:    cfg,
 		ldapReadonly:  client,
-		sessionStore:  session.New(session.Config{Storage: memory.New(), Expiration: 30 * time.Minute}),
+		sessionStore:  session.NewStore(session.Config{Storage: memory.New(), IdleTimeout: 30 * time.Minute}),
 		templateCache: NewTemplateCache(DefaultTemplateCacheConfig()),
 		fiber:         f,
 		rateLimiter:   NewRateLimiter(DefaultRateLimiterConfig()),
@@ -67,7 +67,7 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	// authenticateViaDirectBind and authenticateViaUPNBind both reject it,
 	// ensuring we land on the "Invalid username or password" branch rather
 	// than the example-server fallback that otherwise succeeds.
-	body := "username=bad%3Dinjected%26test&password=wrong"
+	body := "username=bad%3Dinjected%26test&password=wrong" // pragma: allowlist secret
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/login",
 		strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -118,7 +118,7 @@ func TestLoginHandler_RateLimitBlock(t *testing.T) {
 	defer app.rateLimiter.Stop()
 
 	// Use a username with LDAP DN-banned chars so authentication fails.
-	body := "username=bad%3Dinjected&password=wrong"
+	body := "username=bad%3Dinjected&password=wrong" // pragma: allowlist secret
 
 	// First attempt — records as failed, may or may not block (threshold 1).
 	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/login",
@@ -162,8 +162,8 @@ func TestLogoutHandler_DestroysSession(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusFound {
-		t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 	}
 
 	if loc := resp.Header.Get("Location"); loc != "/login" {

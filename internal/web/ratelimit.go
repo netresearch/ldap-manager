@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -212,7 +212,7 @@ func (rl *RateLimiter) Stop() {
 
 // Middleware creates a Fiber middleware for rate limiting.
 func (rl *RateLimiter) Middleware() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		ip := c.IP()
 
 		// Check if blocked before processing

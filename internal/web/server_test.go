@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/csrf"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +51,7 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 		},
 	}
 
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -167,7 +168,7 @@ func createAuthSession(t *testing.T, _ *App, store *session.Store) []*http.Cooki
 	// Create a separate mini Fiber app to set up the session cookie.
 	// This avoids middleware interference from the main app.
 	miniApp := fiber.New()
-	miniApp.Get("/set-session", func(c *fiber.Ctx) error {
+	miniApp.Get("/set-session", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -208,15 +209,15 @@ func TestHandle500_FiberError(t *testing.T) {
 		ErrorHandler: handle500,
 	})
 
-	f.Get("/unauthorized", func(_ *fiber.Ctx) error {
+	f.Get("/unauthorized", func(_ fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	})
 
-	f.Get("/not-found", func(_ *fiber.Ctx) error {
+	f.Get("/not-found", func(_ fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "not found")
 	})
 
-	f.Get("/generic-error", func(_ *fiber.Ctx) error {
+	f.Get("/generic-error", func(_ fiber.Ctx) error {
 		return errors.New("something went wrong")
 	})
 
@@ -226,7 +227,7 @@ func TestHandle500_FiberError(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
-		assert.Equal(t, http.StatusFound, resp.StatusCode)
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
 		assert.Equal(t, "/login", resp.Header.Get("Location"))
 	})
 
@@ -271,7 +272,7 @@ func TestGetCSRFToken(t *testing.T) {
 	t.Run("returns empty for nil token", func(t *testing.T) {
 		f := fiber.New()
 		var result string
-		f.Get("/test", func(c *fiber.Ctx) error {
+		f.Get("/test", func(c fiber.Ctx) error {
 			result = app.GetCSRFToken(c)
 
 			return c.SendString("ok")
@@ -284,11 +285,11 @@ func TestGetCSRFToken(t *testing.T) {
 		assert.Empty(t, result)
 	})
 
-	t.Run("returns token when set", func(t *testing.T) {
+	t.Run("returns token when csrf middleware ran", func(t *testing.T) {
 		f := fiber.New()
 		var result string
-		f.Get("/test", func(c *fiber.Ctx) error {
-			c.Locals("token", "test-csrf-token")
+		f.Use(csrf.New())
+		f.Get("/test", func(c fiber.Ctx) error {
 			result = app.GetCSRFToken(c)
 
 			return c.SendString("ok")
@@ -298,24 +299,7 @@ func TestGetCSRFToken(t *testing.T) {
 		resp, err := f.Test(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		assert.Equal(t, "test-csrf-token", result)
-	})
-
-	t.Run("returns empty for non-string token", func(t *testing.T) {
-		f := fiber.New()
-		var result string
-		f.Get("/test", func(c *fiber.Ctx) error {
-			c.Locals("token", 12345) // not a string
-			result = app.GetCSRFToken(c)
-
-			return c.SendString("ok")
-		})
-
-		req := httptest.NewRequestWithContext(context.Background(), "GET", "/test", http.NoBody)
-		resp, err := f.Test(req)
-		require.NoError(t, err)
-		_ = resp.Body.Close()
-		assert.Empty(t, result)
+		assert.NotEmpty(t, result)
 	})
 }
 
@@ -431,7 +415,7 @@ func TestRenderWithCache(t *testing.T) {
 	f := fiber.New()
 	var firstBody, secondBody []byte
 
-	f.Get("/test", func(c *fiber.Ctx) error {
+	f.Get("/test", func(c fiber.Ctx) error {
 		// Create a simple templ component mock by using the RenderWithCache
 		// with a component that writes static content
 		return cache.RenderWithCache(c, staticComponent("hello world"))
@@ -482,7 +466,7 @@ func TestAuthenticatedHandlers_LDAPConnectionFails(t *testing.T) {
 			// return an error page (404 for "user not found", 500 otherwise),
 			// or render successfully — NOT 0.
 			assert.Contains(t,
-				[]int{http.StatusOK, http.StatusFound, http.StatusNotFound, http.StatusInternalServerError},
+				[]int{http.StatusOK, http.StatusSeeOther, http.StatusNotFound, http.StatusInternalServerError},
 				resp.StatusCode,
 				"unexpected status %d for GET %s", resp.StatusCode, path)
 		})
@@ -495,7 +479,7 @@ func TestGetUserLDAP_NoSession(t *testing.T) {
 	f := fiber.New()
 	var getUserLDAPErr error
 
-	f.Get("/test", func(c *fiber.Ctx) error {
+	f.Get("/test", func(c fiber.Ctx) error {
 		_, getUserLDAPErr = app.getUserLDAP(c)
 		if getUserLDAPErr != nil {
 			return getUserLDAPErr
@@ -514,7 +498,7 @@ func TestGetUserLDAP_NoSession(t *testing.T) {
 }
 
 func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -531,7 +515,7 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 	var getUserLDAPErr error
 
 	// Set up session with empty credentials
-	f.Get("/setup", func(c *fiber.Ctx) error {
+	f.Get("/setup", func(c fiber.Ctx) error {
 		sess, err := store.Get(c)
 		if err != nil {
 			return err
@@ -542,7 +526,7 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 		return sess.Save()
 	})
 
-	f.Get("/test", func(c *fiber.Ctx) error {
+	f.Get("/test", func(c fiber.Ctx) error {
 		_, getUserLDAPErr = app.getUserLDAP(c)
 		if getUserLDAPErr != nil {
 			return getUserLDAPErr
@@ -579,7 +563,7 @@ func TestCreateSessionStore(t *testing.T) {
 	t.Run("memory storage by default", func(t *testing.T) {
 		// createSessionStore with PersistSessions=false uses memory
 		// Already tested via setupTestApp, this confirms it works
-		store := session.New(session.Config{
+		store := session.NewStore(session.Config{
 			Storage: memory.New(),
 		})
 		assert.NotNil(t, store)

@@ -4,7 +4,8 @@ Complete documentation for LDAP Manager's web API endpoints and usage patterns.
 
 ## API Overview
 
-LDAP Manager provides a web-based interface for managing LDAP directory entries. The API follows RESTful conventions and uses session-based authentication with HTML responses for browser interaction.
+LDAP Manager provides a web-based interface for managing LDAP directory entries. The API follows RESTful conventions
+and uses session-based authentication with HTML responses for browser interaction.
 
 ### Base Configuration
 
@@ -41,7 +42,7 @@ Display login form or authenticate user credentials.
 | Code | Description                                      |
 | ---- | ------------------------------------------------ |
 | 200  | Login form displayed or authentication failed    |
-| 302  | Authentication successful, redirect to dashboard |
+| 303  | Authentication successful, redirect to dashboard |
 
 **Examples:**
 
@@ -60,8 +61,8 @@ curl -i -X POST \
 
 **Success Response:**
 
-```
-HTTP/1.1 302 Found
+```text
+HTTP/1.1 303 See Other
 Location: /
 Set-Cookie: session=abc123...; HttpOnly; SameSite=Strict; Path=/
 ```
@@ -81,7 +82,7 @@ Destroy user session and redirect to login page.
 
 **Response:**
 
-- **302 Found**: Redirect to `/login` with session cookie cleared
+- **303 See Other**: Redirect to `/login` with session cookie cleared
 
 **Example:**
 
@@ -91,8 +92,8 @@ curl -i -b "session=abc123..." http://localhost:3000/logout
 
 **Response:**
 
-```
-HTTP/1.1 302 Found
+```text
+HTTP/1.1 303 See Other
 Location: /login
 Set-Cookie: session=; HttpOnly; SameSite=Strict; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT
 ```
@@ -189,7 +190,7 @@ Modify user attributes in LDAP directory.
 | Code | Description                                   |
 | ---- | --------------------------------------------- |
 | 200  | User updated successfully or validation error |
-| 302  | Redirect after successful update              |
+| 303  | Redirect after successful update              |
 
 **Example:**
 
@@ -487,7 +488,7 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
 HEALTH_URL="http://localhost:3000/"
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
 
-if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "302" ]; then
+if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "303" ]; then
     echo "LDAP Manager is healthy"
     exit 0
 else
@@ -534,4 +535,5 @@ curl -s -b "session=$SESSION_COOKIE" "http://localhost:3000/users" | grep -q "Us
 - Verify user account status
 - Check for account lockouts
 
-For detailed configuration and deployment information, see the [Configuration Reference](configuration.md) and [Installation Guide](installation.md).
+For detailed configuration and deployment information, see the [Configuration Reference](configuration.md) and
+[Installation Guide](installation.md).

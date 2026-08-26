@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -79,7 +79,7 @@ func buildOUPivotHref(ou string) string {
 }
 
 // handleUsersV2 renders the new /users list page (spec §6.2).
-func (a *App) handleUsersV2(c *fiber.Ctx) error {
+func (a *App) handleUsersV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -134,7 +134,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
 		return templates.UsersListTableV2(users, currentView, filterQS, sortKey, sortDir, a.takeFlash(c), a.paletteContextFor(viewerDN)).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	memberOfCN := lookupGroupCN(memberOf, a.ldapCache)
@@ -149,7 +149,7 @@ func (a *App) handleUsersV2(c *fiber.Ctx) error {
 		adminDNs, currentView, a.GetCSRFToken(c),
 	)
 
-	return page.Render(c.UserContext(), c.Response().BodyWriter())
+	return page.Render(c.Context(), c.Response().BodyWriter())
 }
 
 // adminUserDNs collects the DNs of users flagged as privileged by AD's
@@ -230,7 +230,7 @@ func lookupGroupCN(groupDN string, cache *ldap_cache.Manager) string {
 // the type contracts. Kept parallel by convention.
 //
 //nolint:dupl // Intentional structural parallel with handleGroupV2 and handleComputerV2.
-func (a *App) handleUserV2(c *fiber.Ctx) error {
+func (a *App) handleUserV2(c fiber.Ctx) error {
 	viewerDN, handled, res := a.resolveViewerDN(c)
 	if handled {
 		return res
@@ -244,7 +244,7 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusBadRequest)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm, ok := a.buildUserDrawerVM(userDN, viewerDN)
@@ -252,7 +252,7 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 		c.Status(fiber.StatusNotFound)
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	vm.CSRFToken = a.GetCSRFToken(c)
@@ -264,11 +264,11 @@ func (a *App) handleUserV2(c *fiber.Ctx) error {
 	// styled page, not a bare fragment that would inherit no CSS.
 	if c.Query("fragment") == "drawer" && c.Get("HX-Request") == "true" {
 		return templates.UserDrawerFragment(vm).
-			Render(c.UserContext(), c.Response().BodyWriter())
+			Render(c.Context(), c.Response().BodyWriter())
 	}
 
 	return templates.UserFullV2(vm, a.paletteContextFor(viewerDN)).
-		Render(c.UserContext(), c.Response().BodyWriter())
+		Render(c.Context(), c.Response().BodyWriter())
 }
 
 // filterUsersByLastLogon narrows users by the `last-logon` query-param

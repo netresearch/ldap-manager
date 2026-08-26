@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -62,7 +62,7 @@ func NewTemplateCache(config TemplateCacheConfig) *TemplateCache {
 }
 
 // generateCacheKey creates a cache key based on request path, query parameters, and user context
-func (tc *TemplateCache) generateCacheKey(c *fiber.Ctx, additionalData ...string) string {
+func (tc *TemplateCache) generateCacheKey(c fiber.Ctx, additionalData ...string) string {
 	h := sha256.New()
 
 	// Include the actual request path as seen by the server.
@@ -236,7 +236,7 @@ func (tc *TemplateCache) Stop() {
 }
 
 // RenderWithCache renders a template component with caching support
-func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component, additionalCacheData ...string) error {
+func (tc *TemplateCache) RenderWithCache(c fiber.Ctx, component templ.Component, additionalCacheData ...string) error {
 	// Generate cache key
 	cacheKey := tc.generateCacheKey(c, additionalCacheData...)
 
@@ -249,7 +249,7 @@ func (tc *TemplateCache) RenderWithCache(c *fiber.Ctx, component templ.Component
 
 	// Not in cache, render the template
 	var buf bytes.Buffer
-	if err := component.Render(c.UserContext(), &buf); err != nil {
+	if err := component.Render(c.Context(), &buf); err != nil {
 		return err
 	}
 

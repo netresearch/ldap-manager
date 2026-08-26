@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -249,7 +249,7 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 	t.Run("same request generates same key", func(t *testing.T) {
 		var key1, key2 string
 
-		app.Get("/test", func(c *fiber.Ctx) error {
+		app.Get("/test", func(c fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c)
 			key2 = cache.generateCacheKey(c)
 
@@ -267,12 +267,12 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 	t.Run("different paths generate different keys", func(t *testing.T) {
 		var key1, key2 string
 
-		app.Get("/path1", func(c *fiber.Ctx) error {
+		app.Get("/path1", func(c fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c)
 
 			return c.SendString("ok")
 		})
-		app.Get("/path2", func(c *fiber.Ctx) error {
+		app.Get("/path2", func(c fiber.Ctx) error {
 			key2 = cache.generateCacheKey(c)
 
 			return c.SendString("ok")
@@ -294,7 +294,7 @@ func TestTemplateCacheGenerateKey(t *testing.T) {
 	t.Run("additional data changes key", func(t *testing.T) {
 		var key1, key2 string
 
-		app.Get("/additional", func(c *fiber.Ctx) error {
+		app.Get("/additional", func(c fiber.Ctx) error {
 			key1 = cache.generateCacheKey(c, "data1")
 			key2 = cache.generateCacheKey(c, "data2")
 

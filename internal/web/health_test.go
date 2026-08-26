@@ -6,10 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
 
@@ -26,7 +27,7 @@ func setupHealthTestApp() *App {
 		computers: []ldap.Computer{},
 	}
 
-	sessionStore := session.New(session.Config{
+	sessionStore := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -63,7 +64,7 @@ func setupHealthTestApp() *App {
 
 // setupHealthTestAppNoServiceAccount creates a test application without service account
 func setupHealthTestAppNoServiceAccount() *App {
-	sessionStore := session.New(session.Config{
+	sessionStore := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 
@@ -133,7 +134,7 @@ func TestHealthHandler(t *testing.T) {
 		defer func() { _ = resp.Body.Close() }()
 
 		contentType := resp.Header.Get("Content-Type")
-		if contentType != "application/json" {
+		if !strings.HasPrefix(contentType, "application/json") {
 			t.Errorf("Expected Content-Type 'application/json', got '%s'", contentType)
 		}
 	})

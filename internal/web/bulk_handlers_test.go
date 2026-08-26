@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // TestBulkHandler_UnknownAction verifies unknown bulk actions return 400
@@ -383,7 +383,7 @@ func TestCollectTargetDNs_URLEncoded(t *testing.T) {
 	f := fiber.New()
 	var got []string
 
-	f.Post("/x", func(c *fiber.Ctx) error {
+	f.Post("/x", func(c fiber.Ctx) error {
 		got = collectTargetDNs(c)
 
 		return c.SendStatus(fiber.StatusOK)

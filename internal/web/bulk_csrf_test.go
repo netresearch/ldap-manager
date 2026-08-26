@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -43,7 +43,7 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 		},
 	}
 
-	store := session.New(session.Config{
+	store := session.NewStore(session.Config{
 		Storage: memory.New(),
 	})
 

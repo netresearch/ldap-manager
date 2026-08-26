@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 )
 
@@ -27,7 +27,7 @@ func simulatedSession(t *testing.T, app *App) []*http.Cookie {
 	t.Helper()
 
 	helper := fiber.New()
-	helper.Get("/__set-session", func(c *fiber.Ctx) error {
+	helper.Get("/__set-session", func(c fiber.Ctx) error {
 		sess, err := app.sessionStore.Get(c)
 		if err != nil {
 			return err
@@ -54,9 +54,9 @@ func simulatedSession(t *testing.T, app *App) []*http.Cookie {
 // swapSessionStore gives the *App a fresh in-memory session store that we
 // can populate directly (bypassing the CSRF middleware in existing tests).
 func swapSessionStore(app *App) {
-	store := session.New(session.Config{
-		Storage:    memory.New(),
-		Expiration: 30 * time.Minute,
+	store := session.NewStore(session.Config{
+		Storage:     memory.New(),
+		IdleTimeout: 30 * time.Minute,
 	})
 
 	app.sessionStore = store
@@ -92,7 +92,7 @@ func TestUserModifyHandler_AuthenticatedPaths(t *testing.T) {
 		// Without CSRF token the CSRF middleware rejects first (403). Either
 		// outcome (302 or 403) proves the handler/csrf pipeline is wired;
 		// we just want the code path to execute.
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusSeeOther {
 			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
@@ -115,7 +115,7 @@ func TestUserModifyHandler_AuthenticatedPaths(t *testing.T) {
 
 		// Without CSRF token → 403. With invalid session/LDAP → 302 (redirect
 		// to /login). Either code path is exercised.
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusSeeOther {
 			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
@@ -146,7 +146,7 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		defer func() { _ = resp.Body.Close() }()
 
 		// CSRF rejection (403) or redirect to detail page / login (302).
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusSeeOther {
 			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
@@ -167,7 +167,7 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusSeeOther {
 			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
@@ -188,7 +188,7 @@ func TestGroupModifyHandler_AuthenticatedPaths(t *testing.T) {
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusSeeOther {
 			t.Errorf("expected 302 or 403, got %d", resp.StatusCode)
 		}
 	})
@@ -287,8 +287,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 		resp := postTo("/users/"+url.PathEscape(userDN), "")
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 
 		if loc := resp.Header.Get("Location"); !strings.Contains(loc, url.PathEscape(userDN)) {
@@ -302,8 +302,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 		defer func() { _ = resp.Body.Close() }()
 
 		// getUserLDAP can't connect → handle500 → /login redirect.
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 	})
 
@@ -312,8 +312,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 			"removegroup="+url.QueryEscape(groupDN))
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 	})
 
@@ -321,8 +321,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 		resp := postTo("/groups/"+url.PathEscape(groupDN), "")
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 
 		if loc := resp.Header.Get("Location"); !strings.Contains(loc, url.PathEscape(groupDN)) {
@@ -335,8 +335,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 			"adduser="+url.QueryEscape(userDN))
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 	})
 
@@ -345,8 +345,8 @@ func TestModifyHandlers_DirectNoCSRF(t *testing.T) {
 			"removeuser="+url.QueryEscape(userDN))
 		defer func() { _ = resp.Body.Close() }()
 
-		if resp.StatusCode != http.StatusFound {
-			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusSeeOther {
+			t.Errorf("expected 303 redirect, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -432,7 +432,7 @@ func TestAuthenticatedGETHandlers(t *testing.T) {
 				req.AddCookie(c)
 			}
 
-			resp, err := app.fiber.Test(req, -1) // -1 == no timeout
+			resp, err := app.fiber.Test(req, fiber.TestConfig{Timeout: 0}) // no timeout
 			if err != nil {
 				t.Fatalf("%s: %v", tc.path, err)
 			}

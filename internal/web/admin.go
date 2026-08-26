@@ -1,7 +1,7 @@
 package web
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 )
@@ -61,7 +61,7 @@ func (a *App) resolveAdminCheck() func(string) bool {
 // which populates the viewer DN into c.Locals. A non-admin gets 403 rather than
 // a redirect: they are authenticated, just not permitted.
 func (a *App) RequireAdmin() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		userDN := GetUserDN(c)
 		if userDN == "" || !a.resolveAdminCheck()(userDN) {
 			log.Warn().

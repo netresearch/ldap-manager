@@ -6,16 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/compress"
-	"github.com/gofiber/fiber/v2/middleware/csrf"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/gofiber/fiber/v2/middleware/helmet"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/middleware/compress"
+	"github.com/gofiber/fiber/v3/middleware/csrf"
+	"github.com/gofiber/fiber/v3/middleware/helmet"
+	"github.com/gofiber/fiber/v3/middleware/session"
+	fiberstatic "github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/gofiber/storage/bbolt/v2"
 	"github.com/gofiber/storage/memory/v2"
 	ldap "github.com/netresearch/simple-ldap-go"
@@ -103,9 +103,9 @@ func getSessionStorage(opts *options.Opts) fiber.Storage {
 
 // createSessionStore creates session store with configuration from options
 func createSessionStore(opts *options.Opts) *session.Store {
-	return session.New(session.Config{
+	return session.NewStore(session.Config{
 		Storage:        getSessionStorage(opts),
-		Expiration:     opts.SessionDuration,
+		IdleTimeout:    opts.SessionDuration,
 		CookieHTTPOnly: true,
 		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
@@ -119,9 +119,11 @@ func createFiberApp() *fiber.App {
 		BodyLimit:    4 * 1024,
 		ErrorHandler: handle500,
 		// Trust proxy headers from Traefik (Docker bridge network)
-		EnableTrustedProxyCheck: true,
-		TrustedProxies:          []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}, // Loopback and Docker internal networks
-		ProxyHeader:             fiber.HeaderXForwardedFor,
+		TrustProxy: true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}, // Loopback and Docker internal networks
+		},
+		ProxyHeader: fiber.HeaderXForwardedFor,
 	})
 	setupMiddleware(f)
 
@@ -270,7 +272,7 @@ func setupMiddleware(f *fiber.App) {
 
 	// Remove Cross-Origin-Embedder-Policy header - "require-corp" breaks browser extensions (Bitwarden)
 	// Fiber's helmet middleware doesn't support disabling COEP (empty string gets overwritten with default)
-	f.Use(func(c *fiber.Ctx) error {
+	f.Use(func(c fiber.Ctx) error {
 		err := c.Next()
 		c.Response().Header.Del("Cross-Origin-Embedder-Policy")
 
@@ -281,9 +283,10 @@ func setupMiddleware(f *fiber.App) {
 		Level: compress.LevelBestSpeed,
 	}))
 
-	f.Use("/static", filesystem.New(filesystem.Config{
-		Root:   http.FS(static.Static),
-		MaxAge: 24 * 60 * 60,
+	f.Use("/static", fiberstatic.New("", fiberstatic.Config{
+		FS:            static.Static,
+		MaxAge:        24 * 60 * 60,
+		CacheDuration: 10 * time.Second,
 	}))
 }
 
@@ -292,22 +295,20 @@ func setupMiddleware(f *fiber.App) {
 // and survive container restarts when PersistSessions is enabled.
 func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) fiber.Handler {
 	return csrf.New(csrf.Config{
-		KeyLookup:      "form:csrf_token",
+		Extractor:      extractors.FromForm("csrf_token"),
 		CookieName:     "csrf_",
 		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
-		Expiration:     time.Hour,
+		IdleTimeout:    time.Hour,
 		KeyGenerator:   csrf.ConfigDefault.KeyGenerator,
 		Session:        sessionStore, // Use session-based CSRF storage for persistence
-		SessionKey:     "csrf_token", // Key to store CSRF token in session
-		ContextKey:     "token",      // Store token in c.Locals("token") for template access
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c fiber.Ctx, err error) error {
 			log.Warn().Err(err).Msg("CSRF validation failed")
 			c.Status(fiber.StatusForbidden)
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-			return templates.FourOhThree("CSRF token validation failed").Render(c.UserContext(), c.Response().BodyWriter())
+			return templates.FourOhThree("CSRF token validation failed").Render(c.Context(), c.Response().BodyWriter())
 		},
 	})
 }
@@ -451,11 +452,12 @@ func (a *App) Shutdown(ctx context.Context) error {
 // The caller must close the returned client via defer client.Close().
 // Returns a fiber.StatusUnauthorized error if session has no credentials,
 // which handle500 will convert to a login redirect.
-func (a *App) getUserLDAP(c *fiber.Ctx) (*ldap.LDAP, error) {
+func (a *App) getUserLDAP(c fiber.Ctx) (*ldap.LDAP, error) {
 	sess, err := a.sessionStore.Get(c)
 	if err != nil {
 		return nil, fmt.Errorf("getUserLDAP: session error: %w", err)
 	}
+	defer sess.Release()
 
 	dn, _ := sess.Get("dn").(string)
 	password, _ := sess.Get("password").(string)
@@ -475,7 +477,7 @@ func (a *App) getUserLDAP(c *fiber.Ctx) (*ldap.LDAP, error) {
 
 // templateCacheMiddleware creates middleware for template caching
 func (a *App) templateCacheMiddleware() fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		// Only cache GET requests
 		if c.Method() != fiber.MethodGet {
 			return c.Next()
@@ -500,14 +502,14 @@ func (a *App) templateCacheMiddleware() fiber.Handler {
 }
 
 // cacheStatsHandler provides cache statistics for monitoring
-func (a *App) cacheStatsHandler(c *fiber.Ctx) error {
+func (a *App) cacheStatsHandler(c fiber.Ctx) error {
 	stats := a.templateCache.Stats()
 
 	return c.JSON(stats)
 }
 
 // poolStatsHandler provides LDAP performance statistics for monitoring
-func (a *App) poolStatsHandler(c *fiber.Ctx) error {
+func (a *App) poolStatsHandler(c fiber.Ctx) error {
 	if a.ldapReadonly == nil {
 		return c.JSON(map[string]any{
 			"message": "No service account configured - per-user LDAP credentials in use",
@@ -536,14 +538,14 @@ func (a *App) periodicCacheLogging() {
 	}
 }
 
-func handle500(c *fiber.Ctx, err error) error {
+func handle500(c fiber.Ctx, err error) error {
 	var fiberErr *fiber.Error
 	if errors.As(err, &fiberErr) {
 		switch fiberErr.Code {
 		case fiber.StatusUnauthorized:
 			log.Warn().Err(err).Msg("session expired or invalid, redirecting to login")
 
-			return c.Redirect("/login")
+			return c.Redirect().To("/login")
 		default:
 			// Use the fiber error's status code instead of always 500
 			c.Status(fiberErr.Code)
@@ -559,7 +561,7 @@ func handle500(c *fiber.Ctx, err error) error {
 	// Use a generic error to avoid leaking internal details to the user
 	displayErr := errors.New("an unexpected error occurred")
 	renderErr := templates.FiveHundred(displayErr).
-		Render(c.UserContext(), c.Response().BodyWriter())
+		Render(c.Context(), c.Response().BodyWriter())
 	if renderErr != nil {
 		// Fallback: plain text to avoid infinite recursion if template render fails
 		return c.SendString("Internal Server Error")
@@ -568,20 +570,14 @@ func handle500(c *fiber.Ctx, err error) error {
 	return nil
 }
 
-func (a *App) fourOhFourHandler(c *fiber.Ctx) error {
+func (a *App) fourOhFourHandler(c fiber.Ctx) error {
 	c.Status(fiber.StatusNotFound)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.FourOhFour(c.Path()).Render(c.UserContext(), c.Response().BodyWriter())
+	return templates.FourOhFour(c.Path()).Render(c.Context(), c.Response().BodyWriter())
 }
 
 // GetCSRFToken extracts the CSRF token from the context
-func (a *App) GetCSRFToken(c *fiber.Ctx) string {
-	if token := c.Locals("token"); token != nil {
-		if tokenStr, ok := token.(string); ok {
-			return tokenStr
-		}
-	}
-
-	return ""
+func (a *App) GetCSRFToken(c fiber.Ctx) string {
+	return csrf.TokenFromContext(c)
 }

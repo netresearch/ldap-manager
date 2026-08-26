@@ -7,7 +7,7 @@ package web
 import (
 	"net/url"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ldap "github.com/netresearch/simple-ldap-go"
 	"github.com/rs/zerolog/log"
 
@@ -32,7 +32,7 @@ type groupModifyForm struct {
 // captured in the server log.
 //
 //nolint:dupl // Similar to userModifyHandler but operates on different entities with different forms
-func (a *App) groupModifyHandler(c *fiber.Ctx) error {
+func (a *App) groupModifyHandler(c fiber.Ctx) error {
 	groupDN, err := url.PathUnescape(c.Params("*"))
 	if err != nil {
 		return handle500(c, err)
@@ -41,13 +41,13 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 	detailURL := "/groups/" + url.PathEscape(groupDN)
 
 	form := groupModifyForm{}
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return handle500(c, err)
 	}
 
 	if form.RemoveUser == nil && form.AddUser == nil &&
 		form.AddChild == nil && form.AddParent == nil && form.RemoveChild == nil {
-		return c.Redirect(detailURL)
+		return c.Redirect().To(detailURL)
 	}
 
 	userLDAP, err := a.getUserLDAP(c)
@@ -69,7 +69,7 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 		vm, ok := a.buildGroupDrawerVM(groupDN, viewerDN)
 		if !ok {
-			return c.Redirect(detailURL)
+			return c.Redirect().To(detailURL)
 		}
 
 		vm.CSRFToken = a.GetCSRFToken(c)
@@ -77,10 +77,10 @@ func (a *App) groupModifyHandler(c *fiber.Ctx) error {
 
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-		return templates.GroupDrawerFragment(vm).Render(c.UserContext(), c.Response().BodyWriter())
+		return templates.GroupDrawerFragment(vm).Render(c.Context(), c.Response().BodyWriter())
 	}
 
-	return c.Redirect(detailURL)
+	return c.Redirect().To(detailURL)
 }
 
 // filterUnassignedUsers returns users not in the given group.

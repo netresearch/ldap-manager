@@ -26,7 +26,7 @@ curl -f http://localhost:3000/
 
 # Expected responses:
 # - 200 OK: Login page (healthy)
-# - 302 Found: Redirect to login (healthy)
+# - 303 See Other: Redirect to login (healthy)
 # - Connection refused: Application down
 # - 5xx errors: Application unhealthy
 ```
@@ -51,7 +51,7 @@ check_health() {
             status_code=$(echo $response | cut -d: -f1)
             response_time=$(echo $response | cut -d: -f2)
 
-            if [[ "$status_code" =~ ^(200|302)$ ]]; then
+            if [[ "$status_code" =~ ^(200|303)$ ]]; then
                 echo "OK - LDAP Manager healthy (HTTP $status_code, ${response_time}s)"
                 return 0
             else
@@ -511,6 +511,7 @@ docker exec ldap-manager telnet dc1.company.com 636
    ```
 
 3. **Invalid LDAP credentials**
+
    ```bash
    # Solution: Test credentials manually
    ldapsearch -H ldaps://dc1.company.com:636 \
@@ -555,6 +556,7 @@ ldapsearch -H $LDAP_SERVER -D "CN=testuser,OU=Users,DC=company,DC=com" \
    ```
 
 3. **LDAP server certificate issues**
+
    ```bash
    # Add CA certificate to trust store
    cp company-ca.crt /usr/local/share/ca-certificates/
@@ -628,6 +630,7 @@ echo $SESSION_DURATION $PERSIST_SESSIONS $SESSION_PATH
    ```
 
 3. **Check file permissions**
+
    ```bash
    chown ldap-manager:ldap-manager /data/sessions.bbolt
    chmod 600 /data/sessions.bbolt
@@ -738,4 +741,5 @@ chown ldap-manager:ldap-manager /opt/ldap-manager/sessions.bbolt
 cp /backup/.env.local.backup /opt/ldap-manager/.env.local
 ```
 
-This monitoring and troubleshooting guide provides comprehensive coverage for maintaining LDAP Manager in production. Regular monitoring and proactive issue resolution will ensure reliable service for your users.
+This monitoring and troubleshooting guide provides comprehensive coverage for maintaining LDAP Manager in
+production. Regular monitoring and proactive issue resolution will ensure reliable service for your users.
