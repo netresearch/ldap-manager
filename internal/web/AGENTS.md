@@ -475,7 +475,7 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 - **e2e cleanup goes THROUGH the app, not behind its back.** The app caches the directory for 30s;
   a test that seeds an entry via `ldapadd` and deletes it via `ldapdelete` leaves a cache ghost that
   poisons later tests (a stale group in the addable datalist made adds fail silently — see
-  `bulk_toolbar_csrf_test.go`). Delete via the UI/handler so LDAP and cache update together; keep
+  `internal/e2e/bulk_toolbar_csrf_test.go`). Delete via the UI/handler so LDAP and cache update together; keep
   direct LDAP deletion only as a failure-path backstop that waits out one refresh cycle.
 
 **Key test files:**
@@ -504,7 +504,7 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 7. **Assets out of date**: Run `make build-assets` (regenerates templ + refreshes `static/vendor/`)
 8. **CSRF errors**: Check `createCSRFConfig` in server.go for configuration. A persistent 403
    "CSRF token validation failed" on a POST usually means the request carries no `csrf_token` at
-   all — JS-built forms must read the session token from `data-csrf` on `main[data-bulk-scope]`
+   all — JS-built forms must read the per-session CSRF token from `data-csrf` on `main[data-bulk-scope]`
    (see `submitForm` in `static/js/v2-bulk.js`; issue #652). Server-rendered forms embed it as a
    hidden input.
 9. **LDAP mock issues**: If `simple-ldap-go` returns "example server" errors, use `127.0.0.1` not `localhost`

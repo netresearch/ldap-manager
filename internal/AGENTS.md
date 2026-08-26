@@ -65,7 +65,7 @@ go test -bench=. ./internal/...
 
 Follow Go's standard project layout:
 
-```
+```text
 internal/
 ├── ldap/          # Domain: LDAP operations
 │   ├── client.go  # Public API
@@ -231,7 +231,7 @@ if err := ValidateUsername(input); err != nil {
 
 ### Package Organization
 
-```
+```text
 internal/
 ├── ldap/          # Domain: LDAP operations
 ├── ldap_cache/    # Domain: Caching layer
@@ -328,9 +328,12 @@ func skipIfNoLDAP(t *testing.T) {
 
 **Critical gotchas:**
 
-- **Use `127.0.0.1` not `localhost`**: `simple-ldap-go` treats "localhost" as a mock/example server via `isExampleServerName()`, returning fake connections with "connection to example server not available"
+- **Use `127.0.0.1` not `localhost`**: `simple-ldap-go` treats "localhost" as a mock/example server
+  via `isExampleServerName()`, returning fake connections with "connection to example server not
+  available"
 - **Use `net.JoinHostPort`** not `fmt.Sprintf("%s:%d")` — the latter breaks with IPv6
-- **Use `net.Dialer`** with a context-aware `DialContext` instead of `net.DialTimeout` — keeps network code consistent with the `noctx` expectation of threading context through HTTP clients
+- **Use `net.Dialer`** with a context-aware `DialContext` instead of `net.DialTimeout` — keeps
+  network code consistent with the `noctx` expectation of threading context through HTTP clients
 - **Seed data with `go-ldap/ldap/v3`** directly, not through `simple-ldap-go`
 - **CI config**: Port 1389, domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`
 
@@ -351,7 +354,10 @@ func skipIfNoLDAP(t *testing.T) {
 2. **Configuration**: See `internal/options/options.go` for struct tags and flag definitions
 3. **Web handlers**: Review `internal/web/AGENTS.md` for HTTP patterns
 4. **Testing**: Look at existing `*_test.go` files for table-driven examples
-5. **LDAP integration tests**: See `internal/web/ldap_integration_test.go` for real LDAP patterns
+5. **LDAP integration tests**: See `internal/web/ldap_integration_test.go` for real LDAP patterns.
+   For e2e tests (`internal/e2e/`): clean up seeded entries THROUGH the app, not via direct
+   `ldapdelete` — the 30s cache keeps a ghost that poisons later tests (details in
+   `internal/web/AGENTS.md`, "LDAP Integration Tests")
 6. **Dependencies**: Use `internal/` packages for shared code, avoid circular deps
 7. **Build issues**: Run `make clean && make setup && make build`
 8. **Test failures**: Run `make test` for coverage, `make test-race` for race conditions
