@@ -221,7 +221,7 @@ if err := validate.Struct(req); err != nil {
 ```go
 // CSRF middleware enabled for state-changing operations
 app.Use(csrf.New(csrf.Config{
-    Extractor:      extractors.FromHeader("X-CSRF-Token"),
+    Extractor:      extractors.FromForm("csrf_token"), // matches createCSRFConfig in server.go
     CookieName:     "csrf_",
     CookieSameSite: "Strict",
     IdleTimeout:    1 * time.Hour,

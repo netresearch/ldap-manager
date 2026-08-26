@@ -1,6 +1,6 @@
 // Package web provides the HTTP server and web interface for LDAP Manager.
 //
-// This package implements a complete web application using the Fiber v2 framework,
+// This package implements a complete web application using the Fiber v3 framework,
 // providing HTTP handlers, middleware, session management, template rendering,
 // and static asset serving for LDAP directory management operations.
 //

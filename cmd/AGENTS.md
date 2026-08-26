@@ -4,11 +4,12 @@
 
 ## Overview
 
-The `cmd/` directory contains the main entry point for the LDAP Manager application. This follows Go's standard project layout for executable binaries.
+The `cmd/` directory contains the main entry point for the LDAP Manager application. This follows Go's standard
+project layout for executable binaries.
 
 - **Location**: `cmd/ldap-manager/main.go`
 - **Purpose**: CLI initialization, configuration parsing, server startup
-- **Framework**: Uses Fiber v2 web framework via `internal/web` package
+- **Framework**: Uses Fiber v3 web framework via `internal/web` package
 
 ## Setup & Environment
 
