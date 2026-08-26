@@ -40,13 +40,10 @@ jobs:
       # never emits symbols (e.g. templ.ResolveAttributeValue) that the pinned
       # runtime lacks. Bumping go.mod automatically bumps the CLI in lockstep.
       pre-build-cmd: "go install github.com/a-h/templ/cmd/templ@$(go list -m -f '{{.Version}}' github.com/a-h/templ) && templ generate"
-      # This PR adds a substantial templ + htmx UI layer to internal/web
-      # whose handlers reach live LDAP and are exercised primarily by
-      # internal/web/ldap_integration_test.go (skipped without an LDAP
-      # service container) and the e2e suite. The unit-only numerator
-      # drops below the template's default 80% as a result. 60 is the
-      # current floor; raise as follow-up PRs add handler unit coverage.
-      coverage-threshold: 60
+      # Unit-only coverage is 77.6% (templ UI handlers are exercised by
+      # integration/e2e). Raised from 60 to 77 to reflect the current
+      # floor; 80 is the target once handler unit tests land (follow-up).
+      coverage-threshold: 77
     permissions:
       contents: read
       security-events: write
