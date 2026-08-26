@@ -53,7 +53,11 @@ func TestBulkDeleteGroup_AgainstOpenLDAP(t *testing.T) {
 
 	for time.Now().Before(deadline) {
 		tp.Navigate("/groups/" + url.PathEscape(disposableDN))
-		if err := tp.WaitForSelector(".drawer--full"); err == nil {
+		// Poll with Count() — the detail page is server-rendered and
+		// static after Navigate (Goto waits for load), so a WaitFor
+		// here would burn its full 30s page timeout per miss and turn
+		// the 45s deadline into ~1 attempt.
+		if n, cntErr := page.Locator(".drawer--full").Count(); cntErr == nil && n > 0 {
 			// Confirm the title matches our disposable CN; if the
 			// cache is stale we might get "group not found" which
 			// still renders SOME drawer on a 500 — guard.

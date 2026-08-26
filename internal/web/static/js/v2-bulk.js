@@ -121,8 +121,11 @@
     updateBar();
   }
 
-  // submitForm constructs a POST form with `target_dn[]` + any extra hidden
-  // fields and submits it. Used by every scope's handler.
+  // submitForm constructs a POST form with the CSRF token, `target_dn[]`
+  // + any extra hidden fields and submits it. Used by every scope's
+  // handler. The token comes from the `data-csrf` attribute on
+  // `main[data-bulk-scope]` (issue #652 — without it every bulk POST
+  // died in the CSRF middleware with a 403).
   function submitForm(action, extras) {
     if (selected.size === 0) return;
 
@@ -130,6 +133,22 @@
     form.method = "post";
     form.action = action;
     form.style.display = "none";
+
+    var main = document.querySelector("main[data-bulk-scope]");
+    var csrf = main ? main.getAttribute("data-csrf") : null;
+    if (csrf) {
+      var tokenInput = document.createElement("input");
+      tokenInput.type = "hidden";
+      tokenInput.name = "csrf_token";
+      tokenInput.value = csrf;
+      form.appendChild(tokenInput);
+    } else {
+      // Submitting anyway reproduces the #652 403 — make the cause
+      // visible instead of silent so a regression is diagnosable.
+      console.error(
+        "bulk toolbar: no CSRF token on main[data-bulk-scope]; POST will be rejected"
+      );
+    }
 
     if (extras) {
       for (var name in extras) {

@@ -334,7 +334,12 @@ func (a *App) setupRoutes() {
 	// Protected routes with template caching for GET requests
 	protected := f.Group("/", a.RequireAuth(), a.csrfHandler)
 
-	// Apply template caching middleware to read-only list endpoints (no CSRF tokens)
+	// Apply template caching middleware to read-only list endpoints.
+	// NOTE: list pages expose the session-scoped CSRF token via the
+	// data-csrf attribute (consumed by v2-bulk.js, issue #652), so their
+	// HTML must never be STORED in the template cache. Today that holds:
+	// the middleware only serves entries, and only the graph views (no
+	// tokens) store via RenderWithCache.
 	cacheable := protected.Group("/", a.templateCacheMiddleware())
 	cacheable.Get("/", a.handleHomeV2)
 	cacheable.Get("/users", a.handleUsersV2)

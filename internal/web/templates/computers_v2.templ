@@ -22,11 +22,11 @@ type ComputerDrawerVM struct {
 	IsAD        bool   // true when backend is Active Directory — gates the Disable button (which also requires Computer.Enabled)
 }
 
-templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry, currentView string) {
+templ ComputersListV2(computers []ldap.Computer, ouFilter string, ous []string, flashes []Flash, palettePinned []PinnedEntry, currentView, csrfToken string) {
 	@baseV2("Computers") {
 		@topnavV2("/computers")
 
-		<main id="main-content" class="list-page" data-bulk-scope="computers">
+		<main id="main-content" class="list-page" data-bulk-scope="computers" data-csrf={ csrfToken }>
 			<header class="list-page__head">
 				<div class="list-page__head-titles">
 					<h1 class="list-page__title">Computers</h1>

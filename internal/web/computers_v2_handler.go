@@ -118,8 +118,11 @@ func (a *App) handleComputersV2(c *fiber.Ctx) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
-	return templates.ComputersListV2(computers, ouFilter, ous, a.takeFlash(c), a.paletteContextFor(viewerDN), currentView).
-		Render(c.UserContext(), c.Response().BodyWriter())
+	return templates.ComputersListV2(
+		computers, ouFilter, ous,
+		a.takeFlash(c), a.paletteContextFor(viewerDN),
+		currentView, a.GetCSRFToken(c),
+	).Render(c.UserContext(), c.Response().BodyWriter())
 }
 
 // handleComputerV2 renders either the drawer fragment (?fragment=drawer) or

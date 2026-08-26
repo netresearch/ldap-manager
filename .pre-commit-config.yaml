@@ -7,8 +7,9 @@ repos:
     rev: v1.0.0-rc.1
     hooks:
       # Go formatting
-      - id: go-fmt-goimports
+      - id: go-imports
         name: Format Go code with goimports
+        args: [-w]
         files: \.go$
 
       # Go module maintenance
