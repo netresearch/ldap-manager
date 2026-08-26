@@ -9,19 +9,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.6.0] - 2026-08-26
+
+### Changed
+
+- **The web layer now runs on Fiber v3** ([#662](https://github.com/netresearch/ldap-manager/pull/662)). Wire-visible:
+  bare redirects answer **303 See Other** instead of 302 Found (monitoring runbooks in `docs/operations/` updated
+  accordingly), and JSON responses carry `; charset=utf-8`. Behavioral hardening inherited from v3: the CSRF
+  middleware additionally enforces Origin/Referer/Sec-Fetch-Site consistency on unsafe methods, and `c.IP()` resolves
+  the real peer past the trusted proxies instead of echoing the raw X-Forwarded-For — strengthening the login rate
+  limiter against forged-XFF evasion. Sessions use v3's pooled store (released after every use), static assets the v3
+  static middleware.
+- **Go toolchain 1.27.0** ([#653](https://github.com/netresearch/ldap-manager/pull/653),
+  [#655](https://github.com/netresearch/ldap-manager/pull/655)); all Go dependencies updated across the module graph
+  and the broken pre-commit chain repaired ([#661](https://github.com/netresearch/ldap-manager/pull/661)).
+- **Renovate no longer manages Go modules** — Dependabot owns them, ending duplicate racing update PRs ([#664](https://github.com/netresearch/ldap-manager/pull/664)).
+
+### Fixed
+
+- Bulk toolbar POSTs send the CSRF token, so bulk actions work again under the strict token check ([#659](https://github.com/netresearch/ldap-manager/pull/659)).
+
+### Security
+
+- `simple-ldap-go` updated to [v1.16.0](https://github.com/netresearch/simple-ldap-go/releases/tag/v1.16.0), closing
+  the upstream `CheckPasswordForDN` user-enumeration timing oracle
+  ([simple-ldap-go#219](https://github.com/netresearch/simple-ldap-go/issues/219),
+  [#665](https://github.com/netresearch/ldap-manager/pull/665)).
+- `moby/go-archive` security update ([#650](https://github.com/netresearch/ldap-manager/pull/650)).
+
+### Internal
+
+- The test-fixture `unsafe` writes promised gone in the v1.5.1 notes are gone: `cachetest` builds fixtures via
+  `ldap.NewObject` ([#633](https://github.com/netresearch/ldap-manager/pull/633)).
+- CI housekeeping: zizmor config for first-party reusables, deprecated gitleaks secret mapping dropped, scanner
+  wording synced ([#636](https://github.com/netresearch/ldap-manager/pull/636),
+  [#637](https://github.com/netresearch/ldap-manager/pull/637),
+  [#639](https://github.com/netresearch/ldap-manager/pull/639),
+  [#640](https://github.com/netresearch/ldap-manager/pull/640)).
+
+---
+
 ## [v1.5.1] - 2026-07-28
 
 ### Security
 
-- **Go toolchain moves to 1.26.5** — module `go 1.26`, `toolchain go1.26.5` ([#630](https://github.com/netresearch/ldap-manager/pull/630)). Clears the standard-library advisories govulncheck reported as affecting the binary — the exact count depends on the patch release compared against, so they are named rather than counted: GO-2026-5856 (`crypto/tls`), GO-2026-5039 (`net/textproto`), GO-2026-5037 (`crypto/x509`) and GO-2026-4971 (`net`).
+- **Go toolchain moves to 1.26.5** — module `go 1.26`, `toolchain go1.26.5`
+  ([#630](https://github.com/netresearch/ldap-manager/pull/630)). Clears the standard-library advisories govulncheck
+  reported as affecting the binary — the exact count depends on the patch release compared against, so they are named
+  rather than counted: GO-2026-5856 (`crypto/tls`), GO-2026-5039 (`net/textproto`), GO-2026-5037 (`crypto/x509`) and
+  GO-2026-4971 (`net`).
 
 ### Changed
 
-- **gosec is a blocking check** ([#630](https://github.com/netresearch/ldap-manager/pull/630), [netresearch/.github#312](https://github.com/netresearch/.github/pull/312)). It flagged four sites here; **none was a defect**. The `//nolint:gosec` comments they carried — which only golangci-lint reads — became `#nosec` annotations stating a reason gosec itself records. No code behaviour changed.
-  - G402 (TLS verification disabled): `TLSSkipVerify` is a plain bool, default `false`, set only by an operator through `LDAP_TLS_SKIP_VERIFY` / `--tls-skip-verify`, and enabling it logs a startup warning. It is never derived from request data.
+- **gosec is a blocking check** ([#630](https://github.com/netresearch/ldap-manager/pull/630),
+  [netresearch/.github#312](https://github.com/netresearch/.github/pull/312)). It flagged four sites here; **none was
+  a defect**. The `//nolint:gosec` comments they carried — which only golangci-lint reads — became `#nosec`
+  annotations stating a reason gosec itself records. No code behaviour changed.
+  - G402 (TLS verification disabled): `TLSSkipVerify` is a plain bool, default `false`, set only by an operator
+  through `LDAP_TLS_SKIP_VERIFY` / `--tls-skip-verify`, and enabling it logs a startup warning. It is never derived
+  from request data.
   - G404 (weak randomness): `math/rand/v2` supplies backoff jitter in `internal/retry` — no token, nonce or session ID.
-  - G103 (unsafe) ×2: the test-fixture helpers in `internal/ldap_cache/cachetest` write simple-ldap-go's unexported `Object.dn`/`cn` through reflection, because that library exposed no constructor taking them ([simple-ldap-go#191](https://github.com/netresearch/simple-ldap-go/issues/191)). It now has `NewObject`; the `unsafe` goes once a release carrying it is picked up here.
-- **Mutation testing covers the whole tree** ([#631](https://github.com/netresearch/ldap-manager/pull/631)). The `*_templ.go` sources are generated and not committed, so gremlins could not compile `internal/web/templates` — nor `internal/web` and `cmd/ldap-manager`, which depend on it. It reported the three as `[build failed]`, then aborted before gathering coverage, and the job stayed green publishing a score of 0%; `internal/web` is the handler, auth and routing layer. The run now generates templ sources first via `pre-build-cmd` ([netresearch/.github#314](https://github.com/netresearch/.github/pull/314)), which also makes `[build failed]` fail the job. First score over the full tree: **57.07%**.
+  - G103 (unsafe) ×2: the test-fixture helpers in `internal/ldap_cache/cachetest` write simple-ldap-go's unexported
+  `Object.dn`/`cn` through reflection, because that library exposed no constructor taking them
+  ([simple-ldap-go#191](https://github.com/netresearch/simple-ldap-go/issues/191)). It now has `NewObject`; the
+  `unsafe` goes once a release carrying it is picked up here.
+- **Mutation testing covers the whole tree** ([#631](https://github.com/netresearch/ldap-manager/pull/631)). The
+  `*_templ.go` sources are generated and not committed, so gremlins could not compile `internal/web/templates` — nor
+  `internal/web` and `cmd/ldap-manager`, which depend on it. It reported the three as `[build failed]`, then aborted
+  before gathering coverage, and the job stayed green publishing a score of 0%; `internal/web` is the handler, auth
+  and routing layer. The run now generates templ sources first via `pre-build-cmd`
+  ([netresearch/.github#314](https://github.com/netresearch/.github/pull/314)), which also makes `[build failed]` fail
+  the job. First score over the full tree: **57.07%**.
 
 ### Removed
 
@@ -37,18 +95,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Password-expiry roster** ([#626](https://github.com/netresearch/ldap-manager/pull/626), closes [ldap-selfservice-password-changer#628](https://github.com/netresearch/ldap-selfservice-password-changer/issues/628)). A new admin-only `/password-expiry` page lists accounts whose LDAP password is expiring, resolved live via [simple-ldap-go](https://github.com/netresearch/simple-ldap-go) v1.13.0. It shows four states — expiring, must-change, never-expires, unknown — as status badges, defaults to accounts due within a window (`?days=`, default 30) with a **Show all accounts** toggle, and is reachable only by admins.
-  - New `LDAP_ADMIN_GROUP` (`--admin-group`): an admin is a member of this group **or** carries Active Directory's `adminCount=1`. On OpenLDAP, which has no `adminCount`, the group is the only way to grant access. Group membership is read from `memberOf` (Active Directory populates it automatically; OpenLDAP needs the `memberof` overlay).
-  - The roster is resolved live from the directory, not the background cache, which cannot compute expiry; on OpenLDAP expiry needs the `ppolicy` overlay.
+- **Password-expiry roster** ([#626](https://github.com/netresearch/ldap-manager/pull/626), closes
+  [ldap-selfservice-password-changer#628](https://github.com/netresearch/ldap-selfservice-password-changer/issues/628)).
+  A new admin-only `/password-expiry` page lists accounts whose LDAP password is expiring, resolved live via
+  [simple-ldap-go](https://github.com/netresearch/simple-ldap-go) v1.13.0. It shows four states — expiring,
+  must-change, never-expires, unknown — as status badges, defaults to accounts due within a window (`?days=`, default
+  30) with a **Show all accounts** toggle, and is reachable only by admins.
+  - New `LDAP_ADMIN_GROUP` (`--admin-group`): an admin is a member of this group **or** carries Active Directory's
+  `adminCount=1`. On OpenLDAP, which has no `adminCount`, the group is the only way to grant access. Group membership
+  is read from `memberOf` (Active Directory populates it automatically; OpenLDAP needs the `memberof` overlay).
+  - The roster is resolved live from the directory, not the background cache, which cannot compute expiry; on OpenLDAP
+  expiry needs the `ppolicy` overlay.
 
 ### Fixed
 
-- **DOM XSS in the command palette** ([#625](https://github.com/netresearch/ldap-manager/pull/625)). The palette now validates the navigation target before following it.
+- **DOM XSS in the command palette** ([#625](https://github.com/netresearch/ldap-manager/pull/625)). The palette now
+  validates the navigation target before following it.
 - **End-to-end tests** migrate to the renamed `playwright-go` module ([#621](https://github.com/netresearch/ldap-manager/pull/621)).
 
 ### Dependencies
 
-- Routine Renovate/Dependabot updates across Go modules, Docker base images (Alpine 3.24.1, `docker/dockerfile` v1.25) and CI actions.
+- Routine Renovate/Dependabot updates across Go modules, Docker base images (Alpine 3.24.1, `docker/dockerfile` v1.25)
+  and CI actions.
 
 ---
 
@@ -56,8 +124,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Release pipeline:** Switch to `release-go-app.yml` atomic-release orchestrator. Previous pipeline created an immutable GitHub Release before the binaries job could attach assets, causing v1.3.0 and v1.4.0 to ship without binaries or container images (HTTP 422 "Cannot upload assets to an immutable release"). The orchestrator publishes atomically at the end after binaries + container builds succeed.
-- **README:** Repair broken CI/Container badges — workflow files were renamed (`quality.yml` → `ci.yml`, `docker.yml` → `container.yml`) without updating the README.
+- **Release pipeline:** Switch to `release-go-app.yml` atomic-release orchestrator. Previous pipeline created an
+  immutable GitHub Release before the binaries job could attach assets, causing v1.3.0 and v1.4.0 to ship without
+  binaries or container images (HTTP 422 "Cannot upload assets to an immutable release"). The orchestrator publishes
+  atomically at the end after binaries + container builds succeed.
+- **README:** Repair broken CI/Container badges — workflow files were renamed (`quality.yml` → `ci.yml`, `docker.yml`
+  → `container.yml`) without updating the README.
 
 ---
 
@@ -65,8 +137,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Phase 3 graph view (Slices 1–6):** Server-rendered relationship graph with JSON endpoint, interactive JS canvas, list-page Graph mode (toggle + persistent selection), drawer pivots, weighted layout (degree-scaled disc + parent-anchored angles), and axe-core a11y ratchet. Includes "View relationships" drawer pivot, dark-mode + zoom anchoring, scroll-anchor fixes.
-- **Table view:** New per-page Table mode for `/users`, `/groups`, `/computers` with persistent List/Table/Graph selection. Server-rendered sortable column headers + client-side filter widget.
+- **Phase 3 graph view (Slices 1–6):** Server-rendered relationship graph with JSON endpoint, interactive JS canvas,
+  list-page Graph mode (toggle + persistent selection), drawer pivots, weighted layout (degree-scaled disc +
+  parent-anchored angles), and axe-core a11y ratchet. Includes "View relationships" drawer pivot, dark-mode + zoom
+  anchoring, scroll-anchor fixes.
+- **Table view:** New per-page Table mode for `/users`, `/groups`, `/computers` with persistent List/Table/Graph
+  selection. Server-rendered sortable column headers + client-side filter widget.
 
 ### Fixed
 
@@ -79,10 +155,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **UI revamp Phase 1:** Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in CI via axe-core.
-- **UI revamp Phase 2:** Inline-edit for user email + description in the drawer via htmx; last-logon filter chips on `/users` (last 24h / 7d / 30d / never); toggleable OU tree rail on `/users`, `/groups`, `/computers` populated from distinct immediate-OU values in the cache.
-- **UI revamp Phase 3:** Bulk add-to-group, bulk + single disable (AD-gated, adminCount-based Privileged), and bulk delete for groups + computers with session flash. Per-row checkboxes feed a floating bulk-bar that POSTs `target_dn[]` + `group_dn` to `/users/bulk?action=add-to-group`. CSP-safe (external `v2-bulk.js`, `createElement` / `textContent` only).
-- **Phase 3 graph view deferral note:** `docs/superpowers/specs/2026-04-20-ui-revamp-phase-3-graph-view-deferred.md` — captures the rough shape and dependencies for the deferred relationship graph view.
+- **UI revamp Phase 1:** Command-first interface with ⌘K palette, pin/unpin, recents, detail drawer. New hybrid
+  light/dark theme (Inter sans in light, monospace in dark). WCAG 2.2 AAA conformance on all new surfaces, verified in
+  CI via axe-core.
+- **UI revamp Phase 2:** Inline-edit for user email + description in the drawer via htmx; last-logon filter chips on
+  `/users` (last 24h / 7d / 30d / never); toggleable OU tree rail on `/users`, `/groups`, `/computers` populated from
+  distinct immediate-OU values in the cache.
+- **UI revamp Phase 3:** Bulk add-to-group, bulk + single disable (AD-gated, adminCount-based Privileged), and bulk
+  delete for groups + computers with session flash. Per-row checkboxes feed a floating bulk-bar that POSTs
+  `target_dn[]` + `group_dn` to `/users/bulk?action=add-to-group`. CSP-safe (external `v2-bulk.js`, `createElement` /
+  `textContent` only).
+- **Phase 3 graph view deferral note:** `docs/superpowers/specs/2026-04-20-ui-revamp-phase-3-graph-view-deferred.md` —
+  captures the rough shape and dependencies for the deferred relationship graph view.
 
 ### Changed
 
@@ -91,7 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Tailwind CSS, PostCSS, TypeScript, Bun, and all associated build tooling (`package.json`, `bun.lock`, `tsconfig.json`, `tailwind.config.js`, `postcss.config.mjs`, concurrently, nodemon, tsc, postcss-\*). The Go binary now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` + vendored htmx directly.
+- Tailwind CSS, PostCSS, TypeScript, Bun, and all associated build tooling (`package.json`, `bun.lock`,
+  `tsconfig.json`, `tailwind.config.js`, `postcss.config.mjs`, concurrently, nodemon, tsc, postcss-\*). The Go binary
+  now builds assets itself via `templ generate` and ships Pico CSS + a hand-written `app.css` + vendored htmx
+  directly.
 
 ---
 
@@ -99,7 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Upgrade `simple-ldap-go` v1.9.0 → v1.10.0 — fixes password change bug and adds consistent `ValidateSAMAccountName` input validation across all entrypoints
+- Upgrade `simple-ldap-go` v1.9.0 → v1.10.0 — fixes password change bug and adds consistent `ValidateSAMAccountName`
+  input validation across all entrypoints
 
 ### Changed
 
@@ -109,7 +197,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `--version` flag — prints version, commit hash, and build timestamp ([#462](https://github.com/netresearch/ldap-manager/pull/462) by @liberodark)
+- `--version` flag — prints version, commit hash, and build timestamp
+  ([#462](https://github.com/netresearch/ldap-manager/pull/462) by @liberodark)
 - CONTRIBUTING.md with contribution guidelines
 - CHANGELOG.md
 - Release labeler workflow for automatic PR/issue tagging
