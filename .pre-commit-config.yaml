@@ -74,7 +74,7 @@ repos:
 
   # Docker linting
   - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
+    rev: v2.15.1
     hooks:
       - id: hadolint-docker
         name: Lint Dockerfile
