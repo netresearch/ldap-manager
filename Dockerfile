@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.26
+# syntax=docker/dockerfile:1.27
 
 # --- binary-selector stage (production / CI) -----------------------------
 # release.yml's binaries matrix (build-go-attest.yml) cross-compiles Go
