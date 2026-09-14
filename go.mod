@@ -8,7 +8,7 @@ require (
 	github.com/a-h/templ v0.3.1020
 	github.com/go-ldap/ldap/v3 v3.4.14
 	github.com/gofiber/fiber/v3 v3.5.0
-	github.com/gofiber/storage/bbolt/v2 v2.1.10
+	github.com/gofiber/storage/bbolt/v2 v2.2.0
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/joho/godotenv v1.5.1
 	github.com/mxschmitt/playwright-go v0.6201.1
