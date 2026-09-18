@@ -256,6 +256,15 @@ func TestParse_Success(t *testing.T) {
 	if !opts.LDAP.IsActiveDirectory {
 		t.Error("LDAP.IsActiveDirectory: expected true")
 	}
+	// simple-ldap-go honours these from its next release on; until then New
+	// forces EnableOptimizations and both are ignored. Asserted so the mapping
+	// cannot drift back before the upgrade lands.
+	if !opts.LDAP.EnableMetrics {
+		t.Error("LDAP.EnableMetrics: expected true — /debug/pool-stats and the health checks read GetPoolStats()")
+	}
+	if opts.LDAP.EnableCache {
+		t.Error("LDAP.EnableCache: expected false — internal/ldap_cache is the cache we maintain")
+	}
 	if opts.ReadonlyUser != "cn=readonly,dc=example,dc=com" {
 		t.Errorf("ReadonlyUser: expected cn=readonly,dc=example,dc=com, got %s", opts.ReadonlyUser)
 	}
