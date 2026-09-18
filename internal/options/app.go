@@ -303,6 +303,20 @@ func Parse() (*Opts, error) {
 		Server:            *fLdapServer,
 		BaseDN:            *fBaseDN,
 		IsActiveDirectory: *fIsActiveDirectory,
+
+		// simple-ldap-go up to v1.17.0 set EnableOptimizations itself, so its
+		// cache and its performance monitor were on whatever we passed. From the
+		// next release the flags are honoured, and a client that asks for nothing
+		// gets nothing (netresearch/simple-ldap-go#243).
+		//
+		// We ask for the monitor: /debug/pool-stats serves GetPoolStats(), which
+		// returns an empty PerformanceStats without it — the endpoint would answer
+		// zeros indistinguishable from an idle server.
+		EnableMetrics: true,
+		// We do not ask for the library's cache. internal/ldap_cache is our cache
+		// of users, groups and computers; the library's would sit underneath it
+		// caching the same lookups a second time, for another 1000 entries and up
+		// to 64 MB. Set EnableCache here if that changes.
 	}
 
 	return &Opts{
