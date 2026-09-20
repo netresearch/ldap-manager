@@ -290,13 +290,32 @@ func setupMiddleware(f *fiber.App) {
 	}))
 }
 
+// csrfCookieName is the cookie the CSRF middleware sets and reads back.
+const csrfCookieName = "csrf_"
+
+// secureCookieWithheld reports whether a rejected request carries the
+// signature of issue #678: the cookies are marked Secure, the request reached
+// us over plain HTTP, and no CSRF cookie came back. A browser discards a
+// Secure cookie that is set over http:// from any address other than
+// loopback, so the token in the form can never match and every login fails
+// with "csrf: token invalid".
+//
+// The predicate deliberately tests the missing cookie rather than the scheme
+// alone. Two working setups also have a non-https scheme and must not be
+// warned about: a loopback browser (a secure context, so the cookie IS sent)
+// and a TLS terminator outside TrustProxyConfig.Proxies (the browser speaks
+// HTTPS and sends the cookie, while Scheme() still reads "http").
+func secureCookieWithheld(c fiber.Ctx, cookieSecure bool) bool {
+	return cookieSecure && c.Cookies(csrfCookieName) == "" && c.Scheme() != "https"
+}
+
 // createCSRFConfig creates and returns CSRF middleware configuration
 // Uses session-based storage to ensure CSRF tokens persist across requests
 // and survive container restarts when PersistSessions is enabled.
 func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) fiber.Handler {
 	return csrf.New(csrf.Config{
 		Extractor:      extractors.FromForm("csrf_token"),
-		CookieName:     "csrf_",
+		CookieName:     csrfCookieName,
 		CookieSameSite: "Strict",          // Strict for maximum security with proxy trust enabled
 		CookieSecure:   opts.CookieSecure, // Configurable based on HTTPS availability
 		CookieHTTPOnly: true,
@@ -305,6 +324,16 @@ func createCSRFConfig(opts *options.Opts, sessionStore *session.Store) fiber.Han
 		Session:        sessionStore, // Use session-based CSRF storage for persistence
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			log.Warn().Err(err).Msg("CSRF validation failed")
+
+			// Name the actual cause, which "csrf: token invalid" hides. The
+			// operator otherwise has no path from the message to the setting.
+			if secureCookieWithheld(c, opts.CookieSecure) {
+				log.Warn().Msg("no CSRF cookie was sent: cookies are marked Secure " +
+					"(COOKIE_SECURE=true) and this request arrived over plain HTTP, so the " +
+					"browser discarded them. Serve the app over HTTPS, or set " +
+					"COOKIE_SECURE=false for a plain-HTTP deployment.")
+			}
+
 			c.Status(fiber.StatusForbidden)
 			c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 
