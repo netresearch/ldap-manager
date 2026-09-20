@@ -34,7 +34,10 @@ Supports both Active Directory and OpenLDAP with per-user credential binding.
 - Distroless Docker image (13 MB, nonroot, read-only filesystem)
 - Multi-platform builds (linux/amd64, linux/arm64, darwin, windows)
 
-## Quick Start
+## Quick Start (local test run)
+
+This section gets the app running on your own machine. It is not a production
+setup — see [Production setup](#production-setup) before serving it to anyone else.
 
 ### Docker (Recommended)
 
@@ -50,6 +53,12 @@ docker run -d --name ldap-manager \
 ```
 
 Open <http://localhost:3000> and log in with your LDAP credentials.
+
+Plain HTTP works on `localhost` only. Cookies are marked `Secure` by default, and
+a browser keeps such a cookie over plain HTTP only for loopback addresses. Reach
+the same container by IP or hostname over `http://` and every login fails with
+`csrf: token invalid`, because the browser discarded the CSRF cookie. Put TLS in
+front, or set `COOKIE_SECURE=false`.
 
 ### Docker Compose (Development)
 
@@ -91,6 +100,24 @@ a hand-written `internal/web/static/app.css` + vendored htmx on the
 frontend. No Node.js toolchain — vendored files are refreshed with
 `bash scripts/vendor.sh`, which verifies SHA-256 checksums against
 `scripts/vendor.lock`.
+
+## Production setup
+
+The app speaks plain HTTP and has no TLS of its own. Terminate TLS in front of it
+(Traefik, nginx, Caddy) and keep `COOKIE_SECURE=true`, which is the default.
+
+Three settings have to agree, or logins fail with a CSRF error:
+
+- **The browser must reach the site over HTTPS.** Otherwise it discards the
+  `Secure` session and CSRF cookies, and the login POST arrives without them.
+- **The proxy must be trusted.** The app reads `X-Forwarded-Proto` only from
+  `127.0.0.0/8`, `::1/128` and `172.16.0.0/12` (`TrustProxyConfig` in
+  `internal/web/server.go`). A terminator outside those ranges leaves the app
+  believing it serves plain HTTP, and the CSRF middleware then rejects the
+  browser's `https://` origin with `csrf: origin does not match host`.
+- **`COOKIE_SECURE=false` belongs to plain-HTTP deployments only.** It stops the
+  cookie problem and nothing else: credentials still cross the network in the
+  clear. Use it for a local trial, not for a service others log into.
 
 ## Configuration
 
