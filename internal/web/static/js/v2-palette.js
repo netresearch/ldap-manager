@@ -312,19 +312,27 @@
     // hrefFor() only ever produces same-origin absolute paths ("/users/…"),
     // but the value round-trips through the data-href DOM attribute, so
     // validate before navigating: a tampered attribute must not be able to
-    // inject a javascript:/data: or cross-origin URL. Require a leading "/"
-    // and reject a second "/" or "\" — browsers normalize "/\host" to the
-    // protocol-relative "//host", so both must be blocked.
-    if (
-      typeof href !== "string" ||
-      href.charAt(0) !== "/" ||
-      href.charAt(1) === "/" ||
-      href.charAt(1) === "\\"
-    ) {
+    // reach a javascript:/data: or cross-origin URL.
+    //
+    // The URL is parsed and its origin compared, rather than its characters
+    // inspected. Browsers normalise before they navigate — "/\host" and
+    // "/<TAB>/host" (tabs and newlines are stripped) both become the
+    // protocol-relative "//host" — and parsing applies the same rules, so
+    // every such spelling resolves to its real origin here.
+    if (typeof href !== "string" || href.charAt(0) !== "/") {
+      return;
+    }
+    var target;
+    try {
+      target = new URL(href, window.location.origin);
+    } catch (e) {
+      return;
+    }
+    if (target.origin !== window.location.origin) {
       return;
     }
     closePalette();
-    window.location.href = href;
+    window.location.href = target.pathname + target.search + target.hash;
   }
 
   function moveFocus(delta) {
