@@ -78,7 +78,7 @@ This starts:
 
 ### Native Build
 
-Prerequisites: Go 1.26+, [templ CLI](https://github.com/a-h/templ).
+Prerequisites: Go 1.27+, [templ CLI](https://github.com/a-h/templ).
 
 ```bash
 templ generate
