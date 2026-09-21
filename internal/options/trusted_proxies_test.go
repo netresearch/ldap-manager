@@ -53,6 +53,13 @@ func TestParseTrustedProxies_Rejects(t *testing.T) {
 		{"one bad entry among good ones", "127.0.0.0/8,not-an-ip,::1/128"},
 		{"empty", ""},
 		{"only separators and spaces", " , , "},
+		// An IPv4-mapped prefix of /96 or longer folds into its IPv4 form
+		// inside Fiber's net.ParseCIDR, so "::ffff:0:0/96" would trust every
+		// IPv4 peer there is. Shorter than /96 it matches no IPv4 peer at all.
+		{"IPv4-mapped prefix covering all of IPv4", "::ffff:0:0/96"},
+		{"IPv4-mapped prefix of a subnet", "::ffff:192.0.2.0/120"},
+		{"IPv4-mapped prefix cutting into the mapping", "::ffff:0:0/95"},
+		{"IPv4-mapped bare address", "::ffff:192.0.2.5"},
 	}
 
 	for _, tt := range tests {
@@ -65,6 +72,33 @@ func TestParseTrustedProxies_Rejects(t *testing.T) {
 			require.True(t, errors.As(err, &validationErr),
 				"the error must name the offending option")
 			assert.Equal(t, "trusted-proxies", validationErr.Field)
+		})
+	}
+}
+
+// TestParseTrustedProxies_NamesThePlainFormOfAMappedEntry checks the part of
+// the refusal that makes it actionable: the operator is told what to write.
+//
+// The values come from a probe of net.ParseCIDR, which is what Fiber v3.5.0
+// uses: "::ffff:0:0/96" yields the network 0.0.0.0/0 and matches 8.8.8.8,
+// while "::ffff:0:0/95" yields ::fffe:0:0/95 and matches no IPv4 peer.
+func TestParseTrustedProxies_NamesThePlainFormOfAMappedEntry(t *testing.T) {
+	tests := []struct {
+		raw       string
+		wantPlain string
+	}{
+		{"::ffff:0:0/96", "0.0.0.0/0"},
+		{"::ffff:192.0.2.0/120", "192.0.2.0/24"},
+		{"::ffff:0:0/95", "0.0.0.0/0"},
+		{"::ffff:192.0.2.5", "192.0.2.5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			_, err := parseTrustedProxies(tt.raw)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantPlain,
+				"the error must name the plain form to write instead")
 		})
 	}
 }
