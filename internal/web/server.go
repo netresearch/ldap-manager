@@ -136,6 +136,18 @@ func createFiberApp(opts *options.Opts) *fiber.App {
 	return f
 }
 
+// serviceAccountLDAPConfig is the configuration of the long-lived service
+// account client: the shared LDAP settings plus the connection pool from the
+// LDAP_POOL_* options. It is a copy, so opts.LDAP keeps no pool and the
+// per-request clients built from it in getUserLDAP and authenticateUser do
+// not each warm a pool of their own.
+func serviceAccountLDAPConfig(opts *options.Opts) ldap.Config {
+	cfg := opts.LDAP
+	cfg.Pool = opts.LDAPPoolConfig()
+
+	return cfg
+}
+
 // NewApp creates a new web application instance with the provided configuration options.
 // It initializes the LDAP configuration, readonly client (if configured), session management,
 // template cache, Fiber web server, and registers all routes.
@@ -167,9 +179,16 @@ func NewApp(opts *options.Opts) (*App, error) {
 	var ldapCache *ldap_cache.Manager
 
 	if opts.ReadonlyUser != "" && opts.ReadonlyPassword != "" {
+		if opts.PoolMaxLifetime != options.DefaultPoolMaxLifetime {
+			log.Warn().
+				Dur("pool_max_lifetime", opts.PoolMaxLifetime).
+				Msg("LDAP_POOL_MAX_LIFETIME / --pool-max-lifetime has no effect: the connection pool " +
+					"keeps no connection age and closes connections only after the idle time or a failed health check")
+		}
+
 		var err error
 		ldapReadonly, err = ldap.New(
-			opts.LDAP,
+			serviceAccountLDAPConfig(opts),
 			opts.ReadonlyUser,
 			opts.ReadonlyPassword,
 			ldapOpts...,

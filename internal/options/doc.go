@@ -53,7 +53,7 @@
 //	LDAP_SERVER=ldaps://dc1.example.com:636
 //	LDAP_BASE_DN=DC=example,DC=com
 //	LDAP_READONLY_USER=cn=readonly,DC=example,DC=com
-//	LDAP_READONLY_PASSWORD=SecurePassword123
+//	LDAP_READONLY_PASSWORD=<service-account-password>
 //
 // ## Optional LDAP Settings
 //
@@ -79,7 +79,7 @@
 //	LDAP_POOL_MAX_CONNECTIONS=10          # Maximum pool size (default: 10)
 //	LDAP_POOL_MIN_CONNECTIONS=2           # Minimum pool size (default: 2)
 //	LDAP_POOL_MAX_IDLE_TIME=15m          # Maximum idle time (default: 15 minutes)
-//	LDAP_POOL_MAX_LIFETIME=1h             # Maximum connection lifetime (default: 1 hour)
+//	LDAP_POOL_MAX_LIFETIME=1h             # Accepted, no effect: the pool keeps no connection age
 //	LDAP_POOL_HEALTH_CHECK_INTERVAL=30s   # Health check frequency (default: 30 seconds)
 //	LDAP_POOL_ACQUIRE_TIMEOUT=10s         # Pool acquisition timeout (default: 10 seconds)
 //
@@ -119,7 +119,7 @@
 //	LDAP_SERVER=ldaps://dc1.example.com:636
 //	LDAP_BASE_DN=DC=example,DC=com
 //	LDAP_READONLY_USER=cn=readonly,DC=example,DC=com
-//	LDAP_READONLY_PASSWORD=SecurePassword123
+//	LDAP_READONLY_PASSWORD=<service-account-password>
 //
 //	# Optional settings
 //	LDAP_IS_AD=true
@@ -176,7 +176,7 @@
 //	  --ldap-server ldaps://dc1.example.com:636 \
 //	  --base-dn DC=example,DC=com \
 //	  --readonly-user cn=readonly,DC=example,DC=com \
-//	  --readonly-password SecurePassword123 \
+//	  --readonly-password '<service-account-password>' \
 //	  --log-level debug \
 //	  --persist-sessions \
 //	  --session-path ./session.bbolt \

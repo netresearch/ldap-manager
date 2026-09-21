@@ -36,9 +36,9 @@ func setupHealthTestApp() *App {
 	})
 
 	testConfig := ldap.Config{
-		Server: "ldap://test.server.com",
-		Port:   389,
-		BaseDN: "dc=test,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=test,dc=com",
+		SkipConnectionCheck: true,
 	}
 	testClient, _ := ldap.New(testConfig, "cn=admin", "password") //nolint:errcheck
 

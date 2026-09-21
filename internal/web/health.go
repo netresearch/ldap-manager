@@ -2,7 +2,26 @@ package web
 
 import (
 	"github.com/gofiber/fiber/v3"
+	ldap "github.com/netresearch/simple-ldap-go"
 )
+
+// poolIsHealthy reports whether the service account's connection pool can
+// serve requests.
+//
+// PoolStats is nil exactly when the client has no pool, which the health
+// endpoints treat as unhealthy: every service account client is built with
+// one (serviceAccountLDAPConfig). With a pool, TotalConnections > 0 is the
+// signal, except when MinConnections is 0: the idle cleanup then drains an
+// unused pool to zero connections, and a healthy client would read as down
+// (simple-ldap-go v1.18.0 changelog, #247). Such a pool is healthy while it
+// exists; a request that needs a connection opens one.
+func poolIsHealthy(stats ldap.PerformanceStats) bool {
+	if stats.PoolStats == nil {
+		return false
+	}
+
+	return stats.TotalConnections > 0 || stats.PoolStats.MinConnections == 0
+}
 
 // healthHandler provides a comprehensive health check endpoint.
 // Returns cache metrics, connection pool health, system health status, and operational statistics.
@@ -20,8 +39,7 @@ func (a *App) healthHandler(c fiber.Ctx) error {
 	cacheHealthStats := a.ldapCache.GetHealthCheck()
 	poolStats := a.ldapReadonly.GetPoolStats()
 
-	// Determine pool health
-	poolHealthy := poolStats.TotalConnections > 0
+	poolHealthy := poolIsHealthy(poolStats)
 
 	overallHealthy := cacheHealthStats.HealthStatus == statusHealthy && poolHealthy
 
@@ -65,7 +83,7 @@ func (a *App) readinessHandler(c fiber.Ctx) error {
 	isCacheHealthy := a.ldapCache.IsHealthy()
 	isWarmedUp := a.ldapCache.IsWarmedUp()
 	poolStats := a.ldapReadonly.GetPoolStats()
-	isPoolHealthy := poolStats.TotalConnections > 0
+	isPoolHealthy := poolIsHealthy(poolStats)
 
 	// Check if fully ready
 	if isCacheHealthy && isWarmedUp && isPoolHealthy {

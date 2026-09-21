@@ -65,10 +65,15 @@ type Opts struct {
 	// TLS settings
 	TLSSkipVerify bool
 
-	// LDAP Connection Pool settings
-	PoolMaxConnections      int
-	PoolMinConnections      int
-	PoolMaxIdleTime         time.Duration
+	// LDAP Connection Pool settings. They configure the pool of the service
+	// account client only; see LDAPPoolConfig.
+	PoolMaxConnections int
+	PoolMinConnections int
+	PoolMaxIdleTime    time.Duration
+	// PoolMaxLifetime is accepted and has no effect: simple-ldap-go's pool
+	// keeps no connection age and closes connections only when they idle
+	// past PoolMaxIdleTime or fail a health check. The option stays so a
+	// deployment that sets it keeps starting; NewApp warns when it is set.
 	PoolMaxLifetime         time.Duration
 	PoolHealthCheckInterval time.Duration
 	PoolConnectionTimeout   time.Duration
@@ -92,6 +97,41 @@ func validateRequired(name string, value *string) error {
 	}
 
 	return nil
+}
+
+// DefaultPoolMaxLifetime is the value PoolMaxLifetime takes when it is not
+// configured. NewApp compares against it to warn only when an operator set
+// the option, which has no effect.
+const DefaultPoolMaxLifetime = time.Hour
+
+// LDAPPoolConfig returns the connection pool configuration for the service
+// account client, or nil when there is no service account and therefore no
+// long-lived client to pool.
+//
+// It starts from simple-ldap-go's DefaultPoolConfig rather than a struct
+// literal. The library fills zero durations with its defaults but not
+// EnableSelfHealing or the two leak thresholds: a literal would leave leak
+// detection off without saying so. The six settings this application
+// exposes are then applied on top. PoolMaxLifetime has no counterpart in the
+// library and is not mapped.
+//
+// Only the service account client gets this pool. The per-request clients
+// built from a logged-in user's credentials use Opts.LDAP, which carries no
+// pool: a pool there would warm MinConnections connections for every request.
+func (o *Opts) LDAPPoolConfig() *ldap.PoolConfig {
+	if o.ReadonlyUser == "" || o.ReadonlyPassword == "" {
+		return nil
+	}
+
+	pool := ldap.DefaultPoolConfig()
+	pool.MaxConnections = o.PoolMaxConnections
+	pool.MinConnections = o.PoolMinConnections
+	pool.MaxIdleTime = o.PoolMaxIdleTime
+	pool.HealthCheckInterval = o.PoolHealthCheckInterval
+	pool.ConnectionTimeout = o.PoolConnectionTimeout
+	pool.GetTimeout = o.PoolAcquireTimeout
+
+	return pool
 }
 
 // DefaultTrustedProxies is the trust list used when none is configured:
@@ -301,7 +341,7 @@ func Parse() (*Opts, error) {
 		return nil, err
 	}
 
-	poolMaxLifetime, err := envDurationOrDefault("LDAP_POOL_MAX_LIFETIME", 1*time.Hour)
+	poolMaxLifetime, err := envDurationOrDefault("LDAP_POOL_MAX_LIFETIME", DefaultPoolMaxLifetime)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +416,8 @@ func Parse() (*Opts, error) {
 		fPoolMaxIdleTime = flag.Duration("pool-max-idle-time", poolMaxIdleTime,
 			"Maximum time a connection can be idle in the pool before being closed.")
 		fPoolMaxLifetime = flag.Duration("pool-max-lifetime", poolMaxLifetime,
-			"Maximum lifetime of a connection in the pool.")
+			"Accepted for compatibility and has no effect: the LDAP connection pool keeps no "+
+				"connection age. Connections close after --pool-max-idle-time or a failed health check.")
 		fPoolHealthCheckInterval = flag.Duration("pool-health-check-interval", poolHealthCheckInterval,
 			"Interval for connection health checks in the pool.")
 		fPoolConnectionTimeout = flag.Duration("pool-connection-timeout", poolConnectionTimeout,

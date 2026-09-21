@@ -26,6 +26,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/netresearch/ldap-manager/internal/ldap_cache"
+	"github.com/netresearch/ldap-manager/internal/options"
 )
 
 // ldapIntegrationEnv holds the LDAP integration test environment.
@@ -39,8 +40,10 @@ type ldapIntegrationEnv struct {
 }
 
 // skipIfNoLDAP returns the LDAP test environment or skips the test.
-// Uses 127.0.0.1 instead of localhost because the simple-ldap-go library
-// treats "localhost" as an example server and returns mock connections.
+// Uses 127.0.0.1 because CI publishes the service container on the IPv4
+// loopback. (simple-ldap-go up to v1.17.0 also treated "localhost" as an
+// example server and returned a client that never dialled; v1.18.0 removed
+// that, netresearch/simple-ldap-go#246.)
 func skipIfNoLDAP(t *testing.T) *ldapIntegrationEnv {
 	t.Helper()
 
@@ -68,6 +71,23 @@ func skipIfNoLDAP(t *testing.T) *ldapIntegrationEnv {
 		baseDN:    baseDN,
 		host:      host,
 		port:      port,
+	}
+}
+
+// serviceAccountOpts returns the options NewApp would receive for this
+// environment with the admin as service account and the production pool
+// defaults, so tests build the service account client exactly as NewApp does.
+func (env *ldapIntegrationEnv) serviceAccountOpts() *options.Opts {
+	return &options.Opts{
+		LDAP:                    env.config,
+		ReadonlyUser:            env.adminDN,
+		ReadonlyPassword:        env.adminPass,
+		PoolMaxConnections:      10,
+		PoolMinConnections:      2,
+		PoolMaxIdleTime:         15 * time.Minute,
+		PoolHealthCheckInterval: 30 * time.Second,
+		PoolConnectionTimeout:   30 * time.Second,
+		PoolAcquireTimeout:      10 * time.Second,
 	}
 }
 
@@ -146,17 +166,19 @@ func setupLDAPTestApp(t *testing.T, env *ldapIntegrationEnv) (*App, *session.Sto
 		Storage: memory.New(),
 	})
 
-	// Create a real LDAP client for the cache (service account)
-	client, err := ldap.New(env.config, env.adminDN, env.adminPass)
+	// Create the service account client through the production path, so it
+	// carries the connection pool the health endpoints report on (#677).
+	client, err := ldap.New(serviceAccountLDAPConfig(env.serviceAccountOpts()), env.adminDN, env.adminPass)
 	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
 
 	cacheClient := &ldapCacheClientAdapter{client: client}
 	cache := ldap_cache.New(cacheClient)
 
-	// Warm up the cache
-	_ = cache.RefreshUsers()
-	_ = cache.RefreshGroups()
-	_ = cache.RefreshComputers()
+	// Warm the cache the way Manager.Run does: WarmupCache is the only path
+	// that marks the cache warmed up, which readiness requires. Three separate
+	// Refresh calls fill the same data but leave IsWarmedUp false.
+	cache.WarmupCache()
 
 	templateCache := NewTemplateCache(TemplateCacheConfig{
 		DefaultTTL:      100 * time.Millisecond,
@@ -316,12 +338,21 @@ func TestLDAPIntegration_HealthEndpoints(t *testing.T) {
 		defer func() { _ = resp.Body.Close() }()
 
 		body, _ := io.ReadAll(resp.Body)
-		bodyStr := string(body)
-		// Should be ready or warming up
-		assert.True(t,
-			resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable,
-			"Expected 200 or 503, got %d", resp.StatusCode)
-		assert.Contains(t, bodyStr, "status")
+		// The cache is warmed in setupLDAPTestApp and the service account
+		// client is pooled, so readiness has nothing left to wait for. This
+		// accepted "200 or 503" before #677 — the 503 was the missing pool,
+		// and the OR hid it.
+		require.Equal(t, http.StatusOK, resp.StatusCode, "readiness body: %s", body)
+		assert.Contains(t, string(body), `"connection_pool":"healthy"`)
+	})
+
+	t.Run("service account pool holds connections", func(t *testing.T) {
+		stats := app.ldapReadonly.GetPoolStats()
+
+		require.NotNil(t, stats.PoolStats, "the service account client must have a pool (#677)")
+		assert.Positive(t, stats.TotalConnections,
+			"a warmed pool with MinConnections=2 against a live directory must report connections")
+		assert.True(t, poolIsHealthy(stats))
 	})
 
 	t.Run("liveness returns alive", func(t *testing.T) {

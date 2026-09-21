@@ -27,8 +27,9 @@ func buildLoginApp(t *testing.T) *App {
 	chdirToRepoRoot(t)
 
 	cfg := ldap.Config{
-		Server: "ldap://test.server.com",
-		BaseDN: "dc=example,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=example,dc=com",
+		SkipConnectionCheck: true,
 	}
 
 	client, err := ldap.New(cfg, "cn=admin,dc=example,dc=com", "password") // pragma: allowlist secret
