@@ -35,7 +35,7 @@ const (
 	// Pre-seeded test user (see seedLDIF). uid is what LoginAsTestUser uses
 	// because simple-ldap-go falls back from sAMAccountName to uid on OpenLDAP.
 	bootstrapTestUser     = "testuser1"
-	bootstrapTestPassword = "password1"
+	bootstrapTestPassword = "password1" // pragma: allowlist secret
 )
 
 // aclLDIF loosens the osixia/openldap default access control so any
@@ -68,7 +68,7 @@ olcAccess: {1}to *
 //   - cn=developers in ou=groups (non-empty group detail page)
 //
 // The osixia/openldap container also owns cn=admin,dc=example,dc=com (root
-// DN, password=LDAP_ADMIN_PASSWORD) — that's what the app uses as its
+// DN, password=LDAP_ADMIN_PASSWORD) — that's what the app uses as its // pragma: allowlist secret
 // service account. Login form "admin" resolves via simple-ldap-go's
 // uid-fallback to uid=admin,ou=users,dc=example,dc=com.
 const seedLDIF = `dn: ou=users,dc=example,dc=com

@@ -268,7 +268,7 @@ func TestParse_Success(t *testing.T) {
 	if opts.ReadonlyUser != "cn=readonly,dc=example,dc=com" {
 		t.Errorf("ReadonlyUser: expected cn=readonly,dc=example,dc=com, got %s", opts.ReadonlyUser)
 	}
-	if opts.ReadonlyPassword != "secret" {
+	if opts.ReadonlyPassword != "secret" { // pragma: allowlist secret
 		t.Errorf("ReadonlyPassword: expected secret, got %s", opts.ReadonlyPassword)
 	}
 	if !opts.PersistSessions {

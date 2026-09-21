@@ -41,7 +41,7 @@ func TestFormatVersion_ProductionBuild(t *testing.T) {
 
 	// Test production version
 	Version = "v1.2.3"
-	CommitHash = "abc123def456"
+	CommitHash = "abc123def456" // pragma: allowlist secret
 	BuildTimestamp = "2025-09-30T10:00:00Z"
 
 	result := FormatVersion()

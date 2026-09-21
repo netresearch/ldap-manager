@@ -12,11 +12,11 @@ services:
       LDAP_ORGANISATION: "Netresearch"
       LDAP_DOMAIN: "netresearch.local"
       LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_ADMIN_PASSWORD: "admin"
-      LDAP_CONFIG_PASSWORD: "config"
+      LDAP_ADMIN_PASSWORD: "admin" # pragma: allowlist secret
+      LDAP_CONFIG_PASSWORD: "config" # pragma: allowlist secret
       LDAP_READONLY_USER: "true"
       LDAP_READONLY_USER_USERNAME: "readonly"
-      LDAP_READONLY_USER_PASSWORD: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly" # pragma: allowlist secret
       LDAP_RFC2307BIS_SCHEMA: "false"
       LDAP_BACKEND: "mdb"
       LDAP_TLS: "true"
@@ -159,11 +159,11 @@ services:
       LDAP_SERVER: "ldap://ldap-server:389"
       LDAP_BASE_DN: "dc=netresearch,dc=local"
       LDAP_READONLY_USER: "cn=readonly,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "readonly"
+      LDAP_READONLY_PASSWORD: "readonly" # pragma: allowlist secret
 
       # Session settings
       SESSION_PATH: "/data/session.bbolt"
-      SESSION_SECRET: "dev-secret-change-in-production"
+      SESSION_SECRET: "dev-secret-change-in-production" # pragma: allowlist secret
       COOKIE_SECURE: "true"
 
       # Application settings
@@ -194,7 +194,7 @@ services:
       LDAP_SERVER: "ldap://ldap-server:389"
       LDAP_BASE_DN: "dc=netresearch,dc=local"
       LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "admin"
+      LDAP_READONLY_PASSWORD: "admin" # pragma: allowlist secret
 
       # Test environment settings
       ENVIRONMENT: "test"

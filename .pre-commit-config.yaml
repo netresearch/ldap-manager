@@ -50,7 +50,9 @@ repos:
 
       # Check YAML syntax
       - id: check-yaml
-        args: ["--multi", "--allow-multiple-documents"]
+        # --unsafe checks syntax without constructing tags, so Compose's
+        # custom tags (!reset, !override in compose.traefik.yml) parse.
+        args: ["--multi", "--allow-multiple-documents", "--unsafe"]
 
       # Check TOML syntax
       - id: check-toml
