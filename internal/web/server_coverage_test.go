@@ -227,7 +227,7 @@ func TestNewApp_TLSSkipVerify(t *testing.T) {
 }
 
 func TestCreateFiberApp_HasExpectedConfig(t *testing.T) {
-	app := createFiberApp()
+	app := createFiberApp(&options.Opts{TrustedProxies: options.DefaultTrustedProxies})
 	if app == nil {
 		t.Fatal("createFiberApp returned nil")
 	}

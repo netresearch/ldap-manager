@@ -112,16 +112,22 @@ func createSessionStore(opts *options.Opts) *session.Store {
 	})
 }
 
-// createFiberApp creates and configures a new Fiber application
-func createFiberApp() *fiber.App {
+// createFiberApp creates and configures a new Fiber application.
+//
+// The trust list comes from --trusted-proxies / TRUSTED_PROXIES and defaults
+// to loopback plus the Docker bridge range. It governs two things at once:
+// Scheme(), which the CSRF middleware compares against the browser's Origin,
+// and IP(), which the login rate limiter counts against. Widening it lets a
+// trusted peer name its own client IP, so the default stays narrow and a
+// proxy on another network is named explicitly.
+func createFiberApp(opts *options.Opts) *fiber.App {
 	f := fiber.New(fiber.Config{
 		AppName:      "netresearch/ldap-manager",
 		BodyLimit:    4 * 1024,
 		ErrorHandler: handle500,
-		// Trust proxy headers from Traefik (Docker bridge network)
-		TrustProxy: true,
+		TrustProxy:   true,
 		TrustProxyConfig: fiber.TrustProxyConfig{
-			Proxies: []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}, // Loopback and Docker internal networks
+			Proxies: opts.TrustedProxies,
 		},
 		ProxyHeader: fiber.HeaderXForwardedFor,
 	})
@@ -180,7 +186,7 @@ func NewApp(opts *options.Opts) (*App, error) {
 
 	sessionStore := createSessionStore(opts)
 	templateCache := NewTemplateCache(DefaultTemplateCacheConfig())
-	f := createFiberApp()
+	f := createFiberApp(opts)
 	csrfHandler := createCSRFConfig(opts, sessionStore)
 
 	// Per-user PinnedStore (spec §6.5). bbolt keeps an exclusive lock on

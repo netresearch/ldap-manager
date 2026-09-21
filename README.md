@@ -111,11 +111,17 @@ Three settings have to agree, or logins fail with a CSRF error:
 
 - **The browser must reach the site over HTTPS.** Otherwise it discards the
   `Secure` session and CSRF cookies, and the login POST arrives without them.
-- **The proxy must be trusted.** The app reads `X-Forwarded-Proto` only from
-  `127.0.0.0/8`, `::1/128` and `172.16.0.0/12` (`TrustProxyConfig` in
-  `internal/web/server.go`). A terminator outside those ranges leaves the app
-  believing it serves plain HTTP, and the CSRF middleware then rejects the
-  browser's `https://` origin with `csrf: origin does not match host`.
+- **The proxy must be trusted.** `TRUSTED_PROXIES` defaults to `127.0.0.0/8`,
+  `::1/128` and `172.16.0.0/12`, which covers a sidecar terminator. A terminator
+  on another network — a Kubernetes pod range, an external load balancer — has to
+  be named, or the app keeps believing it serves plain HTTP and the CSRF
+  middleware rejects the browser's `https://` origin with
+  `csrf: origin does not match host`.
+
+  Keep the list as narrow as the deployment allows. It also decides whose
+  `X-Forwarded-For` the login rate limiter counts against, so a trusted peer can
+  name its own client IP; a list wide enough to include ordinary clients lets
+  them rotate that header and evade the brute-force limit.
 - **`COOKIE_SECURE=false` belongs to plain-HTTP deployments only.** It stops the
   cookie problem and nothing else: credentials still cross the network in the
   clear. Use it for a local trial, not for a service others log into.
@@ -125,20 +131,21 @@ Three settings have to agree, or logins fail with a CSRF error:
 All options can be set via environment variables, a `.env` file, or command-line flags. Run `./ldap-manager --help` for
 the full list.
 
-| Environment Variable     | Flag                  | Default    | Description                                                |
-| ------------------------ | --------------------- | ---------- | ---------------------------------------------------------- |
-| `LDAP_SERVER`            | `--ldap-server`       | (required) | LDAP URI (`ldap://` or `ldaps://`)                         |
-| `LDAP_BASE_DN`           | `--base-dn`           | (required) | Base DN for LDAP searches                                  |
-| `LDAP_IS_AD`             | `--active-directory`  | `false`    | Enable Active Directory mode                               |
-| `LDAP_READONLY_USER`     | `--readonly-user`     |            | Service account DN for background cache                    |
-| `LDAP_READONLY_PASSWORD` | `--readonly-password` |            | Service account password                                   |
-| `LDAP_ADMIN_GROUP`       | `--admin-group`       |            | Group DN whose members may view the password-expiry roster |
-| `LDAP_TLS_SKIP_VERIFY`   | `--tls-skip-verify`   | `false`    | Skip TLS certificate verification                          |
-| `PORT`                   |                       | `3000`     | HTTP listen port                                           |
-| `COOKIE_SECURE`          | `--cookie-secure`     | `true`     | Require HTTPS for cookies                                  |
-| `PERSIST_SESSIONS`       | `--persist-sessions`  | `false`    | Persist sessions to BoltDB                                 |
-| `SESSION_DURATION`       | `--session-duration`  | `30m`      | Session lifetime                                           |
-| `LOG_LEVEL`              | `--log-level`         | `info`     | Log level (trace, debug, info, warn, error)                |
+| Environment Variable     | Flag                  | Default                             | Description                                                |
+| ------------------------ | --------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| `LDAP_SERVER`            | `--ldap-server`       | (required)                          | LDAP URI (`ldap://` or `ldaps://`)                         |
+| `LDAP_BASE_DN`           | `--base-dn`           | (required)                          | Base DN for LDAP searches                                  |
+| `LDAP_IS_AD`             | `--active-directory`  | `false`                             | Enable Active Directory mode                               |
+| `LDAP_READONLY_USER`     | `--readonly-user`     |                                     | Service account DN for background cache                    |
+| `LDAP_READONLY_PASSWORD` | `--readonly-password` |                                     | Service account password                                   |
+| `LDAP_ADMIN_GROUP`       | `--admin-group`       |                                     | Group DN whose members may view the password-expiry roster |
+| `LDAP_TLS_SKIP_VERIFY`   | `--tls-skip-verify`   | `false`                             | Skip TLS certificate verification                          |
+| `PORT`                   |                       | `3000`                              | HTTP listen port                                           |
+| `COOKIE_SECURE`          | `--cookie-secure`     | `true`                              | Require HTTPS for cookies                                  |
+| `TRUSTED_PROXIES`        | `--trusted-proxies`   | `127.0.0.0/8,::1/128,172.16.0.0/12` | Peers whose `X-Forwarded-*` headers are believed           |
+| `PERSIST_SESSIONS`       | `--persist-sessions`  | `false`                             | Persist sessions to BoltDB                                 |
+| `SESSION_DURATION`       | `--session-duration`  | `30m`                               | Session lifetime                                           |
+| `LOG_LEVEL`              | `--log-level`         | `info`                              | Log level (trace, debug, info, warn, error)                |
 
 When no readonly user is configured, the app uses per-user LDAP credentials for all operations and the background cache
 is disabled.

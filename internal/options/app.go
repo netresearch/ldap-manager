@@ -5,8 +5,10 @@ package options
 import (
 	"flag"
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -47,6 +49,19 @@ type Opts struct {
 	// Cookie security settings
 	CookieSecure bool
 
+	// TrustedProxies lists the peers whose X-Forwarded-* headers the app
+	// believes, as IP addresses or CIDR ranges. Two things depend on it:
+	// the scheme the app reports for itself (X-Forwarded-Proto), which the
+	// CSRF middleware compares against the browser's Origin, and the client
+	// IP the login rate limiter counts against (X-Forwarded-For).
+	//
+	// Trusting a peer therefore lets it name its own client IP, so the list
+	// stays as narrow as the deployment allows. The default covers loopback
+	// and the Docker bridge network, which is where a sidecar terminator
+	// sits; a proxy on another network (a Kubernetes pod range, an external
+	// load balancer) has to be named explicitly.
+	TrustedProxies []string
+
 	// TLS settings
 	TLSSkipVerify bool
 
@@ -77,6 +92,96 @@ func validateRequired(name string, value *string) error {
 	}
 
 	return nil
+}
+
+// DefaultTrustedProxies is the trust list used when none is configured:
+// loopback plus the Docker bridge range, which is where a sidecar TLS
+// terminator sits.
+var DefaultTrustedProxies = []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}
+
+// errIPv4Mapped refuses an IPv4-mapped entry and names the plain form to
+// write instead, because the mapped spelling either widens the list far past
+// what was intended or matches nothing at all.
+func errIPv4Mapped(entry, plain string) error {
+	return ValidationError{
+		Field: "trusted-proxies",
+		Message: fmt.Sprintf(
+			"%q is an IPv4-mapped IPv6 entry, which does not mean what it looks like; write %q instead",
+			entry, plain),
+	}
+}
+
+// unmapPrefix renders an IPv4-mapped prefix in its plain IPv4 form, so the
+// error can name the entry the operator should have written. A prefix shorter
+// than /96 cuts into the mapping and has no IPv4 equivalent; it is reported
+// as the whole-IPv4 wildcard, which is what such an entry gestures at.
+func unmapPrefix(prefix netip.Prefix) string {
+	const mappedPrefixBits = 96
+
+	if prefix.Bits() < mappedPrefixBits {
+		return "0.0.0.0/0"
+	}
+
+	return netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-mappedPrefixBits).Masked().String()
+}
+
+// parseTrustedProxies splits a comma-separated list of IP addresses and CIDR
+// ranges and rejects any entry that is neither. An empty list is refused
+// rather than treated as "trust nothing": an empty value in a deployment is
+// far more likely to be a mistyped variable than an intent, and the failure it
+// causes — the app reading its own scheme as plain HTTP behind a terminator —
+// surfaces as a CSRF error nowhere near the cause.
+func parseTrustedProxies(raw string) ([]string, error) {
+	entries := strings.Split(raw, ",")
+	proxies := make([]string, 0, len(entries))
+
+	for _, entry := range entries {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+
+		prefix, err := netip.ParsePrefix(trimmed)
+		if err != nil {
+			addr, addrErr := netip.ParseAddr(trimmed)
+			if addrErr != nil {
+				return nil, ValidationError{
+					Field:   "trusted-proxies",
+					Message: fmt.Sprintf("%q is neither an IP address nor a CIDR range", trimmed),
+				}
+			}
+
+			if addr.Is4In6() {
+				return nil, errIPv4Mapped(trimmed, addr.Unmap().String())
+			}
+
+			proxies = append(proxies, trimmed)
+
+			continue
+		}
+
+		// An IPv4-mapped prefix is never what the operator means. Fiber parses
+		// the list with net.ParseCIDR, which folds a mapped prefix of /96 or
+		// longer into its IPv4 form — so "::ffff:0:0/96" silently becomes
+		// 0.0.0.0/0 and trusts every IPv4 peer on the internet, which is the
+		// opposite of a narrow list. Shorter than /96 the prefix cuts into the
+		// mapping itself and matches no IPv4 peer at all. Both cases are
+		// refused in favour of the plain IPv4 form.
+		if prefix.Addr().Is4In6() {
+			return nil, errIPv4Mapped(trimmed, unmapPrefix(prefix))
+		}
+
+		proxies = append(proxies, trimmed)
+	}
+
+	if len(proxies) == 0 {
+		return nil, ValidationError{
+			Field:   "trusted-proxies",
+			Message: "the list is empty; name at least one IP address or CIDR range",
+		}
+	}
+
+	return proxies, nil
 }
 
 func envStringOrDefault(name, d string) string {
@@ -252,6 +357,13 @@ func Parse() (*Opts, error) {
 			"Require HTTPS for session and CSRF cookies. "+
 				"Set to false only for HTTP-only environments. Defaults to true for security.")
 
+		fTrustedProxies = flag.String("trusted-proxies",
+			envStringOrDefault("TRUSTED_PROXIES", strings.Join(DefaultTrustedProxies, ",")),
+			"Comma-separated IP addresses or CIDR ranges whose X-Forwarded-* headers are believed. "+
+				"Name the TLS terminator in front of the app; a proxy outside this list leaves the app "+
+				"reading its own scheme as plain HTTP, which fails CSRF origin checks. The list also "+
+				"decides whose X-Forwarded-For the login rate limiter counts, so keep it narrow.")
+
 		// TLS configuration
 		fTLSSkipVerify = flag.Bool("tls-skip-verify", tlsSkipVerify,
 			"Skip TLS certificate verification. Use only for development with self-signed certificates.")
@@ -299,6 +411,11 @@ func Parse() (*Opts, error) {
 		}
 	}
 
+	trustedProxies, err := parseTrustedProxies(*fTrustedProxies)
+	if err != nil {
+		return nil, err
+	}
+
 	ldapConfig := ldap.Config{
 		Server:            *fLdapServer,
 		BaseDN:            *fBaseDN,
@@ -332,8 +449,9 @@ func Parse() (*Opts, error) {
 		SessionDuration: *fSessionDuration,
 		PinnedPath:      *fPinnedPath,
 
-		CookieSecure:  *fCookieSecure,
-		TLSSkipVerify: *fTLSSkipVerify,
+		CookieSecure:   *fCookieSecure,
+		TrustedProxies: trustedProxies,
+		TLSSkipVerify:  *fTLSSkipVerify,
 
 		PoolMaxConnections:      *fPoolMaxConnections,
 		PoolMinConnections:      *fPoolMinConnections,
