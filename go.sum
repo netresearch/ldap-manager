@@ -240,8 +240,8 @@ github.com/gofiber/fiber/v3 v3.5.0 h1:dk7TOUH6DXJGtOLsN2XEG+0ZML7cznzHILTVozbNEK
 github.com/gofiber/fiber/v3 v3.5.0/go.mod h1:GOVDTW+gjJvfe0iJyVujbQ1Lnx+JUjFySJRI/9/xX/w=
 github.com/gofiber/schema v1.8.3 h1:06ZedxIYjngzc0095PYy7uWnFnbRflWFpikvZH61fDc=
 github.com/gofiber/schema v1.8.3/go.mod h1:jWnnZdhcW1mHyV+VnfRxKJDPNcepJsTZ9RIWxrr32Ng=
-github.com/gofiber/storage/bbolt/v2 v2.1.10 h1:Cp04wdQRULty77o4Wr+vTeGJX6W/404p/PVx0vJxABY=
-github.com/gofiber/storage/bbolt/v2 v2.1.10/go.mod h1:76kHA/CPOHHkIKErrWmjGiNidSvMLvm+sS72U2rUiE8=
+github.com/gofiber/storage/bbolt/v2 v2.2.0 h1:uY5DRtrVK09r44qN1Bu3LPkMR2HZZ3uZmUYOLmlVViY=
+github.com/gofiber/storage/bbolt/v2 v2.2.0/go.mod h1:7tn9klIigGSUjcdkoJO1TbHo+osinXzaVbpZ3be+W/g=
 github.com/gofiber/storage/memory/v2 v2.1.2 h1:IGOMSgnlCv/Dh1rkXA9G69kHIAywUqPjaGFUR5XATE0=
 github.com/gofiber/storage/memory/v2 v2.1.2/go.mod h1:R3dBncEPAGt83cQleHFXdT/t7Pep6+5ED0rBfJSqjJg=
 github.com/gofiber/utils/v2 v2.4.2 h1:OA4LAEG3zKkPwFU7Jippxdk//N5hKMU12qXSCd0C4lQ=
