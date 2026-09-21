@@ -81,6 +81,12 @@
   var index = null;
   var focused = -1;
 
+  // The entry each rendered row stands for. Navigation reads the entry and
+  // derives the URL with hrefFor, instead of reading a URL back out of a DOM
+  // attribute: DOM text is attacker-controllable once anything can edit the
+  // page, and hrefFor always yields a same-origin path whatever the DN holds.
+  var entryOf = new WeakMap();
+
   function openPalette() {
     if (dialog.open) return;
     if (typeof dialog.showModal === "function") dialog.showModal();
@@ -226,7 +232,7 @@
     var li = document.createElement("li");
     li.className = "palette__item";
     li.setAttribute("role", "option");
-    li.setAttribute("data-href", hrefFor(entry));
+    entryOf.set(li, entry);
     li.setAttribute("aria-selected", isFocused ? "true" : "false");
 
     // Type indicator: icon for known kinds (user/group/computer), text
@@ -264,8 +270,7 @@
     li.appendChild(ctx);
 
     li.addEventListener("click", function () {
-      var href = li.getAttribute("data-href");
-      if (href) navigateTo(href);
+      navigateTo(hrefFor(entry));
     });
     return li;
   }
@@ -309,10 +314,9 @@
   }
 
   function navigateTo(href) {
-    // hrefFor() only ever produces same-origin absolute paths ("/users/…"),
-    // but the value round-trips through the data-href DOM attribute, so
-    // validate before navigating: a tampered attribute must not be able to
-    // reach a javascript:/data: or cross-origin URL.
+    // Every caller passes hrefFor(entry), which only produces same-origin
+    // absolute paths ("/users/…"). The check below stays as a second layer
+    // against a future caller that passes something else.
     //
     // The URL is parsed and its origin compared, rather than its characters
     // inspected. Browsers normalise before they navigate — "/\host" and
@@ -348,8 +352,8 @@
   function enterFocused() {
     var items = results.querySelectorAll("[role=option]");
     if (focused < 0 || focused >= items.length) return;
-    var href = items[focused].getAttribute("data-href");
-    if (href) navigateTo(href);
+    var entry = entryOf.get(items[focused]);
+    if (entry) navigateTo(hrefFor(entry));
   }
 
   // --- wire up ---
