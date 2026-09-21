@@ -5,8 +5,10 @@ package options
 import (
 	"flag"
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -47,6 +49,19 @@ type Opts struct {
 	// Cookie security settings
 	CookieSecure bool
 
+	// TrustedProxies lists the peers whose X-Forwarded-* headers the app
+	// believes, as IP addresses or CIDR ranges. Two things depend on it:
+	// the scheme the app reports for itself (X-Forwarded-Proto), which the
+	// CSRF middleware compares against the browser's Origin, and the client
+	// IP the login rate limiter counts against (X-Forwarded-For).
+	//
+	// Trusting a peer therefore lets it name its own client IP, so the list
+	// stays as narrow as the deployment allows. The default covers loopback
+	// and the Docker bridge network, which is where a sidecar terminator
+	// sits; a proxy on another network (a Kubernetes pod range, an external
+	// load balancer) has to be named explicitly.
+	TrustedProxies []string
+
 	// TLS settings
 	TLSSkipVerify bool
 
@@ -77,6 +92,49 @@ func validateRequired(name string, value *string) error {
 	}
 
 	return nil
+}
+
+// DefaultTrustedProxies is the trust list used when none is configured:
+// loopback plus the Docker bridge range, which is where a sidecar TLS
+// terminator sits.
+var DefaultTrustedProxies = []string{"127.0.0.0/8", "::1/128", "172.16.0.0/12"}
+
+// parseTrustedProxies splits a comma-separated list of IP addresses and CIDR
+// ranges and rejects any entry that is neither. An empty list is refused
+// rather than treated as "trust nothing": an empty value in a deployment is
+// far more likely to be a mistyped variable than an intent, and the failure it
+// causes — the app reading its own scheme as plain HTTP behind a terminator —
+// surfaces as a CSRF error nowhere near the cause.
+func parseTrustedProxies(raw string) ([]string, error) {
+	entries := strings.Split(raw, ",")
+	proxies := make([]string, 0, len(entries))
+
+	for _, entry := range entries {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+
+		if _, err := netip.ParsePrefix(trimmed); err != nil {
+			if _, addrErr := netip.ParseAddr(trimmed); addrErr != nil {
+				return nil, ValidationError{
+					Field:   "trusted-proxies",
+					Message: fmt.Sprintf("%q is neither an IP address nor a CIDR range", trimmed),
+				}
+			}
+		}
+
+		proxies = append(proxies, trimmed)
+	}
+
+	if len(proxies) == 0 {
+		return nil, ValidationError{
+			Field:   "trusted-proxies",
+			Message: "the list is empty; name at least one IP address or CIDR range",
+		}
+	}
+
+	return proxies, nil
 }
 
 func envStringOrDefault(name, d string) string {
@@ -252,6 +310,13 @@ func Parse() (*Opts, error) {
 			"Require HTTPS for session and CSRF cookies. "+
 				"Set to false only for HTTP-only environments. Defaults to true for security.")
 
+		fTrustedProxies = flag.String("trusted-proxies",
+			envStringOrDefault("TRUSTED_PROXIES", strings.Join(DefaultTrustedProxies, ",")),
+			"Comma-separated IP addresses or CIDR ranges whose X-Forwarded-* headers are believed. "+
+				"Name the TLS terminator in front of the app; a proxy outside this list leaves the app "+
+				"reading its own scheme as plain HTTP, which fails CSRF origin checks. The list also "+
+				"decides whose X-Forwarded-For the login rate limiter counts, so keep it narrow.")
+
 		// TLS configuration
 		fTLSSkipVerify = flag.Bool("tls-skip-verify", tlsSkipVerify,
 			"Skip TLS certificate verification. Use only for development with self-signed certificates.")
@@ -299,6 +364,11 @@ func Parse() (*Opts, error) {
 		}
 	}
 
+	trustedProxies, err := parseTrustedProxies(*fTrustedProxies)
+	if err != nil {
+		return nil, err
+	}
+
 	ldapConfig := ldap.Config{
 		Server:            *fLdapServer,
 		BaseDN:            *fBaseDN,
@@ -332,8 +402,9 @@ func Parse() (*Opts, error) {
 		SessionDuration: *fSessionDuration,
 		PinnedPath:      *fPinnedPath,
 
-		CookieSecure:  *fCookieSecure,
-		TLSSkipVerify: *fTLSSkipVerify,
+		CookieSecure:   *fCookieSecure,
+		TrustedProxies: trustedProxies,
+		TLSSkipVerify:  *fTLSSkipVerify,
 
 		PoolMaxConnections:      *fPoolMaxConnections,
 		PoolMinConnections:      *fPoolMinConnections,
