@@ -1,6 +1,7 @@
 # Troubleshooting Guide
 
-Comprehensive troubleshooting guide for LDAP Manager operational issues, including diagnostic procedures, common problems, and solutions.
+Comprehensive troubleshooting guide for LDAP Manager operational issues, including diagnostic procedures, common
+problems, and solutions.
 
 ## Table of Contents
 
@@ -216,6 +217,7 @@ grep "connection.*timeout\|acquire.*timeout" /var/log/ldap-manager/app.log
    ```
 
 3. **Check LDAP server load**
+
    ```bash
    # Monitor LDAP server performance
    ldapsearch -H ldaps://dc.example.com -D "service_account" -W -b "" -s base "objectclass=*" currentTime
@@ -263,6 +265,7 @@ grep "authentication.*failure" /var/log/ldap-manager/app.log | tail -10
    ```
 
 3. **Incorrect DN format**
+
    ```bash
    # Test different DN formats
    # UPN format: user@example.com
@@ -291,6 +294,7 @@ ldapsearch -H ldaps://dc.example.com:636 \
    ```
 
 2. **Check service account permissions**
+
    ```powershell
    # PowerShell command for AD
    Get-ADUser -Identity "ldap-reader" -Properties MemberOf
@@ -427,6 +431,7 @@ go tool pprof http://localhost:3000/debug/pprof/heap  # if debug enabled
    ```
 
 3. **Check for connection leaks**
+
    ```bash
    # Monitor connection pool
    watch -n 5 "curl -s -H 'Cookie: session=...' http://localhost:3000/debug/ldap-pool | jq '.stats'"
@@ -467,6 +472,7 @@ go tool pprof http://localhost:3000/debug/pprof/profile?seconds=30
    ```
 
 3. **Limit concurrent processing**
+
    ```bash
    GOMAXPROCS=4  # limit to 4 CPU cores
    ```
@@ -506,6 +512,7 @@ grep "cache.*miss\|cache.*hit" /var/log/ldap-manager/app.log | tail -20
    ```
 
 3. **Adjust cache expiration**
+
    ```bash
    # Longer LDAP cache interval for stable directories
    LDAP_CACHE_REFRESH_INTERVAL=300s  # 5 minutes
@@ -534,6 +541,7 @@ docker restart ldap-manager
    ```
 
 2. **Manual cache invalidation**
+
    ```bash
    # Restart application to clear all caches
    systemctl restart ldap-manager
@@ -575,6 +583,7 @@ file "$SESSION_PATH"
    ```
 
 2. **Fix session file permissions**
+
    ```bash
    chmod 600 /app/data/sessions.db
    chown ldap-manager:ldap-manager /app/data/sessions.db
@@ -667,6 +676,7 @@ docker exec ldap-manager wget --spider http://localhost:3000/health
    ```
 
 2. **Adjust health check timing**
+
    ```dockerfile
    HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
        CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
@@ -752,6 +762,7 @@ ldapsearch -H ldaps://dc.example.com -D "user@example.com" -W \
    ```
 
 2. **Target specific domain controller**
+
    ```bash
    # Use specific DC instead of DNS alias
    LDAP_SERVER=ldaps://dc01.example.com:636
@@ -792,6 +803,7 @@ ldapsearch -H ldaps://ldap.example.com -D "$LDAP_READONLY_USER" -W \
    ```
 
 2. **Check service account DN format**
+
    ```bash
    # Ensure correct DN format for OpenLDAP
    LDAP_READONLY_USER=cn=ldap-manager,ou=System,dc=example,dc=com
@@ -1048,6 +1060,8 @@ systemctl restart ldap-manager
 
 ---
 
-This troubleshooting guide covers the most common operational issues with LDAP Manager. For additional support, consult the [Configuration Reference](../user-guide/configuration.md), [Performance Guide](performance-optimization.md), and [Security Guide](security-configuration.md).
+This troubleshooting guide covers the most common operational issues with LDAP Manager. For additional support, consult
+the [Configuration Reference](../user-guide/configuration.md), [Performance Guide](performance-optimization.md), and
+[Security Guide](security-configuration.md).
 
 Remember to always test solutions in a development environment before applying to production systems.

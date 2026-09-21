@@ -1,10 +1,13 @@
 # LDAP Manager Documentation
 
-Welcome to the LDAP Manager documentation. This guide provides comprehensive information for users, developers, and operators working with LDAP Manager.
+Welcome to the LDAP Manager documentation. This guide provides comprehensive information for users, developers, and
+operators working with LDAP Manager.
 
 ## About LDAP Manager
 
-LDAP Manager is a web-based frontend that allows users to administrate LDAP directory entries including users, groups, and computers. Built with Go and modern web technologies, it provides a secure, performant interface for LDAP directory management.
+LDAP Manager is a web-based frontend that allows users to administrate LDAP directory entries including users, groups,
+and computers. Built with Go and modern web technologies, it provides a secure, performant interface for LDAP directory
+management.
 
 ## Documentation Structure
 
@@ -26,7 +29,8 @@ For developers contributing to the project:
 - **[Architecture Overview](development/architecture.md)** - System design and technical architecture
 - **[Detailed Architecture Guide](development/architecture-detailed.md)** - Comprehensive technical architecture
 - **[Go Documentation Reference](development/go-doc-reference.md)** - Complete package documentation
-- **[Architecture Decision Records](adr/README.md)** - Why the frontend stack, the interface shape, the CSP and the accessibility target are what they are
+- **[Architecture Decision Records](adr/README.md)** - Why the frontend stack, the interface shape, the CSP and the
+  accessibility target are what they are
 
 ### Operations
 
@@ -68,7 +72,8 @@ For DevOps and system administrators:
 
 ## License
 
-LDAP Manager is licensed under the MIT license. For more information, see the [LICENSE](../LICENSE) file in the project root.
+LDAP Manager is licensed under the MIT license. For more information, see the [LICENSE](../LICENSE) file in the project
+root.
 
 ---
 

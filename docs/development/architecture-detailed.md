@@ -17,7 +17,8 @@ Comprehensive technical architecture overview for developers working on LDAP Man
 
 ## System Overview
 
-LDAP Manager is a modern Go web application that provides a user-friendly interface for LDAP directory management. Built for performance, security, and maintainability.
+LDAP Manager is a modern Go web application that provides a user-friendly interface for LDAP directory management. Built
+for performance, security, and maintainability.
 
 ### Core Technologies
 
@@ -44,7 +45,7 @@ LDAP Manager is a modern Go web application that provides a user-friendly interf
 
 LDAP Manager follows a **layered monolithic architecture** with clear separation of concerns:
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │             HTTP Layer                  │
 │  (Fiber Framework + Middleware)         │
@@ -62,7 +63,7 @@ LDAP Manager follows a **layered monolithic architecture** with clear separation
 
 ### Component Architecture
 
-```
+```text
                     ┌─────────────────┐
                     │   HTTP Client   │
                     └─────────┬───────┘
@@ -103,7 +104,7 @@ LDAP Manager follows a **layered monolithic architecture** with clear separation
 
 LDAP Manager follows the **Standard Go Project Layout** for maintainability:
 
-```
+```text
 ldap-manager/
 ├── cmd/ldap-manager/          # Application entrypoint
 ├── internal/                  # Private application code
@@ -120,7 +121,7 @@ ldap-manager/
 
 ### Package Dependencies
 
-```
+```text
 cmd/ldap-manager
     │
     └── internal/options ──┐
@@ -168,7 +169,7 @@ cmd/ldap-manager
 
 ### Request Processing Flow
 
-```
+```text
 1. HTTP Request
    │
    ├─→ Static Asset? ──→ File Server (cached)
@@ -213,7 +214,7 @@ cmd/ldap-manager
 
 ### Authentication Flow
 
-```
+```text
 1. User Login Request
    │
    ├─→ Extract credentials
@@ -233,7 +234,7 @@ cmd/ldap-manager
 
 ### LDAP Operation Flow
 
-```
+```text
 1. LDAP Operation Request
    │
    ├─→ Extract User DN from session
@@ -270,7 +271,7 @@ LDAP Manager implements a **three-tier caching system** for optimal performance:
 - **Invalidation**: Time-based refresh + manual invalidation
 - **Data**: Users, groups, computers with relationships
 
-```
+```text
 LDAP Cache Architecture:
 ┌─────────────────────────────────────────┐
 │            Cache Manager                │
@@ -291,7 +292,7 @@ LDAP Cache Architecture:
 - **Invalidation**: Path-based invalidation after LDAP modifications
 - **Data**: Complete HTML pages with user-specific content
 
-```
+```text
 Template Cache Flow:
 Request ──→ Generate Cache Key ──→ Check Cache
                                        │
@@ -344,7 +345,7 @@ Typical cache performance metrics:
 
 LDAP Manager implements multiple security layers:
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │          Network Security               │
 │  (HTTPS, Reverse Proxy, Firewall)       │
@@ -395,7 +396,7 @@ X-XSS-Protection: 1; mode=block
 
 ### Authentication Architecture
 
-```
+```text
 User Credentials
       │
       ▼
@@ -448,7 +449,7 @@ LDAP Manager is designed for **high-performance directory operations**:
 
 ### Connection Pool Design
 
-```
+```text
 Connection Pool Architecture:
 ┌─────────────────────────────────────────┐
 │           Pool Manager                  │
@@ -511,7 +512,7 @@ Connection Pool Architecture:
 
 ### Container Architecture
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │            Container Image              │
 ├─────────────────────────────────────────┤
@@ -536,7 +537,7 @@ Connection Pool Architecture:
 
 ### Production Deployment
 
-```
+```text
                     ┌─────────────────┐
                     │  Load Balancer  │
                     │   (nginx/HAP)   │
@@ -649,4 +650,6 @@ make benchmark        # Performance benchmarks
 
 ---
 
-This architecture guide provides the foundational understanding needed to contribute effectively to LDAP Manager. For implementation details, see the [Go Documentation Reference](go-doc-reference.md) and [API Reference](../user-guide/api.md).
+This architecture guide provides the foundational understanding needed to contribute effectively to LDAP Manager. For
+implementation details, see the [Go Documentation Reference](go-doc-reference.md) and [API
+Reference](../user-guide/api.md).

@@ -6,11 +6,13 @@ Complete Go package documentation for LDAP Manager, generated from inline doc co
 
 ### cmd/ldap-manager
 
-**Package main** provides the entry point for the LDAP Manager web application. It initializes logging, parses configuration options, and starts the web server.
+**Package main** provides the entry point for the LDAP Manager web application. It initializes logging, parses
+configuration options, and starts the web server.
 
 #### Functions
 
-- **main()** - Application entry point that configures logging, parses options, creates web app instance, and starts HTTP server on port 3000.
+- **main()** - Application entry point that configures logging, parses options, creates web app instance, and starts
+  HTTP server on port 3000.
 
 ---
 
@@ -20,7 +22,8 @@ Complete Go package documentation for LDAP Manager, generated from inline doc co
 
 #### Types
 
-**type Opts struct** - Holds all configuration options for the LDAP Manager application. Includes LDAP connection settings, session management, connection pooling, and logging configuration.
+**type Opts struct** - Holds all configuration options for the LDAP Manager application. Includes LDAP connection
+settings, session management, connection pooling, and logging configuration.
 
 Fields:
 
@@ -40,7 +43,8 @@ Fields:
 
 #### Functions
 
-**Parse() \*Opts** - Parses command line flags and environment variables to build application configuration. Loads from .env files, parses flags, and validates required settings.
+**Parse() \*Opts** - Parses command line flags and environment variables to build application configuration. Loads from
+.env files, parses flags, and validates required settings.
 
 ---
 
@@ -56,7 +60,8 @@ Fields:
 
 #### Functions
 
-**FormatVersion() string** - Returns a human-readable version string including build metadata. Returns "Development version" for dev builds, or formatted version with commit and timestamp.
+**FormatVersion() string** - Returns a human-readable version string including build metadata. Returns "Development
+version" for dev builds, or formatted version with commit and timestamp.
 
 ---
 
@@ -66,9 +71,11 @@ Fields:
 
 #### Types
 
-**type PoolManager struct** - Provides a high-level interface for LDAP connection pool operations. Wraps the connection pool and provides convenient methods for common LDAP tasks.
+**type PoolManager struct** - Provides a high-level interface for LDAP connection pool operations. Wraps the connection
+pool and provides convenient methods for common LDAP tasks.
 
-**type PooledLDAPClient struct** - Represents an LDAP client obtained from the connection pool. Automatically returns the connection to the pool when closed.
+**type PooledLDAPClient struct** - Represents an LDAP client obtained from the connection pool. Automatically returns
+the connection to the pool when closed.
 
 **type ConnectionPool struct** - Manages a pool of LDAP connections for efficient reuse.
 
@@ -76,11 +83,14 @@ Fields:
 
 #### Key Methods
 
-**NewPoolManager(baseClient *ldap.LDAP, config *PoolConfig) (\*PoolManager, error)** - Creates a new pool manager with the specified base client and configuration.
+**NewPoolManager(baseClient *ldap.LDAP, config *PoolConfig) (\*PoolManager, error)** - Creates a new pool manager with
+the specified base client and configuration.
 
-**WithCredentials(ctx context.Context, dn, password string) (\*PooledLDAPClient, error)** - Gets an authenticated LDAP client from the connection pool. Replaces the simple-ldap-go WithCredentials method with pooled connections.
+**WithCredentials(ctx context.Context, dn, password string) (\*PooledLDAPClient, error)** - Gets an authenticated LDAP
+client from the connection pool. Replaces the simple-ldap-go WithCredentials method with pooled connections.
 
-**GetReadOnlyClient(ctx context.Context) (\*PooledLDAPClient, error)** - Gets a read-only LDAP client from the connection pool. Useful for operations that don't require specific user credentials.
+**GetReadOnlyClient(ctx context.Context) (\*PooledLDAPClient, error)** - Gets a read-only LDAP client from the
+connection pool. Useful for operations that don't require specific user credentials.
 
 **GetStats() PoolStats** - Returns connection pool statistics.
 
@@ -90,11 +100,13 @@ Fields:
 
 ### internal/ldap_cache
 
-**Package ldap_cache** provides efficient caching of LDAP directory data with automatic refresh capabilities. Maintains synchronized in-memory caches for users, groups, and computers with concurrent-safe operations.
+**Package ldap_cache** provides efficient caching of LDAP directory data with automatic refresh capabilities. Maintains
+synchronized in-memory caches for users, groups, and computers with concurrent-safe operations.
 
 #### Types
 
-**type Manager struct** - Coordinates LDAP data caching with automatic background refresh. Maintains separate caches for users, groups, and computers with configurable refresh intervals.
+**type Manager struct** - Coordinates LDAP data caching with automatic background refresh. Maintains separate caches for
+users, groups, and computers with configurable refresh intervals.
 
 Fields:
 
@@ -102,7 +114,8 @@ Fields:
 - `Groups Cache[ldap.Group]` - Cached group entries with O(1) indexed lookups
 - `Computers Cache[ldap.Computer]` - Cached computer entries with O(1) indexed lookups
 
-**type Cache[T cacheable] struct** - Provides thread-safe storage for LDAP entities with O(1) indexed lookups. Maintains both slice storage for iteration and hash-based indexes for fast lookups.
+**type Cache[T cacheable] struct** - Provides thread-safe storage for LDAP entities with O(1) indexed lookups. Maintains
+both slice storage for iteration and hash-based indexes for fast lookups.
 
 **type FullLDAPUser struct** - Represents a user with populated group memberships.
 
@@ -114,7 +127,8 @@ Fields:
 
 **New(client LDAPClient) \*Manager** - Creates a new LDAP cache manager with 30-second refresh interval.
 
-**NewWithConfig(client LDAPClient, refreshInterval time.Duration) \*Manager** - Creates a new LDAP cache manager with configurable refresh interval.
+**NewWithConfig(client LDAPClient, refreshInterval time.Duration) \*Manager** - Creates a new LDAP cache manager with
+configurable refresh interval.
 
 **FindUsers(includeDisabled bool) []ldap.User** - Returns all cached users, optionally including disabled accounts.
 
@@ -130,7 +144,8 @@ Fields:
 
 #### Types
 
-**type App struct** - Represents the main web application structure. Encapsulates LDAP client, connection pool, cache manager, session store, template cache, and Fiber web framework.
+**type App struct** - Represents the main web application structure. Encapsulates LDAP client, connection pool, cache
+manager, session store, template cache, and Fiber web framework.
 
 Fields:
 
@@ -143,15 +158,18 @@ Fields:
 
 #### Key Methods
 
-**NewApp(opts *options.Opts) (*App, error)** - Creates a new web application instance with provided configuration. Initializes LDAP client, connection pool, session management, template cache, and Fiber web server.
+**NewApp(opts *options.Opts) (*App, error)** - Creates a new web application instance with provided configuration.
+Initializes LDAP client, connection pool, session management, template cache, and Fiber web server.
 
-**Listen(addr string) error** - Starts the web application server on the specified address. Launches LDAP cache manager in background and begins serving HTTP requests.
+**Listen(addr string) error** - Starts the web application server on the specified address. Launches LDAP cache manager
+in background and begins serving HTTP requests.
 
 **Shutdown() error** - Gracefully shuts down the application including template cache and LDAP connection pool.
 
 #### Handler Methods
 
-**usersHandler(c \*fiber.Ctx) error** - Handles GET /users requests to list all user accounts. Supports show-disabled query parameter.
+**usersHandler(c \*fiber.Ctx) error** - Handles GET /users requests to list all user accounts. Supports show-disabled
+query parameter.
 
 **userHandler(c \*fiber.Ctx) error** - Handles GET /users/:userDN requests for specific user details.
 

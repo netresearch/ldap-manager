@@ -392,7 +392,7 @@ journalctl -u ldap-manager -f
 
 Look for messages like:
 
-```
+```text
 INF Starting LDAP Manager server on :3000
 DBG LDAP connection test successful
 ```
@@ -407,26 +407,26 @@ DBG LDAP connection test successful
 
 ### Common Issues
 
-**LDAP Connection Failed**
+#### LDAP Connection Failed
 
 - Verify server hostname and port are accessible
 - Check firewall rules on both client and server
 - Validate LDAPS certificate if using secure connection
 - Test with `ldapsearch` command-line tool
 
-**Authentication Failures**
+#### Authentication Failures
 
 - Verify readonly user credentials
 - Check user has read permissions to Base DN
 - Ensure Base DN covers the intended directory scope
 
-**Permission Denied**
+#### Permission Denied
 
 - Check file system permissions for binary and configuration
 - Ensure service user has required access
 - Verify network connectivity to LDAP server
 
-**Session Issues**
+#### Session Issues
 
 - Check session duration format (Go duration syntax)
 - Verify session file path permissions when using persistence

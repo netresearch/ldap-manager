@@ -365,7 +365,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) specifica
 
 ### Format
 
-```
+```text
 <type>[optional scope]: <description>
 
 [optional body]
@@ -426,7 +426,7 @@ Closes #123
 
 **Title Format**: Same as commit messages
 
-```
+```text
 feat(auth): add two-factor authentication support
 ```
 
@@ -591,23 +591,23 @@ dn := getUserDN()
 // Consider:
 userDN := getUserDN()
 ```
-````
 
 # Positive reinforcement
 
 Nice use of the builder pattern here! This makes the code much more readable.
-
-```
+````
 
 #### As a Contributor
 
 **Responding to Feedback:**
+
 - Address all comments constructively
 - Ask for clarification if feedback is unclear
 - Make requested changes promptly
 - Thank reviewers for their time and suggestions
 
 **Common Review Issues:**
+
 - Missing error handling
 - Insufficient test coverage
 - Unclear variable names
@@ -619,6 +619,7 @@ Nice use of the builder pattern here! This makes the code much more readable.
 ### Version Numbering
 
 We use [Semantic Versioning](https://semver.org/):
+
 - **MAJOR**: Breaking changes
 - **MINOR**: New features (backward compatible)
 - **PATCH**: Bug fixes (backward compatible)
@@ -660,4 +661,3 @@ We value all contributions to LDAP Manager:
 - **Documentation**: Recognized for improving project accessibility
 
 Thank you for contributing to LDAP Manager! 🎉
-```

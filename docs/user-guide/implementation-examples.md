@@ -309,7 +309,7 @@ metadata:
   name: ldap-manager-secret
 type: Opaque
 stringData:
-  LDAP_READONLY_PASSWORD: "your_service_account_password"
+  LDAP_READONLY_PASSWORD: "your_service_account_password" # pragma: allowlist secret
 
 ---
 apiVersion: v1
@@ -1140,6 +1140,8 @@ security_audit() {
 }
 ```
 
-This comprehensive implementation guide provides practical examples for deploying and using LDAP Manager in various real-world scenarios. Regular testing and monitoring ensure optimal performance and security.
+This comprehensive implementation guide provides practical examples for deploying and using LDAP Manager in various
+real-world scenarios. Regular testing and monitoring ensure optimal performance and security.
 
-For additional technical details, see the [API Reference](api.md), [Configuration Reference](configuration.md), and [Architecture Documentation](../development/architecture-detailed.md).
+For additional technical details, see the [API Reference](api.md), [Configuration Reference](configuration.md), and
+[Architecture Documentation](../development/architecture-detailed.md).

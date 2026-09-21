@@ -21,7 +21,7 @@
     "style": "ordered"
   },
   "MD033": {
-    "allowed_elements": ["br", "details", "summary", "img"]
+    "allowed_elements": ["br", "details", "summary", "img", "div"]
   },
   "MD041": false,
   "MD045": false

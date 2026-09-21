@@ -19,7 +19,7 @@ go version
 
 **Installation:**
 
-- **Linux/macOS**: Use official installer from https://golang.org/dl/
+- **Linux/macOS**: Use official installer from <https://golang.org/dl/>
 - **Windows**: Download and run MSI installer
 - **Package Managers**:
   - Ubuntu: `sudo apt install golang-1.23`
@@ -36,8 +36,9 @@ node --version
 
 **Installation:**
 
-- **Official**: Download from https://nodejs.org/
+- **Official**: Download from <https://nodejs.org/>
 - **nvm (recommended)**:
+
   ```bash
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
   nvm install 16
@@ -279,7 +280,7 @@ make fix
 
 ### Directory Organization
 
-```
+```text
 ldap-manager/
 ├── cmd/                    # Application entry points
 ├── internal/               # Private application code
@@ -415,7 +416,7 @@ go test -v ./internal/web -run TestSpecificFunction
 
 Tests are organized by package:
 
-```
+```text
 internal/
 ├── web/
 │   ├── handlers.go
@@ -466,7 +467,7 @@ docker run -d --name test-ldap \
   -p 389:389 \
   -e LDAP_ORGANISATION="Test Org" \
   -e LDAP_DOMAIN="test.local" \
-  -e LDAP_ADMIN_PASSWORD="admin" \
+  -e LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-admin}" \
   osixia/openldap:latest
 
 # Configure tests to use local LDAP
