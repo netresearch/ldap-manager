@@ -27,24 +27,6 @@ RUN set -eux; \
     cp "/tmp/${BINARY}" /usr/bin/ldap-manager; \
     chmod +x /usr/bin/ldap-manager
 
-# --- dev stage (local development containers) ----------------------------
-# Used by compose.yml's ldap-manager-dev / ldap-manager-test services.
-# Not part of the release pipeline — `docker buildx build --target=dev`
-# only locally. Source code is bind-mounted at runtime.
-FROM golang:1.27.1-alpine@sha256:4cb7ac979db5fcc41cae44b2227ba5ab8a51e8807f40d9ba4dee20a0ad960b5b AS dev
-
-SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
-WORKDIR /app
-
-RUN apk add --no-cache git make bash
-
-COPY go.mod go.sum ./
-
-RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
-    go mod download
-
-CMD ["sh"]
-
 # --- runner stage (production runtime) -----------------------------------
 # Distroless nonroot: no shell, no package manager, minimal attack surface.
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab AS runner

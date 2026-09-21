@@ -94,8 +94,11 @@ services:
     volumes:
       - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
-    depends_on:
-      - ldap-manager-dev
+    # Proxies to the app run on the host with `make dev`, so local HTTPS works
+    # against a live-reloading binary. host.docker.internal resolves to the
+    # host through the gateway mapping below.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - ldap-network
     profiles:
@@ -145,76 +148,6 @@ services:
       - "3000:3000"
     networks:
       - ldap-network
-
-  # LDAP Manager development container
-  # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
-  ldap-manager-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ldap-manager-dev
-    hostname: ldap-manager-dev
-    environment:
-      # LDAP connection settings
-      LDAP_SERVER: "ldap://ldap-server:389"
-      LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_READONLY_USER: "cn=readonly,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "readonly" # pragma: allowlist secret
-
-      # Session settings
-      SESSION_PATH: "/data/session.bbolt"
-      SESSION_SECRET: "dev-secret-change-in-production" # pragma: allowlist secret
-      COOKIE_SECURE: "true"
-
-      # Application settings
-      LOG_LEVEL: "debug"
-      PORT: "3000"
-
-      # Development settings
-      ENVIRONMENT: "development"
-    depends_on:
-      openldap-init:
-        condition: service_completed_successfully
-    networks:
-      - ldap-network
-    profiles:
-      - dev
-
-  # Test runner container
-  # Requires DOCKER_BUILDKIT=1 for cache mount optimizations
-  ldap-manager-test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: dev
-    container_name: ldap-manager-test
-    hostname: ldap-manager-test
-    environment:
-      # LDAP connection settings for testing
-      LDAP_SERVER: "ldap://ldap-server:389"
-      LDAP_BASE_DN: "dc=netresearch,dc=local"
-      LDAP_READONLY_USER: "cn=admin,dc=netresearch,dc=local"
-      LDAP_READONLY_PASSWORD: "admin" # pragma: allowlist secret
-
-      # Test environment settings
-      ENVIRONMENT: "test"
-      LOG_LEVEL: "warn"
-    volumes:
-      # Mount source code for testing
-      - .:/app
-      - /app/node_modules
-      # Cache Go modules and build cache
-      - go_modules:/go/pkg/mod
-      - go_cache:/root/.cache/go-build
-    depends_on:
-      openldap:
-        condition: service_healthy
-    networks:
-      - ldap-network
-    working_dir: /app
-    command: ["sh", "-c", "make check"]
-    profiles:
-      - test
 
 volumes:
   # Persistent volumes for data storage

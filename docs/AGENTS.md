@@ -15,7 +15,8 @@ Screenshots are stored in `docs/assets/` and referenced in `README.md`. Follow t
 1. **Start the development environment:**
 
    ```bash
-   docker compose --profile dev up -d
+   docker compose --profile dev up -d   # OpenLDAP, phpLDAPadmin, nginx
+   make dev                             # the app, on the host
    ```
 
 2. **Wait for services to be healthy:**
@@ -24,8 +25,8 @@ Screenshots are stored in `docs/assets/` and referenced in `README.md`. Follow t
    docker compose --profile dev ps  # Check that ldap-server is healthy
    ```
 
-3. **Note the application port:** The app runs on port 3000 internally, mapped to the host. Check `compose.yml` for the
-   current port mapping (default: `3000:3000`).
+3. **Note the application port:** `make dev` serves on port 3000; `PORT` overrides it. nginx also proxies it on
+   <https://localhost:8443>.
 
 ### Setting Up Realistic Test Data
 
@@ -204,8 +205,7 @@ After capturing screenshots, ensure `README.md` references them correctly:
 
 #### Port conflicts
 
-- If port 3000 is in use, modify `compose.yml` temporarily (e.g., `3001:3000`)
-- Remember to revert before committing
+- If port 3000 is in use, start the app with `PORT=3001 make dev`
 
 ### Cleanup
 
@@ -270,5 +270,5 @@ See "Creating and Updating Screenshots" section above for the complete workflow.
 1. **Screenshots not loading**: Check file paths in `docs/assets/` and README references
 2. **LDAP data missing**: Verify dev LDAP server has test data seeded
 3. **Groups not showing**: Ensure `objectClass: groupOfNames` (not `posixGroup`)
-4. **Port conflicts**: Modify `compose.yml` port mapping temporarily
+4. **Port conflicts**: Start the app on another port with `PORT=3001 make dev`
 5. **Cache issues**: Wait 35 seconds for LDAP cache refresh after data changes

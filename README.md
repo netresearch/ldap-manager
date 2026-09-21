@@ -62,19 +62,22 @@ front, or set `COOKIE_SECURE=false`.
 
 ### Docker Compose (Development)
 
-The project includes a complete development environment with OpenLDAP, seed data, ACL configuration, and an nginx TLS
+The project includes a directory to develop against — OpenLDAP with seed data and ACLs, phpLDAPadmin, and an nginx TLS
 reverse proxy:
 
 ```bash
-docker compose --profile dev up
+docker compose --profile dev up -d   # OpenLDAP, phpLDAPadmin, nginx
+make dev                             # the app itself, with templ watching
 ```
 
-This starts:
+This gives you:
 
 - **OpenLDAP** with pre-configured users (`admin/admin`, `jdoe/password`, `jsmith/password`)
-- **nginx** TLS reverse proxy on <https://localhost:8443>
 - **phpLDAPadmin** on <http://localhost:8080>
-- **ldap-manager** with live reload
+- **nginx** TLS reverse proxy on <https://localhost:8443>, forwarding to the app you run with `make dev`
+
+The app runs on the host rather than in a container, which is what makes the reload fast. HTTPS through nginx is also
+the way to exercise the default `COOKIE_SECURE=true` locally — see [Production setup](#production-setup).
 
 ### Native Build
 
