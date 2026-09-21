@@ -37,7 +37,7 @@ Fields:
 - `PoolMaxConnections int` - Maximum LDAP pool connections
 - `PoolMinConnections int` - Minimum LDAP pool connections
 - `PoolMaxIdleTime time.Duration` - Maximum connection idle time
-- `PoolMaxLifetime time.Duration` - Maximum connection lifetime
+- `PoolMaxLifetime time.Duration` - Accepted and has no effect: the pool keeps no connection age
 - `PoolHealthCheckInterval time.Duration` - Health check interval
 - `PoolAcquireTimeout time.Duration` - Connection acquisition timeout
 

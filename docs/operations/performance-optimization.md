@@ -46,7 +46,6 @@ LDAP Manager is designed for high-performance directory operations with the foll
 LDAP_POOL_MAX_CONNECTIONS=20        # Maximum concurrent connections
 LDAP_POOL_MIN_CONNECTIONS=5         # Always-available connections
 LDAP_POOL_MAX_IDLE_TIME=15m         # Close idle connections after 15 minutes
-LDAP_POOL_MAX_LIFETIME=1h           # Rotate connections every hour
 LDAP_POOL_HEALTH_CHECK_INTERVAL=30s # Check connection health every 30 seconds
 LDAP_POOL_ACQUIRE_TIMEOUT=10s       # Timeout for connection acquisition
 ```
@@ -112,8 +111,6 @@ curl -H "Cookie: session=..." http://localhost:3000/debug/ldap-pool
 LDAP_POOL_MAX_CONNECTIONS=30
 LDAP_POOL_MIN_CONNECTIONS=10
 
-# Reduce connection lifetime for better load distribution
-LDAP_POOL_MAX_LIFETIME=30m
 
 # More frequent health checks for reliability
 LDAP_POOL_HEALTH_CHECK_INTERVAL=15s
@@ -127,7 +124,6 @@ LDAP_POOL_MIN_CONNECTIONS=8
 
 # Keep connections longer to avoid reconnection overhead
 LDAP_POOL_MAX_IDLE_TIME=45m
-LDAP_POOL_MAX_LIFETIME=2h
 
 # Faster acquisition timeout
 LDAP_POOL_ACQUIRE_TIMEOUT=5s

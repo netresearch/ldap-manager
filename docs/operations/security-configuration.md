@@ -94,7 +94,6 @@ LDAP_WRITE_TIMEOUT=30s         # Limit modify operation time
 
 # Connection pool security
 LDAP_POOL_MAX_CONNECTIONS=20    # Limit resource usage
-LDAP_POOL_MAX_LIFETIME=1h       # Rotate connections regularly
 LDAP_POOL_HEALTH_CHECK_INTERVAL=30s  # Monitor connection health
 ```
 
