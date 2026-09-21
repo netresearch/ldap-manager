@@ -20,7 +20,9 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ### Our Pledge
 
-We are committed to providing a welcoming and inclusive environment for all contributors, regardless of background, experience level, gender identity, sexual orientation, disability, personal appearance, race, ethnicity, age, religion, or nationality.
+We are committed to providing a welcoming and inclusive environment for all contributors, regardless of background,
+experience level, gender identity, sexual orientation, disability, personal appearance, race, ethnicity, age, religion,
+or nationality.
 
 ### Expected Behavior
 
@@ -40,7 +42,8 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ### Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting the project maintainers. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting
+the project maintainers. All complaints will be reviewed and investigated promptly and fairly.
 
 ---
 
@@ -135,7 +138,7 @@ We use a feature branch workflow:
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format:
 
-```
+```text
 <type>(<scope>): <description>
 
 [optional body]

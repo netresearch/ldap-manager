@@ -194,8 +194,8 @@ make urls          # Show all service URLs
 
 ### Service URLs
 
-- **App**: http://localhost:3000
-- **phpLDAPadmin**: http://localhost:8080
+- **App**: <http://localhost:3000>
+- **phpLDAPadmin**: <http://localhost:8080>
 - **LDAP Server**: ldap://localhost:389
 - **LDAPS Server**: ldaps://localhost:636
 

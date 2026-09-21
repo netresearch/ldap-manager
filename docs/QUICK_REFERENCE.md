@@ -288,9 +288,9 @@ pnpm build:assets   # ✅ Assets build successfully
 
 ### External Resources
 
-- **Fiber Docs:** https://docs.gofiber.io/
-- **Templ Guide:** https://templ.guide/
-- **Go LDAP:** https://pkg.go.dev/github.com/go-ldap/ldap/v3
+- **Fiber Docs:** <https://docs.gofiber.io/>
+- **Templ Guide:** <https://templ.guide/>
+- **Go LDAP:** <https://pkg.go.dev/github.com/go-ldap/ldap/v3>
 
 ---
 

@@ -20,11 +20,6 @@ repos:
       - id: go-build-mod
         name: Build Go modules
 
-      # Go testing
-      - id: go-test-mod
-        name: Run Go tests
-        args: [-short, -race]
-
       # Go linting with golangci-lint
       - id: golangci-lint-mod
         name: Run golangci-lint
@@ -96,6 +91,20 @@ repos:
         name: Lint Markdown files
         args: ["--fix"]
         exclude: node_modules/
+
+  # Go tests. Defined locally rather than via pre-commit-golang because
+  # `-race` needs cgo, and the upstream hook inherits whatever CGO_ENABLED the
+  # committer's environment happens to carry. Where that is 0 the hook fails
+  # with "go: -race requires cgo", which reads as a broken toolchain rather
+  # than a missing variable. Pinning it here makes the requirement explicit.
+  - repo: local
+    hooks:
+      - id: go-test-mod
+        name: Run Go tests
+        entry: env CGO_ENABLED=1 go test -short -race ./...
+        language: system
+        types: [go]
+        pass_filenames: false
 
 # Global configuration
 ci:

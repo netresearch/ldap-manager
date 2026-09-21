@@ -223,7 +223,7 @@ LDAP Manager uses [templ](https://templ.guide/) for zero-runtime-overhead templa
 
 Templates are cached with intelligent cache keys:
 
-```
+```text
 Cache Key Format:
 [path]:[method]:[user_context]:[query_params]:[additional_data]
 
@@ -254,7 +254,7 @@ Smart cache invalidation ensures data consistency:
 
 ### Memory Usage Patterns
 
-```
+```text
 Typical Memory Distribution:
 ├── Application Code: ~50MB (fixed)
 ├── LDAP Data Cache: ~100MB (10,000 users)
@@ -776,6 +776,7 @@ fi
 
 ---
 
-This performance optimization guide provides comprehensive strategies for maximizing LDAP Manager performance. Regular monitoring and tuning based on actual usage patterns will ensure optimal performance in your specific environment.
+This performance optimization guide provides comprehensive strategies for maximizing LDAP Manager performance. Regular
+monitoring and tuning based on actual usage patterns will ensure optimal performance in your specific environment.
 
 For additional performance insights, see the [Monitoring Guide](monitoring.md) and [Architecture Documentation](../development/architecture-detailed.md).

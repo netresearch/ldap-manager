@@ -56,6 +56,7 @@ Contributing, architecture, and development practices:
 | **[Architecture Overview](development/architecture.md)**          | System design & patterns          | → [Detailed Architecture](development/architecture-detailed.md)          |
 | **[Architecture Detailed](development/architecture-detailed.md)** | Comprehensive technical deep-dive | → [API](user-guide/api.md), [Go Docs](development/go-doc-reference.md)   |
 | **[Go Documentation](development/go-doc-reference.md)**           | Package API reference             | → [Architecture](development/architecture.md)                            |
+| **[Decision Records](adr/README.md)**                             | Why the stack and UI are this way | → [Architecture](development/architecture.md)                            |
 
 ### For Operations
 

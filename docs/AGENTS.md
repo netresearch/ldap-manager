@@ -24,11 +24,13 @@ Screenshots are stored in `docs/assets/` and referenced in `README.md`. Follow t
    docker compose --profile dev ps  # Check that ldap-server is healthy
    ```
 
-3. **Note the application port:** The app runs on port 3000 internally, mapped to the host. Check `compose.yml` for the current port mapping (default: `3000:3000`).
+3. **Note the application port:** The app runs on port 3000 internally, mapped to the host. Check `compose.yml` for the
+   current port mapping (default: `3000:3000`).
 
 ### Setting Up Realistic Test Data
 
-**Note:** The development LDAP server may already have pre-seeded test data with users (jsmith, mmueller, etc.) and groups. Check if data exists before creating:
+**Note:** The development LDAP server may already have pre-seeded test data with users (jsmith, mmueller, etc.) and
+groups. Check if data exists before creating:
 
 ```bash
 docker exec ldap-server ldapsearch -x -H ldap://localhost \
@@ -157,16 +159,16 @@ Use Playwright MCP or browser automation to capture screenshots:
 
 2. **Login** with test user credentials:
    - Username: `jsmith`
-   - Password: `password`
+   - Password: `password` <!-- pragma: allowlist secret -->
 
 3. **Capture required screenshots:**
 
-| Screenshot                      | URL Path                                                  | Description                    |
-| ------------------------------- | --------------------------------------------------------- | ------------------------------ |
-| `ldap_manager_users.png`        | `/users`                                                  | Users list showing all users   |
-| `ldap_manager_user_detail.png`  | `/users/uid=jsmith,ou=Users,dc=netresearch,dc=local`      | User detail page               |
-| `ldap_manager_groups.png`       | `/groups`                                                 | Groups list showing all groups |
-| `ldap_manager_group_detail.png` | `/groups/cn=developers,ou=Groups,dc=netresearch,dc=local` | Group detail with members      |
+   | Screenshot                      | URL Path                                                  | Description                    |
+   | ------------------------------- | --------------------------------------------------------- | ------------------------------ |
+   | `ldap_manager_users.png`        | `/users`                                                  | Users list showing all users   |
+   | `ldap_manager_user_detail.png`  | `/users/uid=jsmith,ou=Users,dc=netresearch,dc=local`      | User detail page               |
+   | `ldap_manager_groups.png`       | `/groups`                                                 | Groups list showing all groups |
+   | `ldap_manager_group_detail.png` | `/groups/cn=developers,ou=Groups,dc=netresearch,dc=local` | Group detail with members      |
 
 4. **Save screenshots to** `docs/assets/`
 
@@ -191,7 +193,8 @@ After capturing screenshots, ensure `README.md` references them correctly:
 
 - Verify groups use `objectClass: groupOfNames` (not `posixGroup`)
 - Wait for cache refresh (30 seconds)
-- Check LDAP directly: `docker exec ldap-server ldapsearch -x -H ldap://localhost -D "cn=admin,dc=netresearch,dc=local" -w admin -b "ou=Groups,dc=netresearch,dc=local" "(objectClass=groupOfNames)"`
+- Check LDAP directly: `docker exec ldap-server ldapsearch -x -H ldap://localhost -D "cn=admin,dc=netresearch,dc=local"
+  -w admin -b "ou=Groups,dc=netresearch,dc=local" "(objectClass=groupOfNames)"`
 
 #### User group memberships not showing
 

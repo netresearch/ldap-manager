@@ -22,7 +22,7 @@ Comprehensive security configuration and best practices for LDAP Manager product
 
 LDAP Manager implements a **defense-in-depth security model** with multiple layers:
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │          Network Security               │
 │  HTTPS, Reverse Proxy, WAF, Firewall    │
@@ -177,7 +177,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 The CSP policy allows only necessary resources:
 
-```
+```text
 default-src 'self'              # All content from same origin only
 style-src 'self' 'unsafe-inline'   # CSS from app + inline styles (TailwindCSS)
 script-src 'self'               # JavaScript only from application
@@ -386,7 +386,7 @@ iptables -P OUTPUT DROP
 
 Implement network segmentation:
 
-```
+```text
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Internet      │    │  DMZ/Web Tier   │    │  Internal LAN   │
 │                 │    │                 │    │                 │
@@ -547,7 +547,8 @@ COOKIE_SECURE=false
 
 **Default Value**: `true` (secure by default)
 
-**Security Warning**: Setting `COOKIE_SECURE=false` in production over HTTP exposes session tokens to network sniffing. Only use in trusted networks or behind SSL-terminating proxies.
+**Security Warning**: Setting `COOKIE_SECURE=false` in production over HTTP exposes session tokens to network sniffing.
+Only use in trusted networks or behind SSL-terminating proxies.
 
 ---
 
@@ -1000,6 +1001,8 @@ For PCI DSS compliance:
 
 ---
 
-This security configuration guide provides comprehensive security controls for LDAP Manager. Regular security reviews and updates ensure continued protection against evolving threats.
+This security configuration guide provides comprehensive security controls for LDAP Manager. Regular security reviews
+and updates ensure continued protection against evolving threats.
 
-For additional security information, see the [Architecture Documentation](../development/architecture-detailed.md) and [Monitoring Guide](monitoring.md).
+For additional security information, see the [Architecture Documentation](../development/architecture-detailed.md) and
+[Monitoring Guide](monitoring.md).

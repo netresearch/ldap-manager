@@ -115,14 +115,14 @@ SESSION_DURATION=24h
 
 #### Session Storage Options
 
-**Memory Storage (Default)**
+##### Memory Storage (Default)
 
 - Fast performance
 - No persistent storage
 - Sessions lost on application restart
 - Suitable for development and testing
 
-**BBolt Database Storage**
+##### BBolt Database Storage
 
 - Persistent across restarts
 - Slightly slower performance
@@ -380,7 +380,8 @@ LOG_LEVEL=debug
 
 ### Cache Settings
 
-LDAP directory data is cached automatically with 30-second refresh intervals. This is currently not configurable but provides optimal balance of performance and data freshness.
+LDAP directory data is cached automatically with 30-second refresh intervals. This is currently not configurable but
+provides optimal balance of performance and data freshness.
 
 ### Resource Limits
 
