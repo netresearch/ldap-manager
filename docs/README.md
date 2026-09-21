@@ -26,6 +26,7 @@ For developers contributing to the project:
 - **[Architecture Overview](development/architecture.md)** - System design and technical architecture
 - **[Detailed Architecture Guide](development/architecture-detailed.md)** - Comprehensive technical architecture
 - **[Go Documentation Reference](development/go-doc-reference.md)** - Complete package documentation
+- **[Architecture Decision Records](adr/README.md)** - Why the frontend stack, the interface shape, the CSP and the accessibility target are what they are
 
 ### Operations
 
