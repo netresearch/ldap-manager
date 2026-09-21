@@ -9,6 +9,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.7.0] - 2026-09-21
+
+### Added
+
+- **`TRUSTED_PROXIES` / `--trusted-proxies`** names the peers whose `X-Forwarded-*` headers the app believes, as
+  comma-separated IP addresses or CIDR ranges
+  ([#681](https://github.com/netresearch/ldap-manager/pull/681)). The default is the list the code carried
+  hard-coded — `127.0.0.0/8`, `::1/128`, `172.16.0.0/12` — so an upgrade changes nothing. A TLS terminator on another
+  network, such as a Kubernetes pod range or an external load balancer, could not be trusted before and left the app
+  reading its own scheme as plain HTTP, which the CSRF middleware answers with `csrf: origin does not match host`.
+  Keep the list narrow: it also decides whose `X-Forwarded-For` the login rate limiter counts against. Entries are
+  validated at startup, and an IPv4-mapped entry is refused — `::ffff:0:0/96` parses as `0.0.0.0/0` and would trust
+  every IPv4 peer there is.
+
+### Fixed
+
+- **The LDAP connection pool exists now.** The seven `LDAP_POOL_*` settings were parsed and read by nobody, so the
+  service account client ran on direct connections and both health endpoints, which gate on pool statistics, reported
+  failure: `/health` said `overall_healthy: false` and `/health/ready` answered 503 whenever a service account was
+  configured ([#684](https://github.com/netresearch/ldap-manager/pull/684),
+  [#677](https://github.com/netresearch/ldap-manager/issues/677)). The pool is attached to the service account client
+  alone — the per-request clients built from a logged-in user's credentials stay unpooled, or every login would warm a
+  pool of its own. `LDAP_POOL_MAX_LIFETIME` is accepted and has no effect, because the library's pool keeps no
+  connection age; it warns when set, and the docs no longer recommend it.
+- **A failed login over plain HTTP now says why** ([#679](https://github.com/netresearch/ldap-manager/pull/679),
+  reported in [#678](https://github.com/netresearch/ldap-manager/issues/678) by
+  [@grinapo](https://github.com/grinapo)). Cookies are marked `Secure` by default, and a browser keeps such a cookie
+  over plain HTTP only for loopback addresses, so reaching the app by IP or hostname over `http://` left every login
+  POST without its CSRF cookie. The middleware answered `csrf: token invalid`, which names the token rather than the
+  cause. The log now names `COOKIE_SECURE`, and the README marks the Quick Start as loopback-only and gains a
+  Production setup section.
+- **The command palette navigates by origin comparison.** Its guard against a tampered `data-href` inspected the first
+  two characters, and browsers strip tabs and newlines before navigating, so `"/<TAB>/evil.example"` passed it and
+  went cross-origin. The URL is no longer read back from the DOM at all: rows keep their entry and the link is rebuilt
+  from it ([#685](https://github.com/netresearch/ldap-manager/pull/685)).
+- **`docker build --target=dev` works again**, and the three base images are pinned by the digest of their multi-arch
+  index ([#685](https://github.com/netresearch/ldap-manager/pull/685)). The stage still installed bun through
+  `curl | bash` and copied `package.json` and `bun.lock`, both removed when the frontend went Go-only.
+- **`/debug/ldap-pool` keeps reporting real numbers** after the simple-ldap-go upgrade
+  ([#676](https://github.com/netresearch/ldap-manager/pull/676)): the client asks for `EnableMetrics` explicitly, so
+  `GetPoolStats()` returns measurements instead of zeros indistinguishable from an idle server.
+
+### Changed
+
+- **simple-ldap-go v1.16.0 → v1.18.1** ([#684](https://github.com/netresearch/ldap-manager/pull/684),
+  [#685](https://github.com/netresearch/ldap-manager/pull/685)). v1.18.0 makes `GetPoolStats` report the pool's real
+  counts and honours the optimization flags; it also removed the host-name mock, so a client built against a fixture
+  host now dials it. v1.18.1 carries a fix contributed from this work: the pool read a connection's fields after
+  handing it back, which raced a concurrent `Get`
+  ([simple-ldap-go#254](https://github.com/netresearch/simple-ldap-go/pull/254)).
+- **Go 1.27.0 directive, toolchain go1.27.1** ([#683](https://github.com/netresearch/ldap-manager/pull/683)), with
+  Renovate bumping the toolchain directive again — Dependabot does not.
+- **The two broken compose dev containers are gone**
+  ([#687](https://github.com/netresearch/ldap-manager/pull/687)). `ldap-manager-dev` built the release stage from
+  binaries that no local build produces, `ldap-manager-test` ran `make check` without the linters installed, and
+  neither had worked since April. nginx now proxies `https://localhost:8443` to the app run with `make dev`.
+
+### Internal
+
+- **Four architecture decision records** under `docs/adr/` replace the nine plans and three specs that drove the UI
+  revamp ([#680](https://github.com/netresearch/ldap-manager/pull/680)); the work they described has shipped.
+- **Every pre-commit hook passes on a whole-tree run**
+  ([#680](https://github.com/netresearch/ldap-manager/pull/680),
+  [#685](https://github.com/netresearch/ldap-manager/pull/685)). markdownlint went from 3,737 findings to none,
+  `go-test-mod` no longer aborts with `go: -race requires cgo`, and `check-yaml`, `detect-secrets` and `hadolint` are
+  clean.
+- **Code scanning went from 42 open alerts to one** — the rest fixed in code or dismissed with a recorded reason. The
+  remaining one asks for an OpenSSF Best Practices badge; `docs/development/openssf-badge-evidence.md` collects the
+  answers ([#688](https://github.com/netresearch/ldap-manager/pull/688)).
+- Coverage threshold raised from 60 % to 77 % ([#667](https://github.com/netresearch/ldap-manager/pull/667)); the
+  Renovate config drops a rule that could no longer match
+  ([#686](https://github.com/netresearch/ldap-manager/pull/686)).
+- Dependency and hook updates: Go 1.27.1 and docker/dockerfile v1.27 images
+  ([#673](https://github.com/netresearch/ldap-manager/pull/673),
+  [#674](https://github.com/netresearch/ldap-manager/pull/674)); gofiber/storage/bbolt v2.2.0
+  ([#675](https://github.com/netresearch/ldap-manager/pull/675)); hadolint v2.15.1, markdownlint-cli v0.49.1,
+  pre-commit-hooks v6.0.0 and detect-secrets v1.5.0
+  ([#668](https://github.com/netresearch/ldap-manager/pull/668),
+  [#669](https://github.com/netresearch/ldap-manager/pull/669),
+  [#670](https://github.com/netresearch/ldap-manager/pull/670),
+  [#671](https://github.com/netresearch/ldap-manager/pull/671),
+  [#672](https://github.com/netresearch/ldap-manager/pull/672)).
+
+---
+
 ## [v1.6.0] - 2026-08-26
 
 ### Changed
