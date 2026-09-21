@@ -107,11 +107,12 @@ func setupTestApp() (*App, *testLDAPClient) {
 		ErrorHandler: handle500,
 	})
 
-	// Create a test LDAP client - simple-ldap-go allows example/test servers
+	// A client that never dials: simple-ldap-go v1.18.0 connects on New
+	// unless SkipConnectionCheck is set, whatever the host name.
 	testConfig := ldap.Config{
-		Server: "ldap://test.server.com",
-		Port:   389,
-		BaseDN: "dc=test,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=test,dc=com",
+		SkipConnectionCheck: true,
 	}
 	testClient, _ := ldap.New(testConfig, "cn=admin", "password") //nolint:errcheck
 

@@ -468,7 +468,9 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 - `skipIfNoLDAP(t)`: Check TCP connectivity, skip the whole test if unavailable — never let a test
   tolerate LDAP being down silently.
 - Use `go-ldap/ldap/v3` directly to seed test data (OUs, users, groups).
-- **IMPORTANT**: Use `127.0.0.1` not `localhost` — `simple-ldap-go` treats localhost as a mock server.
+- Integration tests reach OpenLDAP at `127.0.0.1:1389`. Unit tests that must not reach a directory set
+  `SkipConnectionCheck: true` and use `unreachableLDAPServer` (`ldap_fixture_test.go`): since
+  simple-ldap-go v1.18.0 no host name yields a mock client.
 - CI service container on port 1389, domain `test.local`, baseDN `dc=test,dc=local`.
 - Assert the **expected** outcome for each test — either success (with a valid seeded user) or a
   specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides
@@ -509,7 +511,8 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
    all — JS-built forms must read the per-session CSRF token from `data-csrf` on `main[data-bulk-scope]`
    (see `submitForm` in `static/js/v2-bulk.js`; issue #652). Server-rendered forms embed it as a
    hidden input.
-9. **LDAP mock issues**: If `simple-ldap-go` returns "example server" errors, use `127.0.0.1` not `localhost`
+9. **Slow or DNS-dependent unit tests**: a test client pointed at a made-up host name dials it; use
+   `unreachableLDAPServer` with `SkipConnectionCheck: true` instead
 
 ## House Rules
 

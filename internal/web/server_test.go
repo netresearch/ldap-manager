@@ -60,9 +60,9 @@ func setupFullTestApp(t *testing.T) (*App, *session.Store) {
 	})
 
 	testConfig := ldap.Config{
-		Server: "ldap://test.server.com",
-		Port:   389,
-		BaseDN: "dc=test,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=test,dc=com",
+		SkipConnectionCheck: true,
 	}
 
 	templateCache := NewTemplateCache(TemplateCacheConfig{
@@ -504,9 +504,9 @@ func TestGetUserLDAP_EmptyCredentials(t *testing.T) {
 
 	app := &App{
 		ldapConfig: ldap.Config{
-			Server: "ldap://test.server.com",
-			Port:   389,
-			BaseDN: "dc=test,dc=com",
+			Server:              unreachableLDAPServer,
+			BaseDN:              "dc=test,dc=com",
+			SkipConnectionCheck: true,
 		},
 		sessionStore: store,
 	}
@@ -599,9 +599,9 @@ func TestPoolStatsHandler_WithServiceAccount(t *testing.T) {
 	app, store := setupFullTestApp(t)
 
 	testConfig := ldap.Config{
-		Server: "ldap://test.server.com",
-		Port:   389,
-		BaseDN: "dc=test,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=test,dc=com",
+		SkipConnectionCheck: true,
 	}
 	testClient, _ := ldap.New(testConfig, "cn=admin", "password") //nolint:errcheck
 	app.ldapReadonly = testClient

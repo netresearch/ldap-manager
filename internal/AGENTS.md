@@ -328,9 +328,12 @@ func skipIfNoLDAP(t *testing.T) {
 
 **Critical gotchas:**
 
-- **Use `127.0.0.1` not `localhost`**: `simple-ldap-go` treats "localhost" as a mock/example server
-  via `isExampleServerName()`, returning fake connections with "connection to example server not
-  available"
+- **Every `ldap.New` dials**: since simple-ldap-go v1.18.0 no host name gets a mock client (the old
+  `isExampleServerName()` list, which included `localhost`, is gone). A unit-test client that must
+  not reach a directory sets `SkipConnectionCheck: true` and points at `unreachableLDAPServer`
+  (`ldap://127.0.0.1:1`, refused instantly) — a fixture host name costs a real DNS lookup on every
+  directory call and made `-race` runs time out
+- **Integration tests use `127.0.0.1:1389`**: that is where CI publishes the OpenLDAP service
 - **Use `net.JoinHostPort`** not `fmt.Sprintf("%s:%d")` — the latter breaks with IPv6
 - **Use `net.Dialer`** with a context-aware `DialContext` instead of `net.DialTimeout` — keeps
   network code consistent with the `noctx` expectation of threading context through HTTP clients
@@ -361,7 +364,8 @@ func skipIfNoLDAP(t *testing.T) {
 6. **Dependencies**: Use `internal/` packages for shared code, avoid circular deps
 7. **Build issues**: Run `make clean && make setup && make build`
 8. **Test failures**: Run `make test` for coverage, `make test-race` for race conditions
-9. **Localhost LDAP errors**: Use `127.0.0.1` — `simple-ldap-go` mocks localhost connections
+9. **Unit tests hitting the network**: set `SkipConnectionCheck: true` and use `unreachableLDAPServer` —
+   `ldap.New` dials every host since simple-ldap-go v1.18.0
 
 ## House Rules
 

@@ -34,12 +34,14 @@ func newExampleServerApp(t *testing.T) *App {
 	chdirToRepoRoot(t)
 
 	cfg := ldap.Config{
-		Server: "ldap://test.server.com",
-		BaseDN: "dc=example,dc=com",
+		Server:              unreachableLDAPServer,
+		BaseDN:              "dc=example,dc=com",
+		SkipConnectionCheck: true,
 	}
 
-	// Use ldap.New so we get a real *ldap.LDAP. With server name matching
-	// isExampleServerName, FindUsers/FindGroups return mocks.
+	// Use ldap.New so we get a real *ldap.LDAP. SkipConnectionCheck keeps New
+	// from dialling the unreachable host; any directory call made later fails
+	// with a network error, which is the path these tests exercise.
 	client, err := ldap.New(cfg, "cn=admin,dc=example,dc=com", "password")
 	if err != nil {
 		t.Fatalf("ldap.New: %v", err)

@@ -69,9 +69,9 @@ func setupCSRFBulkTestApp(t *testing.T) (*App, *session.Store) {
 
 	app := &App{
 		ldapConfig: ldap.Config{
-			Server: "ldap://test.server.com",
-			Port:   389,
-			BaseDN: "dc=test,dc=com",
+			Server:              unreachableLDAPServer,
+			BaseDN:              "dc=test,dc=com",
+			SkipConnectionCheck: true,
 		},
 		ldapCache:     ldap_cache.New(mockClient),
 		sessionStore:  store,
