@@ -7,7 +7,7 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 PACKAGE := github.com/netresearch/ldap-manager/internal/version
 
-# Go build settings  
+# Go build settings
 GO_VERSION := $(shell go version | awk '{print $$3}')
 LDFLAGS := -s -w -X '$(PACKAGE).Version=$(VERSION)' -X '$(PACKAGE).CommitHash=$(COMMIT_HASH)' -X '$(PACKAGE).BuildTimestamp=$(BUILD_TIME)'
 BUILDFLAGS := -ldflags="$(LDFLAGS)" -trimpath
@@ -43,7 +43,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Build Information:$(RESET)"
 	@echo "  Version:     $(VERSION)"
-	@echo "  Commit:      $(COMMIT_HASH)" 
+	@echo "  Commit:      $(COMMIT_HASH)"
 	@echo "  Build Time:  $(BUILD_TIME)"
 	@echo "  Go Version:  $(GO_VERSION)"
 
@@ -133,7 +133,7 @@ test-quick:
 	@echo "$(BLUE)Running quick tests...$(RESET)"
 	@go test -v ./...
 
-## Test Short: Run tests without race detection  
+## Test Short: Run tests without race detection
 test-short:
 	@echo "$(BLUE)Running short tests...$(RESET)"
 	@go test -short ./...

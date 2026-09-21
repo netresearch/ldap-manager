@@ -424,8 +424,8 @@ github.com/nakabonne/nestif v0.3.1 h1:wm28nZjhQY5HyYPx+weN3Q65k6ilSBxDb8v5S81B81
 github.com/nakabonne/nestif v0.3.1/go.mod h1:9EtoZochLn5iUprVDmDjqGKPofoUEBL8U4Ngq6aY7OE=
 github.com/natefinch/atomic v1.0.1 h1:ZPYKxkqQOx3KZ+RsbnP/YsgvxWQPGxjC0oBt2AhwV0A=
 github.com/natefinch/atomic v1.0.1/go.mod h1:N/D/ELrljoqDyT3rZrsUmtsuzvHkeB/wWjHV22AZRbM=
-github.com/netresearch/simple-ldap-go v1.18.0 h1:5LNUB/0HSKi7IFf8BUgKD8rcSatw4ZeOp/8H+lgPee4=
-github.com/netresearch/simple-ldap-go v1.18.0/go.mod h1:7icW5H1UIl7Fg/JyMG3FEjGBQTdTPFAKZ38ugEVeE8s=
+github.com/netresearch/simple-ldap-go v1.18.1 h1:+7nEKEvy9N8NzquDIhAp0/zGUmdzfyQAOPGWzK1Fhf4=
+github.com/netresearch/simple-ldap-go v1.18.1/go.mod h1:7icW5H1UIl7Fg/JyMG3FEjGBQTdTPFAKZ38ugEVeE8s=
 github.com/nishanths/exhaustive v0.12.0 h1:vIY9sALmw6T/yxiASewa4TQcFsVYZQQRUQJhKRf3Swg=
 github.com/nishanths/exhaustive v0.12.0/go.mod h1:mEZ95wPIZW+x8kC4TgC+9YCUgiST7ecevsVDTgc2obs=
 github.com/nishanths/predeclared v0.2.2 h1:V2EPdZPliZymNAn79T8RkNApBjMmVKh5XRpLm/w98Vk=
