@@ -27,8 +27,10 @@ same information, and conformance is a CI gate rather than a review habit.
   table is the accessible representation, not a fallback for browsers without JavaScript.
 - Colour choices are constrained by the AAA contrast floor in both themes, which is why the
   palette is fixed in `app.css` custom properties and checked by a unit test.
-- Every new route is expected to hold the line: the axe-core pass ratchets, so a regression on
-  an existing route fails CI.
+- The axe gate covers five views at AAA — `/login`, `/`, `/users`, `/groups` and `/computers` —
+  and `/graph` with the list-page graph modes at AA. A regression on one of those fails CI. The
+  entity detail pages and `/password-expiry` have no axe pass yet, so the target holds there by
+  review rather than by gate, and a new route joins the gate when it is added to the e2e suite.
 - One exception is recorded and deliberate: in compact density the login page meets AA rather
   than AAA, because success criterion 2.5.5 Target Size (Enhanced) conflicts with the density
   preference. Comfortable density, the default on touch devices and narrow viewports, meets AAA.
