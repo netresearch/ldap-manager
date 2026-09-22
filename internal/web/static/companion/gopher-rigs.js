@@ -1,3 +1,4 @@
+import { animationRandom } from './animation-random.js';
 import * as THREE from './vendor/three.module.js';
 
 // Both gophers are original, procedural meshes interpreted from the supplied images.
@@ -436,7 +437,7 @@ export function buildGopher(avatar, character) {
   }
   avatar._rig = { wizard, eyes: eyeGroups, pupils: pupilGroups, pupilMeshes, glints, brows, mouth, keys, pieces, staff, wrist, beard, cape, halo, shockwaves, sparks, shield, contact: new THREE.Vector3(), joy: 0 };
   if (!wizard) {
-    avatar._rig.quirk = { nextAt: avatar._time + 8 + Math.random() * 6, start: -100, type: null, eye: 0, driftDuration: .72, returnAt: .96, dx: 0, dy: 0, x: 0, y: 0, wink: 0 };
+    avatar._rig.quirk = { nextAt: avatar._time + 8 + animationRandom() * 6, start: -100, type: null, eye: 0, driftDuration: .72, returnAt: .96, dx: 0, dy: 0, x: 0, y: 0, wink: 0 };
     // Put the bean's pivot at its base so gaze and breathing never lift its body off its feet.
     avatar._head.children.forEach(child => { child.position.y += 1.72; });
     avatar._head.position.y = -1.32;
@@ -456,17 +457,17 @@ function updateEyeQuirk(avatar, blend, staticPose, quietIdle, blink) {
     const finished = quirk.type && now - quirk.start >= (quirk.type === 'drift' ? quirk.returnAt + .36 : .48);
     if (quirk.type && (!quietIdle || finished)) {
       quirk.type = null;
-      quirk.nextAt = now + 18 + Math.random() * 16;
+      quirk.nextAt = now + 18 + animationRandom() * 16;
       avatar._nextBlink = Math.max(avatar._nextBlink, now + .5);
     }
     if (!quietIdle) quirk.nextAt = Math.max(quirk.nextAt, now + 4);
     if (quietIdle && !quirk.type && now >= quirk.nextAt && blink === 1) {
-      quirk.type = Math.random() < .65 ? 'drift' : 'wink';
-      quirk.eye = Math.random() < .5 ? 0 : 1;
+      quirk.type = animationRandom() < .65 ? 'drift' : 'wink';
+      quirk.eye = animationRandom() < .5 ? 0 : 1;
       quirk.start = now;
-      quirk.dx = (quirk.eye === 0 ? -1 : 1) * (.035 + Math.random() * .025);
-      quirk.dy = (Math.random() - .5) * .024;
-      quirk.driftDuration = .72 + Math.pow(Math.random(), 2) * 3.2;
+      quirk.dx = (quirk.eye === 0 ? -1 : 1) * (.035 + animationRandom() * .025);
+      quirk.dy = (animationRandom() - .5) * .024;
+      quirk.driftDuration = .72 + Math.pow(animationRandom(), 2) * 3.2;
       quirk.returnAt = quirk.driftDuration + .24;
     }
   }
