@@ -6,6 +6,8 @@ package templates
 // inline handlers).
 templ LoginV2(flashes []Flash, version, csrfToken string) {
 	@baseV2PageScroll("Login") {
+		<link rel="stylesheet" href="/static/companion/avatar.css"/>
+		<script type="module" src="/static/companion/wizard-login.js"></script>
 		<div class="top-right-actions">
 			@themeToggleV2()
 			@densityToggleV2()
@@ -15,7 +17,10 @@ templ LoginV2(flashes []Flash, version, csrfToken string) {
 			<form class="login-card" action="/login" method="post" novalidate>
 				<input type="hidden" name="csrf_token" value={ csrfToken }/>
 
-				<img class="login-card__logo" src="/static/logo.webp" alt="LDAP Manager"/>
+				<scormiq-avatar character="wizard" action="special" label="Ask the wizard to guard the entrance. Arrow keys change its gaze.">
+					<img class="login-card__logo" src="/static/logo.webp" alt=""/>
+				</scormiq-avatar>
+				<h1 class="login-card__title">LDAP Manager</h1>
 
 				if len(flashes) > 0 {
 					<div role="alert" aria-live="assertive">
