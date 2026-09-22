@@ -19,7 +19,7 @@ func TestLoginWizardProgressiveEnhancement(t *testing.T) {
 			t.Errorf("missing login enhancement or form contract: %s", required)
 		}
 	}
-	for _, asset := range []string{"avatar.css", "wizard-login.js", "scormiq-avatar.js", "gopher-rigs.js", "vendor/three.module.js", "assets/logos/netresearch-symbol-only.svg"} {
+	for _, asset := range []string{"avatar.css", "wizard-login.js", "scormiq-avatar.js", "gopher-rigs.js", "animation-random.js", "vendor/three.module.js", "assets/logos/netresearch-symbol-only.svg"} {
 		if data, err := static.Static.ReadFile("companion/" + asset); err != nil || len(data) == 0 {
 			t.Errorf("companion asset %s is not embedded: %v", asset, err)
 		}
