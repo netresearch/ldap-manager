@@ -191,6 +191,12 @@ html:has(> body.has-page-scroll) {
     margin: 0 auto 0.5rem;
 }
 
+.login-card__title {
+    margin: 0;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
 .login-card label {
     display: block;
     margin-bottom: 0.25rem;
