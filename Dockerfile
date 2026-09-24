@@ -9,8 +9,8 @@
 # happens inside Docker.
 #
 # Third-party base images are pinned by the digest of their multi-arch index,
-# so a re-pushed tag cannot change what builds. Renovate and Dependabot
-# update tag and digest together.
+# so a re-pushed tag cannot change what builds. Renovate updates tag and
+# digest together.
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS binary-selector
 
 ARG TARGETARCH
