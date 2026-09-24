@@ -7,12 +7,6 @@
   "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Dependabot owns the Go module dependencies (#660: two updaters on gomod produced racing duplicate PRs). Dependabot does not update the toolchain directive (dependabot-core#13520), so nobody bumped it after the gomod manager was switched off on 2026-08-26. Renovate therefore handles only the go and toolchain directives (datasource golang-version) and leaves the module dependencies (datasource go) to Dependabot. Known overlap, accepted: GitHub vulnerability alerts still reach Go modules, because Renovate appends one rule per alert after these packageRules with its vulnerabilityAlerts settings forced, and the org preset enables them. A [SECURITY] PR can therefore appear beside Dependabot's. Turning vulnerabilityAlerts off would also end Renovate's security PRs for pre-commit hooks and Compose images, which only Renovate covers here.",
-      "matchManagers": ["gomod"],
-      "matchDatasources": ["go"],
-      "enabled": false
-    },
-    {
       "matchUpdateTypes": [
         "patch",
         "minor",

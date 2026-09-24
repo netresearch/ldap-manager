@@ -61,7 +61,7 @@ entries are useful templates.
 | --- | --- |
 | Static analysis | golangci-lint, gosec, CodeQL, SonarCloud — all in CI |
 | Dynamic analysis | Go fuzzing (`Fuzz (corpus replay)` job), Playwright e2e |
-| Dependency scanning | Dependabot and Renovate; `govulncheck`; Trivy on the container image |
+| Dependency scanning | Renovate, including security PRs from GitHub vulnerability alerts; `govulncheck`; Trivy on the container image |
 | Secrets scanning | betterleaks on every push and pull request, plus a `detect-secrets` pre-commit hook |
 | Supply-chain hardening | `step-security/harden-runner` in workflows; third-party actions pinned by SHA; base images pinned by digest |
 | Delivery over HTTPS | GitHub and GHCR |
