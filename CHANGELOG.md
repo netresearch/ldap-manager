@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.8.0] - 2026-09-29
+
+### Added
+
+- **An animated wizard gopher on the login page**
+  ([#690](https://github.com/netresearch/ldap-manager/pull/690) by
+  [@jonasgwozdz](https://github.com/jonasgwozdz)). It follows the pointer and performs a staff strike when it is
+  activated or the login form is submitted. On submit the native POST waits for 1.4 seconds of animation progress and
+  then replays once with its original submitter and CSRF field; a four-second safety deadline releases the login if
+  rendering stalls, and hidden, removed, paused or failed avatars release it at the next timer check. Reduced motion
+  and unavailable WebGL 2 submit immediately, and the application logo stays as the fallback without JavaScript. The
+  avatar reads no credentials. Three.js 0.186.1 is vendored and served locally under the existing CSP.
+- The companion's browser checks run in CI (`Companion checks`), and the E2E login helper waits for the resulting
+  navigation instead of sleeping a fixed 500 ms.
+
+---
+
 ## [v1.7.0] - 2026-09-21
 
 ### Added
