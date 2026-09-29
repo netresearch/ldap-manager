@@ -149,13 +149,14 @@ func (tp *TestPage) Login(username, password string) error {
 		return fmt.Errorf("failed to fill password: %w", err)
 	}
 
-	// Submit form
-	if err := tp.page.Locator("button[type='submit']").Click(); err != nil {
-		return fmt.Errorf("failed to click submit: %w", err)
+	// Submit form. The login page may hold the POST back while its companion
+	// animation plays, so wait for the resulting navigation (success redirect
+	// or the re-rendered login page) instead of sleeping a fixed time.
+	if _, err := tp.page.ExpectNavigation(func() error {
+		return tp.page.Locator("button[type='submit']").Click()
+	}); err != nil {
+		return fmt.Errorf("failed to submit login form: %w", err)
 	}
-
-	// Wait for navigation
-	time.Sleep(500 * time.Millisecond)
 
 	return nil
 }
