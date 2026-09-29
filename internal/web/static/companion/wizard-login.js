@@ -1,6 +1,6 @@
-import './scormiq-avatar.js';
+import './login-companion.js';
 
-const avatar = document.querySelector('scormiq-avatar[character="wizard"]');
+const avatar = document.querySelector('login-companion[character="wizard"]');
 const form = avatar?.closest('form');
 let pending = false;
 let releasing = false;
@@ -19,8 +19,17 @@ form?.addEventListener('submit', event => {
   pending = true;
   const submitter = event.submitter;
   form.setAttribute('aria-busy', 'true');
-  // Let the staff strike land before the browser replaces the login page.
-  timer = setTimeout(() => {
+  // Follow animation time so slow frames do not cut off the staff strike.
+  // A stalled, hidden or failed renderer must never block authentication.
+  const deadline = performance.now() + 4000;
+  const release = () => {
+    if (avatar.isConnected && avatar.dataset.renderer === 'webgl' &&
+        !document.hidden && !avatar.paused &&
+        !matchMedia('(prefers-reduced-motion: reduce)').matches &&
+        avatar.actionElapsed < 1.4 && performance.now() < deadline) {
+      timer = setTimeout(release, 50);
+      return;
+    }
     pending = false;
     releasing = true;
     form.removeAttribute('aria-busy');
@@ -30,7 +39,8 @@ form?.addEventListener('submit', event => {
     } finally {
       releasing = false;
     }
-  }, 1400);
+  };
+  timer = setTimeout(release, 50);
 });
 
 window.addEventListener('pagehide', () => clearTimeout(timer));

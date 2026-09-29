@@ -10,3 +10,7 @@ canvas proportions, absence of pause buttons,
 keyring hit testing or native login replay (where applicable), replay guards,
 WebGL failure, original-image fallback, disposal and reduced motion.
 The fixture uses no real account, never sends a form request and reads no credentials.
+This repository tests only the wizard adapter; the other application's adapter
+is intentionally not bundled. Repeat with `?slow=1` to exercise animation clocks
+below 20 fps. Both runs must reach PASS. Waits have explicit timeouts and fail
+when the animation or form replay does not complete.

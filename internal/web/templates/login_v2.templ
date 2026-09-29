@@ -17,9 +17,9 @@ templ LoginV2(flashes []Flash, version, csrfToken string) {
 			<form class="login-card" action="/login" method="post" novalidate>
 				<input type="hidden" name="csrf_token" value={ csrfToken }/>
 
-				<scormiq-avatar character="wizard" action="special" label="Ask the wizard to guard the entrance. Arrow keys change its gaze.">
+				<login-companion character="wizard" action="special" label="Ask the wizard to guard the entrance. Arrow keys change its gaze.">
 					<img class="login-card__logo" src="/static/logo.webp" alt=""/>
-				</scormiq-avatar>
+				</login-companion>
 				<h1 class="login-card__title">LDAP Manager</h1>
 
 				if len(flashes) > 0 {

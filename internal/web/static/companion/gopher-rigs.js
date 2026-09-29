@@ -2,7 +2,7 @@ import { animationRandom } from './animation-random.js';
 import * as THREE from './vendor/three.module.js';
 
 // Both gophers are original, procedural meshes interpreted from the supplied images.
-// They use the same lifecycle, motion clock and input guards as the robot.
+// They share the companion lifecycle, motion clock and input guards.
 const mix = (a, b, t) => a + (b - a) * t;
 const material = (color, roughness = .7, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
 function mesh(parent, geometry, mat, x = 0, y = 0, z = 0) {
@@ -188,7 +188,7 @@ export function applyCelStyle(root, scene) {
   const materials = new Map();
   surfaces.forEach(object => {
     const previous = object.material;
-    if (previous.isMeshBasicMaterial) return; // Preserve eye glints, the robot display, and its logo.
+    if (previous.isMeshBasicMaterial) return; // Preserve eye glints, the character accessories.
     if (!materials.has(previous)) materials.set(previous, new THREE.MeshToonMaterial({
       color: previous.color, emissive: previous.color.clone().multiplyScalar(.065),
       gradientMap: ramp, toneMapped: false, transparent: previous.transparent,
