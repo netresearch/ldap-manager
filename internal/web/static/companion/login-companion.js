@@ -48,7 +48,7 @@ export class LoginCompanion extends HTMLElement {
     this._button = this.shadowRoot.querySelector('button');
     const german = (this.getAttribute('lang') || document.documentElement.lang).startsWith('de');
     const name = this._character === 'wizard' ? 'wizard gopher' : 'keyholder gopher';
-    this._button.setAttribute('aria-label', this.getAttribute('label') || (german ? 'Begleiter begrÃƒÂ¼ÃƒÅ¸en. Pfeiltasten steuern den Blick.' : 'Greet the ' + name + '. Arrow keys change its gaze.'));
+    this._button.setAttribute('aria-label', this.getAttribute('label') || (german ? 'Begleiter begr\u00fc\u00dfen. Pfeiltasten steuern den Blick.' : 'Greet the ' + name + '. Arrow keys change its gaze.'));
     this._pauseButton = this.shadowRoot.querySelector('.motion-toggle');
     this._pauseButton.textContent = german ? 'Animation pausieren' : 'Pause animation';
     this._fallback = this.shadowRoot.querySelector('.fallback');
