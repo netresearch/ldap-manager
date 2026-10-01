@@ -30,7 +30,15 @@ served.set("/internal/web/static/logo.webp", join(root, "internal/web/static/log
 served.set("/tests/companion/", served.get("/tests/companion/index.html"));
 
 const server = createServer(async (req, res) => {
-  const file = served.get(decodeURIComponent(req.url.split("?")[0]));
+  let path;
+  try {
+    path = decodeURIComponent(req.url.split("?")[0]);
+  } catch {
+    // A malformed escape such as "/%" throws URIError, which would reject inside the async handler.
+    res.writeHead(400).end();
+    return;
+  }
+  const file = served.get(path);
   if (!file) {
     res.writeHead(404).end();
     return;
@@ -39,6 +47,13 @@ const server = createServer(async (req, res) => {
   res.end(await readFile(file));
 });
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
+
+// A malformed escape must be answered with 400 instead of rejecting inside the handler.
+const probe = await fetch(`http://127.0.0.1:${server.address().port}/%`);
+if (probe.status !== 400) {
+  console.error(`FAIL: GET /% answered ${probe.status}, expected 400`);
+  process.exit(1);
+}
 
 // Software WebGL keeps the check runnable on GPU-less CI runners.
 const browser = await chromium.launch({
