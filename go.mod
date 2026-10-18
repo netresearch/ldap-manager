@@ -6,7 +6,7 @@ toolchain go1.27.2
 
 require (
 	github.com/a-h/templ v0.3.1070
-	github.com/go-ldap/ldap/v3 v3.4.14
+	github.com/go-ldap/ldap/v3 v3.4.15
 	github.com/gofiber/fiber/v3 v3.5.0
 	github.com/gofiber/storage/bbolt/v2 v2.2.1
 	github.com/gofiber/storage/memory/v2 v2.1.2
@@ -124,6 +124,7 @@ require (
 	github.com/gofiber/utils/v2 v2.5.3 // indirect
 	github.com/gofrs/flock v0.13.1 // indirect
 	github.com/golangci/asciicheck v0.5.0 // indirect
+	github.com/golangci/canonicalheader v0.0.0-20260827115959-a25c71c521f6 // indirect
 	github.com/golangci/dupl v0.0.0-20260401084720-c99c5cf5c202 // indirect
 	github.com/golangci/go-printf-func-name v0.1.1 // indirect
 	github.com/golangci/gofmt v0.0.0-20260820135601-e84e05053792 // indirect
@@ -156,7 +157,6 @@ require (
 	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/kulti/thelper v0.7.1 // indirect
 	github.com/kunwardeep/paralleltest v1.0.15 // indirect
-	github.com/lasiar/canonicalheader v1.1.2 // indirect
 	github.com/ldez/exptostd v0.4.5 // indirect
 	github.com/ldez/gomoddirectives v0.10.0 // indirect
 	github.com/ldez/grignotin v0.10.1 // indirect
