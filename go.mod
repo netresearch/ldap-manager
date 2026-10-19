@@ -8,7 +8,7 @@ require (
 	github.com/a-h/templ v0.3.1070
 	github.com/go-ldap/ldap/v3 v3.4.15
 	github.com/gofiber/fiber/v3 v3.5.0
-	github.com/gofiber/storage/bbolt/v2 v2.2.1
+	github.com/gofiber/storage/bbolt/v2 v2.2.2
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/joho/godotenv v1.5.1
 	github.com/mxschmitt/playwright-go v0.6201.1
@@ -121,7 +121,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/godoc-lint/godoc-lint v0.11.4 // indirect
 	github.com/gofiber/schema v1.8.3 // indirect
-	github.com/gofiber/utils/v2 v2.5.3 // indirect
+	github.com/gofiber/utils/v2 v2.6.1 // indirect
 	github.com/gofrs/flock v0.13.1 // indirect
 	github.com/golangci/asciicheck v0.5.0 // indirect
 	github.com/golangci/canonicalheader v0.0.0-20260827115959-a25c71c521f6 // indirect
@@ -274,7 +274,7 @@ require (
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260924152758-ed294f943157 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
