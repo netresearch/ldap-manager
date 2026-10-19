@@ -52,7 +52,7 @@ entries are useful templates.
 | Automated test suite | `go test -race ./...`; unit, integration against an OpenLDAP container, fuzz and Playwright e2e tiers |
 | Tests run on every change | `.github/workflows/ci.yml` on every pull request and push |
 | Policy: tests added for new functionality | [CONTRIBUTING.md](../../CONTRIBUTING.md) and the AGENTS.md files |
-| Enforced coverage floor | `coverage-threshold: 73` in `.github/workflows/ci.yml`, enforced by CI |
+| Enforced coverage floor | `coverage-threshold: 77` in `.github/workflows/ci.yml`, enforced by CI |
 | Warning flags enabled | golangci-lint with a strict config; `go vet`; both gate CI |
 
 ## Security
