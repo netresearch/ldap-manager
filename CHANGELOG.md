@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.8.1] - 2026-10-23
+
+### Security
+
+- **The binaries and the container image are built with Go 1.27.3.** Go 1.27.3 makes `crypto/x509` reject certificate
+  chains that contain the compromised eMudhra intermediate certificates (CVE-2026-111943,
+  [golang/go#82345](https://github.com/golang/go/issues/82345)). This affects the TLS connection to the LDAP server.
+  v1.8.0 was built with Go 1.27.1 and accepts those chains.
+
+### Changed
+
+- Go module dependencies are updated, among them `gofiber/fiber/v3` 3.6.1, `go-ldap/ldap/v3` 3.4.15, `a-h/templ`
+  0.3.1070 and `valyala/fasthttp` 1.76.0
+  ([#702](https://github.com/netresearch/ldap-manager/pull/702),
+  [#704](https://github.com/netresearch/ldap-manager/pull/704),
+  [#708](https://github.com/netresearch/ldap-manager/pull/708),
+  [#709](https://github.com/netresearch/ldap-manager/pull/709),
+  [#713](https://github.com/netresearch/ldap-manager/pull/713)).
+
+### Fixed
+
+- The companion fixture server answers a malformed escape with 400
+  ([#700](https://github.com/netresearch/ldap-manager/pull/700)).
+
+---
+
 ## [v1.8.0] - 2026-09-29
 
 ### Added
