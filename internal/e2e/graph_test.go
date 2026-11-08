@@ -57,9 +57,10 @@ func TestGraphHappyPath(t *testing.T) {
 	// which is wrong for path segments).
 	dn, err := url.PathUnescape(encodedDN)
 	require.NoError(t, err)
-	// Don't assume a specific base DN — local dev uses dc=test,dc=local
-	// while CI's e2e fixture uses dc=example,dc=com. Just sanity-check
-	// the shape: it should be a CN under some OU.
+	// Don't assume a specific base DN: TestMain seeds dc=example,dc=com,
+	// while the compose.yml dev directory uses dc=netresearch,dc=local and
+	// the internal/web integration tests dc=test,dc=local. Just
+	// sanity-check the shape: it should be a CN under some OU.
 	require.Contains(t, dn, "cn=", "expected a CN-based DN")
 	require.Contains(t, dn, "ou=", "expected the DN to live under an OU")
 

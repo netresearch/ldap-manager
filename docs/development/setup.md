@@ -457,24 +457,29 @@ internal/
 - **Target**: 90%+ for critical paths
 - **Reports**: HTML coverage reports generated
 
-### Mock LDAP Server
+### Test LDAP Server
 
-For integration testing without external dependencies:
+The integration tests start their own OpenLDAP testcontainers, so they need
+Docker and nothing else:
 
 ```bash
-# Start test LDAP server (Docker)
+# internal/integration and the directory-backed tests in internal/web
+make test-integration
+```
+
+The `internal/web` integration tests use a server already listening on
+`127.0.0.1:1389` instead, if there is one, and skip in a plain `go test ./...`
+when there is none. To keep a directory running between test runs, start it on
+that port with the base DN and admin password the tests expect:
+
+```bash
+LDAP_ADMIN_PASSWORD=admin # pragma: allowlist secret
 docker run -d --name test-ldap \
-  -p 389:389 \
+  -p 1389:389 \
   -e LDAP_ORGANISATION="Test Org" \
   -e LDAP_DOMAIN="test.local" \
-  -e LDAP_ADMIN_PASSWORD="${LDAP_ADMIN_PASSWORD:-admin}" \
-  osixia/openldap:latest
-
-# Configure tests to use local LDAP
-export LDAP_SERVER=ldap://localhost:389
-export LDAP_BASE_DN=dc=test,dc=local
-export LDAP_READONLY_USER=cn=admin,dc=test,dc=local
-export LDAP_READONLY_PASSWORD=admin
+  -e LDAP_ADMIN_PASSWORD="$LDAP_ADMIN_PASSWORD" \
+  osixia/openldap:1.5.0
 ```
 
 ## Performance Optimization

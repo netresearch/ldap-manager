@@ -1,8 +1,11 @@
 package web
 
-// Integration tests that use a real OpenLDAP container.
-// These tests are skipped when no LDAP server is available.
-// In CI, the "test" job provides OpenLDAP on port 1389 (dc=test,dc=local).
+// Integration tests that use a real OpenLDAP directory (dc=test,dc=local,
+// admin password "admin"). skipIfNoLDAP uses a server on 127.0.0.1:1389 when
+// one listens there. Otherwise, built with -tags=integration (as the CI
+// "Integration Tests" job builds it), it starts an OpenLDAP testcontainer
+// and fails the test if that is not possible; built without the tag, it
+// skips.
 
 import (
 	"context"
@@ -39,26 +42,43 @@ type ldapIntegrationEnv struct {
 	port      int
 }
 
-// skipIfNoLDAP returns the LDAP test environment or skips the test.
-// Uses 127.0.0.1 because CI publishes the service container on the IPv4
-// loopback. (simple-ldap-go up to v1.17.0 also treated "localhost" as an
-// example server and returned a client that never dialled; v1.18.0 removed
-// that, netresearch/simple-ldap-go#246.)
+// Directory the integration tests expect, on a local server or in the
+// testcontainer started by ldapContainerEnv.
+const (
+	ldapTestDomain    = "test.local"
+	ldapTestBaseDN    = "dc=test,dc=local"
+	ldapTestAdminPass = "admin"
+)
+
+// skipIfNoLDAP returns the LDAP test environment. It uses a server already
+// listening on 127.0.0.1:1389 (an OpenLDAP container started by hand, see
+// docs/development/setup.md); otherwise it hands over to ldapContainerEnv,
+// which starts a testcontainer under -tags=integration and skips without it.
+// Uses 127.0.0.1 rather than "localhost" so the dial stays on the IPv4
+// loopback a published container port listens on. (simple-ldap-go up to
+// v1.17.0 also treated "localhost" as an example server and returned a client
+// that never dialled; v1.18.0 removed that, netresearch/simple-ldap-go#246.)
 func skipIfNoLDAP(t *testing.T) *ldapIntegrationEnv {
 	t.Helper()
 
 	host := "127.0.0.1"
-	port := 1389 // CI service container port
+	port := 1389 // hand-started local server, see docs/development/setup.md
 
 	dialer := &net.Dialer{Timeout: 2 * time.Second}
 	conn, err := dialer.Dial("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	if err != nil {
-		t.Skipf("OpenLDAP not available at %s (set up CI service or docker compose): %v", addr, err)
+		return ldapContainerEnv(t, addr, err)
 	}
 	_ = conn.Close()
 
-	baseDN := "dc=test,dc=local"
+	return newLDAPIntegrationEnv(host, port)
+}
+
+// newLDAPIntegrationEnv builds the environment for a dc=test,dc=local
+// directory reachable at host:port.
+func newLDAPIntegrationEnv(host string, port int) *ldapIntegrationEnv {
+	baseDN := ldapTestBaseDN
 
 	return &ldapIntegrationEnv{
 		config: ldap.Config{
@@ -67,7 +87,7 @@ func skipIfNoLDAP(t *testing.T) *ldapIntegrationEnv {
 			IsActiveDirectory: false,
 		},
 		adminDN:   "cn=admin," + baseDN,
-		adminPass: "admin",
+		adminPass: ldapTestAdminPass,
 		baseDN:    baseDN,
 		host:      host,
 		port:      port,
