@@ -1,7 +1,8 @@
 // internal/web/graph_integration_test.go — integration tests for
 // /api/graph.json against a real OpenLDAP container. The directory comes from
 // skipIfNoLDAP (ldap_integration_test.go): a server on 127.0.0.1:1389, or a
-// testcontainer under -tags=integration; without either the test skips.
+// testcontainer under -tags=integration. A tagged run fails if that container
+// cannot start; an untagged run without a local server skips.
 package web
 
 import (
