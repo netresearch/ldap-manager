@@ -159,7 +159,7 @@ benchmark:
 ## Test Integration: Run integration tests with testcontainers
 test-integration:
 	@echo "$(BLUE)Running integration tests...$(RESET)"
-	@if go test -v -tags=integration ./internal/integration/...; then \
+	@if go test -v -tags=integration ./internal/integration/... ./internal/web/...; then \
 		echo "$(GREEN)✅ Integration tests passed$(RESET)"; \
 	else \
 		echo "$(RED)❌ Integration tests failed$(RESET)"; \

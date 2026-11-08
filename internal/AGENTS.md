@@ -315,14 +315,17 @@ return errors.New("search failed") // No context - where? why?
 Integration tests use `osixia/openldap:1.5.0` container:
 
 ```go
-// skipIfNoLDAP checks TCP connectivity and skips if unavailable
-func skipIfNoLDAP(t *testing.T) {
+// skipIfNoLDAP uses a server on 127.0.0.1:1389 if one listens there;
+// otherwise ldapContainerEnv starts a testcontainer (-tags=integration,
+// failing the test if it cannot) or skips (no tag).
+func skipIfNoLDAP(t *testing.T) *ldapIntegrationEnv {
     dialer := &net.Dialer{Timeout: 2 * time.Second}
     conn, err := dialer.Dial("tcp", net.JoinHostPort("127.0.0.1", "1389"))
     if err != nil {
-        t.Skipf("OpenLDAP not available: %v", err)
+        return ldapContainerEnv(t, "127.0.0.1:1389", err)
     }
     _ = conn.Close()
+    return newLDAPIntegrationEnv("127.0.0.1", 1389)
 }
 ```
 
@@ -333,9 +336,11 @@ func skipIfNoLDAP(t *testing.T) {
   not reach a directory sets `SkipConnectionCheck: true` and points at `unreachableLDAPServer`
   (`ldap://127.0.0.1:1`, refused instantly) — a fixture host name costs a real DNS lookup on every
   directory call and made `-race` runs time out
-- **`skipIfNoLDAP` tests use `127.0.0.1:1389`** (`internal/web`, base DN `dc=test,dc=local`, admin
-  password `admin`) and skip when nothing listens there. CI starts no service on that port (it
-  left with `quality.yml` in 7f3a022), so in CI they skip
+- **`skipIfNoLDAP` tests** (`internal/web`, base DN `dc=test,dc=local`, admin password `admin`)
+  use a server on `127.0.0.1:1389` when one listens there. Otherwise, under `-tags=integration`,
+  they start one shared testcontainer through `integration.StartOpenLDAP` and fail if that is
+  impossible; without the tag they skip. CI runs them in the "Integration Tests" job
+  (`go test -tags=integration ./...`); in the untagged Build & Test job they skip
 - **Two base DNs**: the testcontainer suite (`internal/integration`) and the e2e seed
   (`internal/e2e`) use `dc=example,dc=com`; the `skipIfNoLDAP` tests use `dc=test,dc=local`. Unit
   tests use both. An assertion shared across suites matches the DN shape (`cn=…,ou=users,…`), not

@@ -465,18 +465,22 @@ func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
 
 Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 
-- `skipIfNoLDAP(t)`: Check TCP connectivity, skip the whole test if unavailable — never let a test
-  tolerate LDAP being down silently.
+- `skipIfNoLDAP(t)`: returns the directory — a server on `127.0.0.1:1389` if one listens there,
+  otherwise a shared testcontainer under `-tags=integration` (`ldap_container_integration_test.go`,
+  which fails the test if the container cannot start); without the tag it skips the whole test —
+  never let a test tolerate LDAP being down silently.
 - Use `go-ldap/ldap/v3` directly to seed test data (OUs, users, groups).
-- Integration tests reach OpenLDAP at `127.0.0.1:1389`. Unit tests that must not reach a directory set
-  `SkipConnectionCheck: true` and use `unreachableLDAPServer` (`ldap_fixture_test.go`): since
-  simple-ldap-go v1.18.0 no host name yields a mock client.
+- Integration tests reach OpenLDAP at `127.0.0.1:1389` or the testcontainer's mapped port. Unit
+  tests that must not reach a directory set `SkipConnectionCheck: true` and use
+  `unreachableLDAPServer` (`ldap_fixture_test.go`): since simple-ldap-go v1.18.0 no host name yields
+  a mock client.
 - These tests expect domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`. CI runs
-  no service on port 1389, so in CI they skip; run an OpenLDAP container on that port to exercise
-  them.
+  them in the "Integration Tests" job (`-tags=integration`); locally `make test-integration` runs
+  them, and in a plain `go test ./...` they skip unless a server listens on port 1389.
 - Assert the **expected** outcome for each test — either success (with a valid seeded user) or a
   specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides
-  regressions. If the environment is unavailable, the `skipIfNoLDAP` skip is the correct path.
+  regressions. If the environment is unavailable in an untagged run, the `skipIfNoLDAP` skip is the
+  correct path.
 - Extract helper functions to avoid `dupl` linter violations in similar test patterns.
 - **e2e cleanup goes THROUGH the app, not behind its back.** The app caches the directory for 30s;
   a test that seeds an entry via `ldapadd` and deletes it via `ldapdelete` leaves a cache ghost that
