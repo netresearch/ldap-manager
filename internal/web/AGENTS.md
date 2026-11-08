@@ -471,7 +471,9 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
 - Integration tests reach OpenLDAP at `127.0.0.1:1389`. Unit tests that must not reach a directory set
   `SkipConnectionCheck: true` and use `unreachableLDAPServer` (`ldap_fixture_test.go`): since
   simple-ldap-go v1.18.0 no host name yields a mock client.
-- CI service container on port 1389, domain `test.local`, baseDN `dc=test,dc=local`.
+- These tests expect domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`. CI runs
+  no service on port 1389, so in CI they skip; run an OpenLDAP container on that port to exercise
+  them.
 - Assert the **expected** outcome for each test — either success (with a valid seeded user) or a
   specific error (e.g., invalid credentials). Do not OR-pattern "success or error" — that hides
   regressions. If the environment is unavailable, the `skipIfNoLDAP` skip is the correct path.
