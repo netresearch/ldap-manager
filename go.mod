@@ -15,7 +15,7 @@ require (
 	github.com/netresearch/simple-ldap-go v1.18.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
-	github.com/testcontainers/testcontainers-go v0.44.0
+	github.com/testcontainers/testcontainers-go v0.45.0
 	go.etcd.io/bbolt v1.5.0
 )
 
