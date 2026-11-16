@@ -43,8 +43,8 @@ jobs:
       attestations: write
     with:
       image-name: ldap-manager
-      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner
-      # stage) only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}.
+      # gcr.io/distroless/static-debian13:nonroot (Dockerfile runner
+      # stage) only publishes linux/{amd64,arm/v7,arm64,ppc64le,riscv64,s390x}.
       # linux/386 and linux/arm/v6 aren't available, so buildx fails
       # with "no match for platform in manifest" when we ask for them.
       platforms: "linux/amd64,linux/arm/v7,linux/arm64"
