@@ -50,8 +50,8 @@ jobs:
         # ci.yml for the full rationale).
         go install github.com/a-h/templ/cmd/templ@"$(go list -m -f '{{.Version}}' github.com/a-h/templ)"
         templ generate
-      # gcr.io/distroless/static-debian12:nonroot (Dockerfile runner stage)
-      # only publishes linux/{amd64,arm/v7,arm64,ppc64le,s390x}. linux/386
+      # gcr.io/distroless/static-debian13:nonroot (Dockerfile runner stage)
+      # only publishes linux/{amd64,arm/v7,arm64,ppc64le,riscv64,s390x}. linux/386
       # and linux/arm/v6 aren't available; asking for them fails buildx
       # with "no match for platform in manifest". The binaries matrix still
       # produces linux-386 / linux-armv6 Go binaries as user-facing release
