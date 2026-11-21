@@ -1,44 +1,47 @@
 # Gremlins Mutation Testing Configuration
-# https://github.com/go-gremlins/gremlins
+# https://gremlins.dev/latest/usage/configuration/
+#
+# gremlins reads only the keys of its reference configuration: settings
+# for "gremlins unleash" go under "unleash:", mutators under "mutants:".
+# Unknown keys are ignored without a warning.
 
-# Packages to test
-test-packages:
-  - ./internal/ldap_cache/...
-  - ./internal/options/...
-  - ./internal/retry/...
-  - ./internal/version/...
-  - ./internal/web/...
+unleash:
+  # Machine-readable report; the shared CI workflow uploads this file.
+  output: mutation-report.json
 
-# Mutator types to enable
-mutators:
-  - CONDITIONALS_BOUNDARY # Change < to <=, > to >=
-  - CONDITIONALS_NEGATION # Negate conditions (== to !=)
-  - INCREMENT_DECREMENT # Change ++ to --
-  - INVERT_LOGICAL # Invert && to ||
-  - INVERT_NEGATIVES # Remove negation operators
-  - INVERT_LOOPCTRL # Change break to continue
+  # Multiplier for the per-mutant test timeout.
+  timeout-coefficient: 5
 
-# Files/patterns to exclude
-exclude:
-  - "**/*_test.go" # Test files
-  - "**/test/**" # Test helpers
-  - "**/mock/**" # Mock implementations
-  - "**/generated/**" # Generated code
-  - "**/*_templ.go" # Generated templ files
+  # gremlins exits with code 10 when the efficacy is at or below this value.
+  # The shared CI workflow reports the score and does not fail on it.
+  threshold:
+    efficacy: 60
 
-# Only mutate code covered by tests
-coverage: true
+  # Regular expressions matched against the path relative to the module
+  # root. Test files (_test.go) are always excluded. gremlins mutates the
+  # whole module, so the packages outside the core set (ldap_cache,
+  # options, retry, version, web) are excluded here.
+  exclude-files:
+    - "^cmd/"
+    - "^internal/integration/"
+    - "^internal/ldap/"
+    - "(^|/)test/" # Test helpers
+    - "(^|/)mock/" # Mock implementations
+    - "(^|/)generated/" # Generated code
+    - "_templ\\.go$" # Generated templ files
 
-# Minimum acceptable mutation score (%)
-threshold: 60
-
-# Timeout multiplier for test runs
-timeout-coefficient: 5
-
-# Output reports
-output:
-  json: mutation-reports/gremlins-report.json
-  html: mutation-reports/gremlins-report.html
-
-# Test timeout
-test-timeout: 120s
+mutants:
+  arithmetic-base:
+    enabled: false
+  conditionals-boundary:
+    enabled: true # < to <=, > to >=
+  conditionals-negation:
+    enabled: true # == to !=
+  increment-decrement:
+    enabled: true # ++ to --
+  invert-logical:
+    enabled: true # && to ||
+  invert-negatives:
+    enabled: true # -x to x
+  invert-loopctrl:
+    enabled: true # break to continue
