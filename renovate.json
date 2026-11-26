@@ -14,6 +14,15 @@
     "**/.mise/locks/**",
     "**/.config/mise/locks/**"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The integration and e2e tests start osixia/openldap by image name from Go code. Track it, so that it moves together with the image in compose.yml.",
+      "managerFilePatterns": ["/^internal/.+\\.go$/"],
+      "matchStrings": ["\"(?<depName>osixia/openldap):(?<currentValue>[^\"@\\s]+)\""],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "automergeType": "pr",
   "platformAutomerge": true,
   "packageRules": [
