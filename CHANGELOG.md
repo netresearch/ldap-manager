@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.9.0] - 2026-11-26
+
+### Added
+
+- **Settings for the TLS connection to an `ldaps://` server**: `LDAP_TLS_MIN_VERSION`, `LDAP_TLS_MAX_VERSION`,
+  `LDAP_TLS_CIPHER_SUITES`, `LDAP_TLS_CA_FILE` and `LDAP_TLS_SERVER_NAME`, each with a matching flag
+  ([#738](https://github.com/netresearch/ldap-manager/pull/738), requested in
+  [#737](https://github.com/netresearch/ldap-manager/issues/737) by [@NoJokeFNA](https://github.com/NoJokeFNA)). Go has
+  not offered cipher suites with static RSA key exchange by default since 1.22, so a directory server that offers only
+  such a suite, as some eDirectory installations do, failed the handshake with `remote error: tls: handshake failure`.
+  Naming the suite, for example `TLS_RSA_WITH_AES_256_GCM_SHA384`, enables it. `LDAP_TLS_CA_FILE` adds CA certificates
+  to the system trust store. Contradictory settings stop the app at startup with a configuration error, and a weak
+  cipher suite, a minimum below TLS 1.2 or TLS settings on an `ldap://` server are logged as warnings. Without these
+  settings the client keeps the Go defaults, as before.
+
+### Security
+
+- **The binaries and the container image are built with Go 1.27.4**, which fixes GO-2026-6859 (CVE-2026-97054), an
+  HTTP/1 server crash in `net/http` ([#727](https://github.com/netresearch/ldap-manager/pull/727)). govulncheck reports
+  the affected package as reachable from this code.
+- **The runtime image is based on distroless `static-debian13`** instead of `static-debian12`
+  ([#731](https://github.com/netresearch/ldap-manager/pull/731),
+  [#735](https://github.com/netresearch/ldap-manager/pull/735)). The Debian 12 image still shipped `ca-certificates`
+  20250419~deb12u1, which trusts the compromised eMudhra and Comodo roots (DLA-4845-1), and an outdated `tzdata`. The
+  image still publishes `linux/amd64`, `linux/arm/v7` and `linux/arm64`.
+
+### Changed
+
+- Go module dependencies are updated, among them `gofiber/fiber/v3` 3.7.0, `a-h/templ` 0.3.1118 and
+  `gofiber/storage/bbolt/v2` 2.2.7 ([#718](https://github.com/netresearch/ldap-manager/pull/718),
+  [#719](https://github.com/netresearch/ldap-manager/pull/719),
+  [#720](https://github.com/netresearch/ldap-manager/pull/720),
+  [#726](https://github.com/netresearch/ldap-manager/pull/726),
+  [#728](https://github.com/netresearch/ldap-manager/pull/728),
+  [#730](https://github.com/netresearch/ldap-manager/pull/730),
+  [#732](https://github.com/netresearch/ldap-manager/pull/732)).
+- **Development environment:** the OpenLDAP containers of the dev stack, the integration tests and the e2e tests run
+  `osixia/openldap` 2.6.15 instead of 1.5.0 ([#741](https://github.com/netresearch/ldap-manager/pull/741)). The dev
+  stack uses new volumes and creates a self-signed LDAPS certificate on its first start, so an existing setup starts
+  with fresh seed data after `docker compose --profile dev up -d`.
+- The OpenLDAP-backed web tests run in CI's integration job instead of being skipped
+  ([#723](https://github.com/netresearch/ldap-manager/pull/723)), the mutation testing configuration is read by gremlins
+  ([#734](https://github.com/netresearch/ldap-manager/pull/734)), and the companion browser checks run again on the
+  Ubuntu 26.04 runner ([#740](https://github.com/netresearch/ldap-manager/pull/740)).
+
+---
+
 ## [v1.8.1] - 2026-10-23
 
 ### Security
