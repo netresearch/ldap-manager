@@ -4,6 +4,9 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha1" // #nosec G505 -- {SSHA} is the hash format slapd accepts for the test root password
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -26,7 +29,26 @@ type OpenLDAPConfig struct {
 	BaseDN       string
 	AdminPass    string
 	Organization string
-	Domain       string
+}
+
+// openLDAPImage is the osixia/openldap image the test containers run.
+const openLDAPImage = "osixia/openldap:2.6.15"
+
+// openLDAPURLs makes slapd listen on the standard ports 389 and 636 instead
+// of the image's default 3890 and 6360. Docker lets the image's unprivileged
+// ldap user bind them.
+const openLDAPURLs = "ldap://:389 ldaps://:636 ldapi:///"
+
+// ssha returns password as an {SSHA} hash. osixia/openldap v2 accepts the
+// root and config passwords only as hashes.
+func ssha(password string) (string, error) {
+	salt := make([]byte, 8)
+	if _, err := rand.Read(salt); err != nil {
+		return "", fmt.Errorf("failed to create salt: %w", err)
+	}
+	sum := sha1.Sum(append([]byte(password), salt...)) // #nosec G401 -- see import comment
+
+	return "{SSHA}" + base64.StdEncoding.EncodeToString(append(sum[:], salt...)), nil
 }
 
 // DefaultOpenLDAPConfig returns sensible defaults for testing
@@ -35,20 +57,24 @@ func DefaultOpenLDAPConfig() OpenLDAPConfig {
 		BaseDN:       "dc=example,dc=com",
 		AdminPass:    "adminpassword",
 		Organization: "Example Inc",
-		Domain:       "example.com",
 	}
 }
 
 // StartOpenLDAP starts an OpenLDAP container for integration testing
 func StartOpenLDAP(ctx context.Context, config OpenLDAPConfig) (*OpenLDAPContainer, error) {
+	adminHash, err := ssha(config.AdminPass)
+	if err != nil {
+		return nil, err
+	}
+
 	req := testcontainers.ContainerRequest{
-		Image:        "osixia/openldap:1.5.0",
-		ExposedPorts: []string{"389/tcp", "636/tcp"},
+		Image:        openLDAPImage,
+		ExposedPorts: []string{"389/tcp"},
 		Env: map[string]string{
-			"LDAP_ORGANISATION":   config.Organization,
-			"LDAP_DOMAIN":         config.Domain,
-			"LDAP_ADMIN_PASSWORD": config.AdminPass,
-			"LDAP_TLS":            "false",
+			"OPENLDAP_URLS":                                openLDAPURLs,
+			"OPENLDAP_BOOTSTRAP_ORGANIZATION":              config.Organization,
+			"OPENLDAP_BOOTSTRAP_SUFFIX":                    config.BaseDN,
+			"OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED": adminHash,
 		},
 		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(60 * time.Second),
 	}

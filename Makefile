@@ -410,7 +410,7 @@ ldap-reset:
 	if [ "$$response" = "y" ] || [ "$$response" = "Y" ]; then \
 		echo "$(BLUE)Resetting LDAP database...$(RESET)"; \
 		docker compose down openldap; \
-		docker volume rm ldap-manager_ldap_data ldap-manager_ldap_config || true; \
+		docker volume rm ldap-manager_openldap_data ldap-manager_openldap_config || true; \
 		docker compose up -d openldap; \
 		echo "$(GREEN)✓ LDAP database reset$(RESET)"; \
 	else \

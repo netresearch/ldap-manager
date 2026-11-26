@@ -65,7 +65,8 @@ The development setup uses persistent volumes for performance:
 - `go_modules`: Cache Go module downloads
 - `go_cache`: Cache Go build artifacts
 - `ldap_sessions`: Persist session data
-- `ldap_data`: Persist LDAP server data
+- `openldap_data`, `openldap_config`: Persist LDAP server data and configuration
+- `openldap_certs`: The self-signed LDAPS certificates created on the first start
 
 ## Environment Variables
 

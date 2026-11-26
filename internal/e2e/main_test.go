@@ -4,6 +4,9 @@ package e2e
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha1" // #nosec G505 -- {SSHA} is the hash format slapd accepts for the test root password
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -27,9 +30,9 @@ import (
 // in-process ldap-manager app under test.
 const (
 	bootstrapBaseDN    = "dc=example,dc=com"
-	bootstrapDomain    = "example.com"
 	bootstrapOrg       = "Example Inc"
 	bootstrapAdminDN   = "cn=admin," + bootstrapBaseDN
+	bootstrapConfigDN  = "cn=admin,cn=config"
 	bootstrapAdminPass = "adminpassword"
 
 	// Pre-seeded test user (see seedLDIF). uid is what LoginAsTestUser uses
@@ -226,14 +229,24 @@ func TestMain(m *testing.M) {
 // startOpenLDAP brings up an osixia/openldap container on a random host port
 // and returns its live ldap:// URI.
 func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error) {
+	adminHash, err := sshaHash(bootstrapAdminPass)
+	if err != nil {
+		return nil, "", err
+	}
+
 	req := testcontainers.ContainerRequest{
-		Image:        "osixia/openldap:1.5.0",
+		Image:        "osixia/openldap:2.6.15",
 		ExposedPorts: []string{"389/tcp"},
 		Env: map[string]string{
-			"LDAP_ORGANISATION":   bootstrapOrg,
-			"LDAP_DOMAIN":         bootstrapDomain,
-			"LDAP_ADMIN_PASSWORD": bootstrapAdminPass,
-			"LDAP_TLS":            "false",
+			// Standard ports instead of the image's 3890/6360, so the ldap*
+			// calls inside the container keep using ldap://localhost.
+			"OPENLDAP_URLS":                   "ldap://:389 ldaps://:636 ldapi:///",
+			"OPENLDAP_BOOTSTRAP_ORGANIZATION": bootstrapOrg,
+			"OPENLDAP_BOOTSTRAP_SUFFIX":       bootstrapBaseDN,
+			// v2 takes the root passwords as hashes only. The cn=config root
+			// gets the same password; seedOpenLDAP binds as it to set the ACLs.
+			"OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED":   adminHash,
+			"OPENLDAP_BOOTSTRAP_CONFIG_ROOT_PASSWORD_HASHED": adminHash,
 		},
 		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(90 * time.Second),
 	}
@@ -299,7 +312,10 @@ userPassword: pw
 // means slapd may need a beat after "starting" before it accepts writes,
 // so each step retries briefly.
 func seedOpenLDAP(ctx context.Context, container testcontainers.Container) error {
-	if err := execLDAP(ctx, container, "ldapmodify", "-Y", "EXTERNAL", "-H", "ldapi:///", aclLDIF); err != nil {
+	// osixia/openldap v2 grants the local ldapi:/// identity no access to
+	// cn=config, so the ACLs are set as the cn=config root DN.
+	if err := execLDAP(ctx, container, "ldapmodify", "-x", "-D", bootstrapConfigDN, "-w", bootstrapAdminPass,
+		"-H", "ldap://localhost", aclLDIF); err != nil {
 		return fmt.Errorf("apply ACL: %w", err)
 	}
 	if err := execLDAP(ctx, container, "ldapadd", "-x", "-D", bootstrapAdminDN, "-w", bootstrapAdminPass, "-H", "ldap://localhost", seedLDIF); err != nil {
@@ -338,6 +354,18 @@ func execLDAP(ctx context.Context, container testcontainers.Container, bin strin
 		time.Sleep(500 * time.Millisecond)
 	}
 	return lastErr
+}
+
+// sshaHash returns password as an {SSHA} hash, the form osixia/openldap v2
+// accepts for its root passwords.
+func sshaHash(password string) (string, error) {
+	salt := make([]byte, 8)
+	if _, err := rand.Read(salt); err != nil {
+		return "", fmt.Errorf("salt: %w", err)
+	}
+	sum := sha1.Sum(append([]byte(password), salt...)) // #nosec G401 -- {SSHA} is the format slapd accepts
+
+	return "{SSHA}" + base64.StdEncoding.EncodeToString(append(sum[:], salt...)), nil
 }
 
 // shellQuote is a minimal POSIX-safe single-quote wrapper.
