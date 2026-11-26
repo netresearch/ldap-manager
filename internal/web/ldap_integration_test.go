@@ -45,7 +45,6 @@ type ldapIntegrationEnv struct {
 // Directory the integration tests expect, on a local server or in the
 // testcontainer started by ldapContainerEnv.
 const (
-	ldapTestDomain    = "test.local"
 	ldapTestBaseDN    = "dc=test,dc=local"
 	ldapTestAdminPass = "admin"
 )

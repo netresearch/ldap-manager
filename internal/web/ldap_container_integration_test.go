@@ -43,7 +43,6 @@ func ldapContainerEnv(t *testing.T, addr string, dialErr error) *ldapIntegration
 			BaseDN:       ldapTestBaseDN,
 			AdminPass:    ldapTestAdminPass,
 			Organization: "Test Org",
-			Domain:       ldapTestDomain,
 		})
 		if err != nil {
 			sharedLDAP.err = err

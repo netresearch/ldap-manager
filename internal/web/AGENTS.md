@@ -463,7 +463,7 @@ func createAuthSession(t *testing.T, store *session.Store) []*http.Cookie {
 
 ### LDAP Integration Tests
 
-Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
+Integration tests use a real OpenLDAP container (`osixia/openldap:2.6.15`):
 
 - `skipIfNoLDAP(t)`: returns the directory — a server on `127.0.0.1:1389` if one listens there,
   otherwise a shared testcontainer under `-tags=integration` (`ldap_container_integration_test.go`,
@@ -474,7 +474,7 @@ Integration tests use a real OpenLDAP container (`osixia/openldap:1.5.0`):
   tests that must not reach a directory set `SkipConnectionCheck: true` and use
   `unreachableLDAPServer` (`ldap_fixture_test.go`): since simple-ldap-go v1.18.0 no host name yields
   a mock client.
-- These tests expect domain `test.local`, baseDN `dc=test,dc=local`, admin password `admin`. CI runs
+- These tests expect baseDN `dc=test,dc=local` and admin password `admin`. CI runs
   them in the "Integration Tests" job (`-tags=integration`); locally `make test-integration` runs
   them, and in a plain `go test ./...` they skip unless a server listens on port 1389.
 - Assert the **expected** outcome for each test — either success (with a valid seeded user) or a

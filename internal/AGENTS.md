@@ -312,7 +312,8 @@ return errors.New("search failed") // No context - where? why?
 
 ## LDAP Testing with Real OpenLDAP
 
-Integration tests use `osixia/openldap:1.5.0` container:
+Integration tests use the `osixia/openldap:2.6.15` container. v2 takes the root password as an `{SSHA}` hash
+(`ssha` in `internal/integration`) and listens on the standard ports because `OPENLDAP_URLS` says so:
 
 ```go
 // skipIfNoLDAP uses a server on 127.0.0.1:1389 if one listens there;
