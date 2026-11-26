@@ -1,3 +1,7 @@
+# A fixed project name keeps volume and network names the same in every
+# checkout, so that "make ldap-reset" finds the volumes it removes.
+name: ldap-manager
+
 services:
   # Creates a self-signed CA and server certificate for LDAPS on the first
   # start. osixia/openldap v2 does not generate certificates itself.
