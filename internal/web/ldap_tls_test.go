@@ -118,7 +118,7 @@ func TestNewApp_LDAPTLSCipherSuitesReachDial(t *testing.T) {
 		if err != nil && strings.Contains(err.Error(), "handshake failure") {
 			t.Fatalf("handshake failed with the configured suite: %v", err)
 		}
-		if n := handshakes.Load(); n == 0 {
+		if handshakes.Load() == 0 {
 			t.Errorf("expected a successful handshake, got none (NewApp error: %v)", err)
 		}
 	})
