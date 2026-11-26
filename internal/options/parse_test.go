@@ -1,6 +1,7 @@
 package options
 
 import (
+	"crypto/tls"
 	"flag"
 	"os"
 	"strings"
@@ -75,6 +76,9 @@ func TestParse_InvalidEnvVars(t *testing.T) {
 		{"InvalidSessionDuration", "SESSION_DURATION", notADuration},
 		{"InvalidCookieSecure", "COOKIE_SECURE", notABool},
 		{"InvalidTLSSkipVerify", "LDAP_TLS_SKIP_VERIFY", notABool},
+		{"InvalidTLSMinVersion", "LDAP_TLS_MIN_VERSION", "1.4"},
+		{"InvalidTLSMaxVersion", "LDAP_TLS_MAX_VERSION", "TLSv1.2"},
+		{"InvalidTLSCipherSuites", "LDAP_TLS_CIPHER_SUITES", "AES256-GCM-SHA384"},
 		{"InvalidPoolMaxConnections", "LDAP_POOL_MAX_CONNECTIONS", notAnInt},
 		{"InvalidPoolMinConnections", "LDAP_POOL_MIN_CONNECTIONS", notAnInt},
 		{"InvalidPoolMaxIdleTime", "LDAP_POOL_MAX_IDLE_TIME", notADuration},
@@ -96,6 +100,19 @@ func TestParse_InvalidEnvVars(t *testing.T) {
 				t.Errorf("Expected error for invalid %s", tt.envKey)
 			}
 		})
+	}
+}
+
+func TestParse_TLSVersionRange(t *testing.T) {
+	resetFlags()
+	vars := validEnvVarsForParse()
+	vars["LDAP_TLS_MIN_VERSION"] = "1.3"
+	vars["LDAP_TLS_MAX_VERSION"] = "1.2"
+	defer setEnvVars(t, vars)()
+
+	_, err := Parse()
+	if err == nil || !strings.Contains(err.Error(), "tls-min-version") {
+		t.Fatalf("expected tls-min-version error, got %v", err)
 	}
 }
 
@@ -140,6 +157,8 @@ func TestParse_DefaultValues(t *testing.T) {
 	optionalVars := []string{
 		"LOG_LEVEL", "LDAP_IS_AD", "PERSIST_SESSIONS", "SESSION_PATH", "SESSION_DURATION",
 		"COOKIE_SECURE", "LDAP_TLS_SKIP_VERIFY",
+		"LDAP_TLS_MIN_VERSION", "LDAP_TLS_MAX_VERSION", "LDAP_TLS_CIPHER_SUITES",
+		"LDAP_TLS_CA_FILE", "LDAP_TLS_SERVER_NAME",
 		"LDAP_POOL_MAX_CONNECTIONS", "LDAP_POOL_MIN_CONNECTIONS",
 		"LDAP_POOL_MAX_IDLE_TIME", "LDAP_POOL_MAX_LIFETIME",
 		"LDAP_POOL_HEALTH_CHECK_INTERVAL", "LDAP_POOL_CONNECTION_TIMEOUT", "LDAP_POOL_ACQUIRE_TIMEOUT",
@@ -175,6 +194,9 @@ func TestParse_DefaultValues(t *testing.T) {
 	}
 	if opts.TLSSkipVerify {
 		t.Error("TLSSkipVerify: expected false (default)")
+	}
+	if opts.HasLDAPTLSSettings() {
+		t.Errorf("HasLDAPTLSSettings: expected false (default), got opts %+v", opts)
 	}
 	if opts.PoolMaxConnections != 10 {
 		t.Errorf("PoolMaxConnections: expected 10 (default), got %d", opts.PoolMaxConnections)
@@ -229,6 +251,11 @@ func TestParse_Success(t *testing.T) {
 	vars["SESSION_DURATION"] = "1h"
 	vars["COOKIE_SECURE"] = "false"
 	vars["LDAP_TLS_SKIP_VERIFY"] = trueStr
+	vars["LDAP_TLS_MIN_VERSION"] = "1.2"
+	vars["LDAP_TLS_MAX_VERSION"] = "1.2"
+	vars["LDAP_TLS_CIPHER_SUITES"] = "TLS_RSA_WITH_AES_256_GCM_SHA384"
+	vars["LDAP_TLS_CA_FILE"] = " /certs/ca.pem "
+	vars["LDAP_TLS_SERVER_NAME"] = "ldap.example.com"
 	vars["LDAP_POOL_MAX_CONNECTIONS"] = "20"
 	vars["LDAP_POOL_MIN_CONNECTIONS"] = "5"
 	vars["LDAP_POOL_MAX_IDLE_TIME"] = "10m"
@@ -285,6 +312,18 @@ func TestParse_Success(t *testing.T) {
 	}
 	if !opts.TLSSkipVerify {
 		t.Error("TLSSkipVerify: expected true")
+	}
+	if opts.TLSMinVersion != tls.VersionTLS12 || opts.TLSMaxVersion != tls.VersionTLS12 {
+		t.Errorf("TLS versions: expected 1.2/1.2, got %#x/%#x", opts.TLSMinVersion, opts.TLSMaxVersion)
+	}
+	if len(opts.TLSCipherSuites) != 1 || opts.TLSCipherSuites[0] != tls.TLS_RSA_WITH_AES_256_GCM_SHA384 {
+		t.Errorf("TLSCipherSuites: got %v", opts.TLSCipherSuites)
+	}
+	if opts.TLSCAFile != "/certs/ca.pem" {
+		t.Errorf("TLSCAFile: expected /certs/ca.pem, got %q", opts.TLSCAFile)
+	}
+	if opts.TLSServerName != "ldap.example.com" {
+		t.Errorf("TLSServerName: expected ldap.example.com, got %q", opts.TLSServerName)
 	}
 	if opts.PoolMaxConnections != 20 {
 		t.Errorf("PoolMaxConnections: expected 20, got %d", opts.PoolMaxConnections)

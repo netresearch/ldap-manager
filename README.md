@@ -143,12 +143,20 @@ the full list.
 | `LDAP_READONLY_PASSWORD` | `--readonly-password` |                                     | Service account password                                   |
 | `LDAP_ADMIN_GROUP`       | `--admin-group`       |                                     | Group DN whose members may view the password-expiry roster |
 | `LDAP_TLS_SKIP_VERIFY`   | `--tls-skip-verify`   | `false`                             | Skip TLS certificate verification                          |
+| `LDAP_TLS_MIN_VERSION`   | `--tls-min-version`   | `1.2`                               | Minimum TLS version for LDAPS (`1.0` to `1.3`)             |
+| `LDAP_TLS_MAX_VERSION`   | `--tls-max-version`   | highest supported                   | Maximum TLS version for LDAPS (`1.0` to `1.3`)             |
+| `LDAP_TLS_CIPHER_SUITES` | `--tls-cipher-suites` | Go defaults                         | TLS 1.0 to 1.2 cipher suites, comma-separated IANA names   |
+| `LDAP_TLS_CA_FILE`       | `--tls-ca-file`       |                                     | PEM CA file, trusted in addition to the system store       |
+| `LDAP_TLS_SERVER_NAME`   | `--tls-server-name`   | host of `LDAP_SERVER`               | Host name for SNI and certificate verification             |
 | `PORT`                   |                       | `3000`                              | HTTP listen port                                           |
 | `COOKIE_SECURE`          | `--cookie-secure`     | `true`                              | Require HTTPS for cookies                                  |
 | `TRUSTED_PROXIES`        | `--trusted-proxies`   | `127.0.0.0/8,::1/128,172.16.0.0/12` | Peers whose `X-Forwarded-*` headers are believed           |
 | `PERSIST_SESSIONS`       | `--persist-sessions`  | `false`                             | Persist sessions to BoltDB                                 |
 | `SESSION_DURATION`       | `--session-duration`  | `30m`                               | Session lifetime                                           |
 | `LOG_LEVEL`              | `--log-level`         | `info`                              | Log level (trace, debug, info, warn, error)                |
+
+The `LDAP_TLS_*` options apply to `ldaps://` connections; see
+[SSL/TLS for LDAPS](docs/user-guide/configuration.md#ssltls-for-ldaps).
 
 When no readonly user is configured, the app uses per-user LDAP credentials for all operations and the background cache
 is disabled.

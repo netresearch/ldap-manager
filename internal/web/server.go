@@ -148,6 +148,26 @@ func serviceAccountLDAPConfig(opts *options.Opts) ldap.Config {
 	return cfg
 }
 
+// warnLDAPTLSSettings logs a startup warning for each LDAP TLS setting that
+// weakens the connection or has no effect.
+func warnLDAPTLSSettings(opts *options.Opts, logger *slog.Logger) {
+	if opts.TLSSkipVerify {
+		logger.Warn("TLS certificate verification is disabled - use only for development!")
+	}
+	if insecure := opts.InsecureTLSCipherSuiteNames(); len(insecure) > 0 {
+		logger.Warn("LDAP TLS cipher suites without forward secrecy or with known weaknesses are enabled",
+			slog.Any("cipher_suites", insecure))
+	}
+	if opts.TLSMinVersion != 0 && opts.TLSMinVersion < tls.VersionTLS12 {
+		logger.Warn("LDAP TLS minimum version is below TLS 1.2",
+			slog.String("min_version", tls.VersionName(opts.TLSMinVersion)))
+	}
+	if !strings.HasPrefix(strings.ToLower(opts.LDAP.Server), "ldaps://") {
+		logger.Warn("LDAP TLS settings have no effect: LDAP_SERVER does not use ldaps://",
+			slog.String("server", opts.LDAP.Server))
+	}
+}
+
 // NewApp creates a new web application instance with the provided configuration options.
 // It initializes the LDAP configuration, readonly client (if configured), session management,
 // template cache, Fiber web server, and registers all routes.
@@ -162,16 +182,19 @@ func NewApp(opts *options.Opts) (*App, error) {
 	// Build LDAP client options
 	ldapOpts := []ldap.Option{ldap.WithLogger(logger)}
 
-	// Add TLS skip verify option if configured (for development with self-signed certs).
+	// Add the LDAPS TLS configuration when any LDAP_TLS_* option is set. Without
+	// one, the client keeps the crypto/tls defaults.
 	//
 	// TLSSkipVerify defaults to false and is only ever set by the operator through
 	// LDAP_TLS_SKIP_VERIFY / --tls-skip-verify (see internal/options/app.go). It is not
 	// derived from request data, and enabling it emits a startup warning.
-	if opts.TLSSkipVerify {
-		logger.Warn("TLS certificate verification is disabled - use only for development!")
-		ldapOpts = append(ldapOpts, ldap.WithTLS(&tls.Config{
-			InsecureSkipVerify: true, // #nosec G402 -- opt-in via LDAP_TLS_SKIP_VERIFY, default false (see comment above)
-		}))
+	if opts.HasLDAPTLSSettings() {
+		tlsConfig, err := opts.LDAPTLSConfig()
+		if err != nil {
+			return nil, err
+		}
+		warnLDAPTLSSettings(opts, logger)
+		ldapOpts = append(ldapOpts, ldap.WithTLS(tlsConfig))
 	}
 
 	// Create readonly LDAP client only when service account is configured

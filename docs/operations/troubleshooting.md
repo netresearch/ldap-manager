@@ -183,8 +183,19 @@ openssl s_client -connect dc.example.com:636 -cipher 'HIGH:!aNULL:!MD5'
    openssl s_client -connect dc.example.com:636 -tls1_2
    openssl s_client -connect dc.example.com:636 -tls1_3
 
-   # Solution: Configure TLS settings in LDAP client
+   # Solution: set LDAP_TLS_MIN_VERSION / LDAP_TLS_MAX_VERSION
    ```
+
+4. **No common cipher suite**
+
+   ```bash
+   # Show the cipher suite the server picks
+   openssl s_client -connect dc.example.com:636 -tls1_2 </dev/null 2>/dev/null | grep -i cipher
+   ```
+
+   A server that only offers static RSA key exchange (`AES256-GCM-SHA384` in OpenSSL naming) fails against the Go
+   defaults. Solution: name the suite in `LDAP_TLS_CIPHER_SUITES`, for example `TLS_RSA_WITH_AES_256_GCM_SHA384`. See
+   [SSL/TLS for LDAPS](../user-guide/configuration.md#ssltls-for-ldaps).
 
 ### Application Connection Problems
 

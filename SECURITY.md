@@ -38,5 +38,7 @@ See the [README](README.md) for security-related configuration options:
 
 - `--cookie-secure`: Require HTTPS for cookies (recommended for production)
 - `--tls-skip-verify`: Disable TLS verification (development only)
+- `--tls-cipher-suites`, `--tls-min-version`: Accept weaker TLS settings for legacy directory servers; a startup warning
+  names each weak setting
 
 Rate limiting is enabled by default (5 failed attempts per 15 minutes triggers a 15-minute block).
