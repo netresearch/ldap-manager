@@ -116,6 +116,18 @@ func TestParse_TLSVersionRange(t *testing.T) {
 	}
 }
 
+func TestParse_TLSMaxVersionBelowDefaultMin(t *testing.T) {
+	resetFlags()
+	vars := validEnvVarsForParse()
+	vars["LDAP_TLS_MAX_VERSION"] = "1.1"
+	defer setEnvVars(t, vars)()
+
+	_, err := Parse()
+	if err == nil || !strings.Contains(err.Error(), "tls-max-version") {
+		t.Fatalf("expected tls-max-version error, got %v", err)
+	}
+}
+
 func TestParse_MissingRequiredFields(t *testing.T) {
 	tests := []struct {
 		name      string

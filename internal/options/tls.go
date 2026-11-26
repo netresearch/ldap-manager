@@ -76,8 +76,16 @@ func parseTLSCipherSuites(field, value string) ([]uint16, error) {
 }
 
 // validateTLSVersionRange rejects a minimum above the maximum, and a cipher
-// suite list that cannot take effect because the minimum is TLS 1.3.
+// suite list that cannot take effect because the minimum is TLS 1.3. A
+// minimum that is not set counts as TLS 1.2, the value LDAPTLSConfig uses.
 func validateTLSVersionRange(minVersion, maxVersion uint16, cipherSuites []uint16) error {
+	if minVersion == 0 && maxVersion != 0 && maxVersion < tls.VersionTLS12 {
+		return ValidationError{
+			Field: "tls-max-version",
+			Message: fmt.Sprintf("%s is below the default minimum TLS 1.2; set tls-min-version as well",
+				tls.VersionName(maxVersion)),
+		}
+	}
 	if minVersion != 0 && maxVersion != 0 && minVersion > maxVersion {
 		return ValidationError{
 			Field:   "tls-min-version",

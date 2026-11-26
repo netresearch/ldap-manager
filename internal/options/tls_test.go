@@ -119,7 +119,8 @@ func TestValidateTLSVersionRange(t *testing.T) {
 		{"unset", 0, 0, nil, ""},
 		{"equal", tls.VersionTLS12, tls.VersionTLS12, suites, ""},
 		{"min only", tls.VersionTLS13, 0, nil, ""},
-		{"max only", 0, tls.VersionTLS10, suites, ""},
+		{"max only", 0, tls.VersionTLS12, suites, ""},
+		{"max below default min", 0, tls.VersionTLS11, nil, "tls-max-version"},
 		{"min above max", tls.VersionTLS13, tls.VersionTLS12, nil, "tls-min-version"},
 		{"suites with min 1.3", tls.VersionTLS13, 0, suites, "tls-cipher-suites"},
 	}
