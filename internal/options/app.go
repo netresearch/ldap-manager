@@ -62,8 +62,21 @@ type Opts struct {
 	// load balancer) has to be named explicitly.
 	TrustedProxies []string
 
-	// TLS settings
+	// TLS settings for LDAPS connections. Zero values keep the crypto/tls
+	// defaults; see LDAPTLSConfig.
 	TLSSkipVerify bool
+	// TLSMinVersion and TLSMaxVersion are crypto/tls version constants, or 0
+	// when not configured.
+	TLSMinVersion uint16
+	TLSMaxVersion uint16
+	// TLSCipherSuites lists the TLS 1.0–1.2 cipher suites the client offers.
+	// Empty means the crypto/tls default list.
+	TLSCipherSuites []uint16
+	// TLSCAFile is a PEM file whose certificates extend the system trust store.
+	TLSCAFile string
+	// TLSServerName overrides the host name used for SNI and certificate
+	// verification. Empty means the host from LDAP_SERVER.
+	TLSServerName string
 
 	// LDAP Connection Pool settings. They configure the pool of the service
 	// account client only; see LDAPPoolConfig.
@@ -407,6 +420,18 @@ func Parse() (*Opts, error) {
 		// TLS configuration
 		fTLSSkipVerify = flag.Bool("tls-skip-verify", tlsSkipVerify,
 			"Skip TLS certificate verification. Use only for development with self-signed certificates.")
+		fTLSMinVersion = flag.String("tls-min-version", envStringOrDefault("LDAP_TLS_MIN_VERSION", ""),
+			"Minimum TLS version for LDAPS: 1.0, 1.1, 1.2 or 1.3. Empty means 1.2.")
+		fTLSMaxVersion = flag.String("tls-max-version", envStringOrDefault("LDAP_TLS_MAX_VERSION", ""),
+			"Maximum TLS version for LDAPS: 1.0, 1.1, 1.2 or 1.3. Empty means the highest supported.")
+		fTLSCipherSuites = flag.String("tls-cipher-suites", envStringOrDefault("LDAP_TLS_CIPHER_SUITES", ""),
+			"Comma-separated TLS 1.0-1.2 cipher suites for LDAPS, by IANA name "+
+				"(e.g. TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384). Empty means the Go defaults. "+
+				"Suites Go considers insecure, such as TLS_RSA_WITH_AES_256_GCM_SHA384, are accepted with a startup warning.")
+		fTLSCAFile = flag.String("tls-ca-file", envStringOrDefault("LDAP_TLS_CA_FILE", ""),
+			"PEM file with CA certificates that are trusted for LDAPS in addition to the system trust store.")
+		fTLSServerName = flag.String("tls-server-name", envStringOrDefault("LDAP_TLS_SERVER_NAME", ""),
+			"Host name for SNI and LDAPS certificate verification. Empty means the host from --ldap-server.")
 
 		// LDAP Connection Pool configuration
 		fPoolMaxConnections = flag.Int("pool-max-connections", poolMaxConnections,
@@ -457,6 +482,22 @@ func Parse() (*Opts, error) {
 		return nil, err
 	}
 
+	tlsMinVersion, err := parseTLSVersion("tls-min-version", *fTLSMinVersion)
+	if err != nil {
+		return nil, err
+	}
+	tlsMaxVersion, err := parseTLSVersion("tls-max-version", *fTLSMaxVersion)
+	if err != nil {
+		return nil, err
+	}
+	tlsCipherSuites, err := parseTLSCipherSuites("tls-cipher-suites", *fTLSCipherSuites)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateTLSVersionRange(tlsMinVersion, tlsMaxVersion, tlsCipherSuites); err != nil {
+		return nil, err
+	}
+
 	ldapConfig := ldap.Config{
 		Server:            *fLdapServer,
 		BaseDN:            *fBaseDN,
@@ -493,6 +534,12 @@ func Parse() (*Opts, error) {
 		CookieSecure:   *fCookieSecure,
 		TrustedProxies: trustedProxies,
 		TLSSkipVerify:  *fTLSSkipVerify,
+
+		TLSMinVersion:   tlsMinVersion,
+		TLSMaxVersion:   tlsMaxVersion,
+		TLSCipherSuites: tlsCipherSuites,
+		TLSCAFile:       strings.TrimSpace(*fTLSCAFile),
+		TLSServerName:   strings.TrimSpace(*fTLSServerName),
 
 		PoolMaxConnections:      *fPoolMaxConnections,
 		PoolMinConnections:      *fPoolMinConnections,

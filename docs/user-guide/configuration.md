@@ -312,7 +312,51 @@ docker run -d --env-file .env -p 3000:3000 ghcr.io/netresearch/ldap-manager
 
 ### SSL/TLS for LDAPS
 
+These options shape the TLS connection to an `ldaps://` server. Each one is optional; without them the connection uses
+the Go defaults: TLS 1.2 or higher, cipher suites with forward secrecy, verification against the system trust store and
+the host name from `LDAP_SERVER`. They have no effect on `ldap://`, and the app logs a warning when one is set there.
+
+| Environment Variable     | CLI Flag              | Default               | Description                                                                |
+| ------------------------ | --------------------- | --------------------- | -------------------------------------------------------------------------- |
+| `LDAP_TLS_SKIP_VERIFY`   | `--tls-skip-verify`   | `false`               | Skip certificate verification. Development only                            |
+| `LDAP_TLS_MIN_VERSION`   | `--tls-min-version`   | `1.2`                 | Minimum TLS version: `1.0`, `1.1`, `1.2` or `1.3`                          |
+| `LDAP_TLS_MAX_VERSION`   | `--tls-max-version`   | highest supported     | Maximum TLS version: `1.0`, `1.1`, `1.2` or `1.3`                          |
+| `LDAP_TLS_CIPHER_SUITES` | `--tls-cipher-suites` | Go defaults           | Comma-separated TLS 1.0–1.2 cipher suites, by IANA name                    |
+| `LDAP_TLS_CA_FILE`       | `--tls-ca-file`       |                       | PEM file whose CA certificates are trusted in addition to the system store |
+| `LDAP_TLS_SERVER_NAME`   | `--tls-server-name`   | host of `LDAP_SERVER` | Host name for SNI and certificate verification                             |
+
+Cipher suites use the IANA names that Go uses, for example `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`. The OpenSSL name
+`AES256-GCM-SHA384` is `TLS_RSA_WITH_AES_256_GCM_SHA384`. TLS 1.3 suites are not configurable. These settings stop the
+app at startup with an error: an unknown name, a minimum version above the maximum, a maximum below `1.2` without a
+minimum, cipher suites together with a minimum of `1.3`, and cipher suites of which none supports a TLS version in the
+configured range.
+
+Some directory servers, for example older eDirectory installations, offer only cipher suites with static RSA key
+exchange. Go does not offer these by default, and the handshake fails with `remote error: tls: handshake failure`. Name
+the server's suite explicitly to connect. This works only for a suite that Go implements; the app rejects other
+names at startup. Static RSA key exchange has no forward secrecy, so the app logs a warning at
+startup; upgrade the server's TLS configuration when you can.
+
+```yaml
+services:
+  ldap-manager:
+    image: ghcr.io/netresearch/ldap-manager:latest
+    volumes:
+      - ./organizational-ca.pem:/certs/ca.pem:ro
+    environment:
+      LDAP_SERVER: "ldaps://ldap.example.com:636"
+      LDAP_BASE_DN: "o=example"
+      LDAP_TLS_MIN_VERSION: "1.2"
+      LDAP_TLS_MAX_VERSION: "1.2"
+      LDAP_TLS_CIPHER_SUITES: "TLS_RSA_WITH_AES_256_GCM_SHA384"
+      LDAP_TLS_CA_FILE: "/certs/ca.pem"
+      LDAP_TLS_SERVER_NAME: "ldap.example.com"
+```
+
 #### Custom Certificate Authority
+
+Set `LDAP_TLS_CA_FILE` to a PEM file with the CA certificate or bundle. The system trust store stays trusted as well.
+Alternatively, replace the container's trust store:
 
 ```bash
 # Mount custom CA certificates
