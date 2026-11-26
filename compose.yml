@@ -1,7 +1,7 @@
 services:
   # OpenLDAP server for local development and testing
   openldap:
-    image: osixia/openldap:1.5.0
+    image: osixia/openldap:2.6.15
     container_name: ldap-server
     hostname: ldap-server
     ports:
@@ -55,7 +55,7 @@ services:
 
   # Applies ACLs granting read access to all authenticated users (like AD default)
   openldap-init:
-    image: osixia/openldap:1.5.0
+    image: osixia/openldap:2.6.15
     entrypoint: /bin/bash
     command: /setup-acl.sh ldap://ldap-server:389
     volumes:
