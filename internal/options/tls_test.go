@@ -123,6 +123,12 @@ func TestValidateTLSVersionRange(t *testing.T) {
 		{"max below default min", 0, tls.VersionTLS11, nil, "tls-max-version"},
 		{"min above max", tls.VersionTLS13, tls.VersionTLS12, nil, "tls-min-version"},
 		{"suites with min 1.3", tls.VersionTLS13, 0, suites, "tls-cipher-suites"},
+		{"TLS 1.2 suite below TLS 1.2", tls.VersionTLS10, tls.VersionTLS11, suites, "tls-cipher-suites"},
+		{
+			"CBC suite at TLS 1.0", tls.VersionTLS10, tls.VersionTLS10,
+			[]uint16{tls.TLS_RSA_WITH_AES_256_GCM_SHA384, tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+			"",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

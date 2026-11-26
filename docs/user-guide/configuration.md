@@ -328,11 +328,13 @@ the host name from `LDAP_SERVER`. They have no effect on `ldap://`, and the app 
 Cipher suites use the IANA names that Go uses, for example `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`. The OpenSSL name
 `AES256-GCM-SHA384` is `TLS_RSA_WITH_AES_256_GCM_SHA384`. TLS 1.3 suites are not configurable. These settings stop the
 app at startup with an error: an unknown name, a minimum version above the maximum, a maximum below `1.2` without a
-minimum, and cipher suites together with a minimum of `1.3`.
+minimum, cipher suites together with a minimum of `1.3`, and cipher suites of which none supports a TLS version in the
+configured range.
 
 Some directory servers, for example older eDirectory installations, offer only cipher suites with static RSA key
 exchange. Go does not offer these by default, and the handshake fails with `remote error: tls: handshake failure`. Name
-the server's suite explicitly to connect. Static RSA key exchange has no forward secrecy, so the app logs a warning at
+the server's suite explicitly to connect. This works only for a suite that Go implements; the app rejects other
+names at startup. Static RSA key exchange has no forward secrecy, so the app logs a warning at
 startup; upgrade the server's TLS configuration when you can.
 
 ```yaml

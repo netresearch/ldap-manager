@@ -98,8 +98,31 @@ func validateTLSVersionRange(minVersion, maxVersion uint16, cipherSuites []uint1
 			Message: "cipher suites apply to TLS 1.2 and lower only, but tls-min-version is 1.3",
 		}
 	}
+	// Every TLS 1.0–1.2 suite supports TLS 1.2, so only a maximum below 1.2
+	// can leave no usable suite: crypto/tls leaves a suite out of the
+	// ClientHello when the negotiated version is outside its versions.
+	if maxVersion != 0 && maxVersion < tls.VersionTLS12 && len(cipherSuites) > 0 &&
+		!slices.ContainsFunc(cipherSuites, func(id uint16) bool { return suiteSupportsRange(id, minVersion, maxVersion) }) {
+		return ValidationError{
+			Field: "tls-cipher-suites",
+			Message: fmt.Sprintf("none of the cipher suites supports a TLS version between %s and %s",
+				tls.VersionName(minVersion), tls.VersionName(maxVersion)),
+		}
+	}
 
 	return nil
+}
+
+// suiteSupportsRange reports whether the cipher suite id supports a TLS
+// version between minVersion and maxVersion, inclusive.
+func suiteSupportsRange(id, minVersion, maxVersion uint16) bool {
+	for _, s := range slices.Concat(tls.CipherSuites(), tls.InsecureCipherSuites()) {
+		if s.ID == id {
+			return slices.ContainsFunc(s.SupportedVersions, func(v uint16) bool { return v >= minVersion && v <= maxVersion })
+		}
+	}
+
+	return false
 }
 
 // HasLDAPTLSSettings reports whether any LDAP TLS option differs from its

@@ -118,8 +118,11 @@ func TestNewApp_LDAPTLSCipherSuitesReachDial(t *testing.T) {
 		if err != nil && strings.Contains(err.Error(), "handshake failure") {
 			t.Fatalf("handshake failed with the configured suite: %v", err)
 		}
-		if handshakes.Load() == 0 {
-			t.Errorf("expected a successful handshake, got none (NewApp error: %v)", err)
+		// One handshake comes from the connection pool's warm-up, one from the
+		// direct connection simple-ldap-go falls back to when the pool fails.
+		// Fewer than two means one of the two paths lost the TLS settings.
+		if n := handshakes.Load(); n < 2 {
+			t.Errorf("expected handshakes from the pool and the direct client, got %d (NewApp error: %v)", n, err)
 		}
 	})
 }
