@@ -30,7 +30,9 @@ services:
       OPENLDAP_URLS: "ldap://:389 ldaps://:636 ldapi:///"
       OPENLDAP_BOOTSTRAP_ORGANIZATION: "Netresearch"
       OPENLDAP_BOOTSTRAP_SUFFIX: "dc=netresearch,dc=local"
-      # v2 takes password hashes only. Plain values: cn=admin,dc=netresearch,dc=local
+      # The *_HASHED variables take any userPassword value; a value without
+      # {SCHEME} prefix would be stored as cleartext. The dev stack keeps
+      # {SSHA} hashes. Plain values: cn=admin,dc=netresearch,dc=local
       # "admin", cn=admin,cn=config "config", cn=readonly,dc=netresearch,dc=local
       # "readonly". Regenerate one with:
       #   docker run --rm --entrypoint "" osixia/openldap:2.6.15 slappasswd -s <password> -h {SSHA}

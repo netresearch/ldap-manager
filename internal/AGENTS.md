@@ -312,8 +312,9 @@ return errors.New("search failed") // No context - where? why?
 
 ## LDAP Testing with Real OpenLDAP
 
-Integration tests use the `osixia/openldap:2.6.15` container. v2 takes the root password as an `{SSHA}` hash
-(`ssha` in `internal/integration`) and listens on the standard ports because `OPENLDAP_URLS` says so:
+Integration tests use the `osixia/openldap:2.6.15` container. `OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED` takes any
+`userPassword` value, so the tests pass the plain password, which slapd stores as cleartext. slapd listens on
+the standard ports because `OPENLDAP_URLS` says so:
 
 ```go
 // skipIfNoLDAP uses a server on 127.0.0.1:1389 if one listens there;
