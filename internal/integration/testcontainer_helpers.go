@@ -6,7 +6,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -194,9 +196,15 @@ ou: %s
 	return nil
 }
 
+// userPasswordValue matches the value of a userPassword line, so that ldapAdd
+// can drop it from the output it returns.
+var userPasswordValue = regexp.MustCompile(`(?i)(userPassword:).*`)
+
 // ldapAdd pipes ldif into ldapadd inside the container as the admin DN. It
 // fails when the command cannot be run or exits non-zero, unless the exit
-// code is one of tolerated.
+// code is one of tolerated. The output in the error has the admin password
+// and userPassword values replaced, because bash echoes the whole command
+// line when it cannot parse it.
 func (c *OpenLDAPContainer) ldapAdd(ctx context.Context, ldif string, tolerated ...int) error {
 	code, out, err := c.Container.Exec(ctx, []string{
 		"bash", "-c",
@@ -216,7 +224,10 @@ func (c *OpenLDAPContainer) ldapAdd(ctx context.Context, ldif string, tolerated 
 		return fmt.Errorf("ldapadd exited with code %d (reading its output failed: %w)", code, readErr)
 	}
 
-	return fmt.Errorf("ldapadd exited with code %d: %s", code, output)
+	redacted := strings.ReplaceAll(string(output), c.AdminPass, "[REDACTED]")
+	redacted = userPasswordValue.ReplaceAllString(redacted, "${1} [REDACTED]")
+
+	return fmt.Errorf("ldapadd exited with code %d: %s", code, redacted)
 }
 
 // SeedTestData populates the LDAP directory with test data
