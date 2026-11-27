@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,24 +20,23 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// TestDockerHealthCheck verifies the Docker HEALTHCHECK directive works correctly
-// by building and running the production container and checking its health status.
+// TestDockerHealthCheck verifies the Docker HEALTHCHECK directive of the
+// production image. It builds that image the way the release does (BuildKit,
+// the shipped Dockerfile, a pre-built bin/ldap-manager-linux-<arch> in the
+// build context), runs it against an OpenLDAP container and waits for Docker to
+// report the container healthy.
 //
-// Note: This test builds the Docker image from source, which requires Docker BuildKit
-// and may not work in all CI environments (e.g., GitHub Actions runners have platform
-// detection issues with testcontainers). Run locally with: make test-integration
+// Requirements: a Docker daemon, the docker CLI with the buildx plugin, and the
+// Go toolchain on PATH. Run with: make test-integration
 func TestDockerHealthCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping Docker healthcheck test in short mode")
 	}
 
-	// Skip in CI environments where Docker-in-Docker building has platform issues
-	if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
-		t.Skip("Skipping Docker build test in CI - run locally with: make test-integration")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
+
+	image := buildProductionImage(ctx, t)
 
 	// Start OpenLDAP first
 	ldapContainer, err := StartOpenLDAP(ctx, DefaultOpenLDAPConfig())
@@ -50,8 +52,8 @@ func TestDockerHealthCheck(t *testing.T) {
 	ldapNetwork, err := ldapContainer.Container.ContainerIP(ctx)
 	require.NoError(t, err, "Failed to get LDAP container IP")
 
-	// Build and start the ldap-manager container
-	appContainer, appPort, err := startLDAPManagerContainer(ctx, t, ldapNetwork, ldapContainer)
+	// Start the ldap-manager container from the production image
+	appContainer, appPort, err := startLDAPManagerContainer(ctx, t, image, ldapNetwork, ldapContainer)
 	require.NoError(t, err, "Failed to start ldap-manager container")
 	defer func() { _ = appContainer.Terminate(ctx) }()
 
@@ -104,25 +106,74 @@ func TestDockerHealthCheck(t *testing.T) {
 	})
 }
 
-// startLDAPManagerContainer builds and starts the ldap-manager production container.
+// buildProductionImage builds the production image from the shipped
+// Dockerfile and returns its tag. Like release.yml, it compiles the linux
+// binary outside Docker and hands it to the Dockerfile's binary-selector stage
+// through bin/ in the build context, and it builds with BuildKit (docker
+// buildx), which sets TARGETARCH and supports COPY --chmod. The image is
+// removed when the test ends.
+func buildProductionImage(ctx context.Context, t *testing.T) string {
+	t.Helper()
+
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err, "Failed to resolve repository root")
+
+	// Build for the daemon's architecture, which may differ from the test
+	// binary's (e.g. a remote daemon).
+	archOut, err := exec.CommandContext(ctx, "docker", "version", "--format", "{{.Server.Arch}}").Output()
+	require.NoError(t, err, "Failed to read the Docker daemon architecture")
+	arch := strings.TrimSpace(string(archOut))
+	switch arch {
+	case "386", "amd64", "arm64":
+	default:
+		t.Fatalf("Docker daemon architecture %q is not covered by this test", arch)
+	}
+
+	buildContext := t.TempDir()
+	binary := filepath.Join(buildContext, "bin", "ldap-manager-linux-"+arch)
+
+	goBuild := exec.CommandContext(ctx, "go", "build", "-trimpath",
+		"-ldflags", "-s -w -X main.version=healthcheck-test",
+		"-o", binary, "./cmd/ldap-manager")
+	goBuild.Dir = repoRoot
+	goBuild.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
+	out, err := goBuild.CombinedOutput()
+	require.NoError(t, err, "Failed to build %s:\n%s", binary, out)
+
+	tag := fmt.Sprintf("ldap-manager-healthcheck-test:%d", time.Now().UnixNano())
+	dockerBuild := exec.CommandContext(ctx, "docker", "buildx", "build",
+		"--load",
+		"--platform", "linux/"+arch,
+		"--file", filepath.Join(repoRoot, "Dockerfile"),
+		"--tag", tag,
+		"--build-arg", "BUILD_DATE="+time.Now().UTC().Format(time.RFC3339),
+		"--build-arg", "VCS_REF=test",
+		buildContext)
+	out, err = dockerBuild.CombinedOutput()
+	require.NoError(t, err, "Failed to build the production image:\n%s", out)
+
+	t.Cleanup(func() {
+		rm := exec.CommandContext(context.Background(), "docker", "image", "rm", "--force", tag)
+		if rmOut, rmErr := rm.CombinedOutput(); rmErr != nil {
+			t.Logf("Failed to remove image %s: %v\n%s", tag, rmErr, rmOut)
+		}
+	})
+
+	return tag
+}
+
+// startLDAPManagerContainer starts the ldap-manager production image.
 func startLDAPManagerContainer(
 	ctx context.Context,
 	t *testing.T,
+	image string,
 	ldapIP string,
 	ldap *OpenLDAPContainer,
 ) (testcontainers.Container, string, error) {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
-		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    "../..",
-			Dockerfile: "Dockerfile",
-			BuildArgs: map[string]*string{
-				"BUILD_DATE": strPtr(time.Now().UTC().Format(time.RFC3339)),
-				"VCS_REF":    strPtr("test"),
-			},
-			KeepImage: true,
-		},
+		Image:        image,
 		ExposedPorts: []string{"3000/tcp"},
 		Env: map[string]string{
 			"LDAP_SERVER":            fmt.Sprintf("ldap://%s:389", ldapIP),
@@ -180,7 +231,21 @@ func waitForContainerHealth(
 			return true
 		}
 
-		t.Logf("Container health status: %v", state.Health)
+		if state.Health != nil && state.Health.Status == "unhealthy" {
+			for _, probe := range state.Health.Log {
+				t.Logf("Health probe exit=%d output=%q", probe.ExitCode, probe.Output)
+			}
+
+			return false
+		}
+
+		if state.Health != nil && len(state.Health.Log) > 0 {
+			last := state.Health.Log[len(state.Health.Log)-1]
+			t.Logf("Container health: %s, failing streak %d, last probe exit=%d output=%q",
+				state.Health.Status, state.Health.FailingStreak, last.ExitCode, last.Output)
+		} else {
+			t.Logf("Container health status: %v", state.Health)
+		}
 		time.Sleep(2 * time.Second)
 	}
 
@@ -195,8 +260,4 @@ func doHTTPGet(ctx context.Context, url string) (*http.Response, error) {
 	}
 
 	return http.DefaultClient.Do(req)
-}
-
-func strPtr(s string) *string {
-	return &s
 }
