@@ -46,13 +46,13 @@ func TestLoginV2_VisibleAndInteractive(t *testing.T) {
 
 	// Theme toggle must swap data-theme on click.
 	initialTheme, _ := page.Evaluate("document.documentElement.getAttribute('data-theme')")
-	require.NoError(t, page.Click("[data-toggle=theme]"), "click theme toggle")
+	require.NoError(t, page.Locator("[data-toggle=theme]").Click(), "click theme toggle")
 	newTheme, _ := page.Evaluate("document.documentElement.getAttribute('data-theme')")
 	assert.NotEqual(t, initialTheme, newTheme, "theme toggle must change data-theme")
 
 	// Density toggle must swap data-density on click.
 	initialDensity, _ := page.Evaluate("document.documentElement.getAttribute('data-density')")
-	require.NoError(t, page.Click("[data-toggle=density]"), "click density toggle")
+	require.NoError(t, page.Locator("[data-toggle=density]").Click(), "click density toggle")
 	newDensity, _ := page.Evaluate("document.documentElement.getAttribute('data-density')")
 	assert.NotEqual(t, initialDensity, newDensity, "density toggle must change data-density")
 

@@ -5,11 +5,19 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
+	"slices"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
+	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+// ldapResultEntryAlreadyExists is the LDAP result code entryAlreadyExists
+// (RFC 4511), which ldapadd also uses as its exit code for an entry that is
+// already present.
+const ldapResultEntryAlreadyExists = 68
 
 // OpenLDAPContainer represents a running OpenLDAP container for testing
 type OpenLDAPContainer struct {
@@ -94,6 +102,7 @@ func (c *OpenLDAPContainer) Stop(ctx context.Context) error {
 	if c.Container != nil {
 		return c.Container.Terminate(ctx)
 	}
+
 	return nil
 }
 
@@ -122,26 +131,18 @@ userPassword: %s
 description: Test user
 `, username, c.BaseDN, username, username, username, password)
 
-	// First ensure the users OU exists
-	_, _, err := c.Container.Exec(ctx, []string{
-		"ldapadd", "-x",
-		"-H", "ldap://localhost",
-		"-D", c.AdminDN,
-		"-w", c.AdminPass,
-		"-c", // Continue on errors (OU might exist)
-	})
-	// Ignore error - OU might already exist
-
-	// Add the user
-	_, _, err = c.Container.Exec(ctx, []string{
-		"bash", "-c",
-		fmt.Sprintf(`echo '%s' | ldapadd -x -H ldap://localhost -D "%s" -w "%s"`,
-			ldif, c.AdminDN, c.AdminPass),
-	})
+	// First ensure the users OU exists; it may already be there.
+	if err := c.ensureOU(ctx, "users"); err != nil {
+		return err
+	}
 
 	_ = userAccountControl // Would be used for AD simulation
 
-	return err
+	if err := c.ldapAdd(ctx, ldif); err != nil {
+		return fmt.Errorf("failed to add user %s: %w", username, err)
+	}
+
+	return nil
 }
 
 // AddTestGroup adds a test group to the LDAP directory
@@ -157,13 +158,11 @@ objectClass: top
 cn: %s
 %s`, groupname, c.BaseDN, groupname, memberDNs)
 
-	_, _, err := c.Container.Exec(ctx, []string{
-		"bash", "-c",
-		fmt.Sprintf(`echo '%s' | ldapadd -x -H ldap://localhost -D "%s" -w "%s"`,
-			ldif, c.AdminDN, c.AdminPass),
-	})
+	if err := c.ldapAdd(ctx, ldif); err != nil {
+		return fmt.Errorf("failed to add group %s: %w", groupname, err)
+	}
 
-	return err
+	return nil
 }
 
 // CreateOUs creates the organizational units needed for testing
@@ -171,20 +170,53 @@ func (c *OpenLDAPContainer) CreateOUs(ctx context.Context) error {
 	ous := []string{"users", "groups", "computers"}
 
 	for _, ou := range ous {
-		ldif := fmt.Sprintf(`dn: ou=%s,%s
+		if err := c.ensureOU(ctx, ou); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ensureOU creates ou=<ou> below the base DN. An OU that already exists is
+// not an error.
+func (c *OpenLDAPContainer) ensureOU(ctx context.Context, ou string) error {
+	ldif := fmt.Sprintf(`dn: ou=%s,%s
 objectClass: organizationalUnit
 objectClass: top
 ou: %s
 `, ou, c.BaseDN, ou)
 
-		c.Container.Exec(ctx, []string{
-			"bash", "-c",
-			fmt.Sprintf(`echo '%s' | ldapadd -x -H ldap://localhost -D "%s" -w "%s" -c`,
-				ldif, c.AdminDN, c.AdminPass),
-		})
+	if err := c.ldapAdd(ctx, ldif, ldapResultEntryAlreadyExists); err != nil {
+		return fmt.Errorf("failed to create OU %s: %w", ou, err)
 	}
 
 	return nil
+}
+
+// ldapAdd pipes ldif into ldapadd inside the container as the admin DN. It
+// fails when the command cannot be run or exits non-zero, unless the exit
+// code is one of tolerated.
+func (c *OpenLDAPContainer) ldapAdd(ctx context.Context, ldif string, tolerated ...int) error {
+	code, out, err := c.Container.Exec(ctx, []string{
+		"bash", "-c",
+		fmt.Sprintf(`echo '%s' | ldapadd -x -H ldap://localhost -D "%s" -w "%s"`,
+			ldif, c.AdminDN, c.AdminPass),
+	}, tcexec.Multiplexed())
+	if err != nil {
+		return fmt.Errorf("exec ldapadd: %w", err)
+	}
+
+	if code == 0 || slices.Contains(tolerated, code) {
+		return nil
+	}
+
+	output, readErr := io.ReadAll(out)
+	if readErr != nil {
+		return fmt.Errorf("ldapadd exited with code %d (reading its output failed: %w)", code, readErr)
+	}
+
+	return fmt.Errorf("ldapadd exited with code %d: %s", code, output)
 }
 
 // SeedTestData populates the LDAP directory with test data
