@@ -167,8 +167,7 @@ func buildProductionImage(ctx context.Context, t *testing.T) string {
 func startLDAPManagerContainer(
 	ctx context.Context,
 	t *testing.T,
-	image string,
-	ldapIP string,
+	image, ldapIP string,
 	ldap *OpenLDAPContainer,
 ) (testcontainers.Container, string, error) {
 	t.Helper()
@@ -208,6 +207,7 @@ func startLDAPManagerContainer(
 }
 
 // waitForContainerHealth polls the container health status until healthy or timeout.
+// It stops early when Docker reports the container unhealthy.
 func waitForContainerHealth(
 	ctx context.Context,
 	t *testing.T,
@@ -218,39 +218,50 @@ func waitForContainerHealth(
 
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		state, err := container.State(ctx)
-		if err != nil {
+		status, probes, err := readContainerHealth(ctx, container)
+		switch {
+		case err != nil:
 			t.Logf("Error getting container state: %v", err)
-			time.Sleep(2 * time.Second)
-
-			continue
-		}
-
-		if state.Health != nil && state.Health.Status == "healthy" {
+		case status == "healthy":
 			t.Logf("Container is healthy after %v", timeout-time.Until(deadline))
 
 			return true
-		}
-
-		if state.Health != nil && state.Health.Status == "unhealthy" {
-			for _, probe := range state.Health.Log {
-				t.Logf("Health probe exit=%d output=%q", probe.ExitCode, probe.Output)
+		case status == "unhealthy":
+			for _, probe := range probes {
+				t.Logf("Health probe %s", probe)
 			}
 
 			return false
+		case len(probes) > 0:
+			t.Logf("Container health: %s, last probe %s", status, probes[len(probes)-1])
+		default:
+			t.Logf("Container health: %q, no probe yet", status)
 		}
 
-		if state.Health != nil && len(state.Health.Log) > 0 {
-			last := state.Health.Log[len(state.Health.Log)-1]
-			t.Logf("Container health: %s, failing streak %d, last probe exit=%d output=%q",
-				state.Health.Status, state.Health.FailingStreak, last.ExitCode, last.Output)
-		} else {
-			t.Logf("Container health status: %v", state.Health)
-		}
 		time.Sleep(2 * time.Second)
 	}
 
 	return false
+}
+
+// readContainerHealth returns the Docker health status of the container and
+// one line per recorded health probe.
+func readContainerHealth(ctx context.Context, container testcontainers.Container) (string, []string, error) {
+	state, err := container.State(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if state.Health == nil {
+		return "", nil, nil
+	}
+
+	probes := make([]string, 0, len(state.Health.Log))
+	for _, probe := range state.Health.Log {
+		probes = append(probes, fmt.Sprintf("exit=%d output=%q", probe.ExitCode, probe.Output))
+	}
+
+	return string(state.Health.Status), probes, nil
 }
 
 // doHTTPGet performs an HTTP GET request with context.
