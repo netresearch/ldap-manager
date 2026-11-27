@@ -4,9 +4,6 @@ package e2e
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha1" // #nosec G505 -- {SSHA} is the hash format slapd accepts for the test root password
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -229,11 +226,6 @@ func TestMain(m *testing.M) {
 // startOpenLDAP brings up an osixia/openldap container on a random host port
 // and returns its live ldap:// URI.
 func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error) {
-	adminHash, err := sshaHash(bootstrapAdminPass)
-	if err != nil {
-		return nil, "", err
-	}
-
 	req := testcontainers.ContainerRequest{
 		Image:        "osixia/openldap:2.6.15",
 		ExposedPorts: []string{"389/tcp"},
@@ -243,10 +235,12 @@ func startOpenLDAP(ctx context.Context) (testcontainers.Container, string, error
 			"OPENLDAP_URLS":                   "ldap://:389 ldaps://:636 ldapi:///",
 			"OPENLDAP_BOOTSTRAP_ORGANIZATION": bootstrapOrg,
 			"OPENLDAP_BOOTSTRAP_SUFFIX":       bootstrapBaseDN,
-			// v2 takes the root passwords as hashes only. The cn=config root
-			// gets the same password; seedOpenLDAP binds as it to set the ACLs.
-			"OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED":   adminHash,
-			"OPENLDAP_BOOTSTRAP_CONFIG_ROOT_PASSWORD_HASHED": adminHash,
+			// Despite their names, the variables take any userPassword value;
+			// a value without {SCHEME} prefix is stored as cleartext. The
+			// cn=config root gets the same password; seedOpenLDAP binds as it
+			// to set the ACLs.
+			"OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED":   bootstrapAdminPass,
+			"OPENLDAP_BOOTSTRAP_CONFIG_ROOT_PASSWORD_HASHED": bootstrapAdminPass,
 		},
 		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(90 * time.Second),
 	}
@@ -354,18 +348,6 @@ func execLDAP(ctx context.Context, container testcontainers.Container, bin strin
 		time.Sleep(500 * time.Millisecond)
 	}
 	return lastErr
-}
-
-// sshaHash returns password as an {SSHA} hash, the form osixia/openldap v2
-// accepts for its root passwords.
-func sshaHash(password string) (string, error) {
-	salt := make([]byte, 8)
-	if _, err := rand.Read(salt); err != nil {
-		return "", fmt.Errorf("salt: %w", err)
-	}
-	sum := sha1.Sum(append([]byte(password), salt...)) // #nosec G401 -- {SSHA} is the format slapd accepts
-
-	return "{SSHA}" + base64.StdEncoding.EncodeToString(append(sum[:], salt...)), nil
 }
 
 // shellQuote is a minimal POSIX-safe single-quote wrapper.

@@ -473,14 +473,13 @@ when there is none. To keep a directory running between test runs, start it on
 that port with the base DN and admin password the tests expect:
 
 ```bash
-# osixia/openldap v2 takes the admin password as a hash only.
-LDAP_ADMIN_HASH="$(docker run --rm --entrypoint "" osixia/openldap:2.6.15 slappasswd -s admin -h '{SSHA}')"
+LDAP_ADMIN_PASSWORD=admin # pragma: allowlist secret
 docker run -d --name test-ldap \
   -p 1389:389 \
   -e OPENLDAP_URLS="ldap://:389 ldapi:///" \
   -e OPENLDAP_BOOTSTRAP_ORGANIZATION="Test Org" \
   -e OPENLDAP_BOOTSTRAP_SUFFIX="dc=test,dc=local" \
-  -e OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED="$LDAP_ADMIN_HASH" \
+  -e OPENLDAP_BOOTSTRAP_DATA_ROOT_PASSWORD_HASHED="$LDAP_ADMIN_PASSWORD" \
   osixia/openldap:2.6.15
 ```
 
