@@ -46,6 +46,7 @@ func envOrDefault(key, defaultValue string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}
+
 	return defaultValue
 }
 
@@ -54,6 +55,7 @@ type TestBrowser struct {
 	pw      *playwright.Playwright
 	browser playwright.Browser
 	config  TestConfig
+	t       *testing.T
 }
 
 // NewTestBrowser creates a new browser instance for testing
@@ -70,7 +72,9 @@ func NewTestBrowser(t *testing.T, config TestConfig) *TestBrowser {
 		SlowMo:   playwright.Float(config.SlowMo),
 	})
 	if err != nil {
-		pw.Stop()
+		if stopErr := pw.Stop(); stopErr != nil {
+			t.Fatalf("Failed to launch browser: %v (stopping Playwright also failed: %v)", err, stopErr)
+		}
 		t.Fatalf("Failed to launch browser: %v", err)
 	}
 
@@ -78,16 +82,21 @@ func NewTestBrowser(t *testing.T, config TestConfig) *TestBrowser {
 		pw:      pw,
 		browser: browser,
 		config:  config,
+		t:       t,
 	}
 }
 
 // Close cleans up browser resources
 func (tb *TestBrowser) Close() {
 	if tb.browser != nil {
-		tb.browser.Close()
+		if err := tb.browser.Close(); err != nil {
+			tb.t.Errorf("Failed to close browser: %v", err)
+		}
 	}
 	if tb.pw != nil {
-		tb.pw.Stop()
+		if err := tb.pw.Stop(); err != nil {
+			tb.t.Errorf("Failed to stop Playwright: %v", err)
+		}
 	}
 }
 
@@ -150,15 +159,41 @@ func (tp *TestPage) Login(username, password string) error {
 	}
 
 	// Submit form. The login page may hold the POST back while its companion
-	// animation plays, so wait for the resulting navigation (success redirect
-	// or the re-rendered login page) instead of sleeping a fixed time.
-	if _, err := tp.page.ExpectNavigation(func() error {
-		return tp.page.Locator("button[type='submit']").Click()
-	}); err != nil {
+	// animation plays, so wait for the next document (success redirect or the
+	// re-rendered login page) instead of sleeping a fixed time.
+	if err := clickAndWaitForNewDocument(tp.page, tp.page.Locator("button[type='submit']")); err != nil {
 		return fmt.Errorf("failed to submit login form: %w", err)
 	}
 
 	return nil
+}
+
+// pendingNavMarker names the window property clickAndWaitForNewDocument sets
+// on the current document. A navigation replaces the window object, so the
+// property is gone once the next document has been committed.
+const pendingNavMarker = "__e2ePendingNavigation"
+
+// clickAndWaitForNewDocument clicks target, which must start a full page
+// navigation, and returns once the next document has loaded.
+//
+// It does not wait on the URL: the navigation may end on the URL the page
+// is already on (a failed login re-renders /login, a bulk action redirects
+// back to its list), and Page.WaitForURL resolves at once against the old
+// document when the current URL already matches.
+func clickAndWaitForNewDocument(page playwright.Page, target playwright.Locator) error {
+	if _, err := page.Evaluate("name => { window[name] = true }", pendingNavMarker); err != nil {
+		return fmt.Errorf("mark current document: %w", err)
+	}
+
+	if err := target.Click(); err != nil {
+		return err
+	}
+
+	if _, err := page.WaitForFunction("name => window[name] !== true", pendingNavMarker); err != nil {
+		return fmt.Errorf("wait for next document: %w", err)
+	}
+
+	return page.WaitForLoadState()
 }
 
 // LoginAsAdmin logs in with admin credentials
@@ -175,6 +210,7 @@ func (tp *TestPage) LoginAsTestUser() error {
 func (tp *TestPage) Logout() error {
 	tp.Navigate("/logout")
 	time.Sleep(300 * time.Millisecond)
+
 	return nil
 }
 
@@ -183,6 +219,7 @@ func (tp *TestPage) IsLoggedIn() bool {
 	// Check for logout button or user indicator
 	logoutBtn := tp.page.Locator("a[href='/logout'], button:has-text('Logout')")
 	count, err := logoutBtn.Count()
+
 	return err == nil && count > 0
 }
 
@@ -195,6 +232,7 @@ func (tp *TestPage) GetCurrentPath() string {
 func (tp *TestPage) HasText(text string) bool {
 	locator := tp.page.Locator(fmt.Sprintf("text=%s", text))
 	count, err := locator.Count()
+
 	return err == nil && count > 0
 }
 
@@ -241,6 +279,7 @@ func (tp *TestPage) GetFlashMessage() (string, bool) {
 	if err != nil {
 		return "", false
 	}
+
 	return text, true
 }
 
@@ -256,6 +295,7 @@ func (tp *TestPage) TableRowCount(tableSelector string) int {
 	if err != nil {
 		return 0
 	}
+
 	return count
 }
 
@@ -264,12 +304,14 @@ func (tp *TestPage) SelectOption(selector string, value string) error {
 	_, err := tp.page.Locator(selector).SelectOption(playwright.SelectOptionValues{
 		Values: playwright.StringSlice(value),
 	})
+
 	return err
 }
 
 // IsVisible checks if an element is visible
 func (tp *TestPage) IsVisible(selector string) bool {
 	visible, err := tp.page.Locator(selector).IsVisible()
+
 	return err == nil && visible
 }
 
@@ -281,10 +323,14 @@ func (tp *TestPage) GetInputValue(selector string) (string, error) {
 // ConfirmDialog handles confirmation dialogs
 func (tp *TestPage) ConfirmDialog(accept bool) {
 	tp.page.OnDialog(func(dialog playwright.Dialog) {
+		var err error
 		if accept {
-			dialog.Accept()
+			err = dialog.Accept()
 		} else {
-			dialog.Dismiss()
+			err = dialog.Dismiss()
+		}
+		if err != nil {
+			tp.t.Errorf("Failed to handle %s dialog: %v", dialog.Type(), err)
 		}
 	})
 }

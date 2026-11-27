@@ -110,17 +110,14 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	// Click "Add members…" (first non-danger action in groups scope).
 	// The prompt() fires, OnDialog accepts with memberDN, and
 	// v2-bulk.js submits the form to /groups/bulk?action=add-members.
-	// The click is wrapped in ExpectNavigation because the page is
+	// The click waits for the next document because the page is
 	// ALREADY on /groups — a bare WaitForURL("**/groups") would match
 	// the current URL and resolve before the POST navigation happens,
 	// letting the assertions below run against the pre-POST DOM.
 	// (add-members redirects without a flash, unlike bulk delete, so
 	// there is no flash element to wait for.)
-	_, err := page.ExpectNavigation(func() error {
-		return page.Locator(".bulk-bar__action",
-			playwright.PageLocatorOptions{HasText: "Add members"}).Click()
-	})
-	require.NoError(t, err)
+	require.NoError(t, clickAndWaitForNewDocument(page, page.Locator(".bulk-bar__action",
+		playwright.PageLocatorOptions{HasText: "Add members"})))
 
 	// The handler redirects back to /groups; before the #652 fix this
 	// rendered the 403 "Access forbidden" page instead.
@@ -155,11 +152,8 @@ func TestBulkToolbarAddMembers_AgainstOpenLDAP(t *testing.T) {
 	require.NoError(t, page.Locator(checkboxSel).Check())
 	require.NoError(t, tp.WaitForSelector(".bulk-bar"))
 
-	_, err = page.ExpectNavigation(func() error {
-		return page.Locator(".bulk-bar__action",
-			playwright.PageLocatorOptions{HasText: "Delete groups"}).Click()
-	})
-	require.NoError(t, err)
+	require.NoError(t, clickAndWaitForNewDocument(page, page.Locator(".bulk-bar__action",
+		playwright.PageLocatorOptions{HasText: "Delete groups"})))
 	require.NoError(t, tp.WaitForSelector(".list-page__flash--success"))
 
 	gone, err := page.Locator(checkboxSel).Count()

@@ -7,6 +7,16 @@ run:
   timeout: 5m
   tests: true
   modules-download-mode: readonly
+  # Lint the test code behind the integration and e2e build tags too
+  # (internal/integration, internal/e2e and the integration tests in
+  # internal/web). With both tags set, the one file constrained to
+  # !integration (internal/web/ldap_container_stub_test.go) is not linted.
+  # --build-tags adds to this list instead of replacing it, so lint the stub
+  # with a copy of this file without build-tags:
+  #   golangci-lint run -c <(yq 'del(.run.build-tags)' .golangci.yml) ./internal/web/
+  build-tags:
+    - integration
+    - e2e
 
 output:
   formats:
