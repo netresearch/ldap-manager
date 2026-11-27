@@ -26,8 +26,9 @@ import (
 // build context), runs it against an OpenLDAP container and waits for Docker to
 // report the container healthy.
 //
-// Requirements: a Docker daemon, the docker CLI with the buildx plugin, and the
-// Go toolchain on PATH. Run with: make test-integration
+// Requirements: a Docker daemon, the docker CLI with the buildx plugin, the Go
+// toolchain on PATH, and generated templ code (templ generate), because the
+// test compiles cmd/ldap-manager. Run with: make test-integration
 func TestDockerHealthCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping Docker healthcheck test in short mode")
@@ -107,11 +108,11 @@ func TestDockerHealthCheck(t *testing.T) {
 }
 
 // buildProductionImage builds the production image from the shipped
-// Dockerfile and returns its tag. Like release.yml, it compiles the linux
-// binary outside Docker and hands it to the Dockerfile's binary-selector stage
-// through bin/ in the build context, and it builds with BuildKit (docker
-// buildx), which sets TARGETARCH and supports COPY --chmod. The image is
-// removed when the test ends.
+// Dockerfile and returns its tag. Like release.yml (release-go-app.yml in
+// netresearch/.github), it compiles the linux binary outside Docker and hands
+// it to the Dockerfile's binary-selector stage through bin/ in the build
+// context, and it builds with BuildKit (docker buildx), which sets TARGETARCH
+// and supports COPY --chmod. The image is removed when the test ends.
 func buildProductionImage(ctx context.Context, t *testing.T) string {
 	t.Helper()
 
