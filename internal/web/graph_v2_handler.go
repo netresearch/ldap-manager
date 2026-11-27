@@ -72,7 +72,7 @@ func (a *App) buildGraphFromQuery(c fiber.Ctx) (*ldap_cache.GraphData, int, stri
 		if err != nil {
 			// Fail fast on non-numeric input rather than silently
 			// falling back to the default — matches the "validate
-			// early" rule in internal/CLAUDE.md.
+			// early" rule in internal/AGENTS.md.
 			return nil, fiber.StatusBadRequest, "invalid depth"
 		}
 		depth = n
@@ -88,7 +88,7 @@ func (a *App) buildGraphFromQuery(c fiber.Ctx) (*ldap_cache.GraphData, int, stri
 		// Log the underlying error with context, but return a generic
 		// message to the client — `err.Error()` may contain DN fragments
 		// or other internals that should not appear in the response body
-		// (see internal/web/CLAUDE.md: "Error responses don't leak
+		// (see internal/web/AGENTS.md: "Error responses don't leak
 		// sensitive data").
 		log.Error().
 			Err(err).
